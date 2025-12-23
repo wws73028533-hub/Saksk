@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>考试成绩 #{{ exam.id }}</title>
+  <style>
+    body { margin:0; font-family:'Segoe UI',sans-serif; background:#f4f6f9; color:#333; padding:24px; }
+    .container { max-width: 1000px; margin:0 auto; }
+    .topbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+    a.link { color:#007bff; text-decoration:none; }
+    h1 { margin:0; font-size:22px; }
+    .grid { display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-bottom:16px; }
+    .card { background:#fff; border-radius:12px; box-shadow:0 4px 16px rgba(0,0,0,.06); padding:16px; }
+    .label { color:#666; font-size:12px; }
+    .value { font-size:20px; font-weight:700; margin-top:4px; }
+    table { width:100%; border-collapse:collapse; background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 4px 16px rgba(0,0,0,.06); }
+    th, td { text-align:left; padding:10px 12px; border-bottom:1px solid #eee; }
+    thead th { background:#f8f9fa; font-weight:600; }
+    .ok { color:#28a745; font-weight:600; }
+    .bad { color:#dc3545; font-weight:600; }
+    .actions { margin:16px 0; display:flex; gap:8px; }
+    .btn { padding:8px 12px; border-radius:8px; border:1px solid #ddd; background:#fff; color:#333; text-decoration:none; }
+    .btn-primary { background:#007bff; color:#fff; border-color:#007bff; }
+    @media (max-width: 768px){ body{ padding:16px;} .grid{ grid-template-columns: repeat(2,1fr);} table{ font-size:13px;} }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="topbar">
+      <h1>考试成绩 #{{ exam.id }}</h1>
+      <a href="/exams" class="link">← 返回考试列表</a>
+    </div>
+
+    <div class="grid">
+      <div class="card"><div class="label">科目</div><div class="value">{{ exam.subject or '全部' }}</div></div>
+      <div class="card"><div class="label">时长(分钟)</div><div class="value">{{ exam.duration_minutes }}</div></div>
+      <div class="card"><div class="label">总分</div><div class="value">{{ exam.total_score }}</div></div>
+      <div class="card"><div class="label">正确/总数</div><div class="value">{{ correct }} / {{ total }}</div></div>
+    </div>
+    <div class="grid" style="grid-template-columns: repeat(3,1fr);">
+      <div class="card"><div class="label">开始时间</div><div class="value">{{ exam.started_at }}</div></div>
+      <div class="card"><div class="label">提交时间</div><div class="value">{{ exam.submitted_at or '-' }}</div></div>
+      <div class="card"><div class="label">正确率</div><div class="value">{{ accuracy }}%</div></div>
+    </div>
+
+    <div class="actions">
+      <a class="btn" href="/quiz?mode=exam&exam_id={{ exam.id }}">🔍 回顾题目</a>
+      <button class="btn" onclick="toMistakes({{ exam.id }})">📕 错题一键加入错题本</button>
+      <a class="btn" href="/">🏠 返回首页</a>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>#</th><th>题型</th><th>分值</th><th>作答</th><th>正确答案</th><th>是否正确</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for it in items %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td>{{ it.q_type }}</td>
+          <td>{{ it.score_val }}</td>
+          <td>{{ it.user_answer or '' }}</td>
+          <td>{{ it.answer }}</td>
+          <td>{% if it.is_correct %}<span class="ok">√</span>{% else %}<span class="bad">×</span>{% endif %}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" style="color:#666;">暂无数据</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>
+

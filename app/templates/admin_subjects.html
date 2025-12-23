@@ -1,0 +1,859 @@
+{% extends "admin_base.html" %}
+
+{% block title %}科目管理{% endblock %}
+
+{% block head %}
+<style>
+    .container {
+        background: #fff;
+        padding: 24px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    
+    /* 页面标题 */
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+        border-bottom: 2px solid #e9ecef;
+    }
+    .page-title {
+        font-size: 28px;
+        font-weight: bold;
+        color: #333;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .page-title-icon {
+        font-size: 32px;
+    }
+    
+    /* 统计卡片 */
+    .stats-row {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+    }
+    .stat-card {
+        flex: 1;
+        min-width: 200px;
+        padding: 20px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        transition: transform 0.3s, box-shadow 0.3s;
+    }
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+    .stat-card.total { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .stat-card.questions { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
+    .stat-card.avg { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+    .stat-card-label {
+        font-size: 14px;
+        opacity: 0.9;
+        margin-bottom: 10px;
+        font-weight: 500;
+    }
+    .stat-card-value {
+        font-size: 36px;
+        font-weight: bold;
+        margin-bottom: 4px;
+    }
+    .stat-card-desc {
+        font-size: 12px;
+        opacity: 0.8;
+    }
+    
+    /* 工具栏 */
+    .toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+    .toolbar-left, .toolbar-right {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    
+    /* 添加科目表单 */
+    .add-subject-form {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        padding: 16px;
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        border-radius: 10px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    .add-subject-form input {
+        flex: 1;
+        min-width: 250px;
+    }
+    
+    /* 搜索框 */
+    .search-box {
+        position: relative;
+        display: inline-block;
+    }
+    .search-box input {
+        padding-left: 36px;
+        width: 250px;
+        transition: width 0.3s, border-color 0.3s;
+    }
+    .search-box input:focus {
+        width: 320px;
+        border-color: #667eea;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    .search-icon {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #999;
+        pointer-events: none;
+        font-size: 16px;
+    }
+    
+    /* 输入框优化 */
+    input[type="text"] {
+        padding: 10px 14px;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        font-size: 14px;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    input[type="text"]:focus {
+        border-color: #667eea;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    
+    /* 表格优化 */
+    .table-wrapper {
+        border-radius: 10px;
+        overflow: hidden;
+        border: 1px solid var(--border-color);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 0;
+    }
+    th, td {
+        border-bottom: 1px solid var(--border-color);
+        padding: 16px;
+        text-align: left;
+        vertical-align: middle;
+    }
+    thead th {
+        background: linear-gradient(to bottom, #f8f9fa 0%, #e9ecef 100%);
+        border-bottom: 2px solid var(--border-color);
+        font-weight: 600;
+        color: #495057;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    tbody tr {
+        transition: all 0.2s;
+    }
+    tbody tr:hover {
+        background-color: #f8f9fa;
+        transform: scale(1.01);
+    }
+    tbody tr:last-child td {
+        border-bottom: none;
+    }
+    
+    /* 科目名称样式 */
+    .subject-name {
+        font-size: 16px;
+        font-weight: 500;
+        color: #333;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .subject-icon {
+        font-size: 20px;
+    }
+    
+    /* 题目数量徽章 */
+    .question-count {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 14px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: 600;
+    }
+    .question-count.empty {
+        background: linear-gradient(135deg, #adb5bd 0%, #6c757d 100%);
+    }
+    
+    /* 操作按钮优化 */
+    .action-btns {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    .btn-sm {
+        padding: 6px 14px;
+        font-size: 13px;
+        border-radius: 6px;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s;
+        white-space: nowrap;
+        font-weight: 500;
+    }
+    .btn-sm:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+    .btn-manage {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    .btn-manage:hover {
+        background: linear-gradient(135deg, #5568d3 0%, #6a3f8f 100%);
+    }
+    .btn-edit {
+        background: #fff3e0;
+        color: #f57c00;
+        border: 1px solid #ffe0b2;
+    }
+    .btn-edit:hover {
+        background: #ffe0b2;
+    }
+    .btn-delete {
+        background: #ffebee;
+        color: #c62828;
+        border: 1px solid #ffcdd2;
+    }
+    .btn-delete:hover {
+        background: #ffcdd2;
+    }
+    
+    /* 模态框 */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+        animation: fadeIn 0.3s;
+    }
+    .modal-overlay.show {
+        display: flex;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    .modal-content {
+        background: white;
+        padding: 28px;
+        border-radius: 12px;
+        width: 450px;
+        max-width: 90vw;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        animation: slideUp 0.3s;
+    }
+    @keyframes slideUp {
+        from { transform: translateY(30px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+    .modal-header {
+        font-size: 20px;
+        font-weight: bold;
+        margin-bottom: 20px;
+        color: #333;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .modal-body {
+        margin-bottom: 24px;
+    }
+    .form-group {
+        margin-bottom: 16px;
+    }
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        color: #495057;
+    }
+    .form-group input {
+        width: 100%;
+        box-sizing: border-box;
+    }
+    .modal-footer {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+    }
+    
+    /* 空状态 */
+    .empty-state {
+        text-align: center;
+        padding: 80px 20px;
+        color: #6c757d;
+    }
+    .empty-state-icon {
+        font-size: 80px;
+        margin-bottom: 20px;
+        opacity: 0.5;
+    }
+    .empty-state-text {
+        font-size: 18px;
+        margin-bottom: 10px;
+        font-weight: 500;
+    }
+    .empty-state-hint {
+        font-size: 14px;
+        color: #adb5bd;
+        margin-bottom: 24px;
+    }
+    
+    /* 加载状态 */
+    .loading-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #6c757d;
+    }
+    .loading-spinner {
+        display: inline-block;
+    }
+
+    /* 导入结果样式 */
+    #importResult {
+        padding: 16px;
+        border-radius: 8px;
+        font-size: 14px;
+        line-height: 1.6;
+        margin-top: 16px;
+        border: 1px solid transparent;
+    }
+    #importResult.success {
+        background-color: #e6ffed;
+        border-color: #b7ebc0;
+        color: #257942;
+    }
+    #importResult.warning {
+        background-color: #fff8e1;
+        border-color: #ffecb3;
+        color: #6d4c41;
+    }
+    #importResult.error {
+        background-color: #ffebee;
+        border-color: #ffcdd2;
+        color: #c62828;
+    }
+    #importResult ul {
+        margin-top: 10px;
+        padding-left: 20px;
+        max-height: 200px;
+        overflow-y: auto;
+        background: rgba(0,0,0,0.02);
+        padding-top: 10px;
+        padding-bottom: 10px;
+        border-radius: 4px;
+    }
+        width: 40px;
+        height: 40px;
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #667eea;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-bottom: 16px;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- 页面标题 -->
+    <div class="page-header">
+        <div class="page-title">
+            <span class="page-title-icon">📚</span>
+            <span>科目管理</span>
+        </div>
+        <button class="btn-secondary" onclick="window.location.href='/admin/dashboard'">← 返回仪表板</button>
+    </div>
+
+    <!-- 统计卡片 -->
+    <div class="stats-row">
+        <div class="stat-card total">
+            <div class="stat-card-label">总科目数</div>
+            <div class="stat-card-value" id="statTotal">0</div>
+            <div class="stat-card-desc">系统中的所有科目</div>
+        </div>
+        <div class="stat-card questions">
+            <div class="stat-card-label">总题目数</div>
+            <div class="stat-card-value" id="statQuestions">0</div>
+            <div class="stat-card-desc">所有科目的题目总和</div>
+        </div>
+        <div class="stat-card avg">
+            <div class="stat-card-label">平均题目数</div>
+            <div class="stat-card-value" id="statAvg">0</div>
+            <div class="stat-card-desc">每个科目的平均题目数</div>
+        </div>
+    </div>
+
+    <!-- 添加科目表单 -->
+    <div class="add-subject-form">
+        <span style="font-weight: 500; color: #495057;">➕ 添加新科目：</span>
+        <input type="text" id="subjectName" placeholder="请输入科目名称，例如：计算机网络" onkeydown="if(event.key==='Enter') addSubject()">
+        <button class="btn-primary" onclick="addSubject()">✨ 立即添加</button>
+    </div>
+
+    <!-- 题库导入 -->
+    <div class="add-subject-form" style="flex-direction: column; align-items: flex-start; background: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%);">
+        <div style="font-weight: 500; color: #495057; font-size: 16px; margin-bottom: 12px;">🚀 批量导入题库</div>
+        <div style="display: flex; gap: 10px; align-items: center; width: 100%;">
+            <input type="file" id="importFile" accept=".xlsx" style="flex: 1; background: white;">
+            <button class="btn-primary" onclick="importFromExcel()" id="importBtn">📤 开始导入</button>
+        </div>
+        <div style="margin-top: 10px; font-size: 12px;">
+            <span>不知道格式？</span>
+            <a href="/admin/download_template" style="color: #1e3a8a; font-weight: 500;">下载Excel模板文件</a>
+        </div>
+        <div id="importResult" style="width: 100%; display: none;"></div>
+    </div>
+
+    <!-- 工具栏 -->
+    <div class="toolbar">
+        <div class="toolbar-left">
+            <span style="font-size: 16px; font-weight: 500; color: #495057;">科目列表</span>
+        </div>
+        <div class="toolbar-right">
+            <div class="search-box">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="searchInput" placeholder="      搜索科目名称..." oninput="filterSubjects()">
+            </div>
+        </div>
+    </div>
+
+    <!-- 表格 -->
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 80px;">序号</th>
+                    <th>科目名称</th>
+                    <th style="width: 150px;">题目数量</th>
+                    <th style="width: 280px;">操作</th>
+                </tr>
+            </thead>
+            <tbody id="subjectTableBody">
+                <tr>
+                    <td colspan="4" class="loading-state">
+                        <div class="loading-spinner"></div>
+                        <div>加载中...</div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- 编辑科目模态框 -->
+<div class="modal-overlay" id="editModal" onclick="if(event.target===this) closeEditModal()">
+    <div class="modal-content">
+        <div class="modal-header">
+            <span>✏️ 编辑科目</span>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>科目名称 *</label>
+                <input type="text" id="editSubjectName" placeholder="请输入新的科目名称">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="closeEditModal()">取消</button>
+            <button class="btn-primary" onclick="confirmEdit()">保存修改</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let allSubjects = [];
+    let editingSubjectId = null;
+    
+    const subjectIcons = {
+        '计算机': '💻',
+        '网络': '🌐',
+        '数学': '🔢',
+        '英语': '🔤',
+        '物理': '⚛️',
+        '化学': '🧪',
+        '生物': '🧬',
+        '历史': '📜',
+        '地理': '🌍',
+        '政治': '🏛️',
+        '语文': '📖',
+        '默认': '📚'
+    };
+    
+    function getSubjectIcon(name) {
+        for (const [key, icon] of Object.entries(subjectIcons)) {
+            if (name.includes(key)) return icon;
+        }
+        return subjectIcons['默认'];
+    }
+    
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    async function loadSubjects() {
+        try {
+            const res = await fetch('/admin/api/subjects');
+            if (!res.ok) throw new Error('网络错误');
+            allSubjects = await res.json();
+            updateStats();
+            renderSubjects();
+        } catch (e) {
+            console.error('加载科目失败:', e);
+            showError('加载科目失败: ' + e.message);
+        }
+    }
+    
+    function updateStats() {
+        const total = allSubjects.length;
+        const totalQuestions = allSubjects.reduce((sum, s) => sum + (s.question_count || 0), 0);
+        const avg = total > 0 ? Math.round(totalQuestions / total) : 0;
+        
+        document.getElementById('statTotal').textContent = total;
+        document.getElementById('statQuestions').textContent = totalQuestions;
+        document.getElementById('statAvg').textContent = avg;
+    }
+    
+    function renderSubjects(filtered = null) {
+        const subjects = filtered || allSubjects;
+        const tbody = document.getElementById('subjectTableBody');
+        tbody.innerHTML = '';
+        
+        if (subjects.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="4" class="empty-state">
+                        <div class="empty-state-icon">📚</div>
+                        <div class="empty-state-text">暂无科目数据</div>
+                        <div class="empty-state-hint">点击上方"立即添加"按钮创建第一个科目</div>
+                        <button class="btn-primary" onclick="document.getElementById('subjectName').focus()">
+                            ➕ 立即添加科目
+                        </button>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+        
+        subjects.forEach((sub, idx) => {
+            const tr = document.createElement('tr');
+            const icon = getSubjectIcon(sub.name);
+            const count = sub.question_count || 0;
+            const countClass = count === 0 ? 'empty' : '';
+            
+            tr.innerHTML = `
+                <td style="text-align: center; font-weight: 500; color: #6c757d;">${idx + 1}</td>
+                <td>
+                    <div class="subject-name">
+                        <span class="subject-icon">${icon}</span>
+                        <span>${escapeHtml(sub.name)}</span>
+                    </div>
+                </td>
+                <td>
+                    <span class="question-count ${countClass}">
+                        📝 ${count} 道题
+                    </span>
+                </td>
+                <td>
+                    <div class="action-btns">
+                        <button class="btn-sm btn-manage" onclick="gotoQuestions(${sub.id})">📚 题集管理</button>
+                        <button class="btn-sm btn-edit" onclick="openEditModal(${sub.id})">✏️ 编辑</button>
+                        <button class="btn-sm btn-delete" onclick="deleteSubject(${sub.id})">🗑️ 删除</button>
+                    </div>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+    
+    function filterSubjects() {
+        const keyword = document.getElementById('searchInput').value.toLowerCase().trim();
+        if (!keyword) {
+            renderSubjects();
+            return;
+        }
+        const filtered = allSubjects.filter(s => s.name.toLowerCase().includes(keyword));
+        renderSubjects(filtered);
+    }
+    
+    async function addSubject() {
+        const nameInput = document.getElementById('subjectName');
+        const name = nameInput.value.trim();
+        
+        if (!name) {
+            showError('请输入科目名称');
+            nameInput.focus();
+            return;
+        }
+        
+        if (allSubjects.some(s => s.name === name)) {
+            showError('该科目已存在');
+            return;
+        }
+        
+        try {
+            const res = await fetch('/admin/api/subjects', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name })
+            });
+            const result = await res.json();
+            
+            if (result.status === 'success') {
+                showSuccess(result.message || '科目添加成功');
+                nameInput.value = '';
+                loadSubjects();
+            } else {
+                showError(result.message || '添加失败');
+            }
+        } catch (e) {
+            console.error('添加科目失败:', e);
+            showError('添加失败: ' + e.message);
+        }
+    }
+    
+    function openEditModal(id) {
+        const subject = allSubjects.find(s => s.id === id);
+        if (!subject) return;
+        
+        editingSubjectId = id;
+        document.getElementById('editSubjectName').value = subject.name;
+        document.getElementById('editModal').classList.add('show');
+        document.body.style.overflow = 'hidden';
+        
+        setTimeout(() => {
+            const input = document.getElementById('editSubjectName');
+            input.focus();
+            input.select();
+        }, 100);
+    }
+    
+    function closeEditModal() {
+        document.getElementById('editModal').classList.remove('show');
+        document.body.style.overflow = '';
+        editingSubjectId = null;
+    }
+    
+    async function confirmEdit() {
+        if (!editingSubjectId) return;
+        
+        const newName = document.getElementById('editSubjectName').value.trim();
+        const oldSubject = allSubjects.find(s => s.id === editingSubjectId);
+        
+        if (!newName) {
+            showError('请输入科目名称');
+            return;
+        }
+        
+        if (newName === oldSubject.name) {
+            closeEditModal();
+            return;
+        }
+        
+        if (allSubjects.some(s => s.id !== editingSubjectId && s.name === newName)) {
+            showError('该科目名称已存在');
+            return;
+        }
+        
+        try {
+            const res = await fetch(`/admin/api/subjects/${editingSubjectId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: newName })
+            });
+            const result = await res.json();
+            
+            if (result.status === 'success') {
+                showSuccess(result.message || '科目修改成功');
+                closeEditModal();
+                loadSubjects();
+            } else {
+                showError(result.message || '修改失败');
+            }
+        } catch (e) {
+            console.error('修改科目失败:', e);
+            showError('修改失败: ' + e.message);
+        }
+    }
+
+    async function deleteSubject(id) {
+        const subject = allSubjects.find(s => s.id === id);
+        if (!subject) return;
+        
+        const count = subject.question_count || 0;
+        let confirmMsg = `⚠️ 确定要删除科目"${subject.name}"吗？`;
+        if (count > 0) {
+            confirmMsg += `\n\n该科目下有 ${count} 道题目。`;
+        }
+        confirmMsg += '\n\n此操作不可恢复！';
+        
+        if (!confirm(confirmMsg)) return;
+        
+        try {
+            let res = await fetch(`/admin/api/subjects/${id}`, { method: 'DELETE' });
+            let result = await res.json();
+            
+            if (res.ok && result.status === 'success') {
+                showSuccess(result.message || '科目删除成功');
+                loadSubjects();
+                return;
+            }
+            
+            if (res.status === 400 && /无法直接删除/.test(result.message || '')) {
+                if (confirm(`${result.message}\n\n⚠️ 是否强制删除该科目及其下所有 ${count} 道题目？\n\n此操作将：\n• 删除科目"${subject.name}"\n• 删除该科目下的所有题目\n• 清除相关的收藏和错题记录\n• 此操作不可恢复！`)) {
+                    res = await fetch(`/admin/api/subjects/${id}?force=1`, { method: 'DELETE' });
+                    result = await res.json();
+                    
+                    if (result.status === 'success') {
+                        showSuccess(result.message || '科目及题目已全部删除');
+                        loadSubjects();
+                    } else {
+                        showError(result.message || '强制删除失败');
+                    }
+                }
+                return;
+            }
+            
+            showError(result.message || '删除失败');
+        } catch (e) {
+            console.error('删除科目失败:', e);
+            showError('删除失败: ' + e.message);
+        }
+    }
+
+    function gotoQuestions(id) {
+        window.location.href = `/admin/subjects/${id}/questions`;
+    }
+    
+    function showSuccess(message) {
+        alert('✅ ' + message);
+    }
+    
+    function showError(message) {
+        alert('❌ ' + message);
+    }
+
+    async function importFromExcel() {
+        const fileInput = document.getElementById('importFile');
+        const importBtn = document.getElementById('importBtn');
+        const resultDiv = document.getElementById('importResult');
+
+        if (fileInput.files.length === 0) {
+            showError('请先选择一个 .xlsx 文件');
+            return;
+        }
+
+        const file = fileInput.files[0];
+        if (!file.name.endsWith('.xlsx')) {
+            showError('只允许上传 .xlsx 文件');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        importBtn.disabled = true;
+        importBtn.textContent = '导入中...';
+        resultDiv.style.display = 'none';
+        resultDiv.className = '';
+
+        try {
+            const res = await fetch('/admin/api/questions/import/excel', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await res.json();
+
+            resultDiv.style.display = 'block';
+            resultDiv.className = result.status; // 'success', 'warning', or 'error'
+
+            let html = `<strong>${escapeHtml(result.message)}</strong>`;
+            if (result.errors && result.errors.length > 0) {
+                html += '<ul>';
+                result.errors.forEach(err => {
+                    html += `<li>${escapeHtml(err)}</li>`;
+                });
+                html += '</ul>';
+            }
+            resultDiv.innerHTML = html;
+
+            if (result.status !== 'error') {
+                // 导入成功或部分成功后，刷新科目列表
+                loadSubjects();
+            }
+
+        } catch (e) {
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'error';
+            resultDiv.innerHTML = `<strong>导入失败:</strong> ${escapeHtml(e.message)}`;
+        } finally {
+            importBtn.disabled = false;
+            importBtn.textContent = '📤 开始导入';
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadSubjects();
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeEditModal();
+            }
+        });
+        
+        document.getElementById('editSubjectName').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                confirmEdit();
+            }
+        });
+    });
+</script>
+{% endblock %}

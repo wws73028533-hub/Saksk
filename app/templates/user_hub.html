@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>功能中心 - 全能刷题库</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Crect width='128' height='128' rx='24' fill='%23007bff'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='central' text-anchor='middle' font-size='88' fill='white'%3EQ%3C/text%3E%3C/svg%3E">
+    <style>
+        :root {
+            --bg-color: #f5f5f7;
+            --card-bg: rgba(255, 255, 255, 0.7);
+            --card-bg-solid: #ffffff;
+            --text-color: #1d1d1f;
+            --text-sub: #86868b;
+            --border-color: rgba(255, 255, 255, 0.6);
+            --primary: #007aff;
+            --primary-light: rgba(0, 122, 255, 0.15);
+            --shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08);
+            --shadow-hover: 0 12px 48px rgba(0, 0, 0, 0.16), 0 4px 16px rgba(0, 0, 0, 0.12);
+            --success: #34c759;
+            --warning: #ff9500;
+            --danger: #ff3b30;
+            --info: #5ac8fa;
+            --purple: #af52de;
+            --blur: blur(40px) saturate(180%);
+            --glow: 0 0 20px rgba(255, 255, 255, 0.5);
+        }
+
+        body.dark-mode {
+            --bg-color: #000000;
+            --card-bg: rgba(28, 28, 30, 0.6);
+            --card-bg-solid: #1c1c1e;
+            --text-color: #f5f5f7;
+            --text-sub: #98989d;
+            --border-color: rgba(255, 255, 255, 0.15);
+            --primary: #0a84ff;
+            --primary-light: rgba(10, 132, 255, 0.2);
+            --shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.3);
+            --shadow-hover: 0 12px 48px rgba(0, 0, 0, 0.5), 0 4px 16px rgba(0, 0, 0, 0.4);
+            --glow: 0 0 20px rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
+            background: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 20% 50%, rgba(0, 122, 255, 0.03) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(0, 122, 255, 0.03) 0%, transparent 50%);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            transition: background 0.3s cubic-bezier(0.4, 0, 0.2, 1), color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            position: relative;
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.03'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 1;
+            opacity: 0.4;
+            mix-blend-mode: overlay;
+        }
+        .main-container {
+            position: relative;
+            z-index: 2;
+        }
+
+        .main-container {
+            max-width: 980px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 48px;
+            padding: 0 4px;
+        }
+
+        .header-title {
+            font-size: 40px;
+            font-weight: 600;
+            letter-spacing: -0.8px;
+            line-height: 1.1;
+        }
+        .header-title a {
+            color: var(--text-color);
+            text-decoration: none;
+            transition: opacity 0.2s;
+        }
+        .header-title a:hover {
+            opacity: 0.7;
+        }
+
+        /* 用户欢迎区 */
+        .user-welcome {
+            background: var(--card-bg);
+            backdrop-filter: var(--blur);
+            -webkit-backdrop-filter: var(--blur);
+            padding: 32px;
+            border-radius: 24px;
+            box-shadow: var(--shadow);
+            border: 0.5px solid var(--border-color);
+            margin-bottom: 32px;
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            cursor: pointer;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            text-decoration: none;
+            color: var(--text-color);
+            position: relative;
+            isolation: isolate;
+            background-image: 
+                url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.4'/%3E%3C/svg%3E"),
+                var(--card-bg);
+            background-blend-mode: overlay;
+        }
+        .user-welcome::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 24px;
+            padding: 0.5px;
+            background: linear-gradient(135deg, 
+                rgba(255, 255, 255, 0.8) 0%,
+                rgba(255, 255, 255, 0.4) 25%,
+                rgba(255, 255, 255, 0.1) 50%,
+                rgba(255, 255, 255, 0.4) 75%,
+                rgba(255, 255, 255, 0.8) 100%
+            );
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask-composite: exclude;
+            opacity: 0.6;
+            pointer-events: none;
+            z-index: 1;
+        }
+        .user-welcome::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 30%;
+            background: linear-gradient(180deg, 
+                rgba(255, 255, 255, 0.3) 0%,
+                rgba(255, 255, 255, 0.1) 50%,
+                transparent 100%
+            );
+            border-radius: 24px 24px 0 0;
+            pointer-events: none;
+            z-index: 2;
+        }
+        .user-welcome:hover {
+            transform: translateY(-6px);
+            box-shadow: var(--shadow-hover), var(--glow);
+        }
+        .user-welcome > * {
+            position: relative;
+            z-index: 3;
+        }
+
+        .user-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 36px;
+            box-shadow: 0 4px 16px rgba(0, 122, 255, 0.3);
+            background-size: cover;
+            background-position: center;
+            overflow: hidden;
+        }
+
+        .user-info h2 {
+            margin: 0 0 8px 0;
+            font-size: 28px;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+        }
+
+        .user-info p {
+            margin: 0;
+            color: var(--text-sub);
+            font-size: 15px;
+            line-height: 1.5;
+        }
+
+        /* 功能卡片网格 */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .feature-card {
+            background: var(--card-bg);
+            backdrop-filter: var(--blur);
+            -webkit-backdrop-filter: var(--blur);
+            padding: 28px;
+            border-radius: 24px;
+            box-shadow: var(--shadow);
+            border: 0.5px solid var(--border-color);
+            text-decoration: none;
+            color: var(--text-color);
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            isolation: isolate;
+            background-image: 
+                url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.4'/%3E%3C/svg%3E"),
+                var(--card-bg);
+            background-blend-mode: overlay;
+        }
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 24px;
+            padding: 0.5px;
+            background: linear-gradient(135deg, 
+                rgba(255, 255, 255, 0.8) 0%,
+                rgba(255, 255, 255, 0.4) 25%,
+                rgba(255, 255, 255, 0.1) 50%,
+                rgba(255, 255, 255, 0.4) 75%,
+                rgba(255, 255, 255, 0.8) 100%
+            );
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask-composite: exclude;
+            opacity: 0.6;
+            pointer-events: none;
+            z-index: 1;
+        }
+        .feature-card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 30%;
+            background: linear-gradient(180deg, 
+                rgba(255, 255, 255, 0.3) 0%,
+                rgba(255, 255, 255, 0.1) 50%,
+                transparent 100%
+            );
+            border-radius: 24px 24px 0 0;
+            pointer-events: none;
+            z-index: 2;
+        }
+        .feature-card > * {
+            position: relative;
+            z-index: 3;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--primary);
+            transform: scaleX(0);
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .feature-card:hover {
+            transform: translateY(-6px);
+            box-shadow: var(--shadow-hover), var(--glow);
+        }
+
+        .feature-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .feature-card .icon {
+            font-size: 44px;
+            margin-bottom: 16px;
+            display: block;
+        }
+
+        .feature-card .title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: var(--text-color);
+            letter-spacing: -0.3px;
+        }
+
+        .feature-card .description {
+            font-size: 15px;
+            color: var(--text-sub);
+            line-height: 1.5;
+        }
+
+        /* 不同卡片的强调色 */
+        .feature-card.profile::before { background: var(--primary); }
+        .feature-card.profile .icon { color: var(--primary); }
+
+        .feature-card.stats::before { background: var(--success); }
+        .feature-card.stats .icon { color: var(--success); }
+
+        .feature-card.settings::before { background: var(--warning); }
+        .feature-card.settings .icon { color: var(--warning); }
+
+        .feature-card.exams::before { background: var(--info); }
+        .feature-card.exams .icon { color: var(--info); }
+
+        .feature-card.contact::before { background: var(--purple); }
+        .feature-card.contact .icon { color: var(--purple); }
+
+        .feature-card.about::before { background: var(--text-sub); }
+        .feature-card.about .icon { color: var(--text-sub); }
+
+        .feature-card.admin::before { background: var(--danger); }
+        .feature-card.admin .icon { color: var(--danger); }
+
+        /* 退出按钮 */
+        .logout-section {
+            text-align: center;
+        }
+
+        .logout-btn {
+            padding: 14px 32px;
+            border: none;
+            border-radius: 12px;
+            font-size: 17px;
+            cursor: pointer;
+            font-weight: 500;
+            background-color: var(--danger);
+            color: white;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 2px 8px rgba(255, 59, 48, 0.3);
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .logout-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 16px rgba(255, 59, 48, 0.4);
+        }
+        .logout-btn:active {
+            transform: scale(0.98);
+        }
+
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            .main-container {
+                padding: 24px 16px;
+            }
+            .page-header {
+                margin-bottom: 32px;
+            }
+            .header-title {
+                font-size: 32px;
+            }
+            .user-welcome {
+                padding: 24px;
+                gap: 20px;
+            }
+            .user-avatar {
+                width: 64px;
+                height: 64px;
+                font-size: 28px;
+            }
+            .user-info h2 {
+                font-size: 24px;
+            }
+            .features-grid {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+            .feature-card {
+                padding: 24px;
+                display: flex;
+                align-items: center;
+                gap: 20px;
+            }
+            .feature-card .icon {
+                font-size: 32px;
+                margin-bottom: 0;
+                flex-shrink: 0;
+            }
+            .feature-card .title {
+                font-size: 18px;
+                margin-bottom: 6px;
+            }
+            .feature-card .description {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <header class="page-header">
+            <div class="header-title"><a href="/"> < 返回首页</a></div>
+        </header>
+
+        <!-- 用户欢迎区 -->
+        <a href="/profile" class="user-welcome">
+            <div class="user-avatar" id="userAvatar">
+                <span id="avatarInitial">{{ (username or 'U')[:1]|upper }}</span>
+            </div>
+            <div class="user-info">
+                <h2>欢迎, {{ username }}!</h2>
+                <p>管理您的账户和查看学习进度</p>
+            </div>
+        </a>
+
+        <!-- 功能卡片网格 -->
+        <div class="features-grid">
+            <a href="/account" class="feature-card profile">
+                <span class="icon">🔐</span>
+                <div>
+                    <div class="title">账号管理</div>
+                    <div class="description">修改密码、账号安全设置</div>
+                </div>
+            </a>
+
+            <a href="/history" class="feature-card stats">
+                <span class="icon">📊</span>
+                <div>
+                    <div class="title">刷题统计</div>
+                    <div class="description">查看您的答题记录、正确率和学习趋势</div>
+                </div>
+            </a>
+
+            <a href="#" class="feature-card settings" onclick="alert('功能待开发'); return false;">
+                <span class="icon">⚙️</span>
+                <div>
+                    <div class="title">题库设置</div>
+                    <div class="description">自定义您的刷题偏好和题库显示选项</div>
+                </div>
+            </a>
+
+            <a href="/exams" class="feature-card exams">
+                <span class="icon">📄</span>
+                <div>
+                    <div class="title">我的考试</div>
+                    <div class="description">查看您参加的考试和成绩报告</div>
+                </div>
+            </a>
+
+            <a href="#" class="feature-card contact" onclick="alert('功能待开发'); return false;">
+                <span class="icon">📧</span>
+                <div>
+                    <div class="title">联系管理员</div>
+                    <div class="description">如有问题或建议，请联系我们的管理员</div>
+                </div>
+            </a>
+
+            <a href="#" class="feature-card about" onclick="alert('功能待开发'); return false;">
+                <span class="icon">ℹ️</span>
+                <div>
+                    <div class="title">关于</div>
+                    <div class="description">了解全能刷题库的版本信息和更新日志</div>
+                </div>
+            </a>
+
+            {% if is_admin %}
+            <a href="/admin" class="feature-card admin">
+                <span class="icon">🛠️</span>
+                <div>
+                    <div class="title">管理端</div>
+                    <div class="description">管理系统用户、题库和考试设置</div>
+                </div>
+            </a>
+            {% endif %}
+        </div>
+
+        <div class="logout-section">
+            <button class="logout-btn" onclick="logout()">退出登录</button>
+        </div>
+
+    </div>
+
+    <script>
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'dark') document.body.classList.add('dark-mode');
+
+        async function logout(){
+            if (!confirm('确定要退出登录吗？')) return;
+            try{ await fetch('/api/logout', {method:'POST'}); }catch(e){}
+            window.location.href = '/login';
+        }
+        
+        // 加载用户头像
+        async function loadUserAvatar() {
+            try {
+                const res = await fetch('/api/profile');
+                if(!res.ok) return;
+                const data = await res.json();
+                if(data.status === 'success' && data.data && data.data.avatar) {
+                    const avatarDiv = document.getElementById('userAvatar');
+                    const avatarInitial = document.getElementById('avatarInitial');
+                    avatarDiv.style.backgroundImage = `url(${data.data.avatar})`;
+                    avatarInitial.style.display = 'none';
+                }
+            } catch(e) {
+                console.error('加载头像失败:', e);
+            }
+        }
+        
+        loadUserAvatar();
+    </script>
+</body>
+</html>

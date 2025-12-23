@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>账号管理 - 全能刷题库</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Crect width='128' height='128' rx='24' fill='%23007bff'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='central' text-anchor='middle' font-size='88' fill='white'%3EQ%3C/text%3E%3C/svg%3E">
+    <style>
+        :root {
+            --bg-color: #fafafa;
+            --card-bg: rgba(255, 255, 255, 0.75);
+            --card-bg-solid: rgba(255, 255, 255, 0.95);
+            --text-color: #1d1d1f;
+            --text-sub: #86868b;
+            --border-color: rgba(0, 0, 0, 0.08);
+            --primary: #007AFF;
+            --primary-light: rgba(0, 122, 255, 0.12);
+            --shadow: 0 2px 16px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+            --shadow-hover: 0 4px 24px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.06);
+            --success: #34c759;
+            --danger: #ff3b30;
+            --blur: blur(60px) saturate(200%);
+        }
+
+        body.dark-mode {
+            --bg-color: #000000;
+            --card-bg: rgba(28, 28, 30, 0.6);
+            --card-bg-solid: rgba(28, 28, 30, 0.95);
+            --text-color: #f5f5f7;
+            --text-sub: #a1a1a6;
+            --border-color: rgba(255, 255, 255, 0.12);
+            --primary: #0a84ff;
+            --primary-light: rgba(10, 132, 255, 0.2);
+            --shadow: 0 2px 16px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
+            --shadow-hover: 0 4px 24px rgba(0, 0, 0, 0.6), 0 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            transition: background-color .3s ease, color .3s ease;
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        body::after, body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+            transition: opacity .3s ease;
+        }
+        body::after { background: linear-gradient(180deg, #ffffff 0%, #fafafa 30%, #f5f5f7 70%, #f0f0f2 100%); }
+        body::before { background: linear-gradient(180deg, #1c1c1e 0%, #000000 40%, #000000 100%); opacity: 0; }
+        body.dark-mode::before { opacity: 1; }
+        body.dark-mode::after { opacity: 0; }
+
+        .main-container { max-width: 800px; margin: 0 auto; padding: 40px 20px; }
+        .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; }
+        .header-title { font-size: 36px; font-weight: 700; letter-spacing: -0.8px; }
+
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: var(--blur);
+            -webkit-backdrop-filter: var(--blur);
+            padding: 32px;
+            border-radius: 20px;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            margin-bottom: 24px;
+        }
+        body.dark-mode .card { background: rgba(28, 28, 30, 0.65); border: 1px solid rgba(255, 255, 255, 0.1); }
+
+        .card h2 { margin-top: 0; font-size: 24px; font-weight: 600; border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 24px; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; font-weight: 500; color: var(--text-sub); margin-bottom: 8px; font-size: 14px; }
+        
+        .main-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 0.5px solid var(--border-color);
+            border-radius: 12px;
+            font-size: 16px;
+            background: var(--card-bg-solid);
+            color: var(--text-color);
+            box-sizing: border-box;
+            transition: all 0.2s ease;
+            -webkit-appearance: none;
+        }
+        .main-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { opacity: 0.85; }
+        .btn-secondary { background: rgba(142, 142, 147, 0.15); color: var(--text-color); }
+        .btn-secondary:hover { background: rgba(142, 142, 147, 0.25); }
+
+        .actions { display: flex; justify-content: flex-start; gap: 12px; margin-top: 24px; }
+        .message { margin-top: 16px; padding: 12px 16px; border-radius: 12px; font-size: 15px; display: none; }
+        .message.success { background: rgba(52, 199, 89, 0.1); color: var(--success); border: 0.5px solid rgba(52, 199, 89, 0.3); }
+        .message.error { background: rgba(255, 59, 48, 0.1); color: var(--danger); border: 0.5px solid rgba(255, 59, 48, 0.3); }
+
+        .grid-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+
+        @media (max-width: 768px) {
+            .main-container { padding: 24px 16px; }
+            .header-title { font-size: 28px; }
+            .card { padding: 24px; }
+            .grid-layout { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <main class="container main-container">
+        <header class="page-header">
+            <h1 class="header-title">账号管理</h1>
+            <a href="/user_hub" class="btn btn-secondary">← 返回</a>
+        </header>
+
+        <div class="grid-layout">
+            <div class="card">
+                <h2>🔒 修改密码</h2>
+                <form id="passwordForm">
+                    <div class="form-group">
+                        <label for="current_password">当前密码</label>
+                        <input type="password" id="current_password" name="current_password" class="main-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="new_password">新密码</label>
+                        <input type="password" id="new_password" name="new_password" class="main-input" placeholder="至少8位，含数字与字母" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="confirm_password">确认新密码</label>
+                        <input type="password" id="confirm_password" name="confirm_password" class="main-input" placeholder="请再次输入新密码" required>
+                    </div>
+                    <div class="actions">
+                        <button type="submit" class="btn btn-primary">🔄 提交修改</button>
+                    </div>
+                    <div id="pwdMsg" class="message"></div>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>🔗 绑定设置</h2>
+                <p style="color: var(--text-sub);">此功能正在开发中，敬请期待。</p>
+                <div class="form-group" style="opacity: 0.5;">
+                    <p><strong>📧 邮箱:</strong> <span>未绑定</span> <a href="#" onclick="return false;">去绑定</a></p>
+                    <p><strong>📱 手机号:</strong> <span>未绑定</span> <a href="#" onclick="return false;">去绑定</a></p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            if (localStorage.getItem('theme') === 'dark') {
+                document.body.classList.add('dark-mode');
+            }
+        });
+
+        document.getElementById('passwordForm').addEventListener('submit', async e => {
+            e.preventDefault();
+            const cur = document.getElementById('current_password').value;
+            const nw = document.getElementById('new_password').value;
+            const c_nw = document.getElementById('confirm_password').value;
+            const msg = document.getElementById('pwdMsg');
+            msg.style.display = 'none';
+
+            function showMessage(text, type) {
+                msg.textContent = text;
+                msg.className = `message ${type}`;
+                msg.style.display = 'block';
+            }
+
+            if (nw !== c_nw) {
+                showMessage('两次输入的新密码不一致', 'error');
+                return;
+            }
+            if (nw.length < 8 || !(/[a-zA-Z]/.test(nw) && /\d/.test(nw))) {
+                showMessage('新密码至少8位且包含字母和数字', 'error');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/profile/password', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ current_password: cur, new_password: nw })
+                });
+                const d = await res.json();
+                if (!res.ok || d.status !== 'success') throw new Error(d.message || '修改失败');
+                
+                showMessage('✅ 修改成功，请重新登录', 'success');
+                setTimeout(() => location.href = '/login', 1500);
+            } catch (err) {
+                showMessage('❌ ' + err.message, 'error');
+            }
+        });
+    </script>
+</body>
+</html>

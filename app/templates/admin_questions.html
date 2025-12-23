@@ -1,0 +1,1091 @@
+{% extends "admin_base.html" %}
+
+{% block title %}题集管理{% endblock %}
+
+{% block head %}
+<style>
+    .container {
+        background: #fff;
+        padding: 24px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    
+    /* 页面标题 */
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 16px;
+        border-bottom: 2px solid #e9ecef;
+    }
+    .page-title {
+        font-size: 24px;
+        font-weight: bold;
+        color: #333;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .page-title-icon {
+        font-size: 28px;
+    }
+    .subject-badge {
+        display: inline-block;
+        padding: 6px 14px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: 500;
+    }
+    
+    /* 统计卡片 */
+    .stats-row {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+    .stat-card {
+        flex: 1;
+        min-width: 140px;
+        padding: 16px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        transition: transform 0.2s;
+    }
+    .stat-card:hover {
+        transform: translateY(-2px);
+    }
+    .stat-card.total { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .stat-card.choice { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
+    .stat-card.blank { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+    .stat-card.judge { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+    .stat-card-label {
+        font-size: 12px;
+        opacity: 0.9;
+        margin-bottom: 8px;
+    }
+    .stat-card-value {
+        font-size: 28px;
+        font-weight: bold;
+    }
+    
+    /* 工具栏优化 */
+    .toolbar { 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center; 
+        margin-bottom: 16px; 
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+    .toolbar-left, .toolbar-right { 
+        display: flex; 
+        gap: 8px; 
+        align-items: center; 
+        flex-wrap: wrap;
+    }
+    
+    /* 搜索框优化 */
+    .search-box {
+        position: relative;
+        display: inline-block;
+    }
+    .search-box input {
+        padding-left: 36px;
+        width: 220px;
+        transition: width 0.3s, border-color 0.3s;
+    }
+    .search-box input:focus {
+        width: 280px;
+        border-color: #667eea;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    .search-icon {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #999;
+        pointer-events: none;
+        font-size: 16px;
+    }
+    
+    /* 下拉菜单优化 */
+    .dropdown { position: relative; display: inline-block; }
+    .dropdown-menu { 
+        display: none; 
+        position: absolute; 
+        left: 0; 
+        top: 100%; 
+        margin-top: 8px; 
+        background: #fff; 
+        border: 1px solid var(--border-color); 
+        border-radius: 8px; 
+        padding: 8px; 
+        z-index: 10;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        animation: slideDown 0.2s ease;
+    }
+    @keyframes slideDown {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    #batch-menu { min-width: auto; white-space: nowrap; width: max-content; height: auto; }
+    .dropdown-menu.open { display: block; }
+    #batch-menu.open { 
+        display: flex; 
+        flex-wrap: nowrap; 
+        align-items: center; 
+        gap: 8px; 
+        white-space: nowrap; 
+    }
+    #batch-menu[style*="display: block"] { 
+        display: flex !important; 
+        flex-wrap: nowrap; 
+        align-items: center; 
+        gap: 8px; 
+        white-space: nowrap; 
+    }
+    #batch-menu .btn { 
+        display: inline-flex; 
+        width: auto; 
+        white-space: nowrap;
+        padding: 6px 12px;
+        font-size: 13px;
+    }
+    .dropdown-menu label { 
+        display: block; 
+        margin-bottom: 8px; 
+        padding: 6px 10px;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    .dropdown-menu label:hover {
+        background: #f8f9fa;
+    }
+    .dropdown-menu label input {
+        margin-right: 8px;
+    }
+    
+    /* 输入框和选择框优化 */
+    input[type="text"], 
+    input[type="number"],
+    select { 
+        padding: 8px 12px; 
+        border: 1px solid var(--border-color); 
+        border-radius: 6px; 
+        font-size: 14px;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    input[type="text"]:focus,
+    input[type="number"]:focus,
+    select:focus {
+        border-color: #667eea;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    /* 表格优化 */
+    .table-wrapper { 
+        overflow-x: auto;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+    }
+    table { 
+        width: 100%; 
+        border-collapse: collapse; 
+        margin-top: 0;
+    }
+    th, td { 
+        border-bottom: 1px solid var(--border-color); 
+        padding: 12px; 
+        text-align: left; 
+        white-space: nowrap; 
+        vertical-align: middle; 
+    }
+    thead { 
+        position: sticky; 
+        top: 0; 
+        background: #fff; 
+        z-index: 5; 
+    }
+    th { 
+        background: linear-gradient(to bottom, #f8f9fa 0%, #e9ecef 100%);
+        font-weight: 600;
+        color: #495057;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    tbody tr {
+        transition: background-color 0.2s;
+    }
+    tbody tr:hover { 
+        background-color: #f8f9fa;
+    }
+    .col-content { 
+        min-width: 300px; 
+        max-width: 500px;
+        white-space: normal; 
+        line-height: 1.6;
+    }
+    
+    /* 题型标签 */
+    .type-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+    .type-badge.choice { background: #d4edda; color: #155724; }
+    .type-badge.blank { background: #fff3cd; color: #856404; }
+    .type-badge.judge { background: #cce5ff; color: #004085; }
+    .type-badge.other { background: #f8d7da; color: #721c24; }
+    
+    /* 难度显示 */
+    .difficulty-stars {
+        color: #ffc107;
+        font-size: 14px;
+    }
+    
+    /* 标签显示 */
+    .tag-list {
+        display: flex;
+        gap: 4px;
+        flex-wrap: wrap;
+    }
+    .tag-item {
+        display: inline-block;
+        padding: 2px 8px;
+        background: #e7f1ff;
+        color: #0b61d8;
+        border-radius: 10px;
+        font-size: 11px;
+    }
+    
+    /* 操作按钮优化 */
+    .action-btns {
+        display: flex;
+        gap: 6px;
+        flex-wrap: nowrap;
+    }
+    .btn-sm {
+        padding: 5px 12px;
+        font-size: 12px;
+        border-radius: 4px;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s;
+        white-space: nowrap;
+    }
+    .btn-sm:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .btn-edit { background: #fff3e0; color: #f57c00; }
+    .btn-edit:hover { background: #ffe0b2; }
+    .btn-delete { background: #ffebee; color: #c62828; }
+    .btn-delete:hover { background: #ffcdd2; }
+
+    /* 抽屉优化 */
+    .drawer { 
+        position: fixed; 
+        top: 0; 
+        right: -520px; 
+        width: 500px; 
+        height: 100%; 
+        background: #fff; 
+        box-shadow: -5px 0 20px rgba(0,0,0,0.2); 
+        transition: right .3s ease; 
+        z-index: 100; 
+        display: flex; 
+        flex-direction: column; 
+    }
+    .drawer.open { right: 0; }
+    .drawer-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 99;
+        display: none;
+        animation: fadeIn 0.3s;
+    }
+    .drawer-overlay.show {
+        display: block;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    .drawer-header { 
+        padding: 20px 24px; 
+        border-bottom: 1px solid var(--border-color); 
+        font-size: 20px; 
+        font-weight: bold;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .drawer-close {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 24px;
+        cursor: pointer;
+        padding: 0;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        transition: background 0.2s;
+    }
+    .drawer-close:hover {
+        background: rgba(255,255,255,0.2);
+    }
+    .drawer-body { 
+        flex: 1; 
+        padding: 24px; 
+        overflow-y: auto; 
+    }
+    .form-group { 
+        margin-bottom: 16px; 
+    }
+    .form-group label { 
+        display: block; 
+        margin-bottom: 6px; 
+        font-size: 14px;
+        font-weight: 500;
+        color: #495057;
+    }
+    .form-group input, 
+    .form-group select, 
+    .form-group textarea { 
+        width: 100%; 
+        padding: 10px 12px; 
+        border: 1px solid #ced4da; 
+        border-radius: 6px; 
+        box-sizing: border-box;
+        font-size: 14px;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+        border-color: #667eea;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    .drawer-footer { 
+        padding: 16px 24px; 
+        border-top: 1px solid var(--border-color); 
+        text-align: right;
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+    }
+
+    /* 预览框优化 */
+    .preview-box { 
+        margin-top: 20px; 
+        padding: 20px; 
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        border-radius: 12px;
+        border: 1px solid #dee2e6;
+    }
+    .preview-box h4 {
+        margin: 0 0 16px 0;
+        color: #495057;
+        font-size: 16px;
+    }
+    .preview-box .q-content { 
+        font-size: 15px; 
+        font-weight: 500; 
+        margin-bottom: 16px;
+        color: #212529;
+        line-height: 1.6;
+    }
+    .preview-box .options label { 
+        display: block; 
+        padding: 12px 16px; 
+        margin-bottom: 10px; 
+        background: white;
+        border: 2px solid #dee2e6; 
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .preview-box .options label:hover {
+        border-color: #667eea;
+        background: #f8f9fa;
+    }
+    
+    /* 模态框优化 */
+    .modal-drawer {
+        position: fixed;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        z-index: 101;
+        display: none;
+        max-width: 90vw;
+        max-height: 90vh;
+        overflow: hidden;
+        animation: modalSlideIn 0.3s ease;
+    }
+    @keyframes modalSlideIn {
+        from { opacity: 0; transform: translate(-50%, -45%); }
+        to { opacity: 1; transform: translate(-50%, -50%); }
+    }
+    .modal-drawer.show {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    /* 导入预览 */
+    #importPreview {
+        max-height: 300px;
+        overflow: auto;
+        background: #f8f9fa;
+        padding: 12px;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+    }
+    #importPreview > div {
+        padding: 8px;
+        border-bottom: 1px solid #dee2e6;
+        font-size: 13px;
+    }
+    #importPreview > div:last-child {
+        border-bottom: none;
+    }
+    
+    /* 空状态 */
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #6c757d;
+    }
+    .empty-state-icon {
+        font-size: 64px;
+        margin-bottom: 16px;
+        opacity: 0.5;
+    }
+    .empty-state-text {
+        font-size: 16px;
+        margin-bottom: 8px;
+    }
+    .empty-state-hint {
+        font-size: 14px;
+        color: #adb5bd;
+    }
+    
+    /* 加载状态 */
+    .loading-row {
+        text-align: center;
+        padding: 40px;
+        color: #6c757d;
+    }
+    .loading-spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #667eea;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-right: 10px;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- 页面标题 -->
+    <div class="page-header">
+        <div class="page-title">
+            <span class="page-title-icon">📚</span>
+            <span>题目管理</span>
+            <span class="subject-badge" id="subjectName">{{ subject.name if subject else '科目' }}</span>
+        </div>
+        <button class="btn-secondary" onclick="window.location.href='/admin/subjects'">← 返回科目列表</button>
+    </div>
+
+    <!-- 统计卡片 -->
+    <div class="stats-row">
+        <div class="stat-card total">
+            <div class="stat-card-label">总题目数</div>
+            <div class="stat-card-value" id="statTotal">0</div>
+        </div>
+        <div class="stat-card choice">
+            <div class="stat-card-label">选择题</div>
+            <div class="stat-card-value" id="statChoice">0</div>
+        </div>
+        <div class="stat-card blank">
+            <div class="stat-card-label">填空题</div>
+            <div class="stat-card-value" id="statBlank">0</div>
+        </div>
+        <div class="stat-card judge">
+            <div class="stat-card-label">判断题</div>
+            <div class="stat-card-value" id="statJudge">0</div>
+        </div>
+    </div>
+
+    <!-- 工具栏 -->
+    <div class="toolbar">
+        <div class="toolbar-left">
+            <button class="btn-primary" onclick="openDrawer()">➕ 新增题目</button>
+            <button class="btn-danger" id="batchDeleteBtn" onclick="batchDeleteQuestions()">🗑️ 批量删除</button>
+            <div class="dropdown">
+                <button class="btn-outline" onclick="toggleDropdown('batch-menu')">⚙️ 批量操作 ▾</button>
+                <div id="batch-menu" class="dropdown-menu">
+                    <button class="btn" onclick="openBatchMove()">📦 移动科目</button>
+                    <button class="btn" onclick="openBatchDifficulty()">⭐ 设置难度</button>
+                    <button class="btn" onclick="openBatchTags('add')">➕ 添加标签</button>
+                    <button class="btn" onclick="openBatchTags('remove')">➖ 移除标签</button>
+                    <button class="btn" onclick="openBatchTags('set')">🔄 覆盖标签</button>
+                </div>
+            </div>
+        </div>
+        <div class="toolbar-right">
+            <button class="btn-outline" onclick="openImportModal()">📥 导入题库</button>
+            <button class="btn-outline" onclick="exportSubject()">📤 导出本科目</button>
+            <select id="typeFilter" onchange="loadQuestions()">
+                <option value="all">📋 全部题型</option>
+            </select>
+            <div class="dropdown">
+                <button class="btn-outline" onclick="toggleDropdown('col-menu')">👁️ 显示列 ▾</button>
+                <div id="col-menu" class="dropdown-menu"></div>
+            </div>
+            <div class="search-box">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="searchInput" placeholder="      搜索题干内容..." oninput="searchQuestions()">
+            </div>
+        </div>
+    </div>
+
+    <!-- 表格 -->
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:50px;"><input type="checkbox" id="selectAll"></th>
+                    <th data-col="id" style="width:80px;">序号</th>
+                    <th data-col="q_type" style="width:100px;">题型</th>
+                    <th data-col="content" class="col-content">题干</th>
+                    <th data-col="difficulty" style="width:100px;">难度</th>
+                    <th data-col="tags" style="width:150px;">标签</th>
+                    <th data-col="created_by" style="width:100px;">创建者</th>
+                    <th data-col="updated_at" style="width:160px;">更新时间</th>
+                    <th data-col="actions" style="width:180px;">操作</th>
+                </tr>
+            </thead>
+            <tbody id="questionTableBody">
+                <tr>
+                    <td colspan="9" class="loading-row">
+                        <span class="loading-spinner"></span>
+                        <span>加载中...</span>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- 抽屉遮罩 -->
+<div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+
+<!-- Batch Modals -->
+<div id="modalMove" class="drawer" style="right:auto; left:50%; transform: translateX(-50%); width: 420px; height:auto; top: 15%; display:none;">
+  <div class="drawer-header">批量移动到科目</div>
+  <div class="drawer-body">
+    <div class="form-group"><label>目标科目</label><select id="moveTarget"></select></div>
+    <div class="form-group"><small>将把已勾选的题目移动到所选科目。</small></div>
+  </div>
+  <div class="drawer-footer">
+    <button class="btn-secondary" onclick="closeModal('modalMove')">取消</button>
+    <button class="btn-primary" onclick="doBatchMove()">确定</button>
+  </div>
+</div>
+
+<div id="modalDifficulty" class="drawer" style="right:auto; left:50%; transform: translateX(-50%); width: 420px; height:auto; top: 20%; display:none;">
+  <div class="drawer-header">批量设置难度</div>
+  <div class="drawer-body">
+    <div class="form-group"><label>难度 (1-5)</label><input type="number" id="diffValue" min="1" max="5" value="1"></div>
+  </div>
+  <div class="drawer-footer">
+    <button class="btn-secondary" onclick="closeModal('modalDifficulty')">取消</button>
+    <button class="btn-primary" onclick="doBatchDifficulty()">确定</button>
+  </div>
+</div>
+
+<div id="modalTags" class="drawer" style="right:auto; left:50%; transform: translateX(-50%); width: 420px; height:auto; top: 20%; display:none;">
+  <div class="drawer-header" id="tagsTitle">批量标签</div>
+  <div class="drawer-body">
+    <div class="form-group"><label>标签（逗号分隔）</label><input type="text" id="tagsInput" placeholder="例如：网络, 路由"></div>
+  </div>
+  <div class="drawer-footer">
+    <button class="btn-secondary" onclick="closeModal('modalTags')">取消</button>
+    <button class="btn-primary" onclick="doBatchTags()">确定</button>
+  </div>
+</div>
+
+<div id="modalImport" class="drawer" style="right:auto; left:50%; transform: translateX(-50%); width: 620px; height: 70%; top: 10%; display:none;">
+  <div class="drawer-header">导入题库（预览）</div>
+  <div class="drawer-body">
+    <div class="form-group"><label>粘贴JSON数组</label><textarea id="importText" rows="8" placeholder='[{"题型":"选择题","题干":"...","选项":["A","B"],"答案":"A","解析":"..."}]'></textarea></div>
+    <div class="form-group"><label>或 选择JSON文件</label><input type="file" id="importFile" accept="application/json"></div>
+    <div class="form-group"><button class="btn-outline" onclick="renderImportPreview()">预览</button></div>
+    <div class="form-group"><div id="importPreview" style="max-height:220px; overflow:auto; background:#f8f9fa; padding:10px; border-radius:6px; border:1px solid var(--border-color);"></div></div>
+  </div>
+  <div class="drawer-footer">
+    <button class="btn-secondary" onclick="closeModal('modalImport')">取消</button>
+    <button class="btn-primary" onclick="confirmImport()">确认导入</button>
+  </div>
+</div>
+
+<!-- Edit/Add Drawer -->
+<div id="drawer" class="drawer">
+    <div class="drawer-header">
+        <span id="drawer-title">新增题目</span>
+        <button class="drawer-close" onclick="closeDrawer()">×</button>
+    </div>
+    <div class="drawer-body">
+        <input type="hidden" id="editingId">
+        <div class="form-group"><label>题型</label><select id="qType"></select></div>
+        <div class="form-group"><label>难度 (1-5)</label><input type="number" id="qDifficulty" min="1" max="5" value="1"></div>
+        <div class="form-group"><label>标签 (逗号分隔)</label><input type="text" id="qTags" placeholder="例如: 计算机网络, TCP/IP"></div>
+        <div class="form-group"><label>题干</label><textarea id="qContent" rows="5" oninput="updatePreview()"></textarea></div>
+        <div class="form-group"><label>选项 (每行一个)</label><textarea id="qOptions" rows="4" oninput="updatePreview()"></textarea></div>
+        <div class="form-group"><label>答案</label><input type="text" id="qAnswer" placeholder="例如: A, 或 ABC"></div>
+        <div class="form-group"><label>解析</label><textarea id="qExplanation" rows="3"></textarea></div>
+        <div class="preview-box">
+            <h4>预览</h4>
+            <div id="previewContent" class="q-content"></div>
+            <div id="previewOptions" class="options"></div>
+        </div>
+    </div>
+    <div class="drawer-footer">
+        <button class="btn-secondary" onclick="closeDrawer()">取消</button>
+        <button class="btn-primary" onclick="saveQuestion()">保存</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const subjectId = {{ subject_id|int }};
+    let allQuestions = [];
+    const visibleCols = new Set(['id', 'q_type', 'content', 'actions']);
+
+    document.addEventListener('DOMContentLoaded', () => {
+        initColMenu();
+        loadQuestionTypes();
+        loadQuestions();
+        document.getElementById('selectAll').addEventListener('change', (e) => {
+            document.querySelectorAll('.questionSelect').forEach(cb => cb.checked = e.target.checked);
+        });
+    });
+
+    function toggleDropdown(id) {
+        const menu = document.getElementById(id);
+        const isOpen = menu.classList.contains('open') || menu.style.display === 'block' || menu.style.display === 'flex';
+        // 先关闭其它菜单
+        document.querySelectorAll('.dropdown-menu').forEach(m => { m.classList.remove('open'); m.style.display = 'none'; });
+        if (!isOpen) {
+            menu.classList.add('open');
+            if (id === 'batch-menu') {
+                // 强制一行显示
+                menu.style.display = 'flex';
+                menu.style.flexWrap = 'nowrap';
+                menu.style.alignItems = 'center';
+                menu.style.whiteSpace = 'nowrap';
+                menu.style.gap = '8px';
+            } else {
+                menu.style.display = 'block';
+            }
+        }
+    }
+
+    function initColMenu() {
+        const menu = document.getElementById('col-menu');
+        const headers = document.querySelectorAll('th[data-col]');
+        headers.forEach(h => {
+            const col = h.dataset.col;
+            if (col === 'actions') return;
+            const label = document.createElement('label');
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.checked = visibleCols.has(col);
+            checkbox.onchange = () => toggleColumn(col);
+            label.appendChild(checkbox);
+            label.append(` ${h.textContent}`);
+            menu.appendChild(label);
+        });
+    }
+
+    function toggleColumn(col) {
+        if (visibleCols.has(col)) visibleCols.delete(col); else visibleCols.add(col);
+        renderTable();
+    }
+
+    async function loadQuestionTypes() {
+        const res = await fetch('/admin/types');
+        const types = await res.json();
+        const typeFilter = document.getElementById('typeFilter');
+        const qTypeSelect = document.getElementById('qType');
+        types.forEach(t => {
+            typeFilter.add(new Option(t, t));
+            qTypeSelect.add(new Option(t, t));
+        });
+    }
+
+    async function loadQuestions() {
+        const type = document.getElementById('typeFilter').value;
+        try {
+            const res = await fetch(`/admin/questions?subject_id=${subjectId}&type=${type}`);
+            allQuestions = await res.json();
+            updateStats();
+            renderTable();
+        } catch (error) {
+            console.error('加载题目失败:', error);
+            showError('加载题目失败，请刷新页面重试');
+        }
+    }
+
+    function updateStats() {
+        const total = allQuestions.length;
+        const choice = allQuestions.filter(q => q.q_type === '选择题').length;
+        const blank = allQuestions.filter(q => q.q_type === '填空题').length;
+        const judge = allQuestions.filter(q => q.q_type === '判断题').length;
+        
+        document.getElementById('statTotal').textContent = total;
+        document.getElementById('statChoice').textContent = choice;
+        document.getElementById('statBlank').textContent = blank;
+        document.getElementById('statJudge').textContent = judge;
+    }
+
+    function getTypeBadgeClass(type) {
+        if (type === '选择题') return 'choice';
+        if (type === '填空题') return 'blank';
+        if (type === '判断题') return 'judge';
+        return 'other';
+    }
+
+    function renderDifficulty(level) {
+        const stars = '★'.repeat(level) + '☆'.repeat(5 - level);
+        return `<span class="difficulty-stars" title="难度: ${level}/5">${stars}</span>`;
+    }
+
+    function renderTags(tagsStr) {
+        if (!tagsStr) return '';
+        const tags = tagsStr.split(',').map(t => t.trim()).filter(Boolean);
+        return `<div class="tag-list">${tags.map(t => `<span class="tag-item">${escapeHtml(t)}</span>`).join('')}</div>`;
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function renderTable() {
+        const tbody = document.getElementById('questionTableBody');
+        const keyword = document.getElementById('searchInput').value.toLowerCase();
+        tbody.innerHTML = '';
+        
+        document.querySelectorAll('th[data-col]').forEach(th => {
+            th.style.display = visibleCols.has(th.dataset.col) || th.dataset.col === 'actions' ? '' : 'none';
+        });
+        
+        const filtered = allQuestions.filter(q => q.content.toLowerCase().includes(keyword));
+        
+        if (filtered.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="9" class="empty-state">
+                        <div class="empty-state-icon">📝</div>
+                        <div class="empty-state-text">暂无题目数据</div>
+                        <div class="empty-state-hint">点击"新增题目"按钮添加第一道题目</div>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+        
+        filtered.forEach((q, index) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><input type="checkbox" class="questionSelect" data-id="${q.id}"></td>
+                <td style="display: ${visibleCols.has('id') ? '' : 'none'}; text-align: center;">${index + 1}</td>
+                <td style="display: ${visibleCols.has('q_type') ? '' : 'none'}">
+                    <span class="type-badge ${getTypeBadgeClass(q.q_type)}">${q.q_type}</span>
+                </td>
+                <td class="col-content" style="display: ${visibleCols.has('content') ? '' : 'none'}">${escapeHtml(q.content)}</td>
+                <td style="display: ${visibleCols.has('difficulty') ? '' : 'none'}">${renderDifficulty(q.difficulty || 1)}</td>
+                <td style="display: ${visibleCols.has('tags') ? '' : 'none'}">${renderTags(q.tags)}</td>
+                <td style="display: ${visibleCols.has('created_by') ? '' : 'none'}; font-size: 13px;">${escapeHtml(q.created_by || '-')}</td>
+                <td style="display: ${visibleCols.has('updated_at') ? '' : 'none'}; font-size: 12px; color: #6c757d;">
+                    ${q.updated_at ? new Date(q.updated_at).toLocaleString('zh-CN', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    }) : '-'}
+                </td>
+                <td>
+                    <div class="action-btns">
+                        <button class="btn-sm btn-edit" onclick="openDrawer(${q.id})" title="编辑题目">✏️ 编辑</button>
+                        <button class="btn-sm btn-delete" onclick="deleteQuestion(${q.id})" title="删除题目">🗑️ 删除</button>
+                    </div>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function showError(message) {
+        alert('❌ ' + message);
+    }
+
+    function showSuccess(message) {
+        alert('✅ ' + message);
+    }
+
+    function searchQuestions() { renderTable(); }
+
+    function openDrawer(id = null) {
+        document.getElementById('editingId').value = id;
+        if (id) {
+            document.getElementById('drawer-title').textContent = '✏️ 修改题目';
+            fetch(`/admin/questions/${id}`).then(r=>r.json()).then(full_q => {
+                document.getElementById('qType').value = full_q.q_type;
+                document.getElementById('qDifficulty').value = full_q.difficulty || 1;
+                document.getElementById('qTags').value = full_q.tags || '';
+                document.getElementById('qContent').value = full_q.content;
+                document.getElementById('qOptions').value = (full_q.options && JSON.parse(full_q.options).join('\n')) || '';
+                document.getElementById('qAnswer').value = full_q.answer;
+                document.getElementById('qExplanation').value = full_q.explanation || '';
+                updatePreview();
+            });
+        } else {
+            document.getElementById('drawer-title').textContent = '➕ 新增题目';
+            ['qDifficulty', 'qTags', 'qContent', 'qOptions', 'qAnswer', 'qExplanation'].forEach(el => document.getElementById(el).value = '');
+            document.getElementById('qDifficulty').value = 1;
+            updatePreview();
+        }
+        document.getElementById('drawer').classList.add('open');
+        document.getElementById('drawerOverlay').classList.add('show');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeDrawer() { 
+        document.getElementById('drawer').classList.remove('open');
+        document.getElementById('drawerOverlay').classList.remove('show');
+        document.body.style.overflow = '';
+    }
+
+    async function saveQuestion() {
+        const id = document.getElementById('editingId').value;
+        const content = document.getElementById('qContent').value.trim();
+        const answer = document.getElementById('qAnswer').value.trim();
+        
+        if (!content) {
+            showError('请输入题干内容');
+            return;
+        }
+        if (!answer) {
+            showError('请输入答案');
+            return;
+        }
+        
+        const options = document.getElementById('qOptions').value.trim().split('\n').filter(Boolean);
+        const payload = {
+            subject_id: subjectId,
+            q_type: document.getElementById('qType').value,
+            difficulty: parseInt(document.getElementById('qDifficulty').value) || 1,
+            tags: document.getElementById('qTags').value.trim(),
+            content: content,
+            options: JSON.stringify(options),
+            answer: answer,
+            explanation: document.getElementById('qExplanation').value.trim(),
+        };
+        
+        try {
+            const url = id ? `/admin/questions/${id}` : '/admin/questions';
+            const method = id ? 'PUT' : 'POST';
+            const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            const result = await res.json();
+            
+            if (result.status === 'success') {
+                showSuccess(result.message || (id ? '题目修改成功' : '题目添加成功'));
+                closeDrawer();
+                loadQuestions();
+            } else {
+                showError(result.message || '操作失败');
+            }
+        } catch (error) {
+            console.error('保存题目失败:', error);
+            showError('保存失败，请稍后重试');
+        }
+    }
+
+    async function deleteQuestion(id) {
+        if (!confirm('⚠️ 确定要删除该题目吗？\n\n此操作不可恢复！')) return;
+        
+        try {
+            const res = await fetch(`/admin/questions/${id}`, { method: 'DELETE' });
+            const result = await res.json();
+            
+            if (result.status === 'success') {
+                showSuccess(result.message || '题目删除成功');
+                loadQuestions();
+            } else {
+                showError(result.message || '删除失败');
+            }
+        } catch (error) {
+            console.error('删除题目失败:', error);
+            showError('删除失败，请稍后重试');
+        }
+    }
+
+    async function batchDeleteQuestions() {
+        const ids = Array.from(document.querySelectorAll('.questionSelect:checked')).map(cb => cb.dataset.id);
+        if (!ids.length) {
+            showError('请先选择要删除的题目');
+            return;
+        }
+        
+        if (!confirm(`⚠️ 确定要删除选中的 ${ids.length} 道题目吗？\n\n此操作不可恢复！`)) return;
+        
+        try {
+            const res = await fetch('/admin/questions/batch_delete', { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify({ ids }) 
+            });
+            const result = await res.json();
+            
+            if (result.status === 'success') {
+                showSuccess(result.message || `成功删除 ${ids.length} 道题目`);
+                loadQuestions();
+            } else {
+                showError(result.message || '批量删除失败');
+            }
+        } catch (error) {
+            console.error('批量删除失败:', error);
+            showError('批量删除失败，请稍后重试');
+        }
+    }
+
+    function updatePreview() {
+        document.getElementById('previewContent').innerHTML = document.getElementById('qContent').value.replace(/\n/g, '<br>');
+        const opts = document.getElementById('qOptions').value.trim().split('\n').filter(Boolean);
+        const optsHtml = opts.map(o => `<label>${o}</label>`).join('');
+        document.getElementById('previewOptions').innerHTML = optsHtml;
+    }
+
+    // ======= 批量操作 =======
+    function getSelectedIds(){
+        return Array.from(document.querySelectorAll('.questionSelect:checked')).map(cb => cb.dataset.id);
+    }
+    function openBatchMove(){
+        fetch('/admin/api/subjects').then(r=>r.json()).then(list=>{
+            const sel = document.getElementById('moveTarget');
+            sel.innerHTML = '';
+            list.forEach(s=> sel.add(new Option(`${s.name} (${s.question_count||0})`, s.id)) );
+            openModal('modalMove');
+        });
+    }
+    function openBatchDifficulty(){ openModal('modalDifficulty'); }
+    let tagsAction = 'add';
+    function openBatchTags(action){ tagsAction = action; document.getElementById('tagsTitle').innerText = `批量标签（${action==='add'?'添加':action==='remove'?'移除':'覆盖'}）`; openModal('modalTags'); }
+
+    function openModal(id){ const m=document.getElementById(id); if(m){ m.style.display='block'; } }
+    function closeModal(id){ const m=document.getElementById(id); if(m){ m.style.display='none'; } }
+
+    async function doBatchMove(){
+        const ids = getSelectedIds();
+        if(!ids.length) return alert('请先勾选题目');
+        const target = document.getElementById('moveTarget').value;
+        const res = await fetch('/admin/questions/batch_move_subject', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ids, target_subject_id: target })});
+        const ret = await res.json(); alert(ret.message||'');
+        if(ret.status==='success'){ closeModal('modalMove'); loadQuestions(); }
+    }
+    async function doBatchDifficulty(){
+        const ids = getSelectedIds();
+        if(!ids.length) return alert('请先勾选题目');
+        const difficulty = parseInt(document.getElementById('diffValue').value)||1;
+        const res = await fetch('/admin/questions/batch_set_difficulty', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ids, difficulty })});
+        const ret = await res.json(); alert(ret.message||'');
+        if(ret.status==='success'){ closeModal('modalDifficulty'); loadQuestions(); }
+    }
+    async function doBatchTags(){
+        const ids = getSelectedIds();
+        if(!ids.length) return alert('请先勾选题目');
+        const tags = document.getElementById('tagsInput').value.trim();
+        if(!tags) return alert('请输入标签');
+        const res = await fetch('/admin/questions/batch_tags', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ids, action: tagsAction, tags })});
+        const ret = await res.json(); alert(ret.message||'');
+        if(ret.status==='success'){ closeModal('modalTags'); loadQuestions(); }
+    }
+
+    // ======= 导入/导出 =======
+    function openImportModal(){ openModal('modalImport'); document.getElementById('importPreview').innerHTML=''; }
+    function renderImportPreview(){
+        const txt = document.getElementById('importText').value.trim();
+        const file = document.getElementById('importFile').files[0];
+        if(txt){
+            try{ const data = JSON.parse(txt); window.__importData = data; showImportPreview(data); }catch(e){ alert('粘贴内容不是有效JSON'); }
+            return;
+        }
+        if(file){
+            const fr = new FileReader();
+            fr.onload = () => { try{ const data = JSON.parse(fr.result); window.__importData = data; showImportPreview(data);}catch(e){ alert('文件内容不是有效JSON'); } };
+            fr.readAsText(file);
+            return;
+        }
+        alert('请粘贴JSON或选择文件');
+    }
+    function showImportPreview(list){
+        if(!Array.isArray(list)) { alert('JSON必须是数组'); return; }
+        const box = document.getElementById('importPreview');
+        let ok=0, bad=0, html='';
+        list.forEach((it, i)=>{
+            const valid = it['题型'] && it['题干']!==undefined && it['答案']!==undefined;
+            if(valid) ok++; else bad++;
+            html += `<div style="padding:6px; border-bottom:1px solid var(--border-color); ${valid?'':'background:#fff3cd'}">#${i+1} ${it['题型']||'(缺少题型)'} - ${String(it['题干']||'').slice(0,60)}</div>`;
+        });
+        box.innerHTML = `<div style="margin-bottom:6px;">共 ${list.length} 条；有效 ${ok}，问题 ${bad}</div>` + html;
+    }
+    async function confirmImport(){
+        const data = window.__importData;
+        if(!Array.isArray(data) || !data.length) return alert('暂无可导入数据');
+        const res = await fetch('/admin/questions/import', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ subject_id: subjectId, questions: data })});
+        const ret = await res.json(); alert(ret.message||'');
+        if(ret.status==='success'){ closeModal('modalImport'); loadQuestions(); }
+    }
+    function exportSubject(){ window.open(`/admin/questions/export?subject_id=${subjectId}`, '_blank'); }
+    function exportAll(){ window.open('/admin/questions/export', '_blank'); }
+</script>
+{% endblock %}
