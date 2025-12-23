@@ -496,6 +496,17 @@
             font-weight: 600;
         }
 
+        .question-image-container {
+            margin-top: 16px;
+            margin-bottom: 12px;
+        }
+        .question-image-container img {
+            max-width: 100%;
+            max-height: 400px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+        }
+
         /* Highlight */
         .highlight {
             background: rgba(255, 204, 0, 0.3);
@@ -748,6 +759,11 @@
                 <div class="result-content" data-content="{{ q.content }}">
                     {{ q.content|replace('\n', '<br>')|safe }}
                 </div>
+                {% if q.image_path %}
+                <div class="question-image-container">
+                    <img src="{{ url_for('static', filename=q.image_path) }}" alt="题目图片">
+                </div>
+                {% endif %}
 
                 <div class="expandable-content">
                     {% if q.options and q.q_type == '选择题' %}

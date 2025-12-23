@@ -760,6 +760,17 @@
         /* 选项高亮样式 */
         .correct-opt { color: #28a745 !important; font-weight: bold; background: rgba(40,167,69,0.08) !important; border-radius: 6px; }
         .wrong-opt { color: #dc3545 !important; font-weight: bold; background: rgba(220,53,69,0.08) !important; border-radius: 6px; }
+
+        .question-image-container {
+            margin-bottom: 24px;
+            text-align: center;
+        }
+        .question-image-container img {
+            max-width: 100%;
+            max-height: 400px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+        }
         /* 移动端适配 */
         @media (max-width: 768px) {
             .sidebar { width: 80vw; left: -80vw; }
@@ -887,6 +898,11 @@
                     <span class="q-type-label">{{ q.q_type }}</span>
                     {% if mode == 'exam' %}<span style="font-size:12px; color:#666;">({{ q.score_val }}分)</span>{% endif %}
                     <div class="q-content">{{ q.content|replace('\n', '<br>')|safe }}</div>
+                {% if q.image_path %}
+                <div class="question-image-container">
+                    <img src="{{ url_for('static', filename=q.image_path) }}" alt="题目图片">
+                </div>
+                {% endif %}
                 </div>
 
                 <div class="input-area">
@@ -928,7 +944,7 @@
                 </div>
 
                 <div class="analysis-box">
-                    <p><strong>✅ 正确答案：</strong> <span style="color:#28a745; font-weight:bold;">{{ q.answer|replace('\n', '<br>')|safe }}</span></p>
+                    <p><strong>✅ 正确答案：</strong>{% if q.q_type in ['问答题', '计算题', '简答题'] %}<br>{% endif %} <span style="color:#28a745; font-weight:bold;">{{ q.answer|replace('\n', '<br>')|safe }}</span></p>
                     {% if q.explanation %}
                     <p style="margin-top:12px;"><strong>📝 解析：</strong> {{ q.explanation|replace('\n', '<br>')|safe }}</p>
                     {% endif %}

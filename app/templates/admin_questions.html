@@ -678,6 +678,15 @@
         <div class="form-group"><label>选项 (每行一个)</label><textarea id="qOptions" rows="4" oninput="updatePreview()"></textarea></div>
         <div class="form-group"><label>答案</label><input type="text" id="qAnswer" placeholder="例如: A, 或 ABC"></div>
         <div class="form-group"><label>解析</label><textarea id="qExplanation" rows="3"></textarea></div>
+        <div class="form-group">
+            <label>题目图片</label>
+            <input type="file" id="qImageFile" accept="image/*" onchange="uploadImage()">
+            <input type="hidden" id="qImagePath">
+            <div id="imagePreviewContainer" style="margin-top: 10px; display: none;">
+                <img id="imagePreview" src="" style="max-width: 100%; max-height: 200px; border-radius: 8px;">
+                <button class="btn-sm btn-delete" onclick="removeImage()" style="margin-top: 5px;">移除图片</button>
+            </div>
+        </div>
         <div class="preview-box">
             <h4>预览</h4>
             <div id="previewContent" class="q-content"></div>
@@ -886,12 +895,22 @@
                 document.getElementById('qOptions').value = (full_q.options && JSON.parse(full_q.options).join('\n')) || '';
                 document.getElementById('qAnswer').value = full_q.answer;
                 document.getElementById('qExplanation').value = full_q.explanation || '';
+
+                if (full_q.image_path) {
+                    document.getElementById('qImagePath').value = full_q.image_path;
+                    document.getElementById('imagePreview').src = `{{ url_for('static', filename='') }}${full_q.image_path}`;
+                    document.getElementById('imagePreviewContainer').style.display = 'block';
+                } else {
+                    removeImage();
+                }
+
                 updatePreview();
             });
         } else {
             document.getElementById('drawer-title').textContent = '➕ 新增题目';
             ['qDifficulty', 'qTags', 'qContent', 'qOptions', 'qAnswer', 'qExplanation'].forEach(el => document.getElementById(el).value = '');
             document.getElementById('qDifficulty').value = 1;
+            removeImage();
             updatePreview();
         }
         document.getElementById('drawer').classList.add('open');
@@ -929,6 +948,7 @@
             options: JSON.stringify(options),
             answer: answer,
             explanation: document.getElementById('qExplanation').value.trim(),
+            image_path: document.getElementById('qImagePath').value.trim(),
         };
         
         try {
@@ -1087,5 +1107,39 @@
     }
     function exportSubject(){ window.open(`/admin/questions/export?subject_id=${subjectId}`, '_blank'); }
     function exportAll(){ window.open('/admin/questions/export', '_blank'); }
+
+    async function uploadImage() {
+        const fileInput = document.getElementById('qImageFile');
+        if (fileInput.files.length === 0) return;
+
+        const file = fileInput.files[0];
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const res = await fetch('/admin/api/questions/upload_image', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await res.json();
+
+            if (result.status === 'success') {
+                document.getElementById('qImagePath').value = result.path;
+                document.getElementById('imagePreview').src = result.url;
+                document.getElementById('imagePreviewContainer').style.display = 'block';
+            } else {
+                showError(result.message || '图片上传失败');
+            }
+        } catch (e) {
+            showError('图片上传失败: ' + e.message);
+        }
+    }
+
+    function removeImage() {
+        document.getElementById('qImagePath').value = '';
+        document.getElementById('qImageFile').value = ''; // 清空文件选择
+        document.getElementById('imagePreviewContainer').style.display = 'none';
+        document.getElementById('imagePreview').src = '';
+    }
 </script>
 {% endblock %}

@@ -105,6 +105,11 @@ def _create_tables(conn):
             cur.execute('ALTER TABLE users ADD COLUMN college TEXT')
         if 'last_active' not in cols:
             cur.execute('ALTER TABLE users ADD COLUMN last_active DATETIME')
+
+        # 添加 questions 表的 image_path 字段（如果不存在）
+        question_cols = [r['name'] for r in cur.execute("PRAGMA table_info(questions)").fetchall()]
+        if 'image_path' not in question_cols:
+            cur.execute('ALTER TABLE questions ADD COLUMN image_path TEXT')
     except Exception:
         pass
     

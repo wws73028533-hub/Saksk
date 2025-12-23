@@ -67,6 +67,8 @@ def _ensure_directories(app):
     dirs = [
         app.config['LOG_DIR'],
         app.config['UPLOAD_FOLDER'],
+        os.path.join(app.config['UPLOAD_FOLDER'], 'avatars'),
+        os.path.join(app.config['UPLOAD_FOLDER'], 'question_images'),
         os.path.dirname(app.config['DATABASE_PATH'])
     ]
     

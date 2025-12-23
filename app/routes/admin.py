@@ -85,7 +85,7 @@ def get_filtered_questions():
     conn = get_db()
     
     sql = '''
-        SELECT q.id, q.subject_id, q.q_type, q.content, q.difficulty, q.tags, u.username as created_by, q.updated_at
+        SELECT q.id, q.subject_id, q.q_type, q.content, q.difficulty, q.tags, q.image_path, u.username as created_by, q.updated_at
         FROM questions q
         LEFT JOIN users u ON q.created_by = u.id
         WHERE 1=1
@@ -128,8 +128,8 @@ def add_question():
     try:
         conn = get_db()
         conn.execute('''
-            INSERT INTO questions (subject_id, q_type, content, options, answer, explanation, difficulty, tags, created_by, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            INSERT INTO questions (subject_id, q_type, content, options, answer, explanation, difficulty, tags, image_path, created_by, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
         ''', (
             data.get('subject_id'),
             data.get('q_type'),
@@ -139,6 +139,7 @@ def add_question():
             data.get('explanation',''),
             data.get('difficulty', 1),
             data.get('tags'),
+            data.get('image_path'),
             uid
         ))
         new_id = conn.lastrowid
@@ -159,7 +160,7 @@ def edit_question(question_id):
         conn.execute('''
             UPDATE questions SET
                 subject_id=?, q_type=?, content=?, options=?, answer=?, explanation=?,
-                difficulty=?, tags=?, updated_at=CURRENT_TIMESTAMP
+                difficulty=?, tags=?, image_path=?, updated_at=CURRENT_TIMESTAMP
             WHERE id=?
         ''', (
             data.get('subject_id'),
@@ -170,6 +171,7 @@ def edit_question(question_id):
             data.get('explanation',''),
             data.get('difficulty', 1),
             data.get('tags'),
+            data.get('image_path'),
             question_id
         ))
         conn.commit()
@@ -1039,4 +1041,37 @@ def download_template():
     """提供题库导入模板文件的下载"""
     directory = os.path.join(current_app.root_path, '..', 'instance')
     return send_from_directory(directory, 'question_import_template.xlsx', as_attachment=True)
+
+
+@admin_bp.route('/api/questions/upload_image', methods=['POST'])
+def upload_question_image():
+    """上传题目图片"""
+    if 'file' not in request.files:
+        return jsonify({'status': 'error', 'message': '没有文件部分'}), 400
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'status': 'error', 'message': '没有选择文件'}), 400
+
+    allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'svg'}
+    if '.' not in file.filename or file.filename.rsplit('.', 1)[1].lower() not in allowed_extensions:
+        return jsonify({'status': 'error', 'message': '无效的文件类型'}), 400
+
+    try:
+        filename = secure_filename(file.filename)
+        # 为了避免重名，可以加上时间戳和随机数
+        import time, random
+        unique_filename = f"{int(time.time())}_{random.randint(1000, 9999)}_{filename}"
+        
+        upload_path = os.path.join(current_app.config['UPLOAD_FOLDER'], 'question_images')
+        file_path = os.path.join(upload_path, unique_filename)
+        file.save(file_path)
+        
+        # 返回可访问的URL
+        file_url = url_for('static', filename=f'uploads/question_images/{unique_filename}', _external=True)
+        
+        return jsonify({'status': 'success', 'url': file_url, 'path': f'uploads/question_images/{unique_filename}'})
+
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': f'上传失败: {str(e)}'}), 500
 
