@@ -898,7 +898,7 @@
 
                 if (full_q.image_path) {
                     document.getElementById('qImagePath').value = full_q.image_path;
-                    document.getElementById('imagePreview').src = `{{ url_for('static', filename='') }}${full_q.image_path}`;
+                    document.getElementById('imagePreview').src = `{{ url_for('main.serve_upload', filename='') }}${full_q.image_path}`;
                     document.getElementById('imagePreviewContainer').style.display = 'block';
                 } else {
                     removeImage();

@@ -761,7 +761,7 @@
                 </div>
                 {% if q.image_path %}
                 <div class="question-image-container">
-                    <img src="{{ url_for('static', filename=q.image_path) }}" alt="题目图片">
+                    <img src="{{ url_for('main.serve_upload', filename=q.image_path) }}" alt="题目图片">
                 </div>
                 {% endif %}
 

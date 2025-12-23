@@ -1068,9 +1068,9 @@ def upload_question_image():
         file.save(file_path)
         
         # 返回可访问的URL
-        file_url = url_for('static', filename=f'uploads/question_images/{unique_filename}', _external=True)
+        file_url = url_for('main.serve_upload', filename=f'question_images/{unique_filename}')
         
-        return jsonify({'status': 'success', 'url': file_url, 'path': f'uploads/question_images/{unique_filename}'})
+        return jsonify({'status': 'success', 'url': file_url, 'path': f'question_images/{unique_filename}'})
 
     except Exception as e:
         return jsonify({'status': 'error', 'message': f'上传失败: {str(e)}'}), 500

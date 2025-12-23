@@ -2,7 +2,9 @@
 """
 主页路由蓝图
 """
-from flask import Blueprint, render_template, request, session, redirect
+from flask import Blueprint, render_template, request, session, redirect, send_from_directory, current_app
+import os
+import os
 from ..utils.database import get_db
 
 main_bp = Blueprint('main', __name__)
@@ -212,4 +214,11 @@ def profile_page():
 def account_page():
     """账号管理页面（密码修改等）"""
     return render_template('profile.html')
+
+
+@main_bp.route('/uploads/<path:filename>')
+def serve_upload(filename):
+    """安全地提供上传的文件"""
+    directory = os.path.join(current_app.root_path, '..', 'uploads')
+    return send_from_directory(directory, filename)
 
