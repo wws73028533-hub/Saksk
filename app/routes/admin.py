@@ -5,8 +5,11 @@
 import json
 import sqlite3
 import os
-from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for, current_app, send_from_directory
+from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for, current_app, send_from_directory, send_file
 from werkzeug.utils import secure_filename
+import zipfile
+import io
+import datetime
 from werkzeug.security import generate_password_hash
 from ..utils.database import get_db
 from ..utils.validators import parse_int, validate_password
@@ -103,7 +106,17 @@ def get_filtered_questions():
     sql += ' ORDER BY q.id DESC'
     
     rows = conn.execute(sql, params).fetchall()
-    questions = [dict(row) for row in rows]
+    questions = []
+    for row in rows:
+        question_dict = dict(row)
+        image_path = question_dict.get('image_path')
+        # Compatibility: if it's a non-empty string and not a JSON array, wrap it
+        if image_path and isinstance(image_path, str) and not image_path.strip().startswith('['):
+            question_dict['image_path'] = json.dumps([image_path])
+        # If it's an empty string or None, make it an empty JSON array
+        elif not image_path:
+             question_dict['image_path'] = '[]'
+        questions.append(question_dict)
     
     return jsonify(questions)
 
@@ -115,7 +128,15 @@ def get_single_question(question_id):
     row = conn.execute('SELECT * FROM questions WHERE id=?', (question_id,)).fetchone()
     
     if row:
-        return jsonify(dict(row))
+        question_dict = dict(row)
+        image_path = question_dict.get('image_path')
+        # Compatibility: if it's a non-empty string and not a JSON array, wrap it
+        if image_path and isinstance(image_path, str) and not image_path.strip().startswith('['):
+            question_dict['image_path'] = json.dumps([image_path])
+        # If it's an empty string or None, make it an empty JSON array
+        elif not image_path:
+             question_dict['image_path'] = '[]'
+        return jsonify(question_dict)
     return jsonify({'error': 'not found'}), 404
 
 
@@ -127,7 +148,7 @@ def add_question():
     
     try:
         conn = get_db()
-        conn.execute('''
+        cursor = conn.execute('''
             INSERT INTO questions (subject_id, q_type, content, options, answer, explanation, difficulty, tags, image_path, created_by, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
         ''', (
@@ -142,7 +163,7 @@ def add_question():
             data.get('image_path'),
             uid
         ))
-        new_id = conn.lastrowid
+        new_id = cursor.lastrowid
         conn.commit()
         
         return jsonify({'status':'success','message':'题目新增成功', 'id': new_id})
@@ -207,6 +228,31 @@ def batch_delete_questions():
         return jsonify({'status': 'success', 'message': '批量删除成功'})
     except Exception as e:
         return jsonify({'status': 'error', 'message': f'批量删除失败: {str(e)}'}), 500
+
+
+@admin_bp.route('/questions/batch_change_type', methods=['POST'])
+def batch_change_type():
+    """批量修改题型"""
+    data = request.json
+    ids = data.get('ids', [])
+    target_type = data.get('target_type')
+
+    if not ids or not target_type:
+        return jsonify({'status': 'error', 'message': '参数不完整'}), 400
+
+    conn = get_db()
+    try:
+        # 验证题型是否有效 (可选，但推荐)
+        valid_types = [row[0] for row in conn.execute('SELECT DISTINCT q_type FROM questions').fetchall()]
+        if target_type not in valid_types:
+            return jsonify({'status': 'error', 'message': '无效的目标题型'}), 400
+
+        conn.executemany('UPDATE questions SET q_type = ? WHERE id = ?', 
+                        [(target_type, id) for id in ids])
+        conn.commit()
+        return jsonify({'status': 'success', 'message': f'成功将 {len(ids)} 道题目修改为 "{target_type}"'}) 
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': f'批量修改题型失败: {str(e)}'}), 500
 
 
 @admin_bp.route('/questions/batch_move_subject', methods=['POST'])
@@ -1074,4 +1120,181 @@ def upload_question_image():
 
     except Exception as e:
         return jsonify({'status': 'error', 'message': f'上传失败: {str(e)}'}), 500
+
+
+@admin_bp.route('/questions/export_package', methods=['GET'])
+def export_questions_package():
+    """导出包含完整数据和图片的题目包"""
+    subject_id = request.args.get('subject_id')
+    q_type = request.args.get('type')
+    
+    conn = get_db()
+    
+    # 1. 获取科目名称
+    subject_name = "all_subjects"
+    if subject_id:
+        subject_row = conn.execute('SELECT name FROM subjects WHERE id = ?', (subject_id,)).fetchone()
+        if subject_row:
+            subject_name = subject_row['name']
+
+    # 2. 查询题目数据
+    sql = '''
+        SELECT q.*, s.name as subject_name 
+        FROM questions q 
+        LEFT JOIN subjects s ON q.subject_id = s.id
+        WHERE 1=1
+    '''
+    params = []
+    if subject_id:
+        sql += ' AND subject_id = ?'
+        params.append(subject_id)
+    if q_type and q_type != 'all':
+        sql += ' AND q_type = ?'
+        params.append(q_type)
+    
+    sql += ' ORDER BY id'
+    rows = conn.execute(sql, params).fetchall()
+    
+    questions_data = [dict(row) for row in rows]
+    
+    # 3. 创建 ZIP 文件
+    memory_file = io.BytesIO()
+    with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
+        # 3.1 写入 data.json
+        # 使用能够处理 datetime 对象的 JSON encoder
+        def json_default(o):
+            if isinstance(o, (datetime.date, datetime.datetime)):
+                return o.isoformat()
+        zf.writestr('data.json', json.dumps(questions_data, indent=4, ensure_ascii=False, default=json_default))
+        
+        # 3.2 收集并写入图片
+        image_paths = {q['image_path'] for q in questions_data if q.get('image_path')}
+        upload_folder = current_app.config.get('UPLOAD_FOLDER', os.path.join(current_app.root_path, '..', 'uploads'))
+        
+        for image_path in image_paths:
+            # image_path is like 'question_images/1766...png'
+            if not image_path:
+                continue
+            full_image_path = os.path.join(upload_folder, *image_path.split('/'))
+            if os.path.exists(full_image_path):
+                # 写入 zip 时保持目录结构, e.g., images/question_images/....png
+                arcname = 'images/' + image_path.replace('\\', '/')
+                zf.write(full_image_path, arcname)
+
+    memory_file.seek(0)
+    
+    # 4. 生成文件名并发送文件
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"questions_export_{subject_name}_{timestamp}.zip"
+    
+    return send_file(
+        memory_file,
+        as_attachment=True,
+        download_name=filename,
+        mimetype='application/zip'
+    )
+
+
+@admin_bp.route('/questions/import_package', methods=['POST'])
+def import_questions_package():
+    """导入题目包 (.zip)"""
+    if 'file' not in request.files:
+        return jsonify({'status': 'error', 'message': '没有文件部分'}), 400
+
+    file = request.files['file']
+    if file.filename == '' or not file.filename.endswith('.zip'):
+        return jsonify({'status': 'error', 'message': '请上传有效的 .zip 文件'}), 400
+
+    conn = get_db()
+    
+    # 获取现有的科目 name -> id 映射
+    subjects = conn.execute('SELECT id, name FROM subjects').fetchall()
+    subject_map = {s['name']: s['id'] for s in subjects}
+
+    imported_count = 0
+    errors = []
+    upload_folder = current_app.config.get('UPLOAD_FOLDER', os.path.join(current_app.root_path, '..', 'uploads'))
+
+    try:
+        with zipfile.ZipFile(file, 'r') as zf:
+            if 'data.json' not in zf.namelist():
+                return jsonify({'status': 'error', 'message': '压缩包中缺少 data.json 文件'}), 400
+            
+            with zf.open('data.json') as f:
+                questions_data = json.load(f)
+            
+            for q in questions_data:
+                try:
+                    # 1. 处理科目
+                    subject_name = q.get('subject_name')
+                    if not subject_name:
+                        errors.append(f"题目ID {q.get('id')} 缺少科目名称，已跳过。")
+                        continue
+
+                    if subject_name not in subject_map:
+                        cursor = conn.execute('INSERT INTO subjects (name) VALUES (?)', (subject_name,))
+                        subject_id = cursor.lastrowid
+                        subject_map[subject_name] = subject_id
+                    else:
+                        subject_id = subject_map[subject_name]
+
+                    # 2. 处理图片
+                    new_image_path = q.get('image_path')
+                    if new_image_path:
+                        arcname = 'images/' + new_image_path.replace('\\', '/')
+                        if arcname in zf.namelist():
+                            # 生成新的唯一文件名以避免冲突
+                            ext = os.path.splitext(new_image_path)[1]
+                            unique_filename = f"{int(datetime.datetime.now().timestamp())}_{imported_count}{ext}"
+                            image_save_dir = os.path.join(upload_folder, 'question_images')
+                            os.makedirs(image_save_dir, exist_ok=True)
+                            image_save_path = os.path.join(image_save_dir, unique_filename)
+                            
+                            with zf.open(arcname) as source, open(image_save_path, 'wb') as target:
+                                target.write(source.read())
+                            
+                            new_image_path = f'question_images/{unique_filename}'
+                        else:
+                            new_image_path = None # 图片在zip中不存在
+
+                    # 3. 插入题目数据 (忽略原始ID)
+                    conn.execute('''
+                        INSERT INTO questions (subject_id, q_type, content, options, answer, explanation, difficulty, tags, image_path, created_by, created_at, updated_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ''', (
+                        subject_id,
+                        q.get('q_type'),
+                        q.get('content'),
+                        q.get('options'),
+                        q.get('answer'),
+                        q.get('explanation'),
+                        q.get('difficulty'),
+                        q.get('tags'),
+                        new_image_path,
+                        q.get('created_by'),
+                        q.get('created_at'),
+                        q.get('updated_at')
+                    ))
+                    imported_count += 1
+                except Exception as e:
+                    errors.append(f"导入题目ID {q.get('id', 'N/A')} 时出错: {str(e)}")
+
+        conn.commit()
+
+        message = f'成功导入 {imported_count} 道题。'
+        if errors:
+            message += f' 遇到 {len(errors)} 个问题。'
+        
+        return jsonify({
+            'status': 'success' if not errors else 'warning',
+            'message': message,
+            'imported_count': imported_count,
+            'errors': errors
+        })
+
+    except zipfile.BadZipFile:
+        return jsonify({'status': 'error', 'message': '文件不是一个有效的ZIP压缩包'}), 400
+    except Exception as e:
+        conn.rollback() # 如果发生意外错误，回滚事务
+        return jsonify({'status': 'error', 'message': f'处理文件时发生未知错误: {str(e)}'}), 500
 

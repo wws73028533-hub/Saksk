@@ -4,11 +4,15 @@
 
 {% block head %}
 <style>
+    body {
+        background-color: #f8f9fa; /* Apple-like light gray background */
+    }
     .container {
         background: #fff;
-        padding: 24px;
-        border-radius: 8px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        padding: 28px;
+        border-radius: 12px; /* Softer corners */
+        box-shadow: 0 4px 12px rgba(0,0,0,0.06); /* More subtle shadow */
+        border: 1px solid #e5e5e5;
     }
     
     /* 页面标题 */
@@ -16,9 +20,9 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 20px;
-        padding-bottom: 16px;
-        border-bottom: 2px solid #e9ecef;
+        margin-bottom: 24px;
+        padding-bottom: 0;
+        border-bottom: none;
     }
     .page-title {
         font-size: 24px;
@@ -34,8 +38,8 @@
     .subject-badge {
         display: inline-block;
         padding: 6px 14px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
+        background-color: #e9ecef; /* Light gray, neutral background */
+        color: #495057; /* Darker text for contrast */
         border-radius: 20px;
         font-size: 14px;
         font-weight: 500;
@@ -44,51 +48,92 @@
     /* 统计卡片 */
     .stats-row {
         display: flex;
-        gap: 12px;
-        margin-bottom: 20px;
-        flex-wrap: wrap;
+        gap: 16px;
+        margin-bottom: 24px;
+        flex-wrap: nowrap; /* Ensure single line */
     }
     .stat-card {
         flex: 1;
-        min-width: 140px;
-        padding: 16px;
-        border-radius: 10px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        transition: transform 0.2s;
+        padding: 20px;
+        border-radius: 12px;
+        background-color: #f8f9fa;
+        border: 1px solid #e9ecef;
+        color: #333;
+        box-shadow: none;
+        transition: border-color 0.2s, background-color 0.2s;
+        text-align: center;
     }
     .stat-card:hover {
-        transform: translateY(-2px);
+        border-color: #ced4da;
+        background-color: #f1f3f5;
     }
-    .stat-card.total { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-    .stat-card.choice { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
-    .stat-card.blank { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
-    .stat-card.judge { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
     .stat-card-label {
-        font-size: 12px;
-        opacity: 0.9;
+        font-size: 13px;
+        color: #6c757d;
         margin-bottom: 8px;
     }
     .stat-card-value {
-        font-size: 28px;
-        font-weight: bold;
+        font-size: 32px;
+        font-weight: 600;
+        line-height: 1.2;
+        color: #212529;
     }
     
-    /* 工具栏优化 */
-    .toolbar { 
-        display: flex; 
-        justify-content: space-between; 
-        align-items: center; 
-        margin-bottom: 16px; 
+    /* 工具栏和按钮 */
+    .toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
         gap: 12px;
         flex-wrap: wrap;
     }
-    .toolbar-left, .toolbar-right { 
-        display: flex; 
-        gap: 8px; 
-        align-items: center; 
+    .toolbar-left, .toolbar-right {
+        display: flex;
+        gap: 10px;
+        align-items: center;
         flex-wrap: wrap;
+    }
+
+    .btn, .btn-primary, .btn-secondary, .btn-danger, .btn-outline {
+        padding: 8px 16px;
+        font-size: 14px;
+        font-weight: 500;
+        border-radius: 8px;
+        border: 1px solid transparent; /* Use border for consistent sizing */
+        cursor: pointer;
+        transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+    }
+
+    .btn-primary {
+        background-color: #007aff; /* Apple Blue */
+        color: white;
+    }
+    .btn-primary:hover {
+        background-color: #005ecb;
+    }
+
+    .btn-danger {
+        background-color: #ff3b30; /* Apple Red */
+        color: white;
+    }
+    .btn-danger:hover {
+        background-color: #d92c23;
+    }
+
+    .btn-secondary, .btn-outline {
+        background-color: #f8f9fa;
+        color: #333;
+        border-color: #dee2e6;
+    }
+    .btn-secondary:hover, .btn-outline:hover {
+        background-color: #e9ecef;
+        border-color: #ced4da;
     }
     
     /* 搜索框优化 */
@@ -196,37 +241,39 @@
     /* 表格优化 */
     .table-wrapper { 
         overflow-x: auto;
-        border-radius: 8px;
-        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        border: 1px solid #e5e5e5;
+        background-color: #fff;
     }
     table { 
         width: 100%; 
         border-collapse: collapse; 
-        margin-top: 0;
     }
     th, td { 
-        border-bottom: 1px solid var(--border-color); 
-        padding: 12px; 
+        border-bottom: 1px solid #e5e5e5; 
+        padding: 16px;
         text-align: left; 
         white-space: nowrap; 
         vertical-align: middle; 
     }
+    tbody tr:last-child td {
+        border-bottom: none; /* Remove border from last row */
+    }
     thead { 
         position: sticky; 
         top: 0; 
-        background: #fff; 
         z-index: 5; 
     }
     th { 
-        background: linear-gradient(to bottom, #f8f9fa 0%, #e9ecef 100%);
-        font-weight: 600;
-        color: #495057;
+        background-color: #f8f9fa;
+        font-weight: 500;
+        color: #6c757d;
         font-size: 13px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
+        text-transform: none;
+        letter-spacing: 0;
     }
     tbody tr {
-        transition: background-color 0.2s;
+        transition: background-color 0.15s ease-in-out;
     }
     tbody tr:hover { 
         background-color: #f8f9fa;
@@ -275,126 +322,144 @@
     /* 操作按钮优化 */
     .action-btns {
         display: flex;
-        gap: 6px;
+        gap: 8px;
         flex-wrap: nowrap;
     }
     .btn-sm {
-        padding: 5px 12px;
-        font-size: 12px;
-        border-radius: 4px;
-        border: none;
+        padding: 6px 12px;
+        font-size: 13px;
+        border-radius: 6px;
+        border: 1px solid transparent;
         cursor: pointer;
-        transition: all 0.2s;
+        transition: background-color 0.2s, color 0.2s, border-color 0.2s;
         white-space: nowrap;
     }
     .btn-sm:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        transform: none;
+        box-shadow: none;
     }
-    .btn-edit { background: #fff3e0; color: #f57c00; }
-    .btn-edit:hover { background: #ffe0b2; }
-    .btn-delete { background: #ffebee; color: #c62828; }
-    .btn-delete:hover { background: #ffcdd2; }
+    .btn-edit {
+        background-color: #e9ecef;
+        color: #343a40;
+    }
+    .btn-edit:hover {
+        background-color: #dee2e6;
+    }
+    .btn-delete {
+        background-color: #ffeef0;
+        color: #ff3b30;
+    }
+    .btn-delete:hover {
+        background-color: #ffdcdf;
+    }
 
     /* 抽屉优化 */
-    .drawer { 
-        position: fixed; 
-        top: 0; 
-        right: -520px; 
-        width: 500px; 
-        height: 100%; 
-        background: #fff; 
-        box-shadow: -5px 0 20px rgba(0,0,0,0.2); 
-        transition: right .3s ease; 
-        z-index: 100; 
-        display: flex; 
-        flex-direction: column; 
+    .drawer {
+        position: fixed;
+        top: 0;
+        right: 0;
+        width: 520px;
+        height: 100%;
+        background: #f8f9fa; /* Lighter background */
+        box-shadow: -4px 0 25px rgba(0,0,0,0.1);
+        transform: translateX(100%);
+        transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+        z-index: 100;
+        display: flex;
+        flex-direction: column;
     }
-    .drawer.open { right: 0; }
+    .drawer.open {
+        transform: translateX(0);
+    }
     .drawer-overlay {
         position: fixed;
         inset: 0;
-        background: rgba(0,0,0,0.5);
+        background: rgba(0,0,0,0.4);
         z-index: 99;
         display: none;
-        animation: fadeIn 0.3s;
+        opacity: 0;
+        transition: opacity 0.4s ease;
     }
     .drawer-overlay.show {
         display: block;
+        opacity: 1;
     }
-    @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-    }
-    .drawer-header { 
-        padding: 20px 24px; 
-        border-bottom: 1px solid var(--border-color); 
-        font-size: 20px; 
-        font-weight: bold;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
+    .drawer-header {
+        padding: 16px 24px;
+        border-bottom: 1px solid #e5e5e5;
+        font-size: 18px;
+        font-weight: 600;
+        background-color: #fff;
+        color: #212529;
         display: flex;
         justify-content: space-between;
         align-items: center;
+        flex-shrink: 0;
     }
     .drawer-close {
-        background: none;
+        background: #e9ecef;
         border: none;
-        color: white;
-        font-size: 24px;
+        color: #6c757d;
+        font-size: 20px;
+        font-weight: bold;
         cursor: pointer;
         padding: 0;
-        width: 32px;
-        height: 32px;
+        width: 28px;
+        height: 28px;
         display: flex;
         align-items: center;
         justify-content: center;
         border-radius: 50%;
-        transition: background 0.2s;
+        transition: background-color 0.2s, color 0.2s;
     }
     .drawer-close:hover {
-        background: rgba(255,255,255,0.2);
+        background: #dee2e6;
+        color: #212529;
     }
-    .drawer-body { 
-        flex: 1; 
-        padding: 24px; 
-        overflow-y: auto; 
+    .drawer-body {
+        flex: 1;
+        padding: 24px;
+        overflow-y: auto;
+        background-color: #fff;
     }
-    .form-group { 
-        margin-bottom: 16px; 
+    .form-group {
+        margin-bottom: 20px;
     }
-    .form-group label { 
-        display: block; 
-        margin-bottom: 6px; 
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
         font-size: 14px;
         font-weight: 500;
         color: #495057;
     }
-    .form-group input, 
-    .form-group select, 
-    .form-group textarea { 
-        width: 100%; 
-        padding: 10px 12px; 
-        border: 1px solid #ced4da; 
-        border-radius: 6px; 
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        padding: 10px 14px;
+        border: 1px solid #ced4da;
+        border-radius: 8px;
         box-sizing: border-box;
         font-size: 14px;
+        background-color: #fff;
         transition: border-color 0.2s, box-shadow 0.2s;
     }
     .form-group input:focus,
     .form-group select:focus,
     .form-group textarea:focus {
-        border-color: #667eea;
+        border-color: #007aff;
         outline: none;
-        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.2);
     }
-    .drawer-footer { 
-        padding: 16px 24px; 
-        border-top: 1px solid var(--border-color); 
+    .drawer-footer {
+        padding: 16px 24px;
+        border-top: 1px solid #e5e5e5;
         text-align: right;
         display: flex;
         gap: 10px;
         justify-content: flex-end;
+        background-color: #f8f9fa;
+        flex-shrink: 0;
     }
 
     /* 预览框优化 */
@@ -559,16 +624,18 @@
                 <button class="btn-outline" onclick="toggleDropdown('batch-menu')">⚙️ 批量操作 ▾</button>
                 <div id="batch-menu" class="dropdown-menu">
                     <button class="btn" onclick="openBatchMove()">📦 移动科目</button>
+                    <button class="btn" onclick="openBatchTypeChange()">🔄 修改题型</button>
                     <button class="btn" onclick="openBatchDifficulty()">⭐ 设置难度</button>
-                    <button class="btn" onclick="openBatchTags('add')">➕ 添加标签</button>
-                    <button class="btn" onclick="openBatchTags('remove')">➖ 移除标签</button>
-                    <button class="btn" onclick="openBatchTags('set')">🔄 覆盖标签</button>
+                    <button class="btn" onclick="openBatchTags()">🏷️ 修改标签</button>
                 </div>
             </div>
         </div>
         <div class="toolbar-right">
             <button class="btn-outline" onclick="openImportModal()">📥 导入题库</button>
             <button class="btn-outline" onclick="exportSubject()">📤 导出本科目</button>
+            <button class="btn-primary" onclick="exportPackage()">📦 导出题目包</button>
+            <button class="btn-primary" onclick="document.getElementById('importPackageFile').click()">📥 导入题目包</button>
+            <input type="file" id="importPackageFile" style="display: none;" accept=".zip" onchange="uploadPackage()">
             <select id="typeFilter" onchange="loadQuestions()">
                 <option value="all">📋 全部题型</option>
             </select>
@@ -627,6 +694,18 @@
   </div>
 </div>
 
+<div id="modalTypeChange" class="drawer" style="right:auto; left:50%; transform: translateX(-50%); width: 420px; height:auto; top: 15%; display:none;">
+  <div class="drawer-header">批量修改题型</div>
+  <div class="drawer-body">
+    <div class="form-group"><label>目标题型</label><select id="typeChangeTarget"></select></div>
+    <div class="form-group"><small>将把已勾选的题目修改为所选题型。</small></div>
+  </div>
+  <div class="drawer-footer">
+    <button class="btn-secondary" onclick="closeModal('modalTypeChange')">取消</button>
+    <button class="btn-primary" onclick="doBatchTypeChange()">确定</button>
+  </div>
+</div>
+
 <div id="modalDifficulty" class="drawer" style="right:auto; left:50%; transform: translateX(-50%); width: 420px; height:auto; top: 20%; display:none;">
   <div class="drawer-header">批量设置难度</div>
   <div class="drawer-body">
@@ -676,15 +755,19 @@
         <div class="form-group"><label>标签 (逗号分隔)</label><input type="text" id="qTags" placeholder="例如: 计算机网络, TCP/IP"></div>
         <div class="form-group"><label>题干</label><textarea id="qContent" rows="5" oninput="updatePreview()"></textarea></div>
         <div class="form-group"><label>选项 (每行一个)</label><textarea id="qOptions" rows="4" oninput="updatePreview()"></textarea></div>
-        <div class="form-group"><label>答案</label><input type="text" id="qAnswer" placeholder="例如: A, 或 ABC"></div>
+                <div class="form-group">
+            <label>答案</label>
+            <div id="answer-container">
+                <!-- 答案输入控件将动态生成在这里 -->
+            </div>
+        </div>
         <div class="form-group"><label>解析</label><textarea id="qExplanation" rows="3"></textarea></div>
         <div class="form-group">
             <label>题目图片</label>
-            <input type="file" id="qImageFile" accept="image/*" onchange="uploadImage()">
-            <input type="hidden" id="qImagePath">
-            <div id="imagePreviewContainer" style="margin-top: 10px; display: none;">
-                <img id="imagePreview" src="" style="max-width: 100%; max-height: 200px; border-radius: 8px;">
-                <button class="btn-sm btn-delete" onclick="removeImage()" style="margin-top: 5px;">移除图片</button>
+            <input type="file" id="qImageFile" accept="image/*" onchange="uploadImage()" multiple>
+            <input type="hidden" id="qImagePaths">
+            <div id="imagePreviewContainer" style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 10px;">
+                <!-- Image previews will be generated here -->
             </div>
         </div>
         <div class="preview-box">
@@ -883,34 +966,112 @@
 
     function searchQuestions() { renderTable(); }
 
+    function rebuildAnswerInput(defaultValue = '') {
+        const qType = document.getElementById('qType').value;
+        const container = document.getElementById('answer-container');
+        container.innerHTML = ''; // Clear previous input
+
+        let inputElement;
+
+        if (qType === '判断题') {
+            inputElement = document.createElement('select');
+            inputElement.id = 'qAnswer';
+            
+            const optionTrue = new Option('正确', '正确');
+            const optionFalse = new Option('错误', '错误');
+            
+            inputElement.add(optionTrue);
+            inputElement.add(optionFalse);
+            
+            if (defaultValue) {
+                inputElement.value = defaultValue;
+            }
+
+        } else if (['问答题', '计算题', '简答题'].includes(qType)) {
+            inputElement = document.createElement('textarea');
+            inputElement.id = 'qAnswer';
+            inputElement.rows = 4;
+            inputElement.placeholder = '请输入详细答案';
+            inputElement.value = defaultValue;
+
+        } else { // For '选择题', '多选题', '填空题' etc.
+            inputElement = document.createElement('input');
+            inputElement.type = 'text';
+            inputElement.id = 'qAnswer';
+            if (qType === '选择题' || qType === '多选题') {
+                 inputElement.placeholder = '例如: A, 或 ABC';
+            } else if (qType === '填空题') {
+                inputElement.placeholder = '多个答案用 ;; 分隔';
+            }
+            else {
+                inputElement.placeholder = '请输入答案';
+            }
+            inputElement.value = defaultValue;
+        }
+        
+        // Common properties for all inputs
+        inputElement.style.width = '100%';
+        inputElement.style.padding = '10px 14px';
+        inputElement.style.border = '1px solid #ced4da';
+        inputElement.style.borderRadius = '8px';
+        inputElement.style.fontSize = '14px';
+
+        container.appendChild(inputElement);
+    }
+
+    function handleQuestionTypeChange() {
+        rebuildAnswerInput(); // Rebuild based on new type
+        const optionsGroup = document.getElementById('qOptions').parentElement;
+        const qType = document.getElementById('qType').value;
+        if (qType === '选择题' || qType === '多选题') {
+            optionsGroup.style.display = 'block';
+        } else {
+            optionsGroup.style.display = 'none';
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('qType').addEventListener('change', handleQuestionTypeChange);
+    });
+
     function openDrawer(id = null) {
         document.getElementById('editingId').value = id;
         if (id) {
             document.getElementById('drawer-title').textContent = '✏️ 修改题目';
             fetch(`/admin/questions/${id}`).then(r=>r.json()).then(full_q => {
                 document.getElementById('qType').value = full_q.q_type;
+                // Manually trigger change to rebuild UI elements for the correct type
+                handleQuestionTypeChange();
+                
                 document.getElementById('qDifficulty').value = full_q.difficulty || 1;
                 document.getElementById('qTags').value = full_q.tags || '';
                 document.getElementById('qContent').value = full_q.content;
                 document.getElementById('qOptions').value = (full_q.options && JSON.parse(full_q.options).join('\n')) || '';
-                document.getElementById('qAnswer').value = full_q.answer;
+                
+                // Set answer value on the newly created element
+                const answerInput = document.getElementById('qAnswer');
+                if(answerInput) answerInput.value = full_q.answer;
+
                 document.getElementById('qExplanation').value = full_q.explanation || '';
 
-                if (full_q.image_path) {
-                    document.getElementById('qImagePath').value = full_q.image_path;
-                    document.getElementById('imagePreview').src = `{{ url_for('main.serve_upload', filename='') }}${full_q.image_path}`;
-                    document.getElementById('imagePreviewContainer').style.display = 'block';
-                } else {
-                    removeImage();
+                // New image handling
+                try {
+                    const imagePaths = JSON.parse(full_q.image_path || '[]');
+                    setImagePaths(imagePaths);
+                } catch (e) {
+                    setImagePaths([]); // Clear on parse error
                 }
 
                 updatePreview();
             });
         } else {
             document.getElementById('drawer-title').textContent = '➕ 新增题目';
-            ['qDifficulty', 'qTags', 'qContent', 'qOptions', 'qAnswer', 'qExplanation'].forEach(el => document.getElementById(el).value = '');
+            // Reset all fields
+            ['qDifficulty', 'qTags', 'qContent', 'qOptions', 'qExplanation'].forEach(elId => document.getElementById(elId).value = '');
             document.getElementById('qDifficulty').value = 1;
-            removeImage();
+            document.getElementById('qType').selectedIndex = 0; // Reset to first type
+            handleQuestionTypeChange(); // Build UI for default type
+            setImagePaths([]); // Clear image previews for new question
             updatePreview();
         }
         document.getElementById('drawer').classList.add('open');
@@ -927,7 +1088,8 @@
     async function saveQuestion() {
         const id = document.getElementById('editingId').value;
         const content = document.getElementById('qContent').value.trim();
-        const answer = document.getElementById('qAnswer').value.trim();
+        const answerInput = document.getElementById('qAnswer');
+        const answer = answerInput ? answerInput.value.trim() : '';
         
         if (!content) {
             showError('请输入题干内容');
@@ -948,7 +1110,7 @@
             options: JSON.stringify(options),
             answer: answer,
             explanation: document.getElementById('qExplanation').value.trim(),
-            image_path: document.getElementById('qImagePath').value.trim(),
+            image_path: document.getElementById('qImagePaths').value,
         };
         
         try {
@@ -1029,6 +1191,33 @@
     function getSelectedIds(){
         return Array.from(document.querySelectorAll('.questionSelect:checked')).map(cb => cb.dataset.id);
     }
+    function openBatchTypeChange(){
+        const sel = document.getElementById('typeChangeTarget');
+        sel.innerHTML = '';
+        // Reuse the types from the main filter dropdown
+        document.querySelectorAll('#typeFilter option').forEach(opt => {
+            if (opt.value !== 'all') {
+                sel.add(new Option(opt.text, opt.value));
+            }
+        });
+        openModal('modalTypeChange');
+    }
+
+    async function doBatchTypeChange(){
+        const ids = getSelectedIds();
+        if(!ids.length) return alert('请先勾选题目');
+        const targetType = document.getElementById('typeChangeTarget').value;
+        if (!targetType) return alert('请选择一个目标题型');
+
+        const res = await fetch('/admin/questions/batch_change_type', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ids, target_type: targetType })});
+        const ret = await res.json();
+        alert(ret.message || '操作失败');
+        if(ret.status === 'success'){
+            closeModal('modalTypeChange');
+            loadQuestions();
+        }
+    }
+
     function openBatchMove(){
         fetch('/admin/api/subjects').then(r=>r.json()).then(list=>{
             const sel = document.getElementById('moveTarget');
@@ -1038,8 +1227,10 @@
         });
     }
     function openBatchDifficulty(){ openModal('modalDifficulty'); }
-    let tagsAction = 'add';
-    function openBatchTags(action){ tagsAction = action; document.getElementById('tagsTitle').innerText = `批量标签（${action==='add'?'添加':action==='remove'?'移除':'覆盖'}）`; openModal('modalTags'); }
+    function openBatchTags(){
+        document.getElementById('tagsTitle').innerText = '批量修改标签';
+        openModal('modalTags');
+    }
 
     function openModal(id){ const m=document.getElementById(id); if(m){ m.style.display='block'; } }
     function closeModal(id){ const m=document.getElementById(id); if(m){ m.style.display='none'; } }
@@ -1065,7 +1256,7 @@
         if(!ids.length) return alert('请先勾选题目');
         const tags = document.getElementById('tagsInput').value.trim();
         if(!tags) return alert('请输入标签');
-        const res = await fetch('/admin/questions/batch_tags', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ids, action: tagsAction, tags })});
+        const res = await fetch('/admin/questions/batch_tags', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ids, action: 'set', tags })});
         const ret = await res.json(); alert(ret.message||'');
         if(ret.status==='success'){ closeModal('modalTags'); loadQuestions(); }
     }
@@ -1108,38 +1299,149 @@
     function exportSubject(){ window.open(`/admin/questions/export?subject_id=${subjectId}`, '_blank'); }
     function exportAll(){ window.open('/admin/questions/export', '_blank'); }
 
-    async function uploadImage() {
-        const fileInput = document.getElementById('qImageFile');
+    function exportPackage() {
+        const type = document.getElementById('typeFilter').value;
+        let url = `/admin/questions/export_package?subject_id=${subjectId}`;
+        if (type && type !== 'all') {
+            url += `&type=${type}`;
+        }
+        window.open(url, '_blank');
+    }
+
+    async function uploadPackage() {
+        const fileInput = document.getElementById('importPackageFile');
         if (fileInput.files.length === 0) return;
 
         const file = fileInput.files[0];
         const formData = new FormData();
         formData.append('file', file);
 
+        showSuccess('正在上传并导入题目包，请稍候...');
+
         try {
-            const res = await fetch('/admin/api/questions/upload_image', {
+            const res = await fetch('/admin/questions/import_package', {
                 method: 'POST',
                 body: formData
             });
             const result = await res.json();
 
-            if (result.status === 'success') {
-                document.getElementById('qImagePath').value = result.path;
-                document.getElementById('imagePreview').src = result.url;
-                document.getElementById('imagePreviewContainer').style.display = 'block';
+            if (result.status === 'success' || result.status === 'warning') {
+                let message = result.message || '导入完成';
+                if (result.errors && result.errors.length > 0) {
+                    message += '\n\n遇到的问题:\n' + result.errors.join('\n');
+                }
+                alert('✅ ' + message);
+                loadQuestions(); // Refresh the list
             } else {
-                showError(result.message || '图片上传失败');
+                showError(result.message || '导入失败');
             }
         } catch (e) {
-            showError('图片上传失败: ' + e.message);
+            showError('导入失败: ' + e.message);
+        } finally {
+            // Reset file input so the same file can be selected again
+            fileInput.value = '';
         }
     }
 
-    function removeImage() {
-        document.getElementById('qImagePath').value = '';
-        document.getElementById('qImageFile').value = ''; // 清空文件选择
-        document.getElementById('imagePreviewContainer').style.display = 'none';
-        document.getElementById('imagePreview').src = '';
+    // Helper to get image paths as an array
+    function getImagePaths() {
+        const pathsInput = document.getElementById('qImagePaths');
+        try {
+            return JSON.parse(pathsInput.value || '[]');
+        } catch (e) {
+            return [];
+        }
+    }
+
+    // Helper to set image paths from an array
+    function setImagePaths(paths) {
+        const pathsInput = document.getElementById('qImagePaths');
+        pathsInput.value = JSON.stringify(paths);
+        renderImagePreviews();
+    }
+
+    // Renders the preview images based on the hidden input
+    function renderImagePreviews() {
+        const container = document.getElementById('imagePreviewContainer');
+        const paths = getImagePaths();
+        container.innerHTML = ''; // Clear existing previews
+
+        paths.forEach(path => {
+            const previewWrapper = document.createElement('div');
+            previewWrapper.style.position = 'relative';
+
+            const img = document.createElement('img');
+            img.src = `{{ url_for('main.serve_upload', filename='') }}${path}`;
+            img.style.width = '100px';
+            img.style.height = '100px';
+            img.style.objectFit = 'cover';
+            img.style.borderRadius = '8px';
+
+            const removeBtn = document.createElement('button');
+            removeBtn.innerText = '×';
+            removeBtn.style.position = 'absolute';
+            removeBtn.style.top = '2px';
+            removeBtn.style.right = '2px';
+            removeBtn.style.background = 'rgba(0,0,0,0.6)';
+            removeBtn.style.color = 'white';
+            removeBtn.style.border = 'none';
+            removeBtn.style.borderRadius = '50%';
+            removeBtn.style.width = '20px';
+            removeBtn.style.height = '20px';
+            removeBtn.style.cursor = 'pointer';
+            removeBtn.style.lineHeight = '20px';
+            removeBtn.style.textAlign = 'center';
+            removeBtn.style.padding = '0';
+            removeBtn.onclick = () => removeImage(path);
+
+            previewWrapper.appendChild(img);
+            previewWrapper.appendChild(removeBtn);
+            container.appendChild(previewWrapper);
+        });
+    }
+
+    // New uploadImage function for multiple files
+    async function uploadImage() {
+        const fileInput = document.getElementById('qImageFile');
+        if (fileInput.files.length === 0) return;
+
+        const files = Array.from(fileInput.files);
+        let currentPaths = getImagePaths();
+
+        // Show a temporary loading state if needed
+
+        for (const file of files) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const res = await fetch('/admin/api/questions/upload_image', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await res.json();
+
+                if (result.status === 'success') {
+                    if (!currentPaths.includes(result.path)) {
+                        currentPaths.push(result.path);
+                    }
+                } else {
+                    showError(`图片 ${file.name} 上传失败: ${result.message}`);
+                }
+            } catch (e) {
+                showError(`图片 ${file.name} 上传失败: ${e.message}`);
+            }
+        }
+        
+        fileInput.value = ''; // Clear the file input after processing all files
+        setImagePaths(currentPaths);
+    }
+
+    // New removeImage function
+    function removeImage(pathToRemove) {
+        let currentPaths = getImagePaths();
+        const updatedPaths = currentPaths.filter(path => path !== pathToRemove);
+        setImagePaths(updatedPaths);
     }
 </script>
 {% endblock %}

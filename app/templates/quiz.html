@@ -898,11 +898,16 @@
                     <span class="q-type-label">{{ q.q_type }}</span>
                     {% if mode == 'exam' %}<span style="font-size:12px; color:#666;">({{ q.score_val }}分)</span>{% endif %}
                     <div class="q-content">{{ q.content|replace('\n', '<br>')|safe }}</div>
-                {% if q.image_path %}
-                <div class="question-image-container">
-                    <img src="{{ url_for('main.serve_upload', filename=q.image_path) }}" alt="题目图片">
+                <div class="question-image-gallery" data-images='{{ q.image_path_json }}' style="display: none; margin-bottom: 24px;">
+                    <div class="gallery-main-image-wrapper" style="position: relative; text-align: center;">
+                        <!-- Main image will be injected here -->
+                    </div>
+                    <div class="gallery-controls" style="display: none; justify-content: center; align-items: center; gap: 15px; margin-top: 10px;">
+                        <button class="gallery-prev" style="background: none; border: 1px solid var(--border-color); border-radius: 50%; width: 30px; height: 30px; cursor: pointer;">‹</button>
+                        <span class="gallery-counter" style="font-size: 12px; color: var(--text-sub);"></span>
+                        <button class="gallery-next" style="background: none; border: 1px solid var(--border-color); border-radius: 50%; width: 30px; height: 30px; cursor: pointer;">›</button>
+                    </div>
                 </div>
-                {% endif %}
                 </div>
 
                 <div class="input-area">
@@ -1210,6 +1215,7 @@
             const type = currentQ.getAttribute('data-type');
             const answer = currentQ.getAttribute('data-answer');
             const analysisBox = currentQ.querySelector('.analysis-box');
+            setupImageGallery(currentQ);
 
             const btnPrev = document.getElementById('btn-prev');
             btnPrev.disabled = (index === 0);
@@ -1747,16 +1753,90 @@
                 if (LOGGED_IN) {
                     try { await fetch(`/api/progress?key=${encodeURIComponent(progressKey())}`, { method: 'DELETE' }); } catch(e) {}
                 }
-                window.location.reload();
-                return true; // 表示已清除
+                // window.location.reload(); // No longer reloads, just clears data
+                return true; // Indicates data was cleared
             }
-            return false; // 用户取消
+            return false; // User cancelled
         }
 
         async function reshuffle() {
-            const cleared = await clearProgress("重新打乱将清空当前进度，确定要继续吗？");
-            if (cleared) {
-                window.location.reload();
+            const confirmed = confirm("重新打乱将清空当前进度，确定要继续吗？");
+            if (confirmed) {
+                // 1. Clear progress data without reloading
+                localStorage.removeItem(progressKey());
+                if (LOGGED_IN) {
+                    try { await fetch(`/api/progress?key=${encodeURIComponent(progressKey())}`, { method: 'DELETE' }); } catch(e) {}
+                }
+
+                // 2. Get all question elements
+                const mainCard = document.getElementById('mainCard');
+                const questionBoxes = Array.from(mainCard.querySelectorAll('.question-box'));
+                const sidebarList = document.getElementById('question-list');
+                const listItemsElements = Array.from(sidebarList.querySelectorAll('.q-item'));
+
+                // 3. Create a mapping from original DOM index to elements
+                const questionMap = {};
+                questionBoxes.forEach((box, i) => {
+                    questionMap[i] = { box: box, item: listItemsElements[i] };
+                });
+
+                // 4. Shuffle the indices
+                let indices = Object.keys(questionMap).map(Number);
+                for (let i = indices.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [indices[i], indices[j]] = [indices[j], indices[i]];
+                }
+
+                // 5. Re-append elements in the new order and update attributes
+                const footer = mainCard.querySelector('.footer');
+                questionBoxes.forEach(box => box.remove());
+                listItemsElements.forEach(item => item.remove());
+
+                indices.forEach((originalIndex, newIndex) => {
+                    const pair = questionMap[originalIndex];
+                    const box = pair.box;
+                    const item = pair.item;
+
+                    // Update question box
+                    box.id = `q-${newIndex}`;
+                    box.dataset.index = newIndex;
+                    mainCard.insertBefore(box, footer);
+
+                    // Update list item
+                    item.id = `list-item-${newIndex}`;
+                    item.querySelector('span:first-child').textContent = newIndex + 1;
+                    item.setAttribute('onclick', `jumpTo(${newIndex})`);
+                    sidebarList.appendChild(item);
+                });
+
+                // 6. Reset UI state
+                window.questions = document.querySelectorAll('.question-box');
+                window.listItems = document.querySelectorAll('.q-item');
+                
+                window.questions.forEach((q, index) => {
+                    q.classList.remove('checked-mode');
+                    q.querySelectorAll('input, textarea').forEach(el => {
+                        el.disabled = false;
+                        if (el.type === 'checkbox' || el.type === 'radio') el.checked = false;
+                        else el.value = '';
+                    });
+                    q.querySelectorAll('.correct-opt, .wrong-opt, .input-correct, .input-wrong').forEach(el => {
+                        el.classList.remove('correct-opt', 'wrong-opt', 'input-correct', 'input-wrong');
+                    });
+                    const analysisBox = q.querySelector('.analysis-box');
+                    if (analysisBox) {
+                        analysisBox.style.display = 'none';
+                        analysisBox.classList.remove('show');
+                    }
+                });
+                window.listItems.forEach(item => {
+                    item.classList.remove('done-correct', 'done-wrong', 'answered');
+                });
+
+                // 7. Show the first question
+                currentIndex = 0;
+                showQuestion(0);
+                showToast('题目已重新排序');
             }
         }
         
@@ -1939,6 +2019,62 @@
             if (currentIndex > 0) {
                 showQuestion(currentIndex - 1);
             }
+        }
+
+        function setupImageGallery(questionElement) {
+            const gallery = questionElement.querySelector('.question-image-gallery');
+            if (!gallery) return;
+
+            let images = [];
+            try {
+                const imageData = gallery.dataset.images;
+                // Compatibility for both JSON string and plain string
+                if (imageData.startsWith('[')) {
+                    images = JSON.parse(imageData);
+                } else if (imageData) {
+                    images = [imageData];
+                }
+            } catch (e) {
+                console.error('Failed to parse image data:', e);
+                images = [];
+            }
+
+            if (images.length === 0) {
+                gallery.style.display = 'none';
+                return;
+            }
+
+            gallery.style.display = 'block';
+            const imageWrapper = gallery.querySelector('.gallery-main-image-wrapper');
+            const controls = gallery.querySelector('.gallery-controls');
+            const counter = gallery.querySelector('.gallery-counter');
+            const prevBtn = gallery.querySelector('.gallery-prev');
+            const nextBtn = gallery.querySelector('.gallery-next');
+
+            let currentImageIndex = 0;
+
+            function showImage(index) {
+                imageWrapper.innerHTML = `<img src="{{ url_for('main.serve_upload', filename='') }}${images[index]}" alt="题目图片 ${index + 1}" style="max-width: 100%; max-height: 400px; border-radius: 12px; border: 1px solid var(--border-color);">`;
+                if (images.length > 1) {
+                    counter.textContent = `${index + 1} / ${images.length}`;
+                }
+            }
+
+            if (images.length > 1) {
+                controls.style.display = 'flex';
+                prevBtn.onclick = () => {
+                    currentImageIndex = (currentImageIndex - 1 + images.length) % images.length;
+                    showImage(currentImageIndex);
+                };
+                nextBtn.onclick = () => {
+                    currentImageIndex = (currentImageIndex + 1) % images.length;
+                    showImage(currentImageIndex);
+                };
+            } else {
+                controls.style.display = 'none';
+            }
+
+            showImage(0);
         }
             function gotoPage(p){
             const url = new URL(window.location.href);

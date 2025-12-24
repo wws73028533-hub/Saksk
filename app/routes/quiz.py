@@ -142,6 +142,17 @@ def quiz_page():
     question_ids = []
     for row in rows:
         q = dict(row)
+        image_path = q.get('image_path')
+        image_path_json = '[]'
+        if image_path and isinstance(image_path, str):
+            # Check if it's already a JSON array string
+            if image_path.strip().startswith('[') and image_path.strip().endswith(']'):
+                image_path_json = image_path
+            else:
+                # It's a single path string, wrap it in an array
+                image_path_json = json.dumps([image_path])
+        q['image_path_json'] = image_path_json
+
         if q.get('options'):
             try:
                 options_list = json.loads(q['options'])

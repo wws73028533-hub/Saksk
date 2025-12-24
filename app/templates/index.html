@@ -1668,6 +1668,7 @@
     <script>
         // JS 逻辑基本不变，仅作微调以适应新结构
         const savedTheme = localStorage.getItem('theme');
+        const SUBJECT_Q_TYPES = JSON.parse('{{ subject_q_types_json|safe }}' || '{}');
         if (savedTheme === 'dark') document.body.classList.add('dark-mode');
         const LOGGED_IN = '{{ "true" if logged_in else "false" }}' === 'true';
 
@@ -1759,13 +1760,52 @@
             const first = c ? c.querySelector('.chip') : null;
             return first ? first.dataset.val : '';
         }
-        function selectChip(kind, el){
+        function updateQuestionTypes(subject) {
+            const types = SUBJECT_Q_TYPES[subject] || [];
+            const container = document.getElementById('chipsType');
+            if (!container) return;
+
+            let html = '<span class="chip" data-val="all" onclick="selectChip(\'type\', this)">混合题型</span>';
+            types.forEach(t => {
+                html += `<span class="chip" data-val="${t}" onclick="selectChip(\'type\', this)">${t}</span>`;
+            });
+            container.innerHTML = html;
+
+            // 重新应用当前或默认的题型选择
+            const currentT = currentType();
+            let matched = false;
+            container.querySelectorAll('.chip').forEach(chip => {
+                if (chip.dataset.val === currentT) {
+                    chip.classList.add('active');
+                    matched = true;
+                }
+            });
+
+            // 如果之前选择的题型在当前科目下不存在，则默认选中“混合题型”
+            if (!matched) {
+                const allChip = container.querySelector('.chip[data-val="all"]');
+                if (allChip) {
+                    allChip.classList.add('active');
+                    localStorage.setItem(TYPE_KEY, 'all');
+                }
+            }
+             // 触发一次对新题型列表的检查
+            const activeTypeChip = container.querySelector('.chip.active');
+            if(activeTypeChip) selectChip('type', activeTypeChip, true);
+        }
+
+        function selectChip(kind, el, isInternalCall = false){
             const val = el.dataset.val;
             const box = document.getElementById(kind === 'subject' ? 'chipsSubject' : 'chipsType');
             box.querySelectorAll('.chip').forEach(x=>x.classList.remove('active'));
             el.classList.add('active');
+
             if (kind === 'subject') {
                 localStorage.setItem(SUBJECT_KEY, val);
+                // 当科目改变时，更新题型列表
+                if (!isInternalCall) {
+                    updateQuestionTypes(val);
+                }
             } else {
                 localStorage.setItem(TYPE_KEY, val);
                 const shuffleOptionsCheckbox = document.getElementById('shuffleOptions');
@@ -1818,36 +1858,31 @@
         }
         function initChips(){
             const sub = currentSubject();
-            const typ = currentType();
-
-            const shuffleOptionsCheckbox = document.getElementById('shuffleOptions');
-            const shuffleOptionsLabel = shuffleOptionsCheckbox.parentElement;
-            if (typ !== '选择题') {
-                shuffleOptionsCheckbox.disabled = true;
-                shuffleOptionsCheckbox.checked = false;
-                shuffleOptionsLabel.classList.remove('active');
-                shuffleOptionsLabel.style.opacity = '0.5';
-                shuffleOptionsLabel.style.cursor = 'not-allowed';
-            } else {
-                shuffleOptionsCheckbox.disabled = false;
-                shuffleOptionsLabel.style.opacity = '1';
-                shuffleOptionsLabel.style.cursor = 'pointer';
-            }
             const sb = document.getElementById('chipsSubject');
-            const tb = document.getElementById('chipsType');
-            if (sb){
+
+            if (sb) {
                 let matched = false;
-                sb.querySelectorAll('.chip').forEach(x=>{ if(x.dataset.val===sub){ x.classList.add('active'); matched=true; } });
-                if (!matched){
-                    const f=sb.querySelector('.chip'); if(f){ f.classList.add('active'); localStorage.setItem(SUBJECT_KEY, f.dataset.val); }
+                let activeSubject = '';
+                sb.querySelectorAll('.chip').forEach(x => {
+                    if(x.dataset.val === sub) {
+                        x.classList.add('active');
+                        matched = true;
+                        activeSubject = sub;
+                    }
+                });
+
+                if (!matched) {
+                    const f = sb.querySelector('.chip');
+                    if(f) {
+                        f.classList.add('active');
+                        activeSubject = f.dataset.val;
+                        localStorage.setItem(SUBJECT_KEY, activeSubject);
+                    }
                 }
-            }
-            if (tb){
-                let matched = false;
-                tb.querySelectorAll('.chip').forEach(x=>{ if(x.dataset.val===typ){ x.classList.add('active'); matched=true; } });
-                if (!matched){
-                    const def = tb.querySelector('.chip[data-val="all"]') || tb.querySelector('.chip');
-                    if(def){ def.classList.add('active'); localStorage.setItem(TYPE_KEY, def.dataset.val); }
+
+                // 根据激活的科目更新题型列表
+                if (activeSubject) {
+                    updateQuestionTypes(activeSubject);
                 }
             }
         }

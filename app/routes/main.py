@@ -3,6 +3,7 @@
 主页路由蓝图
 """
 from flask import Blueprint, render_template, request, session, redirect, send_from_directory, current_app
+import json
 import os
 import os
 from ..utils.database import get_db
@@ -34,22 +35,43 @@ def index():
             fav_count = 0
             mistake_count = 0
         
-        # 获取所有科目和题型
-        subjects = [row[0] for row in conn.execute("SELECT name FROM subjects").fetchall()]
+        # 获取所有科目
+        subjects = [row[0] for row in conn.execute("SELECT name FROM subjects ORDER BY id").fetchall()]
+        
+        # 获取所有题型（作为备用）
         q_types = [row[0] for row in conn.execute("SELECT DISTINCT q_type FROM questions").fetchall()]
+
+        # 获取每个科目下的题型
+        subject_q_types = {}
+        rows = conn.execute("""
+            SELECT s.name, GROUP_CONCAT(DISTINCT q.q_type)
+            FROM subjects s
+            LEFT JOIN questions q ON s.id = q.subject_id
+            GROUP BY s.name
+            ORDER BY s.id
+        """).fetchall()
+        for row in rows:
+            if row[0] and row[1]:
+                subject_q_types[row[0]] = sorted(list(set(row[1].split(','))))
+            elif row[0]:
+                subject_q_types[row[0]] = []
+
     except Exception as e:
+        current_app.logger.error(f"Error fetching index page data: {e}")
         quiz_count = 0
         fav_count = 0
         mistake_count = 0
         subjects = []
         q_types = []
+        subject_q_types = {}
     
     return render_template('index.html',
                          quiz_count=quiz_count,
                          fav_count=fav_count,
                          mistake_count=mistake_count,
                          subjects=subjects,
-                         q_types=q_types,
+                         q_types=q_types, # 保留q_types以备不时之需
+                         subject_q_types_json=json.dumps(subject_q_types, ensure_ascii=False),
                          logged_in=bool(uid),
                          username=session.get('username'),
                          is_admin=session.get('is_admin', False),
