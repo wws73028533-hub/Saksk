@@ -20,6 +20,10 @@
 |       | 批量导入 / 导出 | Excel 模板、题目包 (ZIP) 导入导出，含图片资源 |
 |       | 用户管理 | 权限切换、锁定 / 解锁、强制下线、重置密码、CSV 导出 |
 |       | 通知公告 | 站内通知发布、启用 / 禁用、优先级控制 |
+| **聊天** | **站内私聊（轮询）** | `/chat` 聊天主页面，支持会话列表、消息拉取与已读推进 |
+|        | **图片消息** | 发送图片、弹层预览、拖拽/粘贴发送；支持缩略图以减少流量 |
+|        | **语音消息** | 按住说话、松开发送；上滑取消；单次仅播放一条语音；气泡仅显示播放键+时长 |
+|        | **会话去重（强约束）** | direct 私聊使用 `direct_pair_key` + SQLite 唯一索引，从根源杜绝重复会话 |
 | 系统 | 安全 | 密码哈希 (Werkzeug)、会话版本控制、速率限制 (Flask-Limiter) |
 |      | 日志 | `logs/app.log` 支持滚动日志文件 |
 
@@ -47,7 +51,7 @@
 │   ├─extensions.py       # 第三方扩展集中初始化
 │   └─__init__.py         # 应用工厂 (create_app)
 ├─instance                # 模板文件 / SQLite 数据库等运行时文件
-├─uploads                 # 用户上传(头像 / 题目图片)
+├─uploads                 # 用户上传(头像 / 题目图片 / 聊天图片)
 ├─static                  # 静态资源(与 uploads 分离)
 ├─scripts                 # 实用脚本，如生成 Excel 模板
 ├─run.py                  # 启动入口 (python run.py)
@@ -94,6 +98,41 @@
    ```
 
 5. 打开浏览器访问 `http://localhost:5000`，注册首个账号 => 自动拥有管理员权限。
+
+---
+
+## 💬 站内聊天（新增）
+
+### 入口
+- 登录后：
+  - 首页入口：`/` 页面中的“聊天”
+  - 聊天主页面：`/chat`
+
+### 主要能力
+- 1v1 私聊会话（direct）
+- 会话列表显示：对方头像/昵称、最后一条消息、未读数
+- 消息类型：
+  - 文本消息
+  - 图片消息（列表优先显示缩略图，点击弹层查看大图）
+- 交互增强：
+  - 轮询拉取新消息（不使用 WebSocket）
+  - 发送失败可重试
+  - 拖拽/粘贴图片直接发送
+
+### 后端关键路由（`app/routes/chat.py`）
+- `GET  /chat`：聊天页面
+- `GET  /api/chat/users?q=...`：搜索用户
+- `POST /api/chat/conversations/create`：创建/复用会话
+- `GET  /api/chat/conversations`：会话列表（含未读数、最后消息摘要）
+- `GET  /api/chat/messages?conversation_id=...&after_id=...&limit=...`：增量拉取消息并推进已读
+- `POST /api/chat/messages/send`：发送文本
+- `POST /api/chat/messages/upload_image`：上传图片并发为消息（支持 `thumb` 缩略图）
+- `POST /api/chat/messages/upload_audio`：上传语音并发为消息（支持 `duration` 秒）
+- `GET  /api/chat/unread_count`：总未读数（首页角标）
+
+### 时间显示说明（重要）
+- 数据库 `CURRENT_TIMESTAMP` 在 SQLite 中通常为 **UTC**。
+- 前端消息时间已做兼容解析：将 `YYYY-MM-DD HH:mm:ss` 按 UTC 解析后再转为本地时间显示，避免出现与系统时间不一致的问题。
 
 ---
 

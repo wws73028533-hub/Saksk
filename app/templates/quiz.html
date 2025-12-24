@@ -21,19 +21,25 @@
     <style>
         :root {
             --bg-color: #fafafa;
-            --card-bg: rgba(255, 255, 255, 0.75);
+            --card-bg: rgba(242, 242, 247, 0.65); /* 更透明的背景 */
             --card-bg-solid: rgba(255, 255, 255, 0.95);
             --text-color: #1d1d1f;
             --text-sub: #86868b;
             --border-color: rgba(0, 0, 0, 0.08);
-            --primary: #007AFF;
-            --primary-light: rgba(0, 122, 255, 0.12);
+            --primary: #0A84FF;
+            --primary-light: rgba(10, 132, 255, 0.12);
+            /* UI.txt: 单色/克制色彩；状态色尽量用灰阶 + 细边框表达 */
             --success: #34c759;
             --danger: #ff3b30;
             --warning: #ff9500;
-            --blur: blur(60px) saturate(200%);
-            --shadow: 0 2px 16px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
-            --shadow-hover: 0 4px 24px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.06);
+            --mono-1: #ffffff;
+            --mono-2: #f5f5f7;
+            --mono-3: #e5e5ea;
+            --mono-4: #d1d1d6;
+            --mono-5: #8e8e93;
+            --blur: blur(56px) saturate(160%);
+            --shadow: 0 10px 30px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.04);
+            --shadow-hover: 0 14px 44px rgba(0, 0, 0, 0.08), 0 4px 14px rgba(0, 0, 0, 0.06);
             --hover-bg: rgba(142, 142, 147, 0.08);
             --active-bg: var(--primary);
             --active-text: #ffffff;
@@ -41,7 +47,7 @@
 
         body.dark-mode {
             --bg-color: #000000;
-            --card-bg: rgba(28, 28, 30, 0.6);
+            --card-bg: rgba(28, 28, 30, 0.72);
             --card-bg-solid: rgba(28, 28, 30, 0.95);
             --text-color: #f5f5f7;
             --text-sub: #a1a1a6;
@@ -93,6 +99,29 @@
         body.dark-mode::after {
             background: linear-gradient(180deg, #1c1c1e 0%, #000000 40%, #000000 100%);
         }
+
+        /* 顶部主题切换图标：浅色=太阳，深色=月亮 */
+        .btn-theme .theme-icon {
+            width: 20px;
+            height: 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        .btn-theme .theme-icon img {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            transition: opacity 0.25s ease, transform 0.25s ease;
+            filter: invert(var(--icon-invert, 0));
+        }
+        .btn-theme .icon-sun { opacity: 1; transform: scale(1) rotate(0deg); }
+        .btn-theme .icon-moon { opacity: 0; transform: scale(0.85) rotate(-90deg); }
+        body.dark-mode .btn-theme .theme-icon { --icon-invert: 1; }
+        body.dark-mode .btn-theme .icon-sun { opacity: 0; transform: scale(0.85) rotate(90deg); }
+        body.dark-mode .btn-theme .icon-moon { opacity: 1; transform: scale(1) rotate(0deg); }
+
         .app-container { display: flex; min-height: 100vh; position: relative; }
 
         /* 侧边栏样式 */
@@ -198,7 +227,7 @@
             -webkit-backdrop-filter: var(--blur);
             border-radius: 24px; 
             box-shadow: var(--shadow);
-            border: 0.5px solid rgba(255, 255, 255, 0.95);
+            border: 0.5px solid rgba(0, 0, 0, 0.04);
             padding: 32px; 
             min-height: 450px; 
             display: flex; 
@@ -223,8 +252,11 @@
             pointer-events: none;
             z-index: 1;
         }
+        body.dark-mode .card-container {
+            border-color: rgba(255, 255, 255, 0.10);
+        }
         body.dark-mode .card-container::before {
-            background: rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.08);
         }
         .card-container::after {
             content: '';
@@ -298,6 +330,18 @@
             transform: translateY(-1px);
             box-shadow: 0 2px 4px rgba(0,0,0,0.06);
         }
+        .btn-menu.btn-icon,
+        .btn-menu.btn-theme{
+            width: 42px;
+            height: 42px;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn-menu.btn-icon svg{
+            display:block;
+        }
         body.dark-mode .btn-menu {
             background: rgba(142, 142, 147, 0.12);
             border-color: rgba(255,255,255,0.12);
@@ -316,50 +360,33 @@
             -webkit-backdrop-filter: blur(20px);
             border: 0.5px solid transparent;
         }
-        .bg-quiz { 
-            background: rgba(0, 122, 255, 0.1);
-            color: var(--primary);
-            border-color: rgba(0, 122, 255, 0.2);
+        .bg-quiz {
+            /* 也保持克制：主色只在文字/细描边上体现 */
+            background: rgba(142, 142, 147, 0.10);
+            color: var(--text-color);
+            border-color: rgba(142, 142, 147, 0.22);
         }
         body.dark-mode .bg-quiz {
-            background: rgba(10, 132, 255, 0.15);
-            border-color: rgba(10, 132, 255, 0.3);
+            background: rgba(142, 142, 147, 0.14);
+            border-color: rgba(142, 142, 147, 0.28);
+            color: var(--text-color);
         }
-        .bg-memo { 
-            background: rgba(90, 200, 250, 0.15);
-            color: #5ac8fa;
-            border-color: rgba(90, 200, 250, 0.3);
+        .bg-memo,
+        .bg-mistakes,
+        .bg-fav,
+        .bg-exam {
+            /* UI.txt: 统一的单色标签，靠层次/描边区分，而不是高饱和色块 */
+            background: rgba(142, 142, 147, 0.10);
+            color: var(--text-color);
+            border-color: rgba(142, 142, 147, 0.22);
         }
-        body.dark-mode .bg-memo {
-            background: rgba(90, 200, 250, 0.2);
-            border-color: rgba(90, 200, 250, 0.4);
-        }
-        .bg-mistakes { 
-            background: rgba(255, 59, 48, 0.1);
-            color: var(--danger);
-            border-color: rgba(255, 59, 48, 0.2);
-        }
-        body.dark-mode .bg-mistakes {
-            background: rgba(255, 59, 48, 0.15);
-            border-color: rgba(255, 59, 48, 0.3);
-        }
-        .bg-fav { 
-            background: rgba(255, 149, 0, 0.1);
-            color: var(--warning);
-            border-color: rgba(255, 149, 0, 0.2);
-        }
-        body.dark-mode .bg-fav {
-            background: rgba(255, 149, 0, 0.15);
-            border-color: rgba(255, 149, 0, 0.3);
-        }
-        .bg-exam { 
-            background: rgba(175, 82, 222, 0.1);
-            color: #af52de;
-            border-color: rgba(175, 82, 222, 0.2);
-        }
+        body.dark-mode .bg-memo,
+        body.dark-mode .bg-mistakes,
+        body.dark-mode .bg-fav,
         body.dark-mode .bg-exam {
-            background: rgba(175, 82, 222, 0.15);
-            border-color: rgba(175, 82, 222, 0.3);
+            background: rgba(142, 142, 147, 0.14);
+            border-color: rgba(142, 142, 147, 0.28);
+            color: var(--text-color);
         }
         
         .progress-bar { 
@@ -470,38 +497,183 @@
 
         .options label { 
             display: block; 
-            padding: 14px 18px; 
-            margin-bottom: 12px; 
-            border: 0.5px solid var(--border-color); 
-            border-radius: 12px; 
+            padding: 0 18px; /* 由子内容决定垂直节奏（判断题可固定高度） */
+            margin-bottom: 0; /* 列表行不需要外间距 */
+            border: none; /* 去掉独立边框，用父级边框 */
+            border-bottom: 0.5px solid var(--border-color); /* 用分割线替代 */
+            border-radius: 0; /* 行模式不需要圆角 */
             cursor: pointer; 
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
             position: relative; 
-            background: rgba(255,255,255,0.5);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
+            background: transparent; /* 背景透明，依赖父容器 */
+            box-sizing: border-box;
         }
+        .options label:first-of-type { border-top-left-radius: 12px; border-top-right-radius: 12px; }
+        .options label:last-of-type { border-bottom: none; border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; }
         .options label:hover { 
-            background-color: rgba(255,255,255,0.7); 
-            border-color: var(--primary);
-            transform: translateX(2px);
+            background-color: var(--hover-bg);
+            transform: none;
         }
         body.dark-mode .options label {
-            background: rgba(28,28,30,0.5);
-            border-color: var(--border-color);
+            background: transparent;
         }
         body.dark-mode .options label:hover {
-            background: rgba(28,28,30,0.7);
-            border-color: var(--primary);
+            background: var(--hover-bg);
         }
         .options input { 
             margin-right: 12px; 
             cursor: pointer;
             accent-color: var(--primary);
+            transform: scale(1.02);
+        }
+        /* 选择题：也隐藏原生 checkbox（统一为判断题同款风格：整行点击 + 左侧标记） */
+        .options:not(.tf-options) input[type="checkbox"]{
+            position: absolute;
+            opacity: 0;
+            width: 1px;
+            height: 1px;
+            pointer-events: none;
+        }
+        .options { 
+            border: 0.5px solid var(--border-color);
+            border-radius: 12px;
+            background: rgba(255,255,255,0.38);
+            backdrop-filter: blur(22px) saturate(160%);
+            -webkit-backdrop-filter: blur(22px) saturate(160%);
+            overflow: hidden;
+        }
+        body.dark-mode .options {
+            background: rgba(28,28,30,0.46);
         }
         .options input:checked + span { 
-            font-weight: 600; 
+            font-weight: 650; 
             color: var(--primary); 
+        }
+        /* 选择题/多选题：选中态高亮（不依赖 :has，兼容性好） */
+        .options:not(.tf-options) input[type="checkbox"]:checked + span{
+            color: var(--text-color);
+            font-weight: 650;
+        }
+        .options:not(.tf-options) label.selected{
+            background: rgba(10, 132, 255, 0.10);
+        }
+        body.dark-mode .options:not(.tf-options) label.selected{
+            background: rgba(10, 132, 255, 0.16);
+        }
+        .options:not(.tf-options) label.selected::before{
+            border-color: rgba(10, 132, 255, 0.35);
+            background: rgba(10, 132, 255, 0.10);
+            color: var(--primary);
+        }
+        body.dark-mode .options:not(.tf-options) label.selected::before{
+            border-color: rgba(10, 132, 255, 0.45);
+            background: rgba(10, 132, 255, 0.18);
+        }
+        .options label{
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .options label::before{
+            content: attr(data-opt);
+            flex: 0 0 auto;
+            width: 24px;
+            height: 24px;
+            margin-top: 1px;
+            border-radius: 999px;
+            border: 0.5px solid var(--border-color);
+            background: rgba(142, 142, 147, 0.10);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 650;
+            color: var(--text-sub);
+            letter-spacing: 0.3px;
+        }
+        body.dark-mode .options label::before{
+            background: rgba(142, 142, 147, 0.14);
+        }
+        /* 判断题：用 ✓ / ✕，更紧凑不冗余 */
+        .tf-options label::before{
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0;
+        }
+        .tf-options label[data-opt="✓"]::before{ color: rgba(52, 199, 89, 0.9); }
+        .tf-options label[data-opt="✕"]::before{ color: rgba(255, 59, 48, 0.9); }
+
+        /* 判断题：隐藏原生 radio 圆点，只保留整行点击 + ✓/✕ 标记 */
+        .tf-options input[type="radio"]{
+            position: absolute;
+            opacity: 0;
+            width: 1px;
+            height: 1px;
+            pointer-events: none;
+        }
+        .tf-options label{
+            position: relative;
+            height: 48px;           /* 强制两行等高 */
+            min-height: 48px;
+            align-items: center;
+            padding-top: 0;
+            padding-bottom: 0;
+        }
+        .tf-options span[data-opt-text]{
+            line-height: 1.2;
+            padding: 0;
+        }
+        /* 不依赖 :has()（Firefox 兼容）：用 input:checked + span 驱动同一行样式 */
+        .tf-options input[type="radio"]:checked + span{
+            color: var(--text-color);
+            font-weight: 650;
+        }
+        .tf-options input[type="radio"]:checked + span::before{
+            /* 占位：不渲染任何内容，只是避免某些浏览器合并样式 */
+            content: "";
+        }
+        .tf-options input[type="radio"]:checked ~ span{
+            /* no-op */
+        }
+        .tf-options label.selected{
+            background: rgba(10, 132, 255, 0.10);
+        }
+        body.dark-mode .tf-options label.selected{
+            background: rgba(10, 132, 255, 0.16);
+        }
+        .tf-options label.selected::before{
+            border-color: rgba(10, 132, 255, 0.35);
+            background: rgba(10, 132, 255, 0.10);
+            color: var(--primary);
+        }
+        body.dark-mode .tf-options label.selected::before{
+            border-color: rgba(10, 132, 255, 0.45);
+            background: rgba(10, 132, 255, 0.18);
+        }
+
+        /* 选择题：固定行高（与判断题一致的紧凑列表行） */
+        .mc-options label{
+            height: 48px;
+            min-height: 48px;
+            align-items: center;
+            padding-top: 0;
+            padding-bottom: 0;
+        }
+        .mc-options span[data-opt-text]{
+            padding: 0;
+            line-height: 1.2;
+        }
+        .options input{
+            margin-right: 0;
+            margin-top: 0;
+            flex: 0 0 auto;
+        }
+        .options span[data-opt-text]{
+            display: block;
+            padding: 12px 0; /* 默认行高节奏 */
+        }
+        .tf-options span[data-opt-text]{
+            padding: 0;
         }
         
         .exam-mode .options input:checked + span { color: #af52de; }
@@ -580,26 +752,38 @@
         }
 
         .analysis-box { 
-            margin-top: 24px; 
-            padding: 20px; 
-            background: rgba(142, 142, 147, 0.05);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border-radius: 12px; 
-            border: 0.5px solid rgba(0,0,0,0.05);
-            border-left: 3px solid var(--primary); 
+            margin-top: 18px; 
+            padding: 16px 16px; 
+            background: rgba(142, 142, 147, 0.06);
+            backdrop-filter: blur(22px) saturate(160%);
+            -webkit-backdrop-filter: blur(22px) saturate(160%);
+            border-radius: 14px; 
+            border: 0.5px solid var(--border-color);
             display: none; 
             opacity: 0; 
-            transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1); 
-            color: var(--text-sub);
-            line-height: 1.6;
+            transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1); 
+            color: var(--text-color);
+            line-height: 1.65;
         }
         body.dark-mode .analysis-box {
-            background: rgba(142, 142, 147, 0.1);
-            border-color: rgba(255,255,255,0.1);
-            border-left-color: var(--primary);
+            background: rgba(142, 142, 147, 0.12);
+            border-color: rgba(255,255,255,0.14);
         }
         .analysis-box.show { opacity: 1; }
+
+        .analysis-box p{ margin: 0; }
+        .analysis-box p + p{ margin-top: 10px; }
+        .analysis-box strong{ font-weight: 650; color: var(--text-color); }
+        .analysis-box .analysis-title{ display:flex; align-items:center; gap:10px; margin-bottom: 10px; }
+        .analysis-box .analysis-title .dot{ width:8px; height:8px; border-radius:999px; background: rgba(10,132,255,0.55); box-shadow: 0 0 0 4px rgba(10,132,255,0.12); }
+        body.dark-mode .analysis-box .analysis-title .dot{ background: rgba(10,132,255,0.65); box-shadow: 0 0 0 4px rgba(10,132,255,0.18); }
+        .analysis-box .answer{
+            color: var(--text-color);
+            font-weight: 650;
+        }
+        .analysis-box .answer.correct{
+            color: rgba(52, 199, 89, 0.95);
+        }
 
         .footer { 
             margin-top: auto; 
@@ -780,9 +964,9 @@
             .header { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; }
             /* 中间模式徽标置中 */
             .header > .mode-badge { justify-self: center; }
-            /* 右侧区域只保留“退出”，隐藏进度与主题按钮 */
+            /* 右侧区域保留“主题”与“退出”按钮 */
             .header > div:last-child { justify-self: end; display: flex; align-items: center; gap: 8px; }
-            #progress-text, .header > div:last-child .btn-menu:not(.btn-theme) { display: none !important; }
+            #progress-text { display: none !important; }
             .q-content { font-size: 16px; margin-bottom: 16px; }
             .options label { padding: 14px 12px; font-size: 16px; }
             .btn { padding: 12px 16px; font-size: 14px; }
@@ -870,7 +1054,9 @@
     <div class="main-area">
         <div class="card-container" id="mainCard" data-exam-id="{{ exam_id or '' }}">
             <div class="header">
-                <button class="btn-menu" onclick="toggleSidebar()">☰ 列表</button>
+                                <button class="btn-menu btn-icon" onclick="toggleSidebar()" title="题目列表">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                </button>
                 
                 {% if mode == 'exam' %}
                     <div style="font-size: 18px; font-weight: bold; color: #6610f2;" id="timer">00:00:00</div>
@@ -895,8 +1081,10 @@
                 {% endif %}
 
                 <div style="display:flex; align-items:center; gap:10px;">
-                    <button class="btn-menu btn-theme" onclick="toggleTheme()">🌓</button>
-                    <a href="/" style="text-decoration:none; color:var(--text-sub); font-size:14px; padding: 5px 10px; border: 1px solid var(--border-color); border-radius: 4px;">退出</a>
+                    <button class="btn-menu btn-theme" onclick="toggleTheme()" aria-label="切换深色模式"><span class="theme-icon" aria-hidden="true"><img src="/static/icons/theme-sun.svg" class="icon-sun" alt="" onerror="this.style.display='none'"><img src="/static/icons/theme-moon.svg" class="icon-moon" alt="" onerror="this.style.display='none'"></span></button>
+                    <a href="/" class="btn-menu btn-icon" title="退出">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                    </a>
                 </div>
             </div>
             
@@ -914,9 +1102,13 @@
                  data-index="{{ loop.index0 }}">
                 
                 {% if mode != 'exam' and logged_in %}
-                <div class="fav-btn {{ 'active' if q.is_fav else '' }}" onclick="toggleStar(this, {{ q.id }})" title="收藏">★</div>
+                                <div class="fav-btn {{ 'active' if q.is_fav else '' }}" onclick="toggleStar(this, {{ q.id }})" title="收藏" aria-label="收藏">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                </div>
                 {% elif mode != 'exam' and not logged_in %}
-                <div class="fav-btn" style="opacity:0.4; cursor:not-allowed;" title="登录后可收藏">★</div>
+                                <div class="fav-btn" style="opacity:0.4; cursor:not-allowed;" title="登录后可收藏" aria-label="登录后可收藏">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                </div>
                 {% endif %}
 
                 <div>
@@ -937,22 +1129,28 @@
 
                 <div class="input-area">
                     {% if q.q_type == '选择题' %}
-                        <div class="options">
+                        <div class="options mc-options">
                             {% for opt in q.options %}
-                                <label>
+                                <label data-opt="{{ opt.key }}">
                                         {% if q.answer|length > 1 %}
                                         <input type="checkbox" value="{{ opt.key }}"> 
                                     {% else %}
                                         <input type="checkbox" value="{{ opt.key }}" onchange="{{ 'markAnswered(' ~ loop.index0 ~ ')' if mode == 'exam' else 'autoCheck()' }}"> 
                                     {% endif %}
-                                    <span><strong>{{ opt.key }}.</strong> {{ opt.value }}</span>
+                                    <span data-opt-text>{{ opt.value }}</span>
                                 </label>
                             {% endfor %}
                         </div>
                     {% elif q.q_type == '判断题' %}
-                        <div class="options">
-                            <label><input type="radio" name="rad-{{ loop.index0 }}" value="正确" onchange="{{ 'markAnswered(' ~ loop.index0 ~ ')' if mode == 'exam' else 'autoCheck()' }}"> <span>正确</span></label>
-                            <label><input type="radio" name="rad-{{ loop.index0 }}" value="错误" onchange="{{ 'markAnswered(' ~ loop.index0 ~ ')' if mode == 'exam' else 'autoCheck()' }}"> <span>错误</span></label>
+                        <div class="options tf-options">
+                            <label data-opt="✓">
+                                <input type="radio" name="rad-{{ loop.index0 }}" value="正确" onchange="{{ 'markAnswered(' ~ loop.index0 ~ ')' if mode == 'exam' else 'autoCheck()' }}">
+                                <span data-opt-text>正确</span>
+                            </label>
+                            <label data-opt="✕">
+                                <input type="radio" name="rad-{{ loop.index0 }}" value="错误" onchange="{{ 'markAnswered(' ~ loop.index0 ~ ')' if mode == 'exam' else 'autoCheck()' }}">
+                                <span data-opt-text>错误</span>
+                            </label>
                         </div>
                     {% elif q.q_type == '填空题' %}
                         <div class="fill-in-the-blanks">
@@ -974,9 +1172,17 @@
                 </div>
 
                 <div class="analysis-box">
-                    <p><strong>✅ 正确答案：</strong>{% if q.q_type in ['问答题', '计算题', '简答题'] %}<br>{% endif %} <span style="color:#28a745; font-weight:bold;">{{ q.answer|replace('\n', '<br>')|safe }}</span></p>
+                    <div class="analysis-title">
+                        <span class="dot" aria-hidden="true"></span>
+                        <strong>答案与解析</strong>
+                    </div>
+                    <p><strong>正确答案</strong>{% if q.q_type in ['问答题', '计算题', '简答题'] %}<br>{% endif %}
+                        <span class="answer correct">{{ q.answer|replace('\n', '<br>')|safe }}</span>
+                    </p>
                     {% if q.explanation %}
-                    <p style="margin-top:12px;"><strong>📝 解析：</strong> {{ q.explanation|replace('\n', '<br>')|safe }}</p>
+                    <p><strong>解析</strong><br>
+                        <span class="answer">{{ q.explanation|replace('\n', '<br>')|safe }}</span>
+                    </p>
                     {% endif %}
                 </div>
             </div>
@@ -1291,23 +1497,26 @@
                     fillAnswer(currentQ, type, answer);
                     disableInputs(currentQ); 
                 } else {
+                    // 方案A：选择题/判断题不显示“查看结果”（会自动出结果）
+                    const isAutoTypes = (type === '选择题' || type === '判断题');
+
                     if (analysisBox.style.display === 'block') {
                         btnCheck.style.display = 'none';
                         btnNext.style.display = 'block';
                     } else {
-                        btnCheck.style.display = 'block';
-                        btnNext.style.display = 'none';
+                        btnCheck.style.display = isAutoTypes ? 'none' : 'block';
+                        btnNext.style.display = isAutoTypes ? 'block' : 'none';
                     }
-                    
+
                     if (index === totalQuestions - 1) {
                         btnNext.innerText = "完成刷题";
                         btnNext.classList.remove('btn-next-green');
-                        btnNext.style.backgroundColor = '#6610f2'; 
+                        btnNext.style.backgroundColor = '#6610f2';
                         btnNext.onclick = finishQuiz;
                     } else {
                         btnNext.innerText = "下一题 (Enter) →";
                         btnNext.classList.add('btn-next-green');
-                        btnNext.style.backgroundColor = ''; 
+                        btnNext.style.backgroundColor = '';
                         btnNext.onclick = nextQuestion;
                     }
                 }
@@ -1352,8 +1561,42 @@
         }
 
         function autoCheck() {
-            checkAnswer(false);
+            // 方案A：选择题/判断题自动出结果；填空/问答保留“查看结果”按钮
+            const currentQ = questions[currentIndex];
+            if (!currentQ) return;
+            const type = currentQ.getAttribute('data-type');
+            if (type === '选择题' || type === '判断题') {
+                checkAnswer(false);
+            }
         }
+
+        // 判断题：隐藏原生 radio 后，用整行高亮来表现选中态
+        document.addEventListener('change', function(e){
+            const t = e.target;
+            if (!(t instanceof HTMLInputElement)) return;
+
+            // 判断题（radio）：仅处理判断题容器
+            if (t.type === 'radio') {
+                const wrap = t.closest('.tf-options');
+                if (!wrap) return;
+                const name = t.name;
+                wrap.querySelectorAll(`input[type="radio"][name="${CSS.escape(name)}"]`).forEach(r => {
+                    const lab = r.closest('label');
+                    if (lab) lab.classList.toggle('selected', r.checked);
+                });
+                return;
+            }
+
+            // 选择题（checkbox）：统一成判断题同款“整行高亮 + 左侧标记”
+            if (t.type === 'checkbox') {
+                const wrap = t.closest('.options');
+                if (!wrap) return;
+                if (wrap.classList.contains('tf-options')) return;
+                const lab = t.closest('label');
+                if (lab) lab.classList.toggle('selected', t.checked);
+                return;
+            }
+        });
 
         function checkAnswer(isManualClick) {
             if (mode === 'exam') return;
@@ -1553,9 +1796,19 @@
         }
 
         function hasAnswered(q, type) {
-            if (type === '选择题' || type === '判断题') return q.querySelector('input:checked');
-            if (type === '填空题') return q.querySelector('input').value.trim();
-            if (type === '问答题') return q.querySelector('textarea').value.trim();
+            if (type === '选择题' || type === '判断题') return !!q.querySelector('input:checked');
+
+            if (type === '填空题') {
+                // 多空时：必须所有输入框都非空才算“已作答”
+                const inputs = q.querySelectorAll('.main-input');
+                if (inputs.length > 1) {
+                    return Array.from(inputs).every(i => (i.value || '').trim().length > 0);
+                }
+                const one = q.querySelector('input');
+                return !!(one && one.value.trim());
+            }
+
+            if (type === '问答题') return !!q.querySelector('textarea')?.value.trim();
             return false;
         }
 
@@ -2133,6 +2386,28 @@
                     return;
                 }
                 return; // Enter 键逻辑处理完毕
+            }
+
+            // 填空题中，使用上下箭头键切换输入框
+            if (isInputFocused && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+                const currentQ = questions[currentIndex];
+                if (currentQ && currentQ.dataset.type === '填空题') {
+                    const inputs = Array.from(currentQ.querySelectorAll('.main-input'));
+                    if (inputs.length > 1) {
+                        const focusedIndex = inputs.indexOf(document.activeElement);
+                        if (focusedIndex !== -1) {
+                            e.preventDefault(); // 阻止光标移动到行首/行尾
+                            let nextIndex;
+                            if (e.key === 'ArrowDown') {
+                                nextIndex = (focusedIndex + 1) % inputs.length;
+                            } else { // ArrowUp
+                                nextIndex = (focusedIndex - 1 + inputs.length) % inputs.length;
+                            }
+                            inputs[nextIndex].focus();
+                            return; // 功能已处理，退出
+                        }
+                    }
+                }
             }
 
             // 如果焦点在任何输入框或文本域中，则不触发以下的快捷键

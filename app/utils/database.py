@@ -123,6 +123,59 @@ def _create_tables(conn):
     except Exception:
         pass
 
+    # 聊天：会话表
+    # 说明：为从根源杜绝 direct 私聊重复会话，增加 direct_pair_key：
+    # - direct 私聊：存 "min_uid:max_uid"（例如 "1:10"）
+    # - 非 direct：可为空
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS chat_conversations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            c_type TEXT NOT NULL DEFAULT 'direct',
+            title TEXT,
+            direct_pair_key TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    # 兼容老库：补字段 direct_pair_key（如果不存在）
+    try:
+        cur = conn.cursor()
+        conv_cols = [r['name'] for r in cur.execute("PRAGMA table_info(chat_conversations)").fetchall()]
+        if 'direct_pair_key' not in conv_cols:
+            cur.execute('ALTER TABLE chat_conversations ADD COLUMN direct_pair_key TEXT')
+    except Exception:
+        pass
+
+    # 聊天：会话成员表
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS chat_members (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            conversation_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            role TEXT DEFAULT 'member',
+            last_read_message_id INTEGER DEFAULT 0,
+            joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(conversation_id, user_id),
+            FOREIGN KEY(conversation_id) REFERENCES chat_conversations(id) ON DELETE CASCADE,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    ''')
+
+    # 聊天：消息表
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS chat_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            conversation_id INTEGER NOT NULL,
+            sender_id INTEGER NOT NULL,
+            content TEXT NOT NULL,
+            content_type TEXT DEFAULT 'text',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(conversation_id) REFERENCES chat_conversations(id) ON DELETE CASCADE,
+            FOREIGN KEY(sender_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    ''')
+
     # 通知表
     conn.execute('''
         CREATE TABLE IF NOT EXISTS notifications (
@@ -177,6 +230,12 @@ def _create_indexes(conn):
         
         # 用户进度索引
         'CREATE INDEX IF NOT EXISTS idx_user_progress_key ON user_progress(user_id, p_key)',
+
+        # 聊天相关索引
+        'CREATE INDEX IF NOT EXISTS idx_chat_members_user ON chat_members(user_id, conversation_id)',
+        'CREATE INDEX IF NOT EXISTS idx_chat_messages_conversation ON chat_messages(conversation_id, id DESC)',
+        # direct 私聊唯一键：从根源杜绝重复会话（仅当 c_type='direct' 时生效）
+        "CREATE UNIQUE INDEX IF NOT EXISTS ux_chat_direct_pair ON chat_conversations(direct_pair_key) WHERE c_type='direct' AND direct_pair_key IS NOT NULL",
 
         # 通知相关索引
         'CREATE INDEX IF NOT EXISTS idx_notifications_active ON notifications(is_active, priority DESC)',

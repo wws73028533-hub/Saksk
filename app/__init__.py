@@ -27,7 +27,8 @@ def create_app(config_name=None):
         config_name = os.environ.get('FLASK_ENV', 'development')
     
     # 创建Flask应用
-    app = Flask(__name__)
+    # 显式指定 static_folder，避免在某些运行方式/工作目录下出现 /static 404
+    app = Flask(__name__, static_folder=os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static'), static_url_path='/static')
     
     # 加载配置
     app.config.from_object(config[config_name])

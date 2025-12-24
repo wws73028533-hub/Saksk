@@ -9,6 +9,7 @@ from .quiz import quiz_bp
 from .exam import exam_bp
 from .user import user_bp
 from .admin import admin_bp
+from .chat import chat_bp
 
 
 def register_all_routes(app):
@@ -33,5 +34,8 @@ def register_all_routes(app):
     
     # 注册管理后台蓝图
     app.register_blueprint(admin_bp)
+
+    # 注册聊天蓝图
+    app.register_blueprint(chat_bp)
     
-    app.logger.info('所有路由蓝图已注册 (7个蓝图)')
+    app.logger.info('所有路由蓝图已注册 (8个蓝图)')

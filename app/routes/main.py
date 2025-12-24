@@ -5,7 +5,6 @@
 from flask import Blueprint, render_template, request, session, redirect, send_from_directory, current_app
 import json
 import os
-import os
 from ..utils.database import get_db
 
 main_bp = Blueprint('main', __name__)

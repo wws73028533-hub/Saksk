@@ -9,21 +9,25 @@
     <meta name="theme-color" content="#f5f5f7">
     <style>
         :root {
-            --bg-color: #fafafa;
-            --card-bg: rgba(255, 255, 255, 0.75);
-            --card-bg-solid: rgba(255, 255, 255, 0.95);
+            --bg-color: #f5f5f7;
+            --card-bg: rgba(255, 255, 255, 0.72);
+            --card-bg-solid: rgba(255, 255, 255, 0.92);
             --text-color: #1d1d1f;
-            --text-sub: #86868b;
-            --border-color: rgba(255, 255, 255, 0.9);
+            --text-sub: #6e6e73;
+            --border-color: rgba(0, 0, 0, 0.06);
             --primary: #007AFF;
             --primary-light: rgba(0, 122, 255, 0.12);
-            --shadow: 0 2px 16px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
-            --shadow-hover: 0 4px 24px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.06);
+            --shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+            --shadow-hover: 0 14px 44px rgba(0, 0, 0, 0.10);
             --success: #34c759;
             --warning: #ff9500;
             --danger: #ff3b30;
-            --blur: blur(60px) saturate(200%);
-            --glow: 0 0 20px rgba(255, 255, 255, 0.3);
+            --blur: blur(40px) saturate(180%);
+            --radius-xl: 24px;
+            --radius-lg: 18px;
+            --radius-md: 14px;
+            --radius-sm: 12px;
+            --glow: 0 0 20px rgba(255, 255, 255, 0.22);
         }
 
         body.dark-mode {
@@ -76,13 +80,13 @@
             width: 100%;
             box-sizing: border-box;
             min-width: 0; /* 允许 flex item 收缩 */
-            padding: 14px 20px; 
+            padding: 14px 18px; 
             border: 0.5px solid rgba(0, 0, 0, 0.08); 
-            border-radius: 12px; 
+            border-radius: var(--radius-md); 
             font-size: 17px; 
-            background: rgba(255, 255, 255, 0.7);
-            backdrop-filter: blur(60px) saturate(200%);
-            -webkit-backdrop-filter: blur(60px) saturate(200%);
+            background: rgba(255, 255, 255, 0.72);
+            backdrop-filter: var(--blur);
+            -webkit-backdrop-filter: var(--blur);
             color: var(--text-color); 
             outline: none;
             transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
@@ -102,7 +106,7 @@
             content: '';
             position: absolute;
             inset: 0;
-            border-radius: 12px;
+            border-radius: var(--radius-sm);
             padding: 0.5px;
             background: rgba(255, 255, 255, 0.95);
             -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
@@ -196,34 +200,35 @@
             position: absolute;
             border-radius: 50%;
             filter: blur(120px);
-            opacity: 0.15;
+            opacity: 0.10;
         }
 
+        /* 单色（低饱和）光晕：遵循极简灰白调，不使用高饱和大色块 */
         .glow.glow1 {
-            width: 800px;
-            height: 800px;
-            background: #ff3b30;
-            top: -20%;
-            left: -20%;
-            animation: moveGlow1 25s infinite alternate;
+            width: 860px;
+            height: 860px;
+            background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.9), rgba(255,255,255,0));
+            top: -28%;
+            left: -22%;
+            animation: moveGlow1 26s infinite alternate;
         }
 
         .glow.glow2 {
-            width: 700px;
-            height: 700px;
-            background: #34c759;
-            bottom: -25%;
-            right: -15%;
-            animation: moveGlow2 28s infinite alternate;
+            width: 760px;
+            height: 760px;
+            background: radial-gradient(circle at 60% 60%, rgba(255,255,255,0.65), rgba(255,255,255,0));
+            bottom: -30%;
+            right: -18%;
+            animation: moveGlow2 30s infinite alternate;
         }
 
         .glow.glow3 {
-            width: 600px;
-            height: 600px;
-            background: #007aff;
-            top: 10%;
-            right: -20%;
-            animation: moveGlow3 32s infinite alternate;
+            width: 620px;
+            height: 620px;
+            background: radial-gradient(circle at 50% 40%, rgba(255,255,255,0.55), rgba(255,255,255,0));
+            top: 8%;
+            right: -22%;
+            animation: moveGlow3 34s infinite alternate;
         }
 
         @keyframes moveGlow1 {
@@ -286,22 +291,47 @@
         .user-area a:hover { color: var(--text-color); }
         .theme-toggle { 
             background: rgba(255, 255, 255, 0.7);
-            backdrop-filter: blur(60px) saturate(200%);
-            -webkit-backdrop-filter: blur(60px) saturate(200%);
-            border: 0.5px solid rgba(255, 255, 255, 0.95); 
-            border-radius: 50%; 
-            width: 44px; 
-            height: 44px; 
-            font-size: 20px; 
-            cursor: pointer; 
+            backdrop-filter: var(--blur);
+            -webkit-backdrop-filter: var(--blur);
+            border: 0.5px solid rgba(0, 0, 0, 0.06);
+            border-radius: 999px;
+            width: 44px;
+            height: 44px;
+            font-size: 18px;
+            cursor: pointer;
             color: var(--text-color);
-            display: flex;
+            display: inline-flex;
             align-items: center;
             justify-content: center;
             transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
             -webkit-tap-highlight-color: transparent;
             box-shadow: var(--shadow);
         }
+                .theme-toggle .theme-icon {
+            width: 20px;
+            height: 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        .theme-toggle .theme-icon img {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            filter: invert(var(--icon-invert, 0));
+        }
+        .theme-toggle .icon-sun { opacity: 1; transform: scale(1) rotate(0deg); }
+        .theme-toggle .icon-moon { opacity: 0; transform: scale(0) rotate(-90deg); }
+
+        body.dark-mode .theme-toggle .theme-icon {
+            --icon-invert: 1;
+        }
+        body.dark-mode .theme-toggle .icon-sun { opacity: 0; transform: scale(0) rotate(90deg); }
+        body.dark-mode .theme-toggle .icon-moon { opacity: 1; transform: scale(1) rotate(0deg); }
+
+
         .theme-toggle:hover {
             background: rgba(255, 255, 255, 0.85);
             transform: scale(1.05);
@@ -334,7 +364,7 @@
             -webkit-backdrop-filter: blur(60px) saturate(200%);
             color: var(--text-color); 
             border: 0.5px solid rgba(255, 255, 255, 0.95); 
-            border-radius: 20px; 
+            border-radius: var(--radius-xl); 
             cursor:pointer;
             transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
             box-shadow: var(--shadow);
@@ -384,24 +414,23 @@
         }
 
         .card {
-            background: rgba(255, 255, 255, 0.65);
-            backdrop-filter: blur(60px) saturate(200%);
-            -webkit-backdrop-filter: blur(60px) saturate(200%);
+            background: var(--card-bg);
+            backdrop-filter: var(--blur);
+            -webkit-backdrop-filter: var(--blur);
             padding: 32px;
-            border-radius: 20px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
-            border: 1px solid rgba(255, 255, 255, 0.8);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow);
+            transition: transform 0.24s ease, box-shadow 0.24s ease, border-color 0.24s ease, background-color 0.24s ease;
+            border: 0.5px solid rgba(0, 0, 0, 0.06);
             position: relative;
             overflow: hidden;
-
         }
         body.dark-mode .card {
-            background: rgba(28, 28, 30, 0.65);
-            backdrop-filter: blur(70px) saturate(200%);
-            -webkit-backdrop-filter: blur(70px) saturate(200%);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 10px 50px rgba(0,0,0,0.3);
+            background: rgba(28, 28, 30, 0.62);
+            backdrop-filter: blur(48px) saturate(160%);
+            -webkit-backdrop-filter: blur(48px) saturate(160%);
+            border: 0.5px solid rgba(255, 255, 255, 0.10);
+            box-shadow: 0 12px 54px rgba(0,0,0,0.35);
         }
 
         /* 细白描边 - 苹果风格 */
@@ -409,7 +438,7 @@
             content: '';
             position: absolute;
             inset: 0;
-            border-radius: 20px;
+            border-radius: var(--radius-xl);
             padding: 0.5px;
             background: rgba(255, 255, 255, 0.95);
             -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
@@ -437,7 +466,7 @@
                 rgba(255, 255, 255, 0.15) 50%,
                 transparent 100%
             );
-            border-radius: 20px 20px 0 0;
+            border-radius: var(--radius-xl) var(--radius-xl) 0 0;
             pointer-events: none;
             z-index: 2;
         }
@@ -451,16 +480,16 @@
         }
 
         .card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 15px 50px rgba(0,0,0,0.15);
-            border-color: rgba(255, 255, 255, 1);
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-hover);
+            border-color: rgba(0, 0, 0, 0.08);
         }
 
         body.dark-mode .card:hover {
-            transform: translateY(-4px);
-            border-color: rgba(255, 255, 255, 0.2);
-            background: rgba(28, 28, 30, 0.75);
-            box-shadow: 0 15px 60px rgba(0,0,0,0.4);
+            transform: translateY(-3px);
+            border-color: rgba(255, 255, 255, 0.16);
+            background: rgba(28, 28, 30, 0.70);
+            box-shadow: 0 18px 66px rgba(0,0,0,0.45);
         }
 
         .card > * {
@@ -492,7 +521,7 @@
             font-size: 13px;
             font-weight: 500;
             padding: 6px 14px;
-            border-radius: 12px;
+            border-radius: var(--radius-sm);
             background: rgba(0, 0, 0, 0.03);
             color: var(--text-color);
             border: 0.5px solid rgba(0, 0, 0, 0.06);
@@ -541,7 +570,7 @@
         .chip { 
             padding: 8px 16px; 
             border: 0.5px solid rgba(0, 0, 0, 0.08);
-            border-radius: 16px; 
+            border-radius: var(--radius-lg); 
             cursor: pointer; 
             background: rgba(255, 255, 255, 0.65);
             backdrop-filter: blur(40px) saturate(180%);
@@ -615,7 +644,7 @@
         .btn {
             padding: 12px 24px;
             border: none;
-            border-radius: 12px;
+            border-radius: var(--radius-sm);
             font-size: 17px;
             cursor: pointer;
             transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
@@ -758,46 +787,50 @@
             background: rgba(0,0,0,0.15);
             color: var(--text-color);
             padding: 4px 10px;
-            border-radius: 12px;
+            border-radius: var(--radius-sm);
             font-size: 13px;
             font-weight: 600;
             min-width: 24px;
             text-align: center;
         }
+        /*
+         * 单色化按钮：收藏/错题/开始考试不再强调“警告/危险”配色，
+         * 统一为灰白玻璃按钮，仅在文字/微弱描边上体现层级。
+         */
         .btn-warning, .btn-danger, .btn-success { 
-            background: rgba(255, 255, 255, 0.65);
-            backdrop-filter: blur(40px) saturate(180%);
-            -webkit-backdrop-filter: blur(40px) saturate(180%);
+            background: rgba(255, 255, 255, 0.62);
+            backdrop-filter: blur(36px) saturate(160%);
+            -webkit-backdrop-filter: blur(36px) saturate(160%);
             color: var(--text-color);
             border: 0.5px solid rgba(0, 0, 0, 0.08);
-            box-shadow: 
-                0 1px 2px rgba(0, 0, 0, 0.04),
-                0 0 0 0.5px rgba(255, 255, 255, 0.9) inset;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
             font-weight: 500;
         }
         .btn-warning:hover, .btn-danger:hover, .btn-success:hover {
-            background: rgba(255, 255, 255, 0.85);
-            border-color: rgba(0, 0, 0, 0.1);
-            box-shadow: 
-                0 2px 4px rgba(0, 0, 0, 0.06),
-                0 0 0 0.5px rgba(255, 255, 255, 1) inset;
+            background: rgba(255, 255, 255, 0.80);
+            border-color: rgba(0, 0, 0, 0.10);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
             transform: translateY(-1px);
         }
         body.dark-mode .btn-warning, body.dark-mode .btn-danger, body.dark-mode .btn-success {
-            background: rgba(28, 28, 30, 0.6);
+            background: rgba(28, 28, 30, 0.60);
             border-color: rgba(255, 255, 255, 0.12);
             color: var(--text-color);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
         }
         body.dark-mode .btn-warning:hover, body.dark-mode .btn-danger:hover, body.dark-mode .btn-success:hover {
-            background: rgba(28, 28, 30, 0.75);
+            background: rgba(28, 28, 30, 0.72);
             border-color: rgba(255, 255, 255, 0.18);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
         }
+
+        /* Badge 统一灰阶 */
         .btn-warning .btn-badge, .btn-danger .btn-badge { 
             background: rgba(0,0,0,0.08); 
             color: var(--text-sub); 
         }
         body.dark-mode .btn-warning .btn-badge, body.dark-mode .btn-danger .btn-badge {
-            background: rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.10);
             color: var(--text-sub);
         }
 
@@ -809,37 +842,14 @@
             color: var(--text-color);
         }
 
-        body.dark-mode .btn-warning {
-            background: rgba(255, 149, 0, 0.15);
-            backdrop-filter: blur(40px) saturate(180%);
-            -webkit-backdrop-filter: blur(40px) saturate(180%);
-            border-color: rgba(255, 149, 0, 0.3);
-            box-shadow: 
-                0 1px 2px rgba(255, 149, 0, 0.15),
-                0 0 0 0.5px rgba(255, 255, 255, 0.08) inset;
-        }
-        body.dark-mode .btn-warning:hover {
-            background: rgba(255, 149, 0, 0.2);
-            border-color: rgba(255, 149, 0, 0.4);
-            box-shadow: 
-                0 2px 4px rgba(255, 149, 0, 0.2),
-                0 0 0 0.5px rgba(255, 255, 255, 0.1) inset;
-        }
-        body.dark-mode .btn-danger {
-            background: rgba(255, 59, 48, 0.15);
-            backdrop-filter: blur(40px) saturate(180%);
-            -webkit-backdrop-filter: blur(40px) saturate(180%);
-            border-color: rgba(255, 59, 48, 0.3);
-            box-shadow: 
-                0 1px 2px rgba(255, 59, 48, 0.15),
-                0 0 0 0.5px rgba(255, 255, 255, 0.08) inset;
-        }
+        /* 深色模式下也保持单色，不再注入橙/红的强调色 */
+        body.dark-mode .btn-warning,
+        body.dark-mode .btn-warning:hover,
+        body.dark-mode .btn-danger,
         body.dark-mode .btn-danger:hover {
-            background: rgba(255, 59, 48, 0.2);
-            border-color: rgba(255, 59, 48, 0.4);
-            box-shadow: 
-                0 2px 4px rgba(255, 59, 48, 0.2),
-                0 0 0 0.5px rgba(255, 255, 255, 0.1) inset;
+            background: rgba(28, 28, 30, 0.60);
+            border-color: rgba(255, 255, 255, 0.16);
+            box-shadow: 0 6px 22px rgba(0,0,0,0.35);
         }
 
 
@@ -871,7 +881,7 @@
             backdrop-filter: blur(60px) saturate(200%);
             -webkit-backdrop-filter: blur(60px) saturate(200%);
             padding: 20px;
-            border-radius: 12px;
+            border-radius: var(--radius-sm);
             text-align: center;
             box-shadow: var(--shadow);
             border: 0.5px solid rgba(255, 255, 255, 0.95);
@@ -951,7 +961,7 @@
             backdrop-filter: blur(60px) saturate(200%);
             -webkit-backdrop-filter: blur(60px) saturate(200%);
             padding: 32px; 
-            border-radius: 20px; 
+            border-radius: var(--radius-xl); 
             width: 380px; 
             text-align: left; 
             animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); 
@@ -1159,7 +1169,7 @@
             align-items: flex-start;
             gap: 12px;
             padding: 16px 20px;
-            border-radius: 16px;
+            border-radius: var(--radius-lg);
             margin-bottom: 12px;
             animation: slideDown 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
@@ -1183,7 +1193,7 @@
             content: '';
             position: absolute;
             inset: 0;
-            border-radius: 16px;
+            border-radius: var(--radius-lg);
             padding: 0.5px;
             background: rgba(255, 255, 255, 0.95);
             -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
@@ -1205,7 +1215,7 @@
                 rgba(255, 255, 255, 0.15) 50%,
                 transparent 100%
             );
-            border-radius: 16px 16px 0 0;
+            border-radius: var(--radius-lg) var(--radius-lg) 0 0;
             pointer-events: none;
             z-index: 2;
         }
@@ -1409,7 +1419,7 @@
             padding: 10px 14px;
             background: rgba(142, 142, 147, 0.08);
             border: 0.5px solid var(--border-color);
-            border-radius: 12px;
+            border-radius: var(--radius-sm);
             font-size: 14px;
             color: var(--text-sub);
             cursor: pointer;
@@ -1507,6 +1517,7 @@
             <div class="user-area">
                 <div class="user-menu" id="userMenu">
                     {% if logged_in %}
+                        <a class="btn btn-secondary" href="/chat" style="text-decoration:none; position:relative; overflow: visible;" id="chatEntry">聊天<span id="chatUnreadBadge" style="display:none; position:absolute; top:-10px; right:-10px; min-width:18px; height:18px; padding:0 6px; border-radius:999px; background: var(--danger); color:#fff; font-size:11px; font-weight:700; line-height:18px; text-align:center; box-shadow: 0 4px 10px rgba(0,0,0,0.15);">0</span></a>
                         <a class="menu-btn" href="/user_hub" style="text-decoration: none;">
                             <span class="avatar" id="headerAvatar">
                                 <span id="headerAvatarText">{{ (username or 'U')[:1]|upper }}</span>
@@ -1518,7 +1529,12 @@
                         <a class="btn btn-primary" href="/register">注册</a>
                     {% endif %}
                 </div>
-                <button class="theme-toggle" onclick="toggleTheme()">🌓</button>
+                <button class="theme-toggle" onclick="toggleTheme()" aria-label="切换深色模式">
+                    <span class="theme-icon" aria-hidden="true">
+                        <img src="/static/icons/theme-sun.svg" class="icon-sun" alt="" onerror="this.style.display='none'">
+                        <img src="/static/icons/theme-moon.svg" class="icon-moon" alt="" onerror="this.style.display='none'">
+                    </span>
+                </button>
             </div>
         </header>
 
@@ -1589,15 +1605,15 @@
                 <div class="card card-secondary">
                     <h2>我的题库</h2>
                     <div class="btn-list">
-                        <button class="btn btn-warning btn-with-badge btn-neutral-text" onclick="go('favorites', this)">
-                            <span>⭐ 收藏</span>
+                        <button class="btn btn-warning btn-with-badge btn-neutral-text" onclick="go('favorites', this)" aria-label="查看收藏">
+                            <span>收藏</span>
                             <span class="btn-badge" id="favBadge">{{ fav_count }}</span>
                         </button>
                         <button class="btn btn-warning btn-neutral-text btn-compact" onclick="go('memo', this, { source: 'favorites', countMode: 'favorites' })">
                             <span>背题</span>
                         </button>
-                        <button class="btn btn-danger btn-with-badge btn-neutral-text" onclick="go('mistakes', this)">
-                            <span>📕 错题</span>
+                        <button class="btn btn-danger btn-with-badge btn-neutral-text" onclick="go('mistakes', this)" aria-label="查看错题">
+                            <span>错题</span>
                             <span class="btn-badge" id="misBadge">{{ mistake_count }}</span>
                         </button>
                         <button class="btn btn-danger btn-neutral-text btn-compact" onclick="go('memo', this, { source: 'mistakes', countMode: 'mistakes' })">
@@ -1624,9 +1640,9 @@
     <!-- 模拟考试弹窗 (结构不变) -->
     <div class="modal-overlay" id="examModal">
         <div class="modal">
-            <h3 style="margin-top:0; color:var(--text-color);">⏰ 考试参数设置</h3>
+            <h3 style="margin-top:0; color:var(--text-color);">考试参数设置</h3>
             <div class="control-group">
-                <label>📂 考试科目</label>
+                <label>考试科目</label>
                 <select id="exam_subject">
                     {% for sub in subjects %}
                     <option value="{{ sub }}">{{ sub }}</option>
@@ -1634,11 +1650,11 @@
                 </select>
             </div>
             <div class="control-group">
-                <label>⏱️ 考试时长 (分钟)</label>
+                <label>考试时长 (分钟)</label>
                 <input type="number" id="exam_duration" value="60">
             </div>
             <div class="control-group">
-                <label>📋 模板</label>
+                <label>模板</label>
                 <div class="flex-row" style="gap:8px; align-items:center;">
                     <select id="exam_template" style="flex:1;">
                         <option value="">不使用模板（自定义）</option>
@@ -2315,6 +2331,37 @@
         // 页面加载时加载头像
         if (LOGGED_IN) {
             loadHeaderAvatar();
+        }
+
+        // 聊天未读提醒
+        async function updateChatUnreadBadge(){
+            if (!LOGGED_IN) return;
+            const badge = document.getElementById('chatUnreadBadge');
+            if (!badge) return;
+            try {
+                const res = await fetch('/api/chat/unread_count');
+                const js = await res.json();
+                if (res.ok && js && js.status === 'success') {
+                    const cnt = Number(js.count || 0);
+                    if (cnt > 0) {
+                        badge.textContent = cnt > 99 ? '99+' : String(cnt);
+                        badge.style.display = 'inline-flex';
+                        badge.style.alignItems = 'center';
+                        badge.style.justifyContent = 'center';
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                }
+            } catch(e) {
+                // 忽略错误
+            }
+        }
+        if (LOGGED_IN) {
+            updateChatUnreadBadge();
+            setInterval(updateChatUnreadBadge, 5000);
+            document.addEventListener('visibilitychange', function(){
+                if (document.visibilityState === 'visible') updateChatUnreadBadge();
+            });
         }
     </script>
 </body>
