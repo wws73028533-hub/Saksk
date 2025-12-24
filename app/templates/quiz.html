@@ -2083,7 +2083,7 @@
             const diffY = endY - startY;
 
             // Only trigger if horizontal swipe is significant and vertical swipe is not
-            if (Math.abs(diffX) > 50 && Math.abs(diffY) < 50) {
+            if (Math.abs(diffX) > 200 && Math.abs(diffY) < 200) {
                 if (diffX < 0) {
                     // Swiped left
                     nextQuestion();
