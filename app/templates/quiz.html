@@ -797,6 +797,31 @@
             /* 覆盖成绩弹窗宽度 */
             .overlay .card-container.score-modal { width: 90vw !important; }
         }
+
+        .shortcut-hint {
+            position: fixed;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--card-bg-solid);
+            color: var(--text-sub);
+            padding: 8px 16px;
+            border-radius: 16px;
+            font-size: 13px;
+            z-index: 1000;
+            opacity: 0.8;
+            transition: opacity 0.3s;
+            pointer-events: none; /* So it doesn't block clicks */
+            box-shadow: var(--shadow);
+            border: 0.5px solid var(--border-color);
+            white-space: nowrap;
+        }
+
+        @media (max-width: 768px) {
+            .shortcut-hint {
+                display: none; /* On mobile, hide the hint to save space */
+            }
+        }
     </style>
 </head>
 <body class="{{ 'memo-mode' if mode == 'memo' else ('exam-mode' if mode == 'exam' else '') }}">
@@ -964,7 +989,7 @@
                     <button class="btn btn-submit" id="btn-submit-exam" onclick="submitExam()">交卷</button>
                     <button class="btn btn-nav" id="btn-next-exam" onclick="nextQuestion()">下一题 →</button>
                 {% else %}
-                    <button class="btn btn-check" onclick="checkAnswer(true)" id="btn-check" style="display: {{ 'none' if mode == 'memo' else 'block' }}">👀 查看结果 (Enter)</button>
+                    <button class="btn btn-check" onclick="checkAnswer(true)" id="btn-check" style="display: {{ 'none' if mode == 'memo' else 'block' }}">👀 查看结果</button>
                     <button class="btn btn-next-green" onclick="nextQuestion()" id="btn-next" style="display: {{ 'block' if mode == 'memo' else 'none' }}">下一题 (Enter) →</button>
                 {% endif %}
             </div>
@@ -1216,6 +1241,16 @@
             const answer = currentQ.getAttribute('data-answer');
             const analysisBox = currentQ.querySelector('.analysis-box');
             setupImageGallery(currentQ);
+
+            // 自动聚焦填空题/问答题输入框
+            const qType = currentQ.getAttribute('data-type');
+            if (qType === '填空题' || qType === '问答题') {
+                const inputField = currentQ.querySelector('.main-input, textarea');
+                if (inputField && !inputField.disabled) {
+                    // 动画结束后聚焦，以确保元素可见
+                    setTimeout(() => inputField.focus(), 400); 
+                }
+            }
 
             const btnPrev = document.getElementById('btn-prev');
             btnPrev.disabled = (index === 0);
@@ -1747,13 +1782,46 @@
             } catch(e) {}
         }
         
+        function resetQuizUI(){
+            // 清空列表状态
+            document.querySelectorAll('.q-item').forEach(item=>{
+                item.classList.remove('done-correct','done-wrong','answered');
+            });
+            // 清空题目状态
+            questions.forEach((q)=>{
+                q.classList.remove('checked-mode');
+                // 取消选中和禁用
+                q.querySelectorAll('input, textarea').forEach(el=>{
+                    el.disabled=false;
+                    if(el.type==='checkbox' || el.type==='radio') el.checked=false;
+                    else el.value='';
+                });
+                // 去掉高亮
+                q.querySelectorAll('.correct-opt, .wrong-opt, .input-correct, .input-wrong').forEach(el=>{
+                    el.classList.remove('correct-opt','wrong-opt','input-correct','input-wrong');
+                });
+                // 隐藏解析
+                const ab = q.querySelector('.analysis-box');
+                if(ab){ab.style.display='none';ab.classList.remove('show');}
+            });
+            // 重置按钮显示状态
+            const btnCheck=document.getElementById('btn-check');
+            const btnNext=document.getElementById('btn-next');
+            if(btnCheck) btnCheck.style.display='block';
+            if(btnNext) btnNext.style.display='none';
+
+            currentIndex=0;
+            showQuestion(0);
+        }
+
         async function clearProgress(confirmMsg = "确定要清除当前模式的做题进度吗？") {
             if(confirm(confirmMsg)) {
                 localStorage.removeItem(progressKey());
                 if (LOGGED_IN) {
                     try { await fetch(`/api/progress?key=${encodeURIComponent(progressKey())}`, { method: 'DELETE' }); } catch(e) {}
                 }
-                // window.location.reload(); // No longer reloads, just clears data
+                resetQuizUI(); // Reset the UI to its initial state
+                showToast('进度已清除');
                 return true; // Indicates data was cleared
             }
             return false; // User cancelled
@@ -1992,19 +2060,117 @@
             }, 5000);
         }
 
+        // Mobile swipe gesture for next/prev question
+        const mainCard = document.getElementById('mainCard');
+        if (mainCard) {
+            let touchStartX = 0;
+            let touchStartY = 0;
+
+            mainCard.addEventListener('touchstart', e => {
+                touchStartX = e.changedTouches[0].screenX;
+                touchStartY = e.changedTouches[0].screenY;
+            }, { passive: true });
+
+            mainCard.addEventListener('touchend', e => {
+                const touchEndX = e.changedTouches[0].screenX;
+                const touchEndY = e.changedTouches[0].screenY;
+                handleSwipe(touchStartX, touchStartY, touchEndX, touchEndY);
+            }, { passive: true });
+        }
+
+        function handleSwipe(startX, startY, endX, endY) {
+            const diffX = endX - startX;
+            const diffY = endY - startY;
+
+            // Only trigger if horizontal swipe is significant and vertical swipe is not
+            if (Math.abs(diffX) > 50 && Math.abs(diffY) < 50) {
+                if (diffX < 0) {
+                    // Swiped left
+                    nextQuestion();
+                } else {
+                    // Swiped right
+                    prevQuestion();
+                }
+            }
+        }
+
         init();
 
         document.addEventListener('keydown', function(e) {
-            // 只在填空题时响应回车
+            const isInputFocused = document.activeElement.tagName === 'INPUT';
+            const isTextareaFocused = document.activeElement.tagName === 'TEXTAREA';
+
+            // 如果成绩弹窗显示，则禁用所有快捷键
+            if (document.getElementById('scoreOverlay').style.display === 'flex') {
+                return;
+            }
+
+            // Enter 键的逻辑
             if (e.key === 'Enter') {
-                const input = document.querySelector('.main-input[type="text"]:not([disabled])');
-                if (input && input === document.activeElement) {
-                    // 触发“查看结果”按钮点击
-                    const btn = document.getElementById('btn-check');
-                    if (btn && btn.style.display !== 'none') {
-                        btn.click();
-                    }
+                // 当焦点在问答题的文本域时，允许默认的换行行为
+                if (isTextareaFocused) {
+                    return;
                 }
+                // 阻止其他所有 Enter 的默认行为（比如表单提交）
+                e.preventDefault();
+
+                // 优先点击“下一题”按钮（包括普通模式和考试模式）
+                const btnNext = document.getElementById('btn-next');
+                if (btnNext && btnNext.style.display !== 'none') {
+                    btnNext.click();
+                    return;
+                }
+                const btnNextExam = document.getElementById('btn-next-exam');
+                if (btnNextExam && btnNextExam.style.display !== 'none') {
+                    btnNextExam.click();
+                    return;
+                }
+                
+                // 其次，点击“查看结果”按钮
+                const btnCheck = document.getElementById('btn-check');
+                if (btnCheck && btnCheck.style.display !== 'none') {
+                    btnCheck.click();
+                    return;
+                }
+                return; // Enter 键逻辑处理完毕
+            }
+
+            // 如果焦点在任何输入框或文本域中，则不触发以下的快捷键
+            if (isInputFocused || isTextareaFocused) {
+                return;
+            }
+
+            const currentQ = questions[currentIndex];
+            if (!currentQ) return;
+            const options = currentQ.querySelectorAll('.options label');
+
+            switch (e.key) {
+                case '1':
+                case '2':
+                case '3':
+                case '4':
+                    e.preventDefault();
+                    const optionIndex = parseInt(e.key) - 1;
+                    if (options[optionIndex]) {
+                        options[optionIndex].querySelector('input').click();
+                    }
+                    break;
+                case 'ArrowLeft':
+                    e.preventDefault();
+                    prevQuestion();
+                    break;
+                case 'ArrowRight':
+                    e.preventDefault();
+                    nextQuestion();
+                    break;
+                case 'f':
+                case 'F':
+                    e.preventDefault();
+                    const favBtn = currentQ.querySelector('.fav-btn');
+                    if (favBtn) {
+                        favBtn.click();
+                    }
+                    break;
             }
         });
 
@@ -2090,5 +2256,6 @@
             window.location.href = url.toString();
         }
     </script>
+    <div class="shortcut-hint">⌨️ 快捷键：1~4 选择 A-D ・ ←/→ 上/下一题 ・ Enter 查看结果/下一题 ・ F 收藏/取消收藏</div>
 </body>
 </html>
