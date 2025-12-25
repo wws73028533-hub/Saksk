@@ -23,6 +23,8 @@
 | **聊天** | **站内私聊（轮询）** | `/chat` 聊天主页面，支持会话列表、消息拉取与已读推进 |
 |        | **图片消息** | 发送图片、弹层预览、拖拽/粘贴发送；支持缩略图以减少流量 |
 |        | **语音消息** | 按住说话、松开发送；上滑取消；单次仅播放一条语音；气泡仅显示播放键+时长 |
+|        | **用户备注** | 给对方设置仅自己可见的备注；会话列表/标题优先显示备注 |
+|        | **好友资料页（类似微信）** | 点击头像/“资料”进入资料页：备注内联编辑、右上角“···”菜单、朋友圈预览（占位）、底部“发消息/音视频通话（占位）” |
 |        | **会话去重（强约束）** | direct 私聊使用 `direct_pair_key` + SQLite 唯一索引，从根源杜绝重复会话 |
 | 系统 | 安全 | 密码哈希 (Werkzeug)、会话版本控制、速率限制 (Flask-Limiter) |
 |      | 日志 | `logs/app.log` 支持滚动日志文件 |
@@ -110,25 +112,38 @@
 
 ### 主要能力
 - 1v1 私聊会话（direct）
-- 会话列表显示：对方头像/昵称、最后一条消息、未读数
+- 会话列表显示：对方头像/显示名（备注优先）、最后一条消息、未读数
 - 消息类型：
   - 文本消息
   - 图片消息（列表优先显示缩略图，点击弹层查看大图）
+  - 语音消息（按住说话，松开发送，上滑取消）
 - 交互增强：
   - 轮询拉取新消息（不使用 WebSocket）
   - 发送失败可重试
   - 拖拽/粘贴图片直接发送
+  - 输入区更像移动端 IM：有文字时显示“绿色圆形上箭头发送”，无文字时显示麦克风；左侧“+”菜单（图片/文件占位）
+- 用户备注：
+  - 备注仅自己可见
+  - 会话列表/标题优先显示备注
+- 好友资料页（类似微信）：
+  - 点击会话头像/消息头像/聊天头部“资料”进入
+  - 顶部导航（返回箭头 + 右上角“···”菜单）
+  - 备注内联编辑（输入框 + 保存/清除/取消）
+  - “朋友圈”预览区块（占位）
+  - 底部按钮：发消息 / 音视频通话（占位）
 
 ### 后端关键路由（`app/routes/chat.py`）
 - `GET  /chat`：聊天页面
-- `GET  /api/chat/users?q=...`：搜索用户
+- `GET  /api/chat/users?q=...`：搜索用户（排序：精确命中优先、前缀命中其次）
 - `POST /api/chat/conversations/create`：创建/复用会话
-- `GET  /api/chat/conversations`：会话列表（含未读数、最后消息摘要）
+- `GET  /api/chat/conversations`：会话列表（含未读数、最后消息摘要、对方备注 `peer_remark`）
 - `GET  /api/chat/messages?conversation_id=...&after_id=...&limit=...`：增量拉取消息并推进已读
 - `POST /api/chat/messages/send`：发送文本
 - `POST /api/chat/messages/upload_image`：上传图片并发为消息（支持 `thumb` 缩略图）
 - `POST /api/chat/messages/upload_audio`：上传语音并发为消息（支持 `duration` 秒）
 - `GET  /api/chat/unread_count`：总未读数（首页角标）
+- `GET/POST /api/chat/user_remark`：读取/设置备注（空字符串表示清除）
+- `GET  /api/chat/user_profile?user_id=...`：好友资料（公开字段 + 我对TA的备注）
 
 ### 时间显示说明（重要）
 - 数据库 `CURRENT_TIMESTAMP` 在 SQLite 中通常为 **UTC**。
@@ -138,7 +153,14 @@
 
 ## ⚙️ 数据库初始化
 
-应用启动时会自动检测并在 `instance/` 目录创建所需的 SQLite 数据库 (`submissions.db`, `quiz.db` 等)。若需手动重置，可删除对应文件或在 Flask Shell 中运行 `from app.utils.database import init_db; init_db()`
+应用启动时会自动检测并在 `instance/` 目录创建所需的 SQLite 数据库 (`submissions.db`, `quiz.db` 等)。
+
+若需手动重置，可删除对应文件或在 Flask Shell 中运行：
+
+```python
+from app.utils.database import init_db
+init_db()
+```
 
 ---
 

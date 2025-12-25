@@ -81,6 +81,16 @@
 
     .conv-list{ overflow:auto; padding: var(--space-2); display:flex; flex-direction:column; gap:var(--space-1); }
     .avatar{ width:44px; height:44px; border-radius:50%; background:var(--other); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:500; font-size:18px; background-size:cover; background-position:center; overflow:hidden; flex-shrink:0; }
+
+    /* 资料页头像：独立样式，避免被 .avatar(圆形) 影响 */
+    .profile-avatar{
+      width:72px;
+      height:72px;
+      border-radius:16px !important;
+      background-size: cover !important;
+      background-position: center !important;
+      background-repeat: no-repeat !important;
+    }
     .conv-item{ padding: var(--space-2); border-radius: var(--radius-lg); cursor:pointer; display:flex; gap: var(--space-2); align-items:center;
       border: var(--line) solid transparent;
       background: transparent;
@@ -155,55 +165,123 @@
 
     .chat-img{ max-width: 280px; max-height: 280px; border-radius: var(--radius-lg); display:block; cursor: zoom-in; }
 
-    .composer{ padding: var(--space-2) var(--space-3); border-top:var(--line) solid var(--border); background: var(--card2);
-      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
-      display:flex; gap: var(--space-2); align-items:flex-end;
+    /* 输入区改成类似 iOS 信息的风格：左侧“+”圆按钮，中间圆角胶囊输入框，右侧语音（或发送） */
+    .composer{
+      padding: 10px 14px;
+      border-top: var(--line) solid var(--border);
+      background: var(--card2);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      display:flex;
+      gap: 10px;
+      align-items:center;
+      min-height: 64px;
+      box-sizing: border-box;
     }
 
+    /* 左侧 + 圆按钮 */
+    .composer .btn-plus{
+      width: 44px;
+      height: 44px;
+      border-radius: 999px;
+      background: rgba(142,142,147,0.10);
+      border: var(--line) solid var(--border);
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      flex-shrink: 0;
+    }
+    body.dark-mode .composer .btn-plus{
+      background: rgba(142,142,147,0.16);
+    }
+
+    /* 中间胶囊输入框 */
     .composer .pill{
+      flex: 1;
       display:flex;
-      align-items:flex-end;
-      gap: var(--space-2);
-      width:100%;
-      padding: var(--space-1);
-      border-radius: var(--radius-lg);
-      border: var(--line) solid transparent;
-      background: var(--other);
-      transition: border-color .2s ease, box-shadow .2s ease;
+      align-items:center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: var(--line) solid rgba(0,0,0,0.06);
+      background: rgba(142,142,147,0.08);
+      box-shadow:
+        0 1px 0 rgba(0,0,0,0.04) inset,
+        0 10px 26px rgba(0,0,0,0.06);
+      transition: box-shadow .2s ease, border-color .2s ease, background .2s ease;
+      min-height: 46px;
+      box-sizing: border-box;
     }
     body.dark-mode .composer .pill{
-      background: var(--other);
+      border-color: rgba(255,255,255,0.12);
+      background: rgba(142,142,147,0.14);
+      box-shadow:
+        0 1px 0 rgba(255,255,255,0.06) inset,
+        0 12px 28px rgba(0,0,0,0.55);
+    }
+    .composer .pill:focus-within{
+      border-color: rgba(52,199,89,0.40);
+      box-shadow:
+        0 1px 0 rgba(0,0,0,0.04) inset,
+        0 0 0 4px rgba(52,199,89,0.18);
     }
 
-    .composer textarea{ flex:1; resize:none; min-height: 24px; max-height: 140px; padding: var(--space-2) 0;
+    .composer textarea{
+      flex:1;
+      resize:none;
+      height: 24px;
+      min-height: 24px;
+      max-height: 80px;
       border: none;
       background: transparent;
       color: var(--text);
       outline:none;
-      font-size: 15px;
-      line-height: 1.5;
+      font-size: 16px;
+      line-height: 24px;
+      padding: 0;
+      overflow-y: auto;
     }
-    .composer textarea:focus{ box-shadow: none; }
 
+    /* pill 内图标按钮（图片/语音） */
     .composer .btn-icon{
       width: 38px;
       height: 38px;
       padding: 0;
-      border-radius: var(--radius-md);
+      border-radius: 999px;
       display:inline-flex;
       align-items:center;
       justify-content:center;
       background: transparent;
       border: none;
+      color: var(--sub);
+      flex-shrink: 0;
     }
+    .composer .btn-icon:hover{ background: rgba(142,142,147,0.12); }
+    body.dark-mode .composer .btn-icon:hover{ background: rgba(142,142,147,0.20); }
 
+    /* 发送按钮：改为更克制的圆角小按钮（不抢输入框风格） */
     .composer .btn-send{
-      height: 38px;
-      padding: 0 14px;
-      border-radius: var(--radius-md);
+      /* 发送按钮改成输入框内的“绿色圆形上箭头” */
+      width: 42px;
+      height: 42px;
+      padding: 0;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      flex-shrink: 0;
+      box-shadow: 0 10px 22px rgba(52,199,89,0.25);
     }
-
-    .composer .pill:focus-within{ box-shadow: 0 0 0 3px rgba(0,122,255,0.2); border-color: rgba(0,122,255,0.3); }
+    body.dark-mode .composer .btn-send{
+      box-shadow: 0 14px 26px rgba(0,0,0,0.55);
+    }
+    .composer .btn-send svg{ display:block; }
+    .composer .btn-send:hover{ filter: brightness(0.98); }
+    .composer .btn-send:active{ transform: scale(0.98); }
 
     /* 移动端：侧栏变抽屉 */
     .overlay{ display:none; position:fixed; inset:0; background: rgba(0,0,0,0.35); z-index:19; }
@@ -225,6 +303,18 @@
       border: 1px solid rgba(255,255,255,0.25); color:#fff; background: rgba(0,0,0,0.35); cursor:pointer; font-size: 22px; line-height: 36px; text-align:center; }
     .img-modal .hint{ position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); color: rgba(255,255,255,0.85);
       font-size: 12px; background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.18); border-radius: 999px; padding: 6px 10px; }
+
+    /* + 菜单（类似信息/RCS） */
+    .plus-menu{ position: fixed; z-index: 3200; display:none; background: var(--card2); border: 1px solid var(--border);
+      border-radius: 16px; box-shadow: var(--shadow); padding: 8px; min-width: 180px;
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+    }
+    .plus-menu.show{ display:block; }
+    .plus-menu .item{ display:flex; align-items:center; gap:10px; padding: 10px 12px; border-radius: 12px; cursor:pointer; }
+    .plus-menu .item:hover{ background: rgba(142,142,147,0.12); }
+    body.dark-mode .plus-menu .item:hover{ background: rgba(142,142,147,0.18); }
+    .plus-menu .item svg{ width:18px; height:18px; }
+    .plus-menu .item .t{ font-size: 14px; }
 
     /* Toast */
     #toast{ position: fixed; top: 18px; left: 50%; transform: translateX(-50%);
@@ -266,6 +356,125 @@
 <body>
   <div id="toast"></div>
 
+  <!-- + 菜单：图片/文件（后续可扩展拍照/位置等） -->
+  <div class="plus-menu" id="plusMenu">
+    <div class="item" onclick="onPlusPick('image')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21 19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14Z"/>
+        <path d="M8.5 10.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"/>
+        <path d="M21 15l-5-5L5 21"/>
+      </svg>
+      <div class="t">图片</div>
+    </div>
+    <div class="item" onclick="onPlusPick('file')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <path d="M14 2v6h6"/>
+      </svg>
+      <div class="t">文件（未实现）</div>
+    </div>
+  </div>
+
+  <!-- 好友资料页（弹层） -->
+  <div class="img-modal" id="userProfileModal" onclick="closeUserProfileModal(event)">
+    <!-- 资料页更多菜单 -->
+    <div class="plus-menu" id="profileMenu" style="min-width: 220px;">
+      <div class="item" onclick="profileMenuAction('edit_remark')"><div class="t">设置备注</div></div>
+      <div class="item" onclick="profileMenuAction('clear_remark')"><div class="t">清除备注</div></div>
+      <div class="item" onclick="profileMenuAction('copy_username')"><div class="t">复制用户名</div></div>
+      <div class="item" onclick="profileMenuAction('copy_id')"><div class="t">复制 ID</div></div>
+    </div>
+    <div class="card" style="width:min(92vw,640px); max-height: 86vh; overflow:auto; background: var(--card2); border: 1px solid var(--border); border-radius: 18px; box-shadow: var(--shadow);" onclick="event.stopPropagation()">
+      <!-- 顶部导航：返回 + 右上角更多 -->
+      <div style="position:sticky; top:0; z-index:5; display:flex; align-items:center; justify-content:space-between; padding: 12px 12px; background: var(--card2); border-bottom: 1px solid var(--border);">
+        <button class="btn" type="button" onclick="closeUserProfileModal()" aria-label="返回" title="返回" style="width:44px; height:36px; padding:0; border-radius: 12px; display:inline-flex; align-items:center; justify-content:center;">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M15 18l-6-6 6-6"/>
+          </svg>
+        </button>
+        <div id="upNavTitle" style="font-weight:800; font-size:15px;">好友资料</div>
+        <button class="btn" type="button" onclick="toggleProfileMenu(event)" aria-label="更多" title="更多" style="width:44px; height:36px; padding:0; border-radius: 12px; display:inline-flex; align-items:center; justify-content:center;">
+          <span style="font-size:20px; line-height:1;">···</span>
+        </button>
+      </div>
+
+      <!-- 顶部信息区 -->
+      <div style="padding: 14px 16px 12px; display:flex; gap:14px; align-items:center;">
+        <div id="upAvatar" class="avatar profile-avatar" style="width:72px;height:72px; border-radius: 16px; background: var(--other);"></div>
+        <div style="min-width:0; flex:1;">
+          <div id="upTitle" style="font-size:18px; font-weight:800; line-height:1.2;">用户</div>
+          <div id="upSub" style="margin-top:6px; color: var(--sub); font-size: 13px;"> </div>
+        </div>
+      </div>
+
+      <div style="padding: 6px 16px 16px;">
+        <div style="font-weight:800; margin: 6px 0 10px;">朋友资料</div>
+
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <!-- 备注：内联编辑（不再 prompt） -->
+          <div style="padding: 12px 12px; border: 1px solid var(--border); border-radius: 14px; background: rgba(142,142,147,0.08);">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+              <div style="min-width:0;">
+                <div style="font-size:13px; color: var(--sub);">备注</div>
+                <div id="upRemark" style="font-size:15px; font-weight:700; margin-top:3px;">-</div>
+              </div>
+              <button class="btn" id="upEditRemark" onclick="toggleRemarkEdit(true)">修改</button>
+            </div>
+            <div id="upRemarkEdit" style="display:none; margin-top:10px;">
+              <input id="upRemarkInput" maxlength="30" placeholder="输入备注（最多30字）" style="width:100%; box-sizing:border-box; padding:10px 12px; border-radius: 12px; border: 1px solid var(--border); background: rgba(255,255,255,0.65); outline:none; color: var(--text);" />
+              <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:10px;">
+                <button class="btn" onclick="toggleRemarkEdit(false)">取消</button>
+                <button class="btn" onclick="saveRemarkFromProfile('')">清除</button>
+                <button class="btn primary" id="upRemarkSave" onclick="saveRemarkFromProfile()">保存</button>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex; justify-content:space-between; gap:16px; padding: 12px 12px; border: 1px solid var(--border); border-radius: 14px;">
+            <div style="min-width:0;">
+              <div style="font-size:13px; color: var(--sub);">用户名</div>
+              <div id="upUsername" style="font-size:15px; font-weight:700; margin-top:3px; word-break:break-all;">-</div>
+            </div>
+          </div>
+
+          <div style="display:flex; justify-content:space-between; gap:16px; padding: 12px 12px; border: 1px solid var(--border); border-radius: 14px;">
+            <div style="min-width:0;">
+              <div style="font-size:13px; color: var(--sub);">联系方式</div>
+              <div id="upContact" style="font-size:15px; font-weight:700; margin-top:3px; word-break:break-all;">-</div>
+            </div>
+          </div>
+
+          <div style="display:flex; justify-content:space-between; gap:16px; padding: 12px 12px; border: 1px solid var(--border); border-radius: 14px;">
+            <div style="min-width:0;">
+              <div style="font-size:13px; color: var(--sub);">学院</div>
+              <div id="upCollege" style="font-size:15px; font-weight:700; margin-top:3px; word-break:break-all;">-</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 朋友圈（占位预览） -->
+        <div style="margin-top: 14px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin: 2px 2px 10px;">
+            <div style="font-weight:800;">朋友圈</div>
+            <div style="color: var(--sub); font-size: 12px;">›</div>
+          </div>
+          <div style="display:flex; gap:10px; padding: 12px; border: 1px solid var(--border); border-radius: 14px; background: rgba(142,142,147,0.06);">
+            <div style="width:62px; height:62px; border-radius: 12px; background: rgba(142,142,147,0.18);"></div>
+            <div style="width:62px; height:62px; border-radius: 12px; background: rgba(142,142,147,0.18);"></div>
+            <div style="width:62px; height:62px; border-radius: 12px; background: rgba(142,142,147,0.18);"></div>
+            <div style="display:flex; align-items:center; color: var(--sub); font-size: 12px;">（占位）</div>
+          </div>
+        </div>
+
+        <!-- 底部操作：发消息 / 音视频通话（占位） -->
+        <div style="margin-top: 14px; display:flex; flex-direction:column; gap:10px;">
+          <button class="btn primary" onclick="profileSendMessage();" style="width:100%;">发消息</button>
+          <button class="btn" onclick="profileCallPlaceholder();" style="width:100%;">音视频通话（占位）</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="img-modal" id="imgModal" onclick="closeImgModal(event)">
     <button class="close" onclick="closeImgModal(event)">×</button>
     <img id="imgModalImg" src="" alt="预览" />
@@ -274,6 +483,16 @@
 
   <div class="drop-hint" id="dropHint">
     <div class="card">松开鼠标即可发送图片</div>
+  </div>
+
+  <!-- 用户选择弹层：搜索匹配多个用户时使用 -->
+  <div class="img-modal" id="userPickModal" onclick="closeUserPickModal(event)">
+    <button class="close" onclick="closeUserPickModal(event)">×</button>
+    <div class="card" style="width:min(92vw,520px); max-height: 72vh; overflow:auto; background: var(--card2); border: 1px solid var(--border); border-radius: 16px; padding: 14px; box-shadow: var(--shadow);" onclick="event.stopPropagation()">
+      <div style="font-weight:700; margin: 4px 6px 10px;">选择要发起聊天的用户</div>
+      <div id="userPickList" style="display:flex; flex-direction:column; gap:8px;"></div>
+      <div style="margin-top:10px; color:var(--sub); font-size:12px; padding: 0 6px;">提示：回车搜索；点击用户即可创建/打开会话</div>
+    </div>
   </div>
 
   <div class="voice-hint" id="voiceHint">
@@ -328,8 +547,11 @@
 
     <div class="main">
       <div class="chat-header">
-        <div class="title" id="chatTitle">请选择一个会话</div>
-        <div class="subtle" id="chatHint"></div>
+        <div style="display:flex; flex-direction:column; gap:4px;">
+          <div class="title" id="chatTitle">请选择一个会话</div>
+          <div class="subtle" id="chatHint"></div>
+        </div>
+        <button class="btn" id="btnRemark" onclick="openUserProfile(currentPeerUserId)" style="display:none;">资料</button>
       </div>
       <div class="messages" id="messages">
         <div id="emptyState" style="display:none; padding:22px 10px; text-align:center; color:var(--sub);">
@@ -338,15 +560,18 @@
         </div>
       </div>
       <div class="composer">
+        <button class="btn-plus" id="btnPlus" type="button" title="更多" aria-label="更多" onclick="togglePlusMenu(event)">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 5v14"/>
+            <path d="M5 12h14"/>
+          </svg>
+        </button>
+
         <div class="pill">
           <input id="imgInput" type="file" accept="image/*" style="display:none" onchange="sendImageFile(this)" />
-          <button class="btn btn-icon" id="btnSendImage" onclick="document.getElementById('imgInput').click()" title="发送图片" aria-label="发送图片">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M21 19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14Z"/>
-              <path d="M8.5 10.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"/>
-              <path d="M21 15l-5-5L5 21"/>
-            </svg>
-          </button>
+
+          <textarea id="composer" placeholder="信息…" onkeydown="onComposerKey(event)"></textarea>
+
           <button class="btn btn-icon" id="btnVoice" title="按住说话" aria-label="按住说话">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z"/>
@@ -355,8 +580,13 @@
               <path d="M8 22h8"/>
             </svg>
           </button>
-          <textarea id="composer" placeholder="输入消息...（Enter 发送，Shift+Enter 换行）" onkeydown="onComposerKey(event)"></textarea>
-          <button class="btn primary btn-send" id="btnSendText" onclick="sendMessage()">发送</button>
+
+          <button class="btn primary btn-send" id="btnSendText" onclick="sendMessage()" style="display:none;" title="发送" aria-label="发送">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 5v14"/>
+              <path d="m18 11-6-6-6 6"/>
+            </svg>
+          </button>
         </div>
       </div>
     </div>
@@ -419,6 +649,314 @@
     else el.classList.remove('show');
   }
 
+  // 用户选择弹层（搜索匹配多个用户）
+  function openUserPickModal(users, kw, onPick){
+    const modal = document.getElementById('userPickModal');
+    const listEl = document.getElementById('userPickList');
+    if (!modal || !listEl) return;
+
+    const safeKw = (kw || '').trim();
+    const lowerKw = safeKw.toLowerCase();
+
+    // 排序：精确命中优先，其次前缀命中，再按 username
+    const sorted = (users || []).slice().sort((a,b)=>{
+      const au = String(a.username || '');
+      const bu = String(b.username || '');
+      const aL = au.toLowerCase();
+      const bL = bu.toLowerCase();
+      const aEq = (lowerKw && aL === lowerKw) ? 1 : 0;
+      const bEq = (lowerKw && bL === lowerKw) ? 1 : 0;
+      if (aEq !== bEq) return bEq - aEq;
+      const aPre = (lowerKw && aL.startsWith(lowerKw)) ? 1 : 0;
+      const bPre = (lowerKw && bL.startsWith(lowerKw)) ? 1 : 0;
+      if (aPre !== bPre) return bPre - aPre;
+      return au.localeCompare(bu, 'zh');
+    });
+
+    listEl.innerHTML = '';
+    sorted.slice(0, 50).forEach(u=>{
+      const item = document.createElement('div');
+      item.className = 'conv-item';
+      item.style.border = 'var(--line) solid var(--border)';
+      item.style.background = 'transparent';
+
+      const name = u.username || '用户';
+      const avatarUrl = u.avatar || '';
+      const initial = (name || 'U').slice(0,1).toUpperCase();
+      const avatarHtml = avatarUrl
+        ? `<div class="avatar" style="width:40px;height:40px;background-image:url('${escapeAttr(avatarUrl)}')"></div>`
+        : `<div class="avatar" style="width:40px;height:40px;background: var(--primary); font-size:16px;">${escapeHtml(initial)}</div>`;
+
+      item.innerHTML = `
+        ${avatarHtml}
+        <div class="conv-text">
+          <div class="conv-title">${escapeHtml(name)}</div>
+          <div class="conv-sub">ID: ${escapeHtml(String(u.id || ''))}</div>
+        </div>
+      `;
+
+      item.onclick = ()=>{
+        try { if (typeof onPick === 'function') onPick(u); } catch(e) {}
+        modal.classList.remove('show');
+      };
+
+      listEl.appendChild(item);
+    });
+
+    modal.classList.add('show');
+  }
+
+  function closeUserPickModal(e){
+    if (e) e.stopPropagation();
+    const modal = document.getElementById('userPickModal');
+    if (!modal) return;
+    // 点击背景或 close 关闭
+    if (!e || (e.target && (e.target.id === 'userPickModal' || e.target.classList.contains('close')))) {
+      modal.classList.remove('show');
+      const listEl = document.getElementById('userPickList');
+      if (listEl) listEl.innerHTML = '';
+    }
+  }
+
+  // 图片弹层
+  // 好友资料页
+  let currentProfileUserId = 0;
+
+  function closeUserProfileModal(e){
+    if (e) e.stopPropagation();
+    const modal = document.getElementById('userProfileModal');
+    if (!modal) return;
+    // 点击遮罩关闭（点击卡片内部不关闭）
+    if (!e || (e.target && e.target.id === 'userProfileModal')) {
+      modal.classList.remove('show');
+      currentProfileUserId = 0;
+      hideProfileMenu();
+      toggleRemarkEdit(false);
+    }
+  }
+
+  async function openUserProfile(userId){
+    if (!userId) return;
+    currentProfileUserId = userId;
+    const modal = document.getElementById('userProfileModal');
+    if (!modal) return;
+
+    // 先显示，再加载（减少等待感）
+    modal.classList.add('show');
+
+    try {
+      const res = await fetch(`/api/chat/user_profile?user_id=${userId}`);
+      const js = await res.json();
+      if (!res.ok || js.status !== 'success') {
+        alert(js.message || '加载资料失败');
+        closeUserProfileModal();
+        return;
+      }
+      const u = js.user || {};
+      const remark = (js.remark || '').trim();
+
+      // 头像
+      const av = document.getElementById('upAvatar');
+      if (av) {
+        const url = u.avatar || '';
+        if (url) {
+          av.style.backgroundImage = `url('${String(url).replace(/'/g,'%27')}')`;
+          av.style.backgroundSize = 'cover';
+          av.style.backgroundPosition = 'center';
+          av.style.backgroundRepeat = 'no-repeat';
+          av.style.borderRadius = '16px';
+          av.textContent = '';
+        } else {
+          av.style.backgroundImage = '';
+          av.style.background = 'var(--primary)';
+          av.textContent = (u.username || 'U').slice(0,1).toUpperCase();
+        }
+      }
+
+      const title = document.getElementById('upTitle');
+      if (title) title.textContent = remark || u.username || '用户';
+      const navTitle = document.getElementById('upNavTitle');
+      if (navTitle) navTitle.textContent = remark || u.username || '好友资料';
+      const sub = document.getElementById('upSub');
+      if (sub) sub.textContent = `用户名：${u.username || '-'}  ·  ID：${u.id || '-'}`;
+
+      // 同步输入框内容
+      const inp = document.getElementById('upRemarkInput');
+      if (inp) inp.value = remark || '';
+
+      const elR = document.getElementById('upRemark');
+      if (elR) elR.textContent = remark || '未设置';
+      const elU = document.getElementById('upUsername');
+      if (elU) elU.textContent = u.username || '-';
+      const elC = document.getElementById('upContact');
+      if (elC) elC.textContent = u.contact || '-';
+      const elCo = document.getElementById('upCollege');
+      if (elCo) elCo.textContent = u.college || '-';
+
+      // 自己：不显示备注修改/编辑区
+      const isSelf = (u.id && Number(u.id) === Number(MY_ID));
+      const btnEdit = document.getElementById('upEditRemark');
+      if (btnEdit) btnEdit.style.display = isSelf ? 'none' : 'inline-flex';
+      const editWrap = document.getElementById('upRemarkEdit');
+      if (editWrap) editWrap.style.display = 'none';
+
+    } catch(e) {
+      alert('加载资料失败');
+      closeUserProfileModal();
+    }
+  }
+
+  function toggleRemarkEdit(open){
+    const wrap = document.getElementById('upRemarkEdit');
+    const inp = document.getElementById('upRemarkInput');
+    if (!wrap || !inp) return;
+
+    if (open) {
+      // 将当前显示备注带入输入框
+      const curEl = document.getElementById('upRemark');
+      const curVal = (curEl && curEl.textContent && curEl.textContent !== '未设置') ? curEl.textContent : '';
+      inp.value = curVal;
+      wrap.style.display = 'block';
+      setTimeout(()=>{ try{ inp.focus(); inp.select(); }catch(e){} }, 0);
+    } else {
+      wrap.style.display = 'none';
+    }
+  }
+
+  function profileSendMessage(){
+    // 回到聊天并聚焦输入框
+    closeUserProfileModal();
+    try {
+      const ta = document.getElementById('composer');
+      if (ta) ta.focus();
+    } catch(e) {}
+  }
+
+  function profileCallPlaceholder(){
+    showToast('音视频通话：暂未实现');
+  }
+
+  async function saveRemarkFromProfile(forceValue){
+    if (!currentProfileUserId) return;
+    if (Number(currentProfileUserId) === Number(MY_ID)) return;
+
+    const inp = document.getElementById('upRemarkInput');
+    const btn = document.getElementById('upRemarkSave');
+    const v = (typeof forceValue === 'string') ? String(forceValue).trim() : String((inp && inp.value) || '').trim();
+
+    if (v.length > 30) {
+      alert('备注过长（最多30字）');
+      return;
+    }
+
+    setLoading(btn, true);
+    try {
+      const sRes = await fetch('/api/chat/user_remark', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ target_user_id: currentProfileUserId, remark: v })
+      });
+      let sJs = {};
+      try { sJs = await sRes.json(); } catch(e) { sJs = {}; }
+      if (!sRes.ok || sJs.status !== 'success') {
+        alert((sJs && sJs.message) ? sJs.message : (`设置备注失败（HTTP ${sRes.status}）`));
+        return;
+      }
+
+      toggleRemarkEdit(false);
+
+      // 刷新资料页显示
+      await openUserProfile(currentProfileUserId);
+
+      // 刷新会话列表/标题
+      await refreshConversations();
+      try {
+        const list = await fetchConversations();
+        const cur = (list || []).find(x => x.conversation_id === currentConversationId);
+        if (cur) {
+          const name = (cur.c_type === 'direct' ? (cur.peer_remark || cur.peer_username || '私聊') : (cur.title || '会话'));
+          const t = document.getElementById('chatTitle');
+          if (t) t.textContent = name;
+        }
+      } catch(e) {}
+
+      showToast(v ? '备注已更新' : '备注已清除');
+    } finally {
+      setLoading(btn, false);
+    }
+  }
+
+  // 资料页右上角菜单
+  function toggleProfileMenu(e){
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+    const menu = document.getElementById('profileMenu');
+    if (!menu) return;
+
+    const isOpen = menu.classList.contains('show');
+    if (isOpen) { menu.classList.remove('show'); return; }
+
+    const btn = e && e.currentTarget ? e.currentTarget : null;
+    if (btn) {
+      const r = btn.getBoundingClientRect();
+      const mw = 220;
+      const mh = 150;
+      let left = Math.max(12, Math.min(window.innerWidth - mw - 12, r.right - mw));
+      let top = r.bottom + 8;
+      if (top + mh > window.innerHeight - 12) top = Math.max(12, r.top - mh - 8);
+      menu.style.left = left + 'px';
+      menu.style.top = top + 'px';
+    }
+
+    menu.classList.add('show');
+  }
+
+  function hideProfileMenu(){
+    const menu = document.getElementById('profileMenu');
+    if (menu) menu.classList.remove('show');
+  }
+
+  async function profileMenuAction(act){
+    hideProfileMenu();
+    if (!currentProfileUserId) return;
+
+    if (act === 'edit_remark') {
+      toggleRemarkEdit(true);
+      return;
+    }
+    if (act === 'clear_remark') {
+      await saveRemarkFromProfile('');
+      return;
+    }
+    if (act === 'copy_username') {
+      try {
+        const el = document.getElementById('upUsername');
+        const txt = (el && el.textContent) ? el.textContent : '';
+        if (!txt) return;
+        await navigator.clipboard.writeText(txt);
+        showToast('已复制用户名');
+      } catch(e) {
+        showToast('复制失败');
+      }
+      return;
+    }
+    if (act === 'copy_id') {
+      try {
+        await navigator.clipboard.writeText(String(currentProfileUserId));
+        showToast('已复制 ID');
+      } catch(e) {
+        showToast('复制失败');
+      }
+      return;
+    }
+  }
+
+  document.addEventListener('click', (e)=>{
+    const menu = document.getElementById('profileMenu');
+    if (!menu || !menu.classList.contains('show')) return;
+    if (menu.contains(e.target)) return;
+    hideProfileMenu();
+  });
+
   // 图片弹层
   function openImgModal(url){
     const modal = document.getElementById('imgModal');
@@ -440,11 +978,24 @@
   }
   document.addEventListener('keydown', function(e){
     if (e.key === 'Escape') {
+      // 关闭图片预览
       const modal = document.getElementById('imgModal');
       if (modal && modal.classList.contains('show')) {
         modal.classList.remove('show');
         const img = document.getElementById('imgModalImg');
         if (img) img.src = '';
+      }
+      // 关闭用户选择
+      const uModal = document.getElementById('userPickModal');
+      if (uModal && uModal.classList.contains('show')) {
+        uModal.classList.remove('show');
+        const listEl = document.getElementById('userPickList');
+        if (listEl) listEl.innerHTML = '';
+      }
+      // 关闭好友资料
+      const pModal = document.getElementById('userProfileModal');
+      if (pModal && pModal.classList.contains('show')) {
+        pModal.classList.remove('show');
       }
     }
   });
@@ -481,7 +1032,7 @@
 
     const html = (uniqueList||[]).map(c => {
       const active = (c.conversation_id === currentConversationId) ? 'active' : '';
-      const displayName = (c.c_type === 'direct' ? (c.peer_username || '私聊') : (c.title || '会话'));
+      const displayName = (c.c_type === 'direct' ? (c.peer_remark || c.peer_username || '私聊') : (c.title || '会话'));
       const avatarUrl = c.peer_avatar || '';
       const sub = c.last_message || '';
       const timeText = (c.last_message_at || c.updated_at || c.last_time || '').toString();
@@ -493,7 +1044,9 @@
         : `<div class="avatar" style="background: var(--primary);">${escapeHtml(initial)}</div>`;
       return `
         <div class="conv-item ${active}" onclick="openConversation(${c.conversation_id})">
-          ${avatarHtml}
+          <div onclick="event.stopPropagation(); openUserProfile(${c.peer_user_id || 0});" style="display:flex;">
+            ${avatarHtml}
+          </div>
           <div class="conv-text">
             <div class="conv-title">${escapeHtml(displayName)}</div>
             <div class="conv-sub">${escapeHtml(sub)}</div>
@@ -530,11 +1083,14 @@
     es.style.display = show ? 'block' : 'none';
   }
 
+  let currentPeerUserId = 0;
+
   async function openConversation(conversationId){
     // 切换会话时停止正在播放的语音
     try { stopCurrentAudio(); } catch(e) {}
 
     currentConversationId = conversationId;
+    currentPeerUserId = 0;
     lastMessageId = 0;
     const msgBox = document.getElementById('messages');
     if (msgBox) {
@@ -550,13 +1106,18 @@
       const list = await fetchConversations();
       const cur = (list || []).find(x => x.conversation_id === conversationId);
       if (cur) {
-        const name = (cur.c_type === 'direct' ? (cur.peer_username || '私聊') : (cur.title || '会话'));
+        const name = (cur.c_type === 'direct' ? (cur.peer_remark || cur.peer_username || '私聊') : (cur.title || '会话'));
         document.getElementById('chatTitle').textContent = name;
+        currentPeerUserId = (cur.c_type === 'direct' ? (cur.peer_user_id || 0) : 0);
+        const btnR = document.getElementById('btnRemark');
+        if (btnR) btnR.style.display = (currentPeerUserId ? 'inline-flex' : 'none');
       } else {
         document.getElementById('chatTitle').textContent = `会话 #${conversationId}`;
       }
     } catch(e) {
       document.getElementById('chatTitle').textContent = `会话 #${conversationId}`;
+      const btnR = document.getElementById('btnRemark');
+      if (btnR) btnR.style.display = 'none';
     }
     document.getElementById('chatHint').textContent = '';
 
@@ -573,19 +1134,29 @@
   function isAudioMsg(m){ return (m && m.content_type === 'audio'); }
 
   function parseAudioContent(content){
-    if (!content) return { url: '', duration: null };
-    if (typeof content !== 'string') return { url: '', duration: null };
+    // 兼容旧数据：纯 URL
+    // 新数据：JSON，可能包含 url_m4a/url_raw
+    if (!content) return { url: '', url_raw: '', url_m4a: '', duration: null };
+    if (typeof content !== 'string') return { url: '', url_raw: '', url_m4a: '', duration: null };
     const s = content.trim();
-    if (!s) return { url: '', duration: null };
+    if (!s) return { url: '', url_raw: '', url_m4a: '', duration: null };
     if (s.startsWith('{') && s.endsWith('}')) {
       try {
         const obj = JSON.parse(s);
-        return { url: obj.url || '', duration: (obj.duration != null ? obj.duration : null) };
+        const url_m4a = obj.url_m4a || '';
+        const url_raw = obj.url_raw || '';
+        const url = obj.url || url_m4a || url_raw || '';
+        return {
+          url,
+          url_raw,
+          url_m4a,
+          duration: (obj.duration != null ? obj.duration : null)
+        };
       } catch(e) {
-        return { url: s, duration: null };
+        return { url: s, url_raw: '', url_m4a: '', duration: null };
       }
     }
-    return { url: s, duration: null };
+    return { url: s, url_raw: '', url_m4a: '', duration: null };
   }
 
   function parseImageContent(content){
@@ -611,7 +1182,7 @@
     return { url: s, thumb: '' };
   }
 
-  function renderAvatarDiv(url, name){
+  function renderAvatarDiv(url, name, userId){
     const div = document.createElement('div');
     div.className = 'msg-avatar';
     if (url) {
@@ -626,6 +1197,17 @@
       div.style.fontSize = '13px';
       div.textContent = (name || 'U').slice(0,1).toUpperCase();
     }
+
+    // 点击头像打开资料（只对“对方”生效）
+    if (userId && Number(userId) !== Number(MY_ID)) {
+      div.style.cursor = 'pointer';
+      div.title = '查看资料';
+      div.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        openUserProfile(Number(userId));
+      });
+    }
+
     return div;
   }
 
@@ -798,7 +1380,7 @@
       const ts = safeParseTime(m && m.created_at);
       if (ts) row.setAttribute('data-ts', ts.toISOString());
 
-      const avatar = renderAvatarDiv(m.sender_avatar || '', m.sender_username || '');
+      const avatar = renderAvatarDiv(m.sender_avatar || '', m.sender_username || '', m.sender_id);
 
       const wrap = document.createElement('div');
       wrap.className = 'msg-wrap';
@@ -820,7 +1402,8 @@
         bubble.appendChild(img);
       } else if (isAudioMsg(m)) {
         const info = parseAudioContent(m.content);
-        const url = info.url;
+        // 播放优先：m4a（iOS/安卓兼容最好）> url > raw
+        const url = info.url_m4a || info.url || info.url_raw;
         const dur = info.duration;
 
         // 只保留“播放键 + 时长”：自绘播放按钮，避免原生 <audio controls> 占位过大
@@ -857,6 +1440,15 @@
         // 隐藏 audio，用于实际播放
         const audio = document.createElement('audio');
         audio.preload = 'none';
+        // iOS Safari/部分移动端需要明确声明类型，否则可能出现“无法播放”
+        const inferredType = (url && url.toLowerCase().includes('.mp3')) ? 'audio/mpeg'
+          : (url && url.toLowerCase().includes('.m4a')) ? 'audio/mp4'
+          : (url && url.toLowerCase().includes('.ogg')) ? 'audio/ogg'
+          : (url && url.toLowerCase().includes('.wav')) ? 'audio/wav'
+          : (url && url.toLowerCase().includes('.webm')) ? 'audio/webm'
+          : '';
+        if (inferredType) { try { audio.type = inferredType; } catch(e){} }
+        audio.playsInline = true;
         audio.src = url;
 
         function setPlayingUI(playing){
@@ -899,6 +1491,15 @@
               }
             }
           } catch(e) {
+            // 如果优先 m4a 播放失败，尝试回退到原始文件（兼容转码失败/旧数据）
+            try {
+              if (info && info.url_raw && audio && audio.src !== info.url_raw) {
+                audio.src = info.url_raw;
+                await audio.play();
+                setPlayingUI(true);
+                return;
+              }
+            } catch(e2) {}
             showToast('无法播放语音');
           }
         };
@@ -983,6 +1584,7 @@
     if (!currentConversationId) { alert('请先选择或创建一个会话'); return; }
 
     ta.value = '';
+    updateComposerActions();
     setLoading(btn, true);
     const res = await fetch('/api/chat/messages/send', {
       method:'POST',
@@ -1123,7 +1725,7 @@
   }
 
   async function sendImageBlob(file, sourceLabel=''){ 
-    const btnImg = document.getElementById('btnSendImage');
+    const btnImg = document.getElementById('btnPlus');
     setLoading(btnImg, true);
     try {
       if (!currentConversationId) { alert('请先选择或创建一个会话'); return; }
@@ -1181,6 +1783,28 @@
     }
   }
 
+  function updateComposerActions(){
+    const ta = document.getElementById('composer');
+    const btnSend = document.getElementById('btnSendText');
+    const btnVoice = document.getElementById('btnVoice');
+    if (!ta || !btnSend || !btnVoice) return;
+    const hasText = !!String(ta.value || '').trim();
+
+    // 有文字：显示“发送”，隐藏麦克风
+    if (hasText) {
+      btnSend.style.display = 'inline-flex';
+      btnVoice.style.display = 'none';
+    } else {
+      btnSend.style.display = 'none';
+      btnVoice.style.display = 'inline-flex';
+    }
+
+    // 无会话或无文字时禁用发送，避免误触
+    try {
+      btnSend.disabled = (!currentConversationId) || (!hasText);
+    } catch(e) {}
+  }
+
   function onComposerKey(e){
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -1200,16 +1824,28 @@
     const users = js.data || [];
     if (!users.length) { alert('没有找到用户'); return; }
 
-    // 优先精确匹配用户名（否则默认取第一个会导致“wxr2”永远抢占“wxr”）
-    const u = users.find(x => (x.username || '').toLowerCase() === kw.toLowerCase()) || users[0];
+    const exact = users.find(x => (x.username || '').toLowerCase() === kw.toLowerCase());
 
-    // 若非精确命中且存在多个匹配，提示用户确认
-    if (!users.find(x => (x.username || '').toLowerCase() === kw.toLowerCase()) && users.length > 1) {
-      const names = users.slice(0,8).map(x=>x.username).join('、');
-      const ok = confirm(`匹配到多个用户：${names}${users.length>8?'…':''}\n\n是否与“${u.username}”发起聊天？`);
-      if (!ok) return;
+    // 多个匹配：弹出列表让用户选择（更直观）
+    if (!exact && users.length > 1) {
+      openUserPickModal(users, kw, async (picked)=>{
+        const cRes = await fetch('/api/chat/conversations/create', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ peer_user_id: picked.id })
+        });
+        const cJs = await cRes.json();
+        if (!cRes.ok || cJs.status !== 'success') { alert(cJs.message || '创建会话失败'); return; }
+
+        inp.value = '';
+        await refreshConversations();
+        await openConversation(cJs.conversation_id);
+      });
+      return;
     }
 
+    // 单个匹配 or 精确匹配：直接创建
+    const u = exact || users[0];
     const cRes = await fetch('/api/chat/conversations/create', {
       method:'POST',
       headers:{'Content-Type':'application/json'},
@@ -1555,12 +2191,115 @@
     }
   }
 
+  async function openRemarkPrompt(){
+    if (!currentPeerUserId) return;
+    try {
+      const res = await fetch(`/api/chat/user_remark?target_user_id=${currentPeerUserId}`);
+      const js = await res.json();
+      if (!res.ok || js.status !== 'success') { alert(js.message || '读取备注失败'); return; }
+
+      const curVal = (js.remark || '').trim();
+      const next = prompt('设置备注（最多30字，留空表示清除）', curVal);
+      if (next === null) return; // 用户取消
+
+      const v = String(next || '').trim();
+      const sRes = await fetch('/api/chat/user_remark', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ target_user_id: currentPeerUserId, remark: v })
+      });
+      let sJs = {};
+      try { sJs = await sRes.json(); } catch(e) { sJs = {}; }
+      if (!sRes.ok || sJs.status !== 'success') {
+        alert((sJs && sJs.message) ? sJs.message : (`设置备注失败（HTTP ${sRes.status}）`));
+        return;
+      }
+
+      await refreshConversations();
+      // 重新用会话列表信息刷新标题
+      try {
+        const list = await fetchConversations();
+        const cur = (list || []).find(x => x.conversation_id === currentConversationId);
+        if (cur) {
+          const name = (cur.c_type === 'direct' ? (cur.peer_remark || cur.peer_username || '私聊') : (cur.title || '会话'));
+          const t = document.getElementById('chatTitle');
+          if (t) t.textContent = name;
+        }
+      } catch(e) {}
+
+      showToast(v ? '备注已更新' : '备注已清除');
+    } catch(e) {
+      alert('备注操作失败');
+    }
+  }
+
+  function togglePlusMenu(e){
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+    const menu = document.getElementById('plusMenu');
+    const btn = document.getElementById('btnPlus');
+    if (!menu || !btn) return;
+
+    const isOpen = menu.classList.contains('show');
+    if (isOpen) {
+      menu.classList.remove('show');
+      return;
+    }
+
+    // 计算位置：贴着 + 按钮上方（或旁边），避免超出屏幕
+    const r = btn.getBoundingClientRect();
+    const mw = 200; // 预估宽度
+    const mh = 110; // 预估高度
+    let left = Math.max(12, Math.min(window.innerWidth - mw - 12, r.left));
+    let top = r.top - mh - 10;
+    if (top < 12) top = r.bottom + 10;
+
+    menu.style.left = left + 'px';
+    menu.style.top = top + 'px';
+    menu.classList.add('show');
+  }
+
+  function hidePlusMenu(){
+    const menu = document.getElementById('plusMenu');
+    if (menu) menu.classList.remove('show');
+  }
+
+  function onPlusPick(kind){
+    hidePlusMenu();
+    if (kind === 'image') {
+      document.getElementById('imgInput').click();
+      return;
+    }
+    if (kind === 'file') {
+      alert('文件发送暂未实现（可继续扩展）');
+      return;
+    }
+  }
+
+  document.addEventListener('click', (e)=>{
+    // 点击其他区域关闭 + 菜单
+    const menu = document.getElementById('plusMenu');
+    const btn = document.getElementById('btnPlus');
+    if (!menu || !btn) return;
+    if (!menu.classList.contains('show')) return;
+    if (menu.contains(e.target) || btn.contains(e.target)) return;
+    hidePlusMenu();
+  });
+
   async function init(){
     if (!LOGGED_IN) { alert('请先登录'); location.href='/login'; return; }
     await refreshConversations();
     setEmptyStateVisible(true);
     updateVoiceBtn();
     bindHoldToTalk();
+
+    // 输入区交互：有内容显示“发送”，无内容显示“语音”
+    const ta = document.getElementById('composer');
+    if (ta) {
+      ta.addEventListener('input', updateComposerActions);
+      ta.addEventListener('blur', updateComposerActions);
+      ta.addEventListener('focus', updateComposerActions);
+    }
+    updateComposerActions();
   }
 
   init();

@@ -239,7 +239,10 @@ def account_page():
 
 @main_bp.route('/uploads/<path:filename>')
 def serve_upload(filename):
-    """安全地提供上传的文件"""
+    """安全地提供上传的文件（支持音视频 Range 请求）"""
     directory = os.path.join(current_app.root_path, '..', 'uploads')
-    return send_from_directory(directory, filename)
+    resp = send_from_directory(directory, filename, conditional=True)
+    # 让浏览器/音频组件更愿意做断点/Range 拉取（部分移动端对流式更敏感）
+    resp.headers.setdefault('Accept-Ranges', 'bytes')
+    return resp
 

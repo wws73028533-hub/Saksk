@@ -17,12 +17,18 @@ from ..extensions import limiter
 import os
 import uuid
 import json
+import subprocess
+import shutil
 
 chat_bp = Blueprint('chat', __name__)
 
 
 CHAT_IMAGE_EXTS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 CHAT_AUDIO_EXTS = {'webm', 'wav', 'mp3', 'm4a', 'ogg'}
+
+# iOS Safari 对 audio/webm 支持不稳定（很多机型直接无法播放），
+# 因此上传时建议优先使用 m4a/mp3（前端录音也会尽量选择 ogg/webm，但播放端可能失败）。
+# 后端这里允许多种格式，但不会做转码；如需“全端可播”，建议后续引入转码到 m4a/mp3。
 
 
 def _allowed_image(filename: str) -> bool:
@@ -31,6 +37,70 @@ def _allowed_image(filename: str) -> bool:
 
 def _allowed_audio(filename: str) -> bool:
     return bool(filename) and ('.' in filename) and (filename.rsplit('.', 1)[1].lower() in CHAT_AUDIO_EXTS)
+
+
+def _ffmpeg_exists() -> bool:
+    """检测系统是否可用 ffmpeg"""
+    try:
+        return shutil.which('ffmpeg') is not None
+    except Exception:
+        return False
+
+
+def _transcode_to_m4a(src_abs: str, dst_abs: str) -> tuple[bool, str]:
+    """使用 ffmpeg 将音频转码为 m4a(aac)
+
+    返回：(success, error_message)
+    """
+    if not _ffmpeg_exists():
+        return False, 'ffmpeg_not_found'
+
+    # -y 覆盖；-vn 去视频；aac 兼容性最好；-movflags +faststart 便于流式播放
+    cmd = [
+        'ffmpeg', '-y',
+        '-i', src_abs,
+        '-vn',
+        '-c:a', 'aac',
+        '-b:a', '64k',
+        '-ar', '44100',
+        '-ac', '1',
+        '-movflags', '+faststart',
+        dst_abs,
+    ]
+    try:
+        p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+        if p.returncode != 0:
+            return False, (p.stderr.decode('utf-8', errors='ignore')[:4000] or 'ffmpeg_failed')
+        return True, ''
+    except Exception as e:
+        return False, str(e)
+
+
+def _transcode_to_mp3(src_abs: str, dst_abs: str) -> tuple[bool, str]:
+    """使用 ffmpeg 将音频转码为 mp3（作为 m4a 失败时的兜底）
+
+    返回：(success, error_message)
+    """
+    if not _ffmpeg_exists():
+        return False, 'ffmpeg_not_found'
+
+    cmd = [
+        'ffmpeg', '-y',
+        '-i', src_abs,
+        '-vn',
+        '-c:a', 'libmp3lame',
+        '-b:a', '96k',
+        '-ar', '44100',
+        '-ac', '1',
+        dst_abs,
+    ]
+    try:
+        p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+        if p.returncode != 0:
+            return False, (p.stderr.decode('utf-8', errors='ignore')[:4000] or 'ffmpeg_failed')
+        return True, ''
+    except Exception as e:
+        return False, str(e)
 
 
 @chat_bp.route('/chat')
@@ -66,7 +136,15 @@ def chat_users():
     if q:
         sql += " AND username LIKE ?"
         params.append(f"%{q}%")
-    sql += " ORDER BY (last_active IS NULL) ASC, last_active DESC, username ASC LIMIT 50"
+
+    # 排序优化：精确命中优先，其次前缀命中；再按活跃度与用户名
+    # 说明：即使前端不做精确匹配，这里也尽量把最可能目标排在前面
+    if q:
+        sql += " ORDER BY (LOWER(username) = LOWER(?)) DESC, (LOWER(username) LIKE LOWER(?) ) DESC, (last_active IS NULL) ASC, last_active DESC, username ASC LIMIT 50"
+        params.append(q)
+        params.append(f"{q}%")
+    else:
+        sql += " ORDER BY (last_active IS NULL) ASC, last_active DESC, username ASC LIMIT 50"
 
     rows = conn.execute(sql, params).fetchall()
     return jsonify({'status': 'success', 'data': [dict(r) for r in rows]})
@@ -82,7 +160,7 @@ def chat_conversations():
     conn = get_db()
 
     # 会话列表：
-    # - direct：拼出对方用户信息（昵称/头像）
+    # - direct：拼出对方用户信息（昵称/头像/备注）
     # - last_message：若最后一条是图片消息，给前端一个占位文案
     rows = conn.execute(
         """
@@ -95,6 +173,7 @@ def chat_conversations():
                pu.id as peer_user_id,
                pu.username as peer_username,
                pu.avatar as peer_avatar,
+               ur.remark as peer_remark,
 
                -- 最后一条消息
                lm.content_type as last_message_type,
@@ -116,6 +195,9 @@ def chat_conversations():
         LEFT JOIN chat_members pmb ON pmb.conversation_id = c.id AND pmb.user_id != ?
         LEFT JOIN users pu ON pu.id = pmb.user_id
 
+        -- 取当前用户对对方的备注
+        LEFT JOIN user_remarks ur ON ur.owner_user_id = ? AND ur.target_user_id = pu.id
+
         -- 取最后一条消息
         LEFT JOIN chat_messages lm ON lm.id = (
             SELECT m2.id FROM chat_messages m2
@@ -126,7 +208,7 @@ def chat_conversations():
 
         ORDER BY c.updated_at DESC, c.id DESC
         """,
-        (uid, uid, uid, uid)
+        (uid, uid, uid, uid, uid)
     ).fetchall()
 
     data = []
@@ -211,6 +293,118 @@ def _is_member(conn, conversation_id, user_id):
         (conversation_id, user_id)
     ).fetchone()
     return bool(r)
+
+
+@chat_bp.route('/api/chat/user_remark', methods=['GET', 'POST'])
+@limiter.exempt
+def chat_user_remark():
+    """读取/设置对某个用户的备注（仅自己可见）
+
+    GET  /api/chat/user_remark?target_user_id=xx
+    POST /api/chat/user_remark  JSON: {target_user_id, remark}
+      - remark 为空字符串表示清除备注
+    """
+    if not session.get('user_id'):
+        return jsonify({'status': 'unauthorized', 'message': '请先登录'}), 401
+
+    uid = int(session.get('user_id') or 0)
+    conn = get_db()
+
+    if request.method == 'GET':
+        try:
+            target_user_id = int(request.args.get('target_user_id') or 0)
+        except Exception:
+            target_user_id = 0
+        if target_user_id <= 0:
+            return jsonify({'status': 'error', 'message': 'target_user_id 不合法'}), 400
+        # 允许查询“自己”的备注（一般为空），避免前端误传自己 id 时直接报错
+        if target_user_id == uid:
+            return jsonify({'status': 'success', 'remark': ''})
+
+        row = conn.execute(
+            "SELECT remark FROM user_remarks WHERE owner_user_id=? AND target_user_id=?",
+            (uid, target_user_id)
+        ).fetchone()
+        return jsonify({'status': 'success', 'remark': (row['remark'] if row else '')})
+
+    data = request.json or {}
+    try:
+        target_user_id = int(data.get('target_user_id') or 0)
+    except Exception:
+        target_user_id = 0
+    remark = (data.get('remark') or '').strip()
+
+    if target_user_id <= 0:
+        return jsonify({'status': 'error', 'message': 'target_user_id 不合法'}), 400
+    # 禁止给自己设置备注（没有意义，也容易误操作）
+    if target_user_id == uid:
+        return jsonify({'status': 'error', 'message': '不能给自己设置备注'}), 400
+    if len(remark) > 30:
+        return jsonify({'status': 'error', 'message': '备注过长（最多30字）'}), 400
+
+    # 清除备注
+    if remark == '':
+        conn.execute(
+            "DELETE FROM user_remarks WHERE owner_user_id=? AND target_user_id=?",
+            (uid, target_user_id)
+        )
+        conn.commit()
+        return jsonify({'status': 'success', 'remark': ''})
+
+    # UPSERT
+    conn.execute(
+        """
+        INSERT INTO user_remarks (owner_user_id, target_user_id, remark)
+        VALUES (?, ?, ?)
+        ON CONFLICT(owner_user_id, target_user_id)
+        DO UPDATE SET remark=excluded.remark, updated_at=CURRENT_TIMESTAMP
+        """,
+        (uid, target_user_id, remark)
+    )
+    conn.commit()
+    return jsonify({'status': 'success', 'remark': remark})
+
+
+@chat_bp.route('/api/chat/user_profile')
+@limiter.exempt
+def chat_user_profile():
+    """聊天页查看对方资料（类似微信好友资料）
+
+    GET /api/chat/user_profile?user_id=xx
+    返回：
+      - user: {id, username, avatar, contact, college, created_at}
+      - remark: 我对TA的备注（可为空）
+    """
+    if not session.get('user_id'):
+        return jsonify({'status': 'unauthorized', 'message': '请先登录'}), 401
+
+    uid = int(session.get('user_id') or 0)
+    try:
+        target_user_id = int(request.args.get('user_id') or 0)
+    except Exception:
+        target_user_id = 0
+
+    if target_user_id <= 0:
+        return jsonify({'status': 'error', 'message': 'user_id 不合法'}), 400
+
+    conn = get_db()
+    u = conn.execute(
+        'SELECT id, username, avatar, contact, college, created_at FROM users WHERE id=?',
+        (target_user_id,)
+    ).fetchone()
+    if not u:
+        return jsonify({'status': 'error', 'message': '用户不存在'}), 404
+
+    # 备注（仅对方时才返回；自己则为空）
+    remark = ''
+    if target_user_id != uid:
+        r = conn.execute(
+            'SELECT remark FROM user_remarks WHERE owner_user_id=? AND target_user_id=?',
+            (uid, target_user_id)
+        ).fetchone()
+        remark = (r['remark'] if r else '')
+
+    return jsonify({'status': 'success', 'user': dict(u), 'remark': remark})
 
 
 @chat_bp.route('/api/chat/messages')
@@ -461,13 +655,71 @@ def chat_upload_audio():
     os.makedirs(chat_dir, exist_ok=True)
 
     ext = f.filename.rsplit('.', 1)[1].lower()
-    fname = secure_filename(f"chat_{conversation_id}_{uid}_{uuid.uuid4().hex[:10]}.{ext}")
-    abs_path = os.path.join(chat_dir, fname)
-    f.save(abs_path)
-    url = f"/uploads/chat/{fname}"
+    base = secure_filename(f"chat_{conversation_id}_{uid}_{uuid.uuid4().hex[:10]}")
 
+    # 1) 先保存原始文件
+    raw_name = f"{base}.{ext}"
+    raw_abs = os.path.join(chat_dir, raw_name)
+    f.save(raw_abs)
+    raw_url = f"/uploads/chat/{raw_name}"
+
+    # 2) 尝试转码为 m4a（AAC），以获得 iOS/安卓最佳兼容；失败则回退转 mp3
+    m4a_name = f"{base}.m4a"
+    m4a_abs = os.path.join(chat_dir, m4a_name)
+    m4a_url = f"/uploads/chat/{m4a_name}"
+
+    mp3_name = f"{base}.mp3"
+    mp3_abs = os.path.join(chat_dir, mp3_name)
+    mp3_url = f"/uploads/chat/{mp3_name}"
+
+    m4a_ok = False
+    mp3_ok = False
+    transcode_err = ''
+
+    # 先转 m4a
+    try:
+        ok, err = _transcode_to_m4a(raw_abs, m4a_abs)
+        m4a_ok = bool(ok)
+        transcode_err = err or ''
+    except Exception as e:
+        m4a_ok = False
+        transcode_err = str(e)
+
+    if not m4a_ok:
+        # 清理可能的残留
+        try:
+            if os.path.exists(m4a_abs):
+                os.remove(m4a_abs)
+        except Exception:
+            pass
+
+        # 回退转 mp3
+        try:
+            ok2, err2 = _transcode_to_mp3(raw_abs, mp3_abs)
+            mp3_ok = bool(ok2)
+            transcode_err = err2 or transcode_err
+        except Exception as e:
+            mp3_ok = False
+            transcode_err = str(e)
+
+        if not mp3_ok:
+            try:
+                if os.path.exists(mp3_abs):
+                    os.remove(mp3_abs)
+            except Exception:
+                pass
+
+        current_app.logger.warning(
+            f"audio transcode failed(m4a) fallback(mp3)={'ok' if mp3_ok else 'failed'}: conv={conversation_id} uid={uid} raw={raw_name} err={transcode_err}"
+        )
+
+    # content：存 raw + m4a/mp3（如有），前端播放优先：m4a > mp3 > raw
+    best_url = m4a_url if m4a_ok else (mp3_url if mp3_ok else raw_url)
     content_obj = {
-        'url': url,
+        'url': best_url,
+        'url_raw': raw_url,
+        'url_m4a': (m4a_url if m4a_ok else None),
+        'url_mp3': (mp3_url if mp3_ok else None),
         'duration': duration if duration > 0 else None,
     }
     content_str = json.dumps(content_obj, ensure_ascii=False)
@@ -492,7 +744,16 @@ def chat_upload_audio():
     )
 
     conn.commit()
-    return jsonify({'status': 'success', 'message_id': mid, 'url': url, 'duration': duration})
+    return jsonify({
+        'status': 'success',
+        'message_id': mid,
+        'url': content_obj.get('url'),
+        'url_raw': content_obj.get('url_raw'),
+        'url_m4a': content_obj.get('url_m4a'),
+        'url_mp3': content_obj.get('url_mp3'),
+        'duration': duration,
+        'transcoded': bool(content_obj.get('url_m4a') or content_obj.get('url_mp3')),
+    })
 
 
 @chat_bp.route('/api/chat/unread_count')

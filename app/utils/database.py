@@ -138,6 +138,21 @@ def _create_tables(conn):
         )
     ''')
 
+    # 聊天：用户备注表（每个用户对“其他用户”的备注，仅自己可见）
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS user_remarks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            owner_user_id INTEGER NOT NULL,
+            target_user_id INTEGER NOT NULL,
+            remark TEXT NOT NULL,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(owner_user_id, target_user_id),
+            FOREIGN KEY(owner_user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY(target_user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    ''')
+
     # 兼容老库：补字段 direct_pair_key（如果不存在）
     try:
         cur = conn.cursor()
@@ -236,6 +251,8 @@ def _create_indexes(conn):
         'CREATE INDEX IF NOT EXISTS idx_chat_messages_conversation ON chat_messages(conversation_id, id DESC)',
         # direct 私聊唯一键：从根源杜绝重复会话（仅当 c_type='direct' 时生效）
         "CREATE UNIQUE INDEX IF NOT EXISTS ux_chat_direct_pair ON chat_conversations(direct_pair_key) WHERE c_type='direct' AND direct_pair_key IS NOT NULL",
+        # 用户备注：便于查询
+        'CREATE INDEX IF NOT EXISTS idx_user_remarks_owner ON user_remarks(owner_user_id, target_user_id)',
 
         # 通知相关索引
         'CREATE INDEX IF NOT EXISTS idx_notifications_active ON notifications(is_active, priority DESC)',

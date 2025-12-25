@@ -2,7 +2,7 @@
 
 ## 项目背景
 - Flask + SQLite 题库系统
-- 需求：新增用户之间聊天，并持续优化（头像/昵称、图片、未读提醒、预览、拖拽粘贴等）
+- 需求：新增用户之间聊天，并持续优化（头像/昵称、图片、未读提醒、预览、拖拽粘贴、语音、备注、资料页等）
 - 实现策略：不引入 WebSocket，使用轮询；消息持久化到 SQLite
 
 ---
@@ -30,7 +30,7 @@
 - 修改：`app/utils/database.py` 的 `init_db()` 创建表
   - `chat_conversations`
   - `chat_members`（含 `last_read_message_id`）
-  - `chat_messages`（含 `content_type`，支持 text/image）
+  - `chat_messages`（含 `content_type`，支持 text/image/audio）
 - 修改：`app/utils/database.py` 的 `_create_indexes()` 新增索引
   - `idx_chat_members_user (user_id, conversation_id)`
   - `idx_chat_messages_conversation (conversation_id, id DESC)`
@@ -112,34 +112,19 @@
 
 ---
 
-## 7. 体验优化（按你指定的 3 项）
-### 5.1 后端上传接口
-- 新增：`POST /api/chat/messages/upload_image`
-  - `multipart/form-data`：`conversation_id` + `image`
-  - 保存目录：`uploads/chat/`
-  - 写入 `chat_messages`：
-    - `content_type='image'`
-    - `content='/uploads/chat/xxx.ext'`
-
-### 5.2 前端
-- 聊天输入区新增“图片”按钮（file input）
-- 图片消息渲染为 `<img>`（点击可预览，后续升级为弹层）
-
----
-
-## 6. 体验优化（按你指定的 3 项）
-### 6.1 图片弹层预览（不跳新窗口）
+## 7. 体验优化：图片预览/失败重试/拖拽粘贴
+### 7.1 图片弹层预览（不跳新窗口）
 - `chat.html`：
   - 增加图片预览 Modal
   - 点击图片：打开弹层
   - Esc / 点击背景关闭
 
-### 6.2 发送中状态 + 失败重试
+### 7.2 发送中状态 + 失败重试
 - `chat.html`：
   - “发送/图片”按钮支持 loading（`data-loading="true"` + spinner）
   - 发送失败：`confirm()` 询问是否重试
 
-### 6.3 拖拽/粘贴图片发送
+### 7.3 拖拽/粘贴图片发送
 - `chat.html`：
   - drag & drop：拖到页面出现提示层，松开即发送
   - paste：Ctrl+V 粘贴图片自动发送
@@ -147,90 +132,27 @@
 
 ---
 
-## 7. 新增：图片发送前压缩 / 生成缩略图（减少流量）（已落实到项目）
-
-### 7.1 现状（未压缩）
-- 前端：`chat.html` 直接把用户选择/拖拽/粘贴得到的 `File/Blob` 原样上传。
-- 后端：`POST /api/chat/messages/upload_image`
-  - 仅做扩展名白名单校验（png/jpg/jpeg/gif/webp）
-  - 直接 `f.save()` 落盘到 `uploads/chat/`
-  - `chat_messages.content` 存储图片 URL（如 `/uploads/chat/xxx.jpg`）
-- 问题：手机拍照图/截图动辄数 MB，上传与拉取都浪费流量，渲染列表/预览也更慢。
-
-### 7.2 已实现方案（优先前端压缩 + 缩略图）
-> 原则：**上传前就变小**，让“上传流量”和“后续拉取流量”同时下降。
-
-本项目已按“**content 存 JSON 字符串**”方案落地（不改 DB 表结构）。
-
-#### A. 前端压缩（主路径）
-- 在 `sendImageFile()` / 拖拽 / 粘贴发送前，先把 `File` 处理成：
-  - **thumb（缩略图）**：用于消息气泡内展示（小图，加载快）
-  - **image（压缩后原图）**：用于点击弹层查看（质量更好，但仍比原始小很多）
-- 实现方式（浏览器端）：
-  - 用 `createImageBitmap(file)` 或 `<img>` 解码
-  - 用 `<canvas>` 按最长边缩放、导出 `toBlob('image/jpeg', quality)`
-  - 生成两个 Blob：thumb 与 main
-
-建议参数（可按业务再调）：
-- main：最长边 `maxSide = 1600`，`jpegQuality = 0.82`，目标大小建议 `< 600~900KB`
-- thumb：最长边 `thumbSide = 360`，`jpegQuality = 0.70`，目标大小建议 `< 60~120KB`
-- 若原图已经很小（例如 `< 200KB` 且边长不大），可直接跳过压缩，thumb 仍可生成。
-
-#### B. 后端兜底（可选，但更稳）
-- 防止“旧浏览器/异常图片/绕过前端”上传大图：
-  - 后端对上传文件再做一次最大边限制与重新编码
-  - 同时生成缩略图（thumb）
-
-### 7.3 接口与数据结构调整建议（兼容显示）
-当前 `chat_messages` 只有 `content` 单字段，不方便同时存 main+thumb。
-建议二选一：
-
-1）**最小改动：content 存 JSON 字符串**（已采用）
-- `content_type='image'`
-- `content` 实际存（JSON 字符串）：
+## 8. 新增：图片发送前压缩 / 生成缩略图（减少流量）（已落实到项目）
+- 方案：前端压缩生成 main + thumb；后端 upload_image 接口支持 `thumb`，image 类型 content 存 JSON
+- `content_type='image'` 时：
   ```json
   {"url":"/uploads/chat/xxx.jpg","thumb":"/uploads/chat/xxx_thumb.jpg","w":1200,"h":900}
   ```
-  - `thumb` 可能为 `null`（例如 GIF 或压缩失败退化直传）
-  - `w/h` 为可选（前端提交，未提交则为 `null`）
-- 前端渲染逻辑：
-  - 气泡图：`thumb || url`
-  - 弹层预览：`url`
-- 兼容旧数据：若 `content` 不是 JSON（纯 URL），前端按旧格式渲染。
-
-2）**数据库加字段**
-- `chat_messages` 新增列：`thumb_url`（以及可选 `width/height`）
-- 代码更直观，但需要 DB 迁移脚本/升级逻辑。
-
-### 7.4 前端展示策略
-- 消息列表：显示 thumb（快）
-- 弹层预览：加载 main url
-- 可选：`loading="lazy"`，并给图片加一个占位背景色，减少抖动。
-
-### 7.5 注意点
-- GIF：前端 canvas 压缩会丢动画；建议：
-  - 若是 gif：只生成静态 thumb（可选），main 保持原 gif 或转 webp（取决于需求）
-- 透明背景 PNG：转 JPEG 会丢透明；可按策略：
-  - 有透明则输出 PNG/WebP；否则 JPEG
-- 体积控制：不要无限压缩导致糊；建议以“最长边 + 质量”双阈值控制。
 
 ---
 
-## 8. 会话去重：从根源杜绝 direct 私聊重复（已落实到项目）
-
-### 8.1 问题现象
+## 9. 会话去重：从根源杜绝 direct 私聊重复（已落实到项目）
+### 9.1 问题现象
 - 会话列表里同一用户出现多次（原因：同一对用户被创建了多个 `direct` 会话）
 
-### 8.2 数据库层修复与强约束
+### 9.2 数据库层修复与强约束
 - DB：`instance/submissions.db`
-- 已对存量重复会话做过合并清理（将消息合并到保留会话，删除多余会话）
-- 在 `chat_conversations` 增加字段：`direct_pair_key`
-  - 格式：`min_uid:max_uid`（例如 `1:10`）
+- 在 `chat_conversations` 增加字段：`direct_pair_key`（`min_uid:max_uid`）
 - 增加唯一索引（partial unique index）：
   - `ux_chat_direct_pair` on `chat_conversations(direct_pair_key)`
   - 条件：`c_type='direct' AND direct_pair_key IS NOT NULL`
 
-### 8.3 代码层创建逻辑
+### 9.3 代码层创建逻辑
 - `POST /api/chat/conversations/create`
   - 优先按 `direct_pair_key` 复用
   - 新建时写入 `direct_pair_key`
@@ -238,13 +160,66 @@
 
 ---
 
-## 9. 常见注意点
-- `read_lints` 对 `chat.html` 中 Jinja 语法（如 `{{ user_id }}`）可能误报 JS 错误：属静态解析误判，渲染后浏览器执行正常。
+## 10. 新增：用户名搜索体验优化（避免 wxr / wxr2 误选）
+### 10.1 前端
+- 搜索回车创建会话：优先精确匹配用户名；当匹配多个用户时提供“选择列表”弹层。
+
+### 10.2 后端
+- `/api/chat/users?q=...` 排序优化：精确命中优先、前缀命中其次，再按活跃度与用户名。
+
+---
+
+## 11. 新增：用户备注（只对自己可见）+ 会话/标题优先展示备注
+### 11.1 数据库
+- 新增表：`user_remarks (owner_user_id, target_user_id, remark, updated_at, created_at)`
+- 唯一约束：`UNIQUE(owner_user_id, target_user_id)`
+
+### 11.2 后端
+- 新增：`GET/POST /api/chat/user_remark`
+  - GET：读取备注
+  - POST：设置备注，空字符串表示清除
+- `GET /api/chat/conversations` 返回 `peer_remark`
+
+### 11.3 前端
+- 会话列表/聊天标题显示名：`peer_remark || peer_username`
+
+---
+
+## 12. 新增：好友资料页（类似微信好友资料）+ 备注内联编辑
+### 12.1 后端
+- 新增：`GET /api/chat/user_profile?user_id=...`
+  - 返回用户公开字段：`username/avatar/contact/college/created_at`
+  - 返回当前用户对 TA 的 `remark`
+
+### 12.2 前端
+- 点击入口：
+  - 会话列表头像
+  - 消息列表中对方头像
+  - 聊天头部按钮从“备注”改为“资料”，点击进入资料页
+- 资料页能力：
+  - 顶部导航（返回箭头 + 右上角“···”）
+  - 备注内联编辑（输入框 + 保存/清除/取消）
+  - “···”菜单支持：设置备注 / 清除备注 / 复制用户名 / 复制 ID
+  - 朋友圈预览区块（占位）
+  - 底部按钮：发消息（回到聊天）/ 音视频通话（占位提示）
+- 头像修复：资料页头像使用 `.profile-avatar` 强制 `cover + center`，避免显示异常
+
+---
+
+## 13. 输入区 UI 迭代（更像移动端 IM）
+- 输入区改为：左侧 “+” 圆按钮 + 中间胶囊输入框 + 右侧（语音/发送互斥）
+- 有文字时显示“绿色圆形上箭头发送”，无文字时显示麦克风
+- “+” 支持弹出菜单（图片/文件占位）
+
+---
+
+## 14. 常见注意点
+- `read_lints` 对 `chat.html` 中 Jinja 语法（如 `{{ user_id }}`）可能误报 JS 错误：属静态解析误判。
 - UI 改动后建议 Ctrl+F5 强制刷新，避免缓存导致样式不生效。
 
 ---
 
-## 10. 关键文件列表（便于新对话定位）
+## 15. 关键文件列表（便于新对话定位）
 - `app/routes/chat.py`
 - `app/routes/__init__.py`
 - `app/utils/database.py`
