@@ -1001,7 +1001,40 @@
             if (qType === '选择题' || qType === '多选题') {
                  inputElement.placeholder = '例如: A, 或 ABC';
             } else if (qType === '填空题') {
-                inputElement.placeholder = '多个答案用 ;; 分隔';
+                // 填空题：结构化多空/多答案编辑器（保存时会自动生成 answer 字符串）
+                container.innerHTML = `
+                  <div id="blank-editor" style="border:1px solid #e9ecef; background:#fbfbfd; border-radius:12px; padding:12px;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:10px;">
+                      <div>
+                        <div style="font-weight:700;">结构化答案（推荐）</div>
+                        <div style="font-size:12px; color:#6c757d; margin-top:2px;">规则：不同空用 <b>;;</b> 分隔保存；同一空多答案用 <b>;</b> 分隔保存。</div>
+                      </div>
+                      <div style="display:flex; gap:8px; align-items:center;">
+                        <button type="button" class="btn-sm" style="padding:6px 10px; border:1px solid #dee2e6; background:#fff; border-radius:8px; cursor:pointer;" onclick="blankEditorAddBlank()">+ 增加一空</button>
+                        <button type="button" class="btn-sm" style="padding:6px 10px; border:1px solid #dee2e6; background:#fff; border-radius:8px; cursor:pointer;" onclick="blankEditorToggleRaw(true)">手写模式</button>
+                      </div>
+                    </div>
+
+                    <div id="blank-groups" style="display:flex; flex-direction:column; gap:10px;"></div>
+
+                    <div id="blank-raw" style="display:none; margin-top:10px;">
+                      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:6px;">
+                        <div style="font-weight:600;">手写答案</div>
+                        <button type="button" class="btn-sm" style="padding:6px 10px; border:1px solid #dee2e6; background:#fff; border-radius:8px; cursor:pointer;" onclick="blankEditorToggleRaw(false)">返回结构化</button>
+                      </div>
+                      <input id="blank-raw-input" type="text" style="width:100%; padding:10px 14px; border:1px solid #ced4da; border-radius:8px; font-size:14px;" placeholder="例如：北京;北平;;上海;沪" />
+                      <div style="font-size:12px; color:#6c757d; margin-top:6px;">提示：你仍可直接手写；切回结构化会尝试自动解析。</div>
+                    </div>
+
+                    <!-- 最终提交给后端的 answer 字段 -->
+                    <input type="hidden" id="qAnswer" value="" />
+                  </div>
+                `;
+
+                // 初始化：基于题干 __ 数量 + 默认答案 defaultValue
+                blankEditorInitFromContentAndAnswer(document.getElementById('qContent')?.value || '', defaultValue);
+
+                return;
             }
             else {
                 inputElement.placeholder = '请输入答案';
@@ -1049,8 +1082,13 @@
                 document.getElementById('qOptions').value = (full_q.options && JSON.parse(full_q.options).join('\n')) || '';
                 
                 // Set answer value on the newly created element
-                const answerInput = document.getElementById('qAnswer');
-                if(answerInput) answerInput.value = full_q.answer;
+                // 填空题：用结构化编辑器回填
+                if (full_q.q_type === '填空题') {
+                    blankEditorInitFromContentAndAnswer(full_q.content || '', full_q.answer || '');
+                } else {
+                    const answerInput = document.getElementById('qAnswer');
+                    if(answerInput) answerInput.value = full_q.answer;
+                }
 
                 document.getElementById('qExplanation').value = full_q.explanation || '';
 
@@ -1443,5 +1481,265 @@
         const updatedPaths = currentPaths.filter(path => path !== pathToRemove);
         setImagePaths(updatedPaths);
     }
+
+    /* =============================
+     * 填空题结构化答案编辑器
+     * 格式约定：不同空用 ";;" 分隔；同一空多答案用 ";" 分隔
+     * 示例：北京;北平;;上海;沪
+     * ============================= */
+
+    function blankEditorCountBlanksFromContent(content) {
+        try {
+            const c = (content || '').toString();
+            const n = (c.match(/__/g) || []).length;
+            return Math.max(1, n);
+        } catch (e) {
+            return 1;
+        }
+    }
+
+    function blankEditorParseAnswer(answerStr) {
+        const s = (answerStr || '').toString().trim();
+        if (!s) return [];
+        // 空之间：;;
+        // 同空候选：;
+        return s.split(';;').map(group => {
+            const g = (group || '').trim();
+            if (!g) return [''];
+            const arr = g.split(';').map(x => x.trim()).filter(Boolean);
+            return arr.length ? arr : [''];
+        });
+    }
+
+    function blankEditorSerialize(groups) {
+        const safeGroups = (groups || []).map(opts => {
+            const cleaned = (opts || []).map(x => (x || '').toString().trim()).filter(Boolean);
+            return cleaned.join(';');
+        });
+        return safeGroups.join(';;');
+    }
+
+    function blankEditorGetGroupsFromDOM() {
+        const wrap = document.getElementById('blank-groups');
+        if (!wrap) return [];
+        const groups = [];
+        wrap.querySelectorAll('[data-blank-group]').forEach(groupEl => {
+            const opts = [];
+            groupEl.querySelectorAll('input[data-blank-opt]').forEach(inp => {
+                opts.push((inp.value || '').trim());
+            });
+            groups.push(opts);
+        });
+        return groups;
+    }
+
+    function blankEditorSyncHiddenAnswer() {
+        const hidden = document.getElementById('qAnswer');
+        if (!hidden) return;
+        const rawBox = document.getElementById('blank-raw');
+        const isRaw = rawBox && rawBox.style.display !== 'none';
+        if (isRaw) {
+            const rawInput = document.getElementById('blank-raw-input');
+            hidden.value = rawInput ? (rawInput.value || '').trim() : '';
+            return;
+        }
+        const groups = blankEditorGetGroupsFromDOM();
+        hidden.value = blankEditorSerialize(groups);
+    }
+
+    function blankEditorRender(groups) {
+        const wrap = document.getElementById('blank-groups');
+        if (!wrap) return;
+        wrap.innerHTML = '';
+
+        (groups || []).forEach((opts, idx) => {
+            const group = document.createElement('div');
+            group.setAttribute('data-blank-group', '1');
+            group.style.border = '1px solid #e9ecef';
+            group.style.borderRadius = '12px';
+            group.style.padding = '10px';
+            group.style.background = '#fff';
+
+            const header = document.createElement('div');
+            header.style.display = 'flex';
+            header.style.justifyContent = 'space-between';
+            header.style.alignItems = 'center';
+            header.style.gap = '10px';
+            header.style.marginBottom = '8px';
+            header.innerHTML = `
+              <div style="font-weight:700;">空 ${idx + 1}</div>
+              <div style="display:flex; gap:8px;">
+                <button type="button" class="btn-sm" style="padding:6px 10px; border:1px solid #dee2e6; background:#fff; border-radius:8px; cursor:pointer;" data-add-opt>+ 增加答案</button>
+                <button type="button" class="btn-sm" style="padding:6px 10px; border:1px solid #f1c0bc; background:rgba(255,59,48,0.06); color:#b42318; border-radius:8px; cursor:pointer;" data-del-blank>删除此空</button>
+              </div>
+            `;
+
+            const list = document.createElement('div');
+            list.style.display = 'flex';
+            list.style.flexDirection = 'column';
+            list.style.gap = '8px';
+
+            const normOpts = (opts && opts.length) ? opts : [''];
+            normOpts.forEach((val) => {
+                list.appendChild(blankEditorCreateOptRow(val));
+            });
+
+            group.appendChild(header);
+            group.appendChild(list);
+            wrap.appendChild(group);
+
+            // events
+            header.querySelector('[data-add-opt]').onclick = () => {
+                list.appendChild(blankEditorCreateOptRow(''));
+                blankEditorSyncHiddenAnswer();
+            };
+            header.querySelector('[data-del-blank]').onclick = () => {
+                // 至少保留 1 空
+                const all = wrap.querySelectorAll('[data-blank-group]');
+                if (all.length <= 1) {
+                    showError('至少需要保留 1 个空');
+                    return;
+                }
+                group.remove();
+                // 重新编号
+                wrap.querySelectorAll('[data-blank-group]').forEach((g, i) => {
+                    const t = g.querySelector('div[style*="font-weight:700"]');
+                    if (t) t.textContent = `空 ${i + 1}`;
+                });
+                blankEditorSyncHiddenAnswer();
+            };
+        });
+
+        blankEditorSyncHiddenAnswer();
+    }
+
+    function blankEditorCreateOptRow(val) {
+        const row = document.createElement('div');
+        row.style.display = 'flex';
+        row.style.gap = '8px';
+        row.style.alignItems = 'center';
+
+        const inp = document.createElement('input');
+        inp.type = 'text';
+        inp.setAttribute('data-blank-opt', '1');
+        inp.value = (val || '').toString();
+        inp.placeholder = '可接受答案（例如：北京）';
+        inp.style.flex = '1';
+        inp.style.padding = '10px 12px';
+        inp.style.border = '1px solid #ced4da';
+        inp.style.borderRadius = '10px';
+        inp.style.fontSize = '14px';
+        inp.oninput = () => blankEditorSyncHiddenAnswer();
+
+        const del = document.createElement('button');
+        del.type = 'button';
+        del.textContent = '删除';
+        del.className = 'btn-sm';
+        del.style.padding = '8px 10px';
+        del.style.border = '1px solid #dee2e6';
+        del.style.background = '#fff';
+        del.style.borderRadius = '10px';
+        del.style.cursor = 'pointer';
+        del.onclick = () => {
+            const parent = row.parentElement;
+            row.remove();
+            // 每空至少保留 1 个输入
+            if (parent && parent.querySelectorAll('input[data-blank-opt]').length === 0) {
+                parent.appendChild(blankEditorCreateOptRow(''));
+            }
+            blankEditorSyncHiddenAnswer();
+        };
+
+        row.appendChild(inp);
+        row.appendChild(del);
+        return row;
+    }
+
+    function blankEditorInitFromContentAndAnswer(content, answerStr) {
+        const blankCount = blankEditorCountBlanksFromContent(content);
+        const parsed = blankEditorParseAnswer(answerStr);
+
+        // 以题干空数为准：不足补齐，超出截断
+        const groups = [];
+        for (let i = 0; i < blankCount; i++) {
+            groups.push(parsed[i] ? parsed[i] : ['']);
+        }
+
+        blankEditorRender(groups);
+
+        // raw input 同步
+        const rawInput = document.getElementById('blank-raw-input');
+        if (rawInput) {
+            rawInput.value = blankEditorSerialize(groups);
+            rawInput.oninput = () => blankEditorSyncHiddenAnswer();
+        }
+    }
+
+    function blankEditorAddBlank() {
+        const wrap = document.getElementById('blank-groups');
+        if (!wrap) return;
+        const groups = blankEditorGetGroupsFromDOM();
+        groups.push(['']);
+        blankEditorRender(groups);
+
+        const rawInput = document.getElementById('blank-raw-input');
+        if (rawInput) rawInput.value = blankEditorSerialize(groups);
+    }
+
+    function blankEditorToggleRaw(toRaw) {
+        const rawBox = document.getElementById('blank-raw');
+        const rawInput = document.getElementById('blank-raw-input');
+        const wrap = document.getElementById('blank-groups');
+        if (!rawBox || !wrap) return;
+
+        if (toRaw) {
+            // 切到手写：用当前结构化结果填充
+            const groups = blankEditorGetGroupsFromDOM();
+            if (rawInput) rawInput.value = blankEditorSerialize(groups);
+            rawBox.style.display = 'block';
+            wrap.style.display = 'none';
+        } else {
+            // 切回结构化：尝试解析手写
+            const parsed = blankEditorParseAnswer(rawInput ? rawInput.value : '');
+            const blankCount = blankEditorCountBlanksFromContent(document.getElementById('qContent')?.value || '');
+            const groups = [];
+            for (let i = 0; i < blankCount; i++) groups.push(parsed[i] ? parsed[i] : ['']);
+            rawBox.style.display = 'none';
+            wrap.style.display = 'flex';
+            blankEditorRender(groups);
+        }
+        blankEditorSyncHiddenAnswer();
+    }
+
+    // 题干变化时：如果当前是填空题，自动根据 __ 数量调整空数
+    function blankEditorOnContentChanged() {
+        const qType = document.getElementById('qType')?.value;
+        if (qType !== '填空题') return;
+        const wrap = document.getElementById('blank-groups');
+        if (!wrap) return;
+        const blankCount = blankEditorCountBlanksFromContent(document.getElementById('qContent')?.value || '');
+        const current = blankEditorGetGroupsFromDOM();
+        const groups = [];
+        for (let i = 0; i < blankCount; i++) groups.push(current[i] ? current[i] : ['']);
+        blankEditorRender(groups);
+
+        const rawInput = document.getElementById('blank-raw-input');
+        if (rawInput) rawInput.value = blankEditorSerialize(groups);
+    }
+
+    // 挂到 window，确保 onclick 可用
+    window.blankEditorInitFromContentAndAnswer = blankEditorInitFromContentAndAnswer;
+    window.blankEditorAddBlank = blankEditorAddBlank;
+    window.blankEditorToggleRaw = blankEditorToggleRaw;
+
+    // 监听题干输入
+    document.addEventListener('DOMContentLoaded', () => {
+        const c = document.getElementById('qContent');
+        if (c) c.addEventListener('input', () => {
+            // 防抖（很轻量）
+            clearTimeout(window.__blankEditorTimer);
+            window.__blankEditorTimer = setTimeout(blankEditorOnContentChanged, 120);
+        });
+    });
 </script>
 {% endblock %}

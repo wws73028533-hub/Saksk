@@ -1,0 +1,1799 @@
+const mode = '{{ mode }}';
+const source = '{{ source or "" }}';
+const LOGGED_IN = {{ 'true' if logged_in else 'false' }};
+const USER_KEY = "{{ user_id if logged_in else 'guest' }}"; // 用 user_id 作为进度隔离键
+
+// 优化后的进度键生成函数 - 标准化参数顺序,避免重复进度
+function progressKey(){
+    const params = new URLSearchParams(window.location.search);
+    const subject = params.get('subject') || 'all';
+    const type = params.get('type') || 'all';
+    const currentMode = params.get('mode') || mode || 'quiz';
+    
+    // 考试模式使用exam_id作为唯一标识
+    if (currentMode === 'exam') {
+        const examId = params.get('exam_id');
+        if (examId) {
+            return `quiz_progress_${USER_KEY}_exam_${examId}`;
+        }
+    }
+    
+    // 其他模式使用标准化的科目+题型+模式+打乱设置
+    const shuffleQ = params.get('shuffle_questions') === '1' ? '1' : '0';
+    const shuffleO = params.get('shuffle_options') === '1' ? '1' : '0';
+    return `quiz_progress_${USER_KEY}_${currentMode}_${subject}_${type}_q${shuffleQ}_o${shuffleO}`;
+}
+const questions = document.querySelectorAll('.question-box');
+const EXAM_ID = (function(){ const el = document.getElementById('mainCard'); return el ? (el.dataset.examId || '') : ''; })();
+const EXAM_SUBMITTED = {{ 'true' if submitted else 'false' }};
+const USER_ANSWERS = {{ user_answers_json|safe if user_answers_json else '{}' }};
+const listItems = document.querySelectorAll('.q-item');
+
+// ===== 题目转发（发送到站内聊天） =====
+const forwardBtn = document.getElementById('forward-question-btn');
+if (forwardBtn) {
+    forwardBtn.addEventListener('click', ()=>{
+        if (!LOGGED_IN) { showToast('请先登录后再转发'); return; }
+        openForwardModal();
+    });
+}
+
+function closeForwardModal(e){
+    if (e) {
+        // 点击遮罩关闭
+        if (e.target && e.target.id !== 'forwardOverlay') return;
+    }
+    const ov = document.getElementById('forwardOverlay');
+    if (ov) ov.style.display = 'none';
+    const list = document.getElementById('forwardUserList');
+    if (list) list.innerHTML = '';
+}
+
+function openForwardModal(){
+    const ov = document.getElementById('forwardOverlay');
+    if (!ov) return;
+    ov.style.display = 'flex';
+
+    // 预览当前题目
+    try {
+        const q = questions[currentIndex];
+        const qid = q ? (q.getAttribute('data-id') || '') : '';
+        const qtype = q ? (q.getAttribute('data-type') || '') : '';
+        const meta = document.getElementById('forwardQMeta');
+        const content = document.getElementById('forwardQContent');
+        if (meta) meta.textContent = `ID: ${qid} · 题型: ${qtype} · 第 ${currentIndex+1} 题 / ${totalQuestions}`;
+        if (content) {
+            const el = q ? q.querySelector('.q-content') : null;
+            content.textContent = el ? (el.innerText || '').trim() : '';
+        }
+    } catch(err) {}
+
+    // 默认拉一次用户列表
+    fetchForwardUsers();
+
+    // 聚焦搜索框
+    try { const inp = document.getElementById('forwardUserSearch'); if (inp) inp.focus(); } catch(e) {}
+}
+
+function onForwardUserSearchKey(e){
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        fetchForwardUsers();
+    }
+}
+
+function escapeHtml(s){
+    const div = document.createElement('div');
+    div.textContent = s || '';
+    return div.innerHTML;
+}
+
+async function fetchForwardUsers(){
+    const inp = document.getElementById('forwardUserSearch');
+    const kw = (inp && inp.value) ? inp.value.trim() : '';
+    const res = await fetch(`/api/chat/users?q=${encodeURIComponent(kw)}`);
+    const js = await res.json();
+    if (!res.ok || js.status !== 'success') {
+        showToast(js.message || '搜索用户失败');
+        return;
+    }
+    renderForwardUserList(js.data || []);
+}
+
+function renderForwardUserList(users){
+    const list = document.getElementById('forwardUserList');
+    if (!list) return;
+    if (!users.length) {
+        list.innerHTML = `<div style="padding:10px 6px; color:var(--text-sub);">没有匹配的用户</div>`;
+        return;
+    }
+
+    list.innerHTML = users.slice(0, 50).map(u=>{
+        const name = u.username || '用户';
+        const avatar = u.avatar || '';
+        const initial = (name || 'U').slice(0,1).toUpperCase();
+        const avHtml = avatar
+          ? (()=>{ const safeUrl = String(avatar||'').replace(/'/g,'%27').replace(/\)/g,'%29'); return `<div style="width:38px;height:38px;border-radius:999px;background-image:url('${safeUrl}');background-size:cover;background-position:center;"></div>`; })()
+          : `<div style="width:38px;height:38px;border-radius:999px;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;">${escapeHtml(initial)}</div>`;
+
+        return `
+          <div style="display:flex; align-items:center; gap:10px; padding:10px 10px; border-radius:14px; border:1px solid var(--border-color); cursor:pointer;" onclick='forwardToUser(${Number(u.id||0)})'>
+            ${avHtml}
+            <div style="flex:1; min-width:0;">
+              <div style="font-weight:700;">${escapeHtml(name)}</div>
+              <div style="font-size:12px; color:var(--text-sub);">ID: ${escapeHtml(String(u.id||''))}</div>
+            </div>
+            <div style="color:var(--primary); font-weight:700;">发送</div>
+          </div>
+        `;
+    }).join('');
+}
+
+async function forwardToUser(peerUserId){
+    if (!peerUserId) return;
+    const q = questions[currentIndex];
+    const qid = q ? (q.getAttribute('data-id') || '') : '';
+    if (!qid) { showToast('题目ID获取失败'); return; }
+
+    try {
+        // 1) 创建/复用会话
+        const cRes = await fetch('/api/chat/conversations/create', {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ peer_user_id: peerUserId })
+        });
+        const cJs = await cRes.json();
+        if (!cRes.ok || cJs.status !== 'success') { showToast(cJs.message || '创建会话失败'); return; }
+        const cid = cJs.conversation_id;
+
+        // 2) 发送“题目卡片”消息
+        const sRes = await fetch('/api/chat/messages/send_question', {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ conversation_id: cid, question_id: Number(qid) })
+        });
+        const sJs = await sRes.json();
+        if (!sRes.ok || sJs.status !== 'success') { showToast(sJs.message || '转发失败'); return; }
+
+        showToast('已转发');
+        closeForwardModal();
+    } catch(e) {
+        showToast('转发失败');
+    }
+}
+
+const totalQuestions = {{ questions|length }};
+let currentIndex = 0;
+let isWholeView = false;
+let isSubmitted = false; // 标记是否已交卷
+
+let timerSeconds = {{ duration * 60 if duration else 0 }};
+let timerInterval;
+let cachedOrder = null; // 缓存题目顺序，保存进度时需要保留
+
+async function init() {
+    if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark-mode');
+    // 进度加载：考试模式（未交卷）也启用，与刷题/背题一致（localStorage + /api/progress）
+    if (mode !== 'exam' || (mode === 'exam' && !EXAM_SUBMITTED)) {
+        await preloadProgress();
+    }
+
+    if (mode === 'exam') {
+        if (EXAM_SUBMITTED) {
+            isSubmitted = true;
+            // 回顾模式：预填答案并展示解析
+            applyReviewFromServer();
+            const btnSubmit = document.getElementById('btn-submit-exam');
+            if (btnSubmit) btnSubmit.style.display = 'none';
+            const timerEl = document.getElementById('timer');
+            if (timerEl) timerEl.style.display = 'none';
+            const btnNext = document.getElementById('btn-next-exam');
+            if (btnNext) btnNext.style.display = 'block';
+        } else {
+            // 进行中考试：恢复服务器草稿并启动自动保存
+            // 注意：preloadProgress()/loadState() 已经先执行过，会恢复 currentIndex/本地答题输入。
+            // 这里再用服务端草稿补齐（若本地为空），但不覆盖本地已输入的内容。
+            applyDraftFromServer();
+            startTimer();
+            const btnNext = document.getElementById('btn-next-exam');
+            if (btnNext) btnNext.style.display = 'block';
+            scheduleAutoSave();
+        }
+    }
+
+    showQuestion(currentIndex);
+}
+
+async function preloadProgress(){
+    const key = progressKey();
+    console.log('[进度加载] 当前模式:', mode, '进度键:', key);
+
+    // 登录用户优先从服务器拉取进度
+    if (LOGGED_IN) {
+        try {
+            const encodedKey = encodeURIComponent(key);
+            console.log('[进度加载] 从服务器获取进度...');
+            const res = await fetch(`/api/progress?key=${encodedKey}`);
+            if (res.ok) {
+                const js = await res.json();
+                console.log('[进度加载] 服务器响应:', js.status, js.data ? '有数据' : '无数据');
+                if (js.status === 'success' && js.data) {
+                    // 比较时间戳,使用最新的进度
+                    const serverData = js.data;
+                    const localDataStr = localStorage.getItem(key);
+
+                    // 缓存服务器的题目顺序（如果有）
+                    if (serverData.order && Array.isArray(serverData.order)) {
+                        cachedOrder = serverData.order;
+                    }
+
+                    if (localDataStr) {
+                        try {
+                            const localData = JSON.parse(localDataStr);
+                            const serverTime = serverData.timestamp || 0;
+                            const localTime = localData.timestamp || 0;
+
+                            // 使用时间戳较新的数据，但始终保留order字段
+                            if (serverTime > localTime) {
+                                localStorage.setItem(key, JSON.stringify(serverData));
+                                console.log('[进度加载] 使用服务器进度(更新)');
+                            } else {
+                                console.log('[进度加载] 使用本地进度(更新)');
+                                // 本地更新,同步到服务器，但保留服务器的order
+                                if (localTime > serverTime) {
+                                    // 合并：保留服务器的order到本地数据
+                                    if (cachedOrder && !localData.order) {
+                                        localData.order = cachedOrder;
+                                        localStorage.setItem(key, JSON.stringify(localData));
+                                    }
+                                    syncToServer(localData);
+                                }
+                            }
+                        } catch(e) {
+                            // 解析失败,使用服务器数据
+                            localStorage.setItem(key, JSON.stringify(serverData));
+                        }
+                    } else {
+                        // 本地无数据,使用服务器数据
+                        localStorage.setItem(key, JSON.stringify(serverData));
+                        console.log('[进度加载] 从服务器加载进度');
+                    }
+                } else {
+                    console.log('[进度加载] 服务器无进度数据');
+                }
+            }
+        } catch(e) {
+            console.error('[进度加载] 加载服务器进度失败:', e);
+        }
+    }
+    loadState();
+}
+
+function startTimer() {
+    const timerEl = document.getElementById('timer');
+    timerInterval = setInterval(() => {
+        timerSeconds--;
+        if (timerSeconds <= 0) {
+            clearInterval(timerInterval);
+            alert('考试时间到！系统将自动交卷。');
+            submitExam(true); 
+            return;
+        }
+        const h = Math.floor(timerSeconds / 3600).toString().padStart(2,'0');
+        const m = Math.floor((timerSeconds % 3600) / 60).toString().padStart(2,'0');
+        const s = (timerSeconds % 60).toString().padStart(2,'0');
+        timerEl.innerText = `${h}:${m}:${s}`;
+    }, 1000);
+}
+
+function markAnswered(index) {
+    // 考试模式：题目列表标注“已答/未答”
+    // 兼容：不要强依赖题目容器 id = q-{index}（可能被重排/分页导致不一致）
+    try {
+        // 1) 优先从事件源 input 反查所属题目（最稳）
+        let q = null;
+        const ev = (typeof window !== 'undefined') ? window.event : null;
+        const target = ev && ev.target ? ev.target : null;
+        if (target && target.closest) {
+            q = target.closest('.question-box');
+        }
+
+        // 2) 回退：按旧逻辑通过 id 查找
+        if (!q) q = document.getElementById(`q-${index}`);
+        if (!q) return;
+
+        // 3) 以题目 DOM 自带 data-index 为准（若不存在则用入参 index）
+        const realIndexStr = q.getAttribute('data-index');
+        const realIndex = (realIndexStr !== null && realIndexStr !== '') ? Number(realIndexStr) : index;
+
+        const item = document.getElementById(`list-item-${realIndex}`);
+        if (!item) return;
+
+        const type = q.getAttribute('data-type');
+        if (hasAnswered(q, type)) {
+            item.classList.add('answered');
+        } else {
+            item.classList.remove('answered');
+        }
+    } catch(e) {
+        // 兜底：不要抛错影响考试流程
+        try {
+            const item = document.getElementById(`list-item-${index}`);
+            if (item) item.classList.add('answered');
+        } catch(_) {}
+    }
+}
+
+function toggleWholeView() {
+    isWholeView = !isWholeView;
+    const container = document.getElementById('mainCard');
+    const btn = document.getElementById('btn-whole-view');
+    
+    if (isWholeView) {
+        container.classList.add('whole-view');
+        btn.innerText = "↩ 返回单题";
+        window.scrollTo(0, 0); // 滚回顶部
+        
+        if(mode === 'exam' && !isSubmitted) { // 只有没交卷时才显示交卷按钮
+            let tempSubmit = document.getElementById('temp-submit');
+            if(!tempSubmit) {
+                tempSubmit = document.createElement('button');
+                tempSubmit.id = 'temp-submit';
+                tempSubmit.className = 'btn btn-submit';
+                tempSubmit.style.display = 'block';
+                tempSubmit.style.margin = '20px auto';
+                tempSubmit.innerText = '📤 交卷';
+                tempSubmit.onclick = () => submitExam();
+                container.appendChild(tempSubmit);
+            } else {
+                tempSubmit.style.display = 'block';
+            }
+        }
+    } else {
+        container.classList.remove('whole-view');
+        btn.innerText = "整卷预览";
+        const tempSubmit = document.getElementById('temp-submit');
+        if(tempSubmit) tempSubmit.style.display = 'none';
+        showQuestion(currentIndex);
+    }
+}
+
+function jumpTo(index) {
+    if (isWholeView) {
+        const el = document.getElementById('q-' + index);
+        if(el) {
+            el.scrollIntoView({behavior: 'smooth', block: 'center'});
+            el.style.transition = 'background 0.3s';
+            el.style.background = 'rgba(0,123,255,0.1)';
+            setTimeout(() => el.style.background = 'transparent', 500);
+        }
+    } else {
+        showQuestion(index);
+    }
+    toggleSidebar(); 
+}
+
+function showQuestion(index) {
+    if (isWholeView) return; 
+
+    questions.forEach(q => q.classList.remove('active'));
+    questions[index].classList.add('active');
+    
+    listItems.forEach(item => item.classList.remove('active'));
+    if(listItems[index]) {
+        listItems[index].classList.add('active');
+        listItems[index].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    // 先更新当前索引，避免回顾模式下无法翻页
+    currentIndex = index;
+
+    const currentQ = questions[index];
+    const type = currentQ.getAttribute('data-type');
+    const answer = currentQ.getAttribute('data-answer');
+
+    // 仅问答题/计算题：把答案/解析 dock 放到主卡右侧（桌面端）。
+    // 其它题型保持原布局（dock 在主卡下方）。
+    const mainArea = document.querySelector('.main-area');
+    if (mainArea) {
+        const isRightDockTypes = (type === '问答题' || type === '计算题');
+        mainArea.classList.toggle('with-right-dock', isRightDockTypes);
+        // 初始布局：在答案/解析还没展示前，让主卡片居中
+        updateDockEmptyState();
+    }
+
+    // 答案/解析渲染：由 renderAnswerExplainFromQuestion 控制
+    setupImageGallery(currentQ);
+
+    // 自动聚焦填空题/问答题输入框
+    const qType = currentQ.getAttribute('data-type');
+    if (qType === '填空题' || qType === '问答题') {
+        const inputField = currentQ.querySelector('.main-input, textarea');
+        if (inputField && !inputField.disabled) {
+            // 动画结束后聚焦，以确保元素可见
+            setTimeout(() => inputField.focus(), 400); 
+        }
+    }
+
+    const btnPrev = document.getElementById('btn-prev');
+    btnPrev.disabled = (index === 0);
+
+    if (mode === 'exam') {
+        const btnNextExam = document.getElementById('btn-next-exam');
+        const btnSubmitExam = document.getElementById('btn-submit-exam');
+        
+        // 如果已交卷：回顾模式（显示答案/解析，禁用作答），同时更新进度条
+        if (isSubmitted) {
+            renderAnswerExplainFromQuestion(currentQ);
+
+            if (btnNextExam) {
+                btnNextExam.style.display = (index === totalQuestions - 1) ? 'none' : 'block';
+            }
+            if (btnSubmitExam) btnSubmitExam.style.display = 'none';
+
+            // 回顾时的结果徽标：问答题/计算题不判对错，显示“待核对”
+            if (type === '问答题' || type === '计算题') {
+                setAnswerResultBadge('pending');
+            } else {
+                // 其它题型正常判对错（若无法判断则不显示）
+                try {
+                    const inferredCorrect = judgeQuestion(currentQ, type, answer);
+                    setAnswerResultBadge(inferredCorrect);
+                } catch(e) {
+                    setAnswerResultBadge(null);
+                }
+            }
+
+            const plabel = document.getElementById('progress-label');
+            if (plabel) plabel.innerText = `${currentIndex + 1} / ${totalQuestions}`;
+            const pf = document.getElementById('progress-fill');
+            if (pf) pf.style.width = ((currentIndex + 1) / totalQuestions * 100) + '%';
+            return;
+        }
+
+        if (index === totalQuestions - 1) {
+            btnNextExam.style.display = 'none';
+            btnSubmitExam.style.display = 'block';
+        } else {
+            btnNextExam.style.display = 'block';
+            btnSubmitExam.style.display = 'none';
+        }
+    } else {
+        const btnCheck = document.getElementById('btn-check');
+        const btnNext = document.getElementById('btn-next');
+        
+        if (mode === 'memo') {
+            renderAnswerExplainFromQuestion(currentQ);
+            btnCheck.style.display = 'none';
+            btnNext.style.display = 'block';
+            fillAnswer(currentQ, type, answer);
+            disableInputs(currentQ); 
+        } else {
+            // 方案A：选择题/判断题不显示“查看结果”（会自动出结果）
+            const isAutoTypes = (type === '选择题' || type === '判断题');
+
+            // 默认：切题先隐藏；若该题已做过（正确/错误），自动展示答案/解析（你选的 B 方案）
+            hideAnswerExplainDock();
+            const li = listItems[index];
+            const hasResult = li && (li.classList.contains('done-correct') || li.classList.contains('done-wrong'));
+            if (hasResult) {
+                renderAnswerExplainFromQuestion(currentQ);
+                // 根据侧边栏状态推断对错，显示徽标
+                const inferredCorrect = li.classList.contains('done-correct') ? true : (li.classList.contains('done-wrong') ? false : null);
+                setAnswerResultBadge(inferredCorrect);
+                btnCheck.style.display = 'none';
+                btnNext.style.display = 'block';
+            } else {
+                btnCheck.style.display = isAutoTypes ? 'none' : 'block';
+                btnNext.style.display = isAutoTypes ? 'block' : 'none';
+            }
+
+            if (index === totalQuestions - 1) {
+                btnNext.innerText = "完成刷题";
+                btnNext.classList.remove('btn-next-green');
+                btnNext.style.backgroundColor = '#6610f2';
+                btnNext.onclick = finishQuiz;
+            } else {
+                btnNext.innerText = "下一题 (Enter) →";
+                btnNext.classList.add('btn-next-green');
+                btnNext.style.backgroundColor = '';
+                btnNext.onclick = nextQuestion;
+            }
+        }
+    }
+
+    currentIndex = index;
+    const plabel = document.getElementById('progress-label');
+    if (plabel) plabel.innerText = `${currentIndex + 1} / ${totalQuestions}`;
+    document.getElementById('progress-fill').style.width = ((currentIndex + 1) / totalQuestions * 100) + '%';
+    
+    // 保存进度：考试模式（未交卷）也保存，已交卷不再写进度
+    if (mode !== 'exam' || (mode === 'exam' && !isSubmitted)) saveState();
+}
+
+function fillAnswer(q, type, answer) {
+    if (type === '选择题' || type === '判断题') {
+        q.querySelectorAll('input').forEach(input => {
+            const label = input.parentElement;
+            label.classList.remove('correct-opt');
+            // For choice questions, the value is the key ('A', 'B', etc.)
+            // For judgment questions, the value is '正确' or '错误'
+            if (answer.includes(input.value)) {
+                label.classList.add('correct-opt');
+                input.checked = true;
+            }
+        });
+    } else if (type === '填空题') {
+        const inputs = q.querySelectorAll('.main-input');
+        const correctBlanks = answer.split(';;').map(a => a.trim());
+
+        inputs.forEach((input, i) => {
+            // 默认填充每个空的第一个正确答案
+            const firstCorrectAnswer = (correctBlanks[i] || '').split(';')[0].trim();
+            input.value = firstCorrectAnswer;
+            input.classList.add('input-correct');
+        });
+    }
+}
+
+function disableInputs(q) {
+    q.classList.add('checked-mode');
+    q.querySelectorAll('input, textarea').forEach(el => el.disabled = true);
+}
+
+function autoCheck() {
+    // 方案A：选择题/判断题自动出结果；填空/问答保留“查看结果”按钮
+    const currentQ = questions[currentIndex];
+    if (!currentQ) return;
+    const type = currentQ.getAttribute('data-type');
+    if (type === '选择题' || type === '判断题') {
+        checkAnswer(false);
+    }
+}
+
+// 判断题：隐藏原生 radio 后，用整行高亮来表现选中态
+document.addEventListener('change', function(e){
+    const t = e.target;
+    if (!(t instanceof HTMLInputElement)) return;
+
+    // 判断题（radio）：仅处理判断题容器
+    if (t.type === 'radio') {
+        const wrap = t.closest('.tf-options');
+        if (!wrap) return;
+        const name = t.name;
+        wrap.querySelectorAll(`input[type="radio"][name="${CSS.escape(name)}"]`).forEach(r => {
+            const lab = r.closest('label');
+            if (lab) lab.classList.toggle('selected', r.checked);
+        });
+        return;
+    }
+
+    // 选择题（checkbox）：统一成判断题同款“整行高亮 + 左侧标记”
+    if (t.type === 'checkbox') {
+        const wrap = t.closest('.options');
+        if (!wrap) return;
+        if (wrap.classList.contains('tf-options')) return;
+        const lab = t.closest('label');
+        if (lab) lab.classList.toggle('selected', t.checked);
+        return;
+    }
+});
+
+// 更新答案卡片右侧徽标（答对/答错）
+function setAnswerResultBadge(state) {
+    // state: true(答对) / false(答错) / 'pending'(待核对) / null(隐藏)
+    const host = document.getElementById('answerCard');
+    if (!host) return;
+
+    const isCorrect = (state === true);
+    const isWrong = (state === false);
+    const isPending = (state === 'pending');
+
+    host.classList.toggle('result-correct', isCorrect);
+    host.classList.toggle('result-wrong', isWrong);
+    host.classList.toggle('result-pending', isPending);
+
+    const badge = host.querySelector('.result-badge');
+    if (!badge) return;
+
+    if (isCorrect) {
+        badge.textContent = '答对';
+        badge.setAttribute('data-state', 'correct');
+    } else if (isWrong) {
+        badge.textContent = '答错';
+        badge.setAttribute('data-state', 'wrong');
+    } else if (isPending) {
+        badge.textContent = '待核对';
+        badge.setAttribute('data-state', 'pending');
+    } else {
+        badge.textContent = '';
+        badge.setAttribute('data-state', '');
+    }
+}
+
+// 将“当前题”的答案/解析内容渲染到 mainCard 外部的独立卡片容器
+function formatFillBlankAnswerForDock(raw, blankCountHint) {
+    // raw 格式约定（历史兼容）：
+    // - 多空：用 ';;' 分隔每一空
+    // - 一空多答案：同一空内用 ';' 分隔备选
+    // 示例："1;一;;2;二;;3;三" => 3 空，每空有 2 个备选
+    const text = (raw || '').toString().trim();
+    if (!text) return '';
+
+    const blanks = text.split(';;').map(s => s.trim()).filter(Boolean);
+    const isMultiBlank = blanks.length > 1 || (blankCountHint && blankCountHint > 1);
+
+    // 单空：展示为“可接受答案：A / B / C”
+    if (!isMultiBlank) {
+        const alts = text.split(';').map(s => s.trim()).filter(Boolean);
+        if (alts.length <= 1) {
+            return `<div class="blank-ans one"><span class="label">答案</span><span class="val">${escapeHtmlLocal(alts[0] || text)}</span></div>`;
+        }
+        return `<div class="blank-ans one"><span class="label">可接受答案</span><span class="val">${alts.map(a => `<span class="pill">${escapeHtmlLocal(a)}</span>`).join('')}</span></div>`;
+    }
+
+    // 多空：按“空1/空2...”列出，每空内用 pill 展示备选
+    const rows = blanks.map((b, i) => {
+        const alts = b.split(';').map(s => s.trim()).filter(Boolean);
+        const valHtml = (alts.length <= 1)
+            ? `<span class="text">${escapeHtmlLocal(alts[0] || '')}</span>`
+            : alts.map(a => `<span class="pill">${escapeHtml(a)}</span>`).join('');
+        return `<div class="blank-ans-row"><span class="blank-no">空 ${i + 1}</span><span class="blank-val">${valHtml}</span></div>`;
+    }).join('');
+
+    return `<div class="blank-ans multi">${rows}</div>`;
+}
+
+function escapeHtml(str){
+    return (str ?? '').toString()
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+}
+
+function escapeHtmlLocal(str){
+    return (str ?? '').toString()
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+}
+
+function updateDockEmptyState(){
+    // 仅影响布局：右侧 dock 是否“有内容”
+    const mainArea = document.querySelector('.main-area');
+    if (!mainArea) return;
+    const a = document.getElementById('answerCard');
+    const e = document.getElementById('explainCard');
+    const aShown = a && a.style.display !== 'none' && a.innerHTML.trim().length > 0;
+    const eShown = e && e.style.display !== 'none' && e.innerHTML.trim().length > 0;
+    mainArea.classList.toggle('dock-empty', !(aShown || eShown));
+}
+
+function renderAnswerExplainFromQuestion(qEl) {
+    const answerHost = document.getElementById('answerCard');
+    const explainHost = document.getElementById('explainCard');
+    if (!answerHost || !explainHost) return;
+
+    // 清空旧内容
+    answerHost.classList.remove('show');
+    explainHost.classList.remove('show');
+    answerHost.innerHTML = '';
+    explainHost.innerHTML = '';
+
+    if (!qEl) {
+        answerHost.style.display = 'none';
+        explainHost.style.display = 'none';
+        setAnswerResultBadge(null);
+        updateDockEmptyState();
+        return;
+    }
+
+    const answer = qEl.querySelector('.quiz-card.card-answer');
+    const explain = qEl.querySelector('.quiz-card.card-explain');
+
+    // 不移动原节点，避免切题/重排后找不到；仅复制内容到 dock
+    if (answer) {
+        // 注入统一的头部（标题 + 结果徽标），再放入内容
+        const bodyClone = answer.cloneNode(true);
+        // 移除题内卡片自带标题（避免重复）
+        const titleEl = bodyClone.querySelector('.analysis-title');
+        if (titleEl) titleEl.remove();
+        // 移除“正确答案”等冗余标签，仅保留答案内容
+        bodyClone.querySelectorAll('strong').forEach(s => {
+            const t = (s.textContent || '').trim();
+            if (t === '正确答案' || t === '参考答案' || t === '标准答案') s.remove();
+        });
+
+        // 只取 .answer 的内容；填空题答案做结构化展示（区分：一空多答案 / 多空多答案）
+        const answerSpan = bodyClone.querySelector('.answer');
+        let compactHtml = answerSpan ? answerSpan.outerHTML : bodyClone.innerHTML;
+
+        const qType = qEl.getAttribute('data-type');
+        if (qType === '填空题') {
+            const raw = (qEl.getAttribute('data-answer') || '').toString();
+            const blankCountHint = (qEl.querySelectorAll('.blank-item').length) || null;
+            const formatted = formatFillBlankAnswerForDock(raw, blankCountHint);
+            if (formatted) compactHtml = formatted;
+        }
+
+        answerHost.innerHTML = `
+            <div class="dock-head">
+                <div class="analysis-title">
+                    <span class="dot" aria-hidden="true"></span>
+                    <strong>答案</strong>
+                </div>
+                <span class="result-badge" data-state=""></span>
+            </div>
+            <div class="dock-body">${compactHtml}</div>
+        `;
+        answerHost.style.display = 'block';
+    } else {
+        answerHost.style.display = 'none';
+    }
+
+    if (explain) {
+        const bodyClone = explain.cloneNode(true);
+        const titleEl = bodyClone.querySelector('.analysis-title');
+        if (titleEl) titleEl.remove();
+
+        explainHost.innerHTML = `
+            <div class="dock-head">
+                <div class="analysis-title">
+                    <span class="dot" aria-hidden="true"></span>
+                    <strong>解析</strong>
+                </div>
+            </div>
+            <div class="dock-body">${bodyClone.innerHTML}</div>
+        `;
+        explainHost.style.display = 'block';
+    } else {
+        explainHost.style.display = 'none';
+    }
+
+    requestAnimationFrame(() => {
+        if (answerHost.style.display !== 'none') answerHost.classList.add('show');
+        if (explainHost.style.display !== 'none') explainHost.classList.add('show');
+        updateDockEmptyState();
+    });
+}
+
+function hideAnswerExplainDock() {
+    const answerHost = document.getElementById('answerCard');
+    const explainHost = document.getElementById('explainCard');
+    if (answerHost) { answerHost.style.display = 'none'; answerHost.innerHTML = ''; answerHost.classList.remove('show'); }
+    if (explainHost) { explainHost.style.display = 'none'; explainHost.innerHTML = ''; explainHost.classList.remove('show'); }
+    setAnswerResultBadge(null);
+    updateDockEmptyState();
+}
+
+function checkAnswer(isManualClick) {
+    if (mode === 'exam') return;
+
+    const currentQ = questions[currentIndex];
+    const type = currentQ.getAttribute('data-type');
+    const answer = currentQ.getAttribute('data-answer');
+    const qId = currentQ.getAttribute('data-id');
+    
+    if (!hasAnswered(currentQ, type)) {
+        if (isManualClick) showToast("请先作答！");
+        return;
+    }
+
+    // 渲染“答案/解析”到 mainCard 外部的独立卡片
+    renderAnswerExplainFromQuestion(currentQ);
+    
+    document.getElementById('btn-check').style.display = 'none';
+    document.getElementById('btn-next').style.display = 'block';
+    
+    let isCorrect = judgeQuestion(currentQ, type, answer);
+    styleFeedback(currentQ, type, answer, isCorrect);
+    setAnswerResultBadge(isCorrect);
+    
+    disableInputs(currentQ);
+
+    const listItem = document.getElementById(`list-item-${currentIndex}`);
+    if (isCorrect) {
+        listItem.classList.add('done-correct');
+        listItem.classList.remove('done-wrong');
+    } else {
+        listItem.classList.add('done-wrong');
+        listItem.classList.remove('done-correct');
+    }
+
+    if (LOGGED_IN) {
+    fetch('/api/record_result', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ question_id: qId, is_correct: isCorrect })
+    });
+    } else {
+        // 未登录不写入错题本，只在本地保留效果
+        showToast('未登录：错题不会保存到服务器');
+    }
+
+    saveState(true); // 答题后立即同步到服务器
+}
+
+function finishQuiz() {
+    let correctCount = 0;
+    let gridHtml = '';
+    
+    listItems.forEach((item, index) => {
+        const isRight = item.classList.contains('done-correct');
+        const isWrong = item.classList.contains('done-wrong');
+        
+        if (isRight) correctCount++;
+        
+        if (isRight) {
+            gridHtml += `<div class="score-item s-correct" onclick='reviewJump(${index})'>${index+1}</div>`;
+        } else if (isWrong) {
+            gridHtml += `<div class="score-item s-wrong" onclick='reviewJump(${index})'>${index+1}</div>`;
+        } else {
+            gridHtml += `<div class="score-item" onclick='reviewJump(${index})'>${index+1}</div>`;
+        }
+    });
+
+    document.getElementById('scoreTitle').innerText = "刷题报告";
+    document.getElementById('finalLabel').innerText = "准确率";
+    document.getElementById('finalScore').innerText = Math.round((correctCount / totalQuestions) * 100) + "%";
+    document.getElementById('scoreDetail').innerText = `答对 ${correctCount} / ${totalQuestions} 题`;
+    document.getElementById('scoreGrid').innerHTML = gridHtml;
+    document.getElementById('scoreOverlay').style.display = 'flex';
+    
+    document.getElementById('scoreCircle').style.borderColor = '#007bff';
+    document.getElementById('scoreCircle').style.color = '#007bff';
+}
+
+function submitExam(force = false) {
+    // 服务端提交考试答案（若存在 exam_id）
+    try { sendExamAnswers(); } catch(e) {}
+    if (isSubmitted) return; // 【修复】如果已交卷，直接阻断
+
+    if (!force) {
+        let unAnsweredIndices = [];
+        questions.forEach((q, i) => {
+            const type = q.getAttribute('data-type');
+            if (!hasAnswered(q, type)) {
+                unAnsweredIndices.push(i + 1);
+            }
+        });
+
+        if (unAnsweredIndices.length > 0) {
+            alert(`还有 ${unAnsweredIndices.length} 道题未作答！\n题号：${unAnsweredIndices.join(', ')}`);
+            if (!isWholeView) showQuestion(unAnsweredIndices[0] - 1);
+            return;
+        }
+        
+        if (!confirm("确定要交卷吗？交卷后将显示成绩。")) return;
+    }
+
+    // 【修复】立即更新状态并隐藏所有交卷按钮
+    isSubmitted = true;
+    const mainSubmitBtn = document.getElementById('btn-submit-exam');
+    const tempSubmitBtn = document.getElementById('temp-submit');
+    if(mainSubmitBtn) mainSubmitBtn.style.display = 'none';
+    if(tempSubmitBtn) tempSubmitBtn.remove();
+    
+    clearInterval(timerInterval);
+    let totalScore = 0;
+    let correctCount = 0;
+    let gridHtml = '';
+
+    questions.forEach((q, index) => {
+        const type = q.getAttribute('data-type');
+        const answer = q.getAttribute('data-answer');
+        const scoreVal = parseFloat(q.getAttribute('data-score'));
+        
+        const isCorrect = judgeQuestion(q, type, answer);
+        styleFeedback(q, type, answer, isCorrect);
+        // 考试交卷后：不在题内展开解析，答案/解析在回顾跳题时渲染到独立卡片
+        disableInputs(q);
+
+        if (isCorrect) {
+            totalScore += scoreVal;
+            correctCount++;
+            gridHtml += `<div class="score-item s-correct" onclick='reviewJump(${index})'>${index+1}</div>`;
+        } else {
+            gridHtml += `<div class="score-item s-wrong" onclick='reviewJump(${index})'>${index+1}</div>`;
+        }
+    });
+
+    document.getElementById('finalScore').innerText = totalScore;
+    document.getElementById('scoreDetail').innerText = `答对 ${correctCount} / ${totalQuestions} 题`;
+    document.getElementById('scoreGrid').innerHTML = gridHtml;
+    document.getElementById('scoreOverlay').style.display = 'flex';
+}
+
+function reviewExam() {
+    document.getElementById('scoreOverlay').style.display = 'none';
+    
+    // 考试模式下，回顾时不再显示交卷按钮，确保只能下一题查看
+    if (mode === 'exam') {
+        const btnSubmit = document.getElementById('btn-submit-exam');
+        if(btnSubmit) btnSubmit.style.display = 'none';
+        
+        const btnNext = document.getElementById('btn-next-exam');
+        if(btnNext) btnNext.style.display = 'block';
+    }
+    
+    if (!isWholeView) {
+        currentIndex = 0;
+        showQuestion(0);
+    }
+    
+    const tempSubmit = document.getElementById('temp-submit');
+    if(tempSubmit) tempSubmit.remove();
+}
+
+function reviewJump(index) {
+    reviewExam();
+    if (isWholeView) {
+        jumpTo(index); 
+    } else {
+        showQuestion(index);
+    }
+}
+
+function judgeQuestion(q, type, answer) {
+    if (type === '选择题' || type === '判断题') {
+        const inputs = q.querySelectorAll('input');
+        let userVals = [];
+        inputs.forEach(i => { if(i.checked) userVals.push(i.value) });
+        return userVals.sort().join("") === answer;
+    } else if (type === '填空题') {
+        const inputs = q.querySelectorAll('.main-input');
+        const correctBlanks = answer.split(';;').map(a => a.trim());
+
+        if (inputs.length === 0) return false; // 没有找到输入框
+
+        let allCorrect = true;
+        for (let i = 0; i < inputs.length; i++) {
+            const userInput = inputs[i].value.trim();
+            const correctAnswersForBlank = (correctBlanks[i] || '').split(';').map(a => a.trim());
+            if (!correctAnswersForBlank.includes(userInput)) {
+                allCorrect = false;
+                break;
+            }
+        }
+        return allCorrect;
+    } else if (type === '问答题') {
+        return !!q.querySelector('textarea').value.trim();
+    }
+    return false;
+}
+
+function hasAnswered(q, type) {
+    if (type === '选择题' || type === '判断题') return !!q.querySelector('input:checked');
+
+    if (type === '填空题') {
+        // 多空时：必须所有输入框都非空才算“已作答”
+        const inputs = q.querySelectorAll('.main-input');
+        if (inputs.length > 1) {
+            return Array.from(inputs).every(i => (i.value || '').trim().length > 0);
+        }
+        // 单空：优先找填空题的 text input（避免误选到隐藏/其它类型的 input）
+        const one = q.querySelector('input.main-input[type="text"], input[type="text"].main-input, input[type="text"]');
+        return !!(one && (one.value || '').trim());
+    }
+
+    if (type === '问答题') return !!q.querySelector('textarea')?.value.trim();
+    return false;
+}
+
+function styleFeedback(q, type, answer, isCorrect) {
+    if (type === '选择题' || type === '判断题') {
+        q.querySelectorAll('input').forEach(input => {
+            const label = input.parentElement;
+            label.classList.remove('correct-opt', 'wrong-opt');
+            if (isCorrect) {
+                // 做对时，用户选中的都绿色
+                if (input.checked) label.classList.add('correct-opt');
+            } else {
+                // 做错时，用户选中的错误选项标红
+                if (input.checked && !answer.includes(input.value)) {
+                    label.classList.add('wrong-opt');
+                }
+                // 总是高亮正确答案
+                if (answer.includes(input.value)) {
+                    label.classList.add('correct-opt');
+                }
+            }
+        });
+    } else if (type === '填空题') {
+        const inputs = q.querySelectorAll('.main-input');
+        const correctBlanks = answer.split(';;').map(a => a.trim());
+
+        inputs.forEach((input, i) => {
+            input.classList.remove('input-correct', 'input-wrong');
+            const userInput = input.value.trim();
+            const correctAnswersForBlank = (correctBlanks[i] || '').split(';').map(a => a.trim());
+            
+            if (correctAnswersForBlank.includes(userInput)) {
+                input.classList.add('input-correct');
+            } else {
+                input.classList.add('input-wrong');
+            }
+        });
+    }
+    // 刷题模式下，题目列表高亮
+    if (mode !== 'exam') {
+        const idx = q.getAttribute('data-index');
+        const item = document.getElementById(`list-item-${idx}`);
+        if (item) {
+            item.classList.remove('done-correct', 'done-wrong');
+            if (isCorrect) {
+                item.classList.add('done-correct');
+            } else {
+                item.classList.add('done-wrong');
+            }
+        }
+    }
+}
+
+// 防抖定时器
+let saveStateTimer = null;
+let lastSavedPayload = null;
+let syncPending = false; // 标记是否有待同步的数据
+
+// 保留做题痕迹样式 - 带防抖机制
+function saveState(immediate = false) {
+    let statusMap = {};
+    let answerMap = {};
+    listItems.forEach((item, index) => {
+        if (item.classList.contains('done-correct')) statusMap[index] = 'correct';
+        if (item.classList.contains('done-wrong')) statusMap[index] = 'wrong';
+        // 保存用户选项/答案
+        const q = document.getElementById(`q-${index}`);
+        if (q) {
+            const type = q.getAttribute('data-type');
+            if (type === '选择题' || type === '判断题') {
+                const checked = Array.from(q.querySelectorAll('input:checked')).map(i => i.value);
+                answerMap[index] = checked;
+            } else if (type === '填空题') {
+                const inputs = q.querySelectorAll('.main-input');
+                answerMap[index] = Array.from(inputs).map(input => input.value);
+
+            } else if (type === '问答题') {
+                answerMap[index] = q.querySelector('textarea').value;
+            }
+        }
+    });
+    const payload = { index: currentIndex, status: statusMap, answers: answerMap, timestamp: Date.now() };
+    // 保留题目顺序，防止覆盖服务端保存的打乱顺序
+    if (cachedOrder) {
+        payload.order = cachedOrder;
+    }
+
+    // 立即保存到本地存储
+    localStorage.setItem(progressKey(), JSON.stringify(payload));
+    lastSavedPayload = payload;
+    syncPending = true;
+
+    // 登录用户同步到服务器
+    if (LOGGED_IN) {
+        if (immediate) {
+            // 立即同步（答题后等重要操作）
+            if (saveStateTimer) clearTimeout(saveStateTimer);
+            syncToServer(payload);
+        } else {
+            // 防抖保存（200ms内多次调用只执行最后一次）
+            if (saveStateTimer) clearTimeout(saveStateTimer);
+            saveStateTimer = setTimeout(() => {
+                syncToServer(payload);
+            }, 200);
+        }
+    }
+}
+
+// 同步到服务器
+async function syncToServer(payload) {
+    if (!LOGGED_IN) return;
+    try {
+        const key = progressKey();
+        console.log('[进度同步] 保存中...', key);
+        const res = await fetch('/api/progress', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key: key, data: payload })
+        });
+        if (res.ok) {
+            syncPending = false;
+            console.log('[进度同步] 成功');
+        } else {
+            console.error('[进度同步] 服务器错误:', res.status);
+        }
+    } catch(e) {
+        console.error('[进度同步] 失败:', e);
+    }
+}
+
+// 页面卸载时强制同步
+window.addEventListener('beforeunload', function(e) {
+    if (LOGGED_IN && syncPending && lastSavedPayload) {
+        try {
+            const key = progressKey();
+            const data = JSON.stringify({ key: key, data: lastSavedPayload });
+            // 使用 sendBeacon 确保数据发送
+            if (navigator.sendBeacon) {
+                const blob = new Blob([data], {type: 'application/json'});
+                navigator.sendBeacon('/api/progress', blob);
+                console.log('[进度同步] beforeunload 发送成功');
+            }
+        } catch(err) {
+            console.error('[进度同步] beforeunload 发送失败:', err);
+        }
+    }
+});
+
+// 页面隐藏时也尝试同步（切换标签页等）
+document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'hidden' && LOGGED_IN && syncPending && lastSavedPayload) {
+        syncToServer(lastSavedPayload);
+    }
+});
+
+function refreshAnsweredMarkersFromInputs(){
+    // 用当前输入内容重建“已答”标记（考试模式侧边栏）
+    try {
+        questions.forEach((q, idx) => {
+            const it = document.getElementById(`list-item-${idx}`);
+            if (!it) return;
+            const type = q.getAttribute('data-type');
+            if (hasAnswered(q, type)) it.classList.add('answered');
+            else it.classList.remove('answered');
+        });
+    } catch(e) {}
+}
+
+function loadState() {
+    try {
+        const data = JSON.parse(localStorage.getItem(progressKey()));
+        if (data) {
+            // 缓存题目顺序，保存时需要保留
+            if (data.order && Array.isArray(data.order)) {
+                cachedOrder = data.order;
+            }
+            if (data.status) {
+                for (const [idx, status] of Object.entries(data.status)) {
+                    const item = document.getElementById(`list-item-${idx}`);
+                    if (item) {
+                        if (status === 'correct') item.classList.add('done-correct');
+                        if (status === 'wrong') item.classList.add('done-wrong');
+                    }
+                    const q = document.getElementById(`q-${idx}`);
+                    if (q && (status === 'correct' || status === 'wrong')) {
+                        const type = q.getAttribute('data-type');
+                        const answer = q.getAttribute('data-answer');
+                        const isCorrect = status === 'correct';
+
+                        // 1. 恢复用户的选择 (必须在 styleFeedback 之前)
+                        if (data.answers && data.answers[idx]) {
+                            const userAnswer = data.answers[idx];
+                            if ((type === '选择题' || type === '判断题') && Array.isArray(userAnswer)) {
+                                q.querySelectorAll('input').forEach(i => { i.checked = userAnswer.includes(i.value); });
+                            } else if (type === '填空题') {
+                                // 填空题：这里保存的是数组（每空一个值），需要逐个恢复
+                                if (Array.isArray(userAnswer)) {
+                                    const inputs = q.querySelectorAll('.main-input');
+                                    inputs.forEach((input, i) => {
+                                        if (typeof userAnswer[i] !== 'undefined') input.value = userAnswer[i] || '';
+                                    });
+                                } else {
+                                    const inp = q.querySelector('input[type="text"], .main-input');
+                                    if (inp) inp.value = userAnswer;
+                                }
+                            } else if (type === '问答题') {
+                                q.querySelector('textarea').value = userAnswer;
+                            }
+                        }
+
+                        // 2. 恢复高亮效果
+                        styleFeedback(q, type, answer, isCorrect);
+
+                        // 3. 已作答题：需要能在回顾时展示“答案/解析”
+                        // 注意：此处只是恢复状态，具体显示在 showQuestion / checkAnswer 时渲染到独立卡片
+                        disableInputs(q);
+                    }
+                }
+            }
+            if (data.answers) {
+                for (const [idx, val] of Object.entries(data.answers)) {
+                    const q = document.getElementById(`q-${idx}`);
+                    if (q) {
+                        const type = q.getAttribute('data-type');
+                        if ((type === '选择题' || type === '判断题') && Array.isArray(val)) {
+                            q.querySelectorAll('input').forEach(i => { i.checked = val.includes(i.value); });
+                        } else if (type === '填空题' && Array.isArray(val)) {
+                            const inputs = q.querySelectorAll('.main-input');
+                            inputs.forEach((input, i) => {
+                                if (val[i]) {
+                                    input.value = val[i];
+                                }
+                            });
+                        } else if (type === '问答题') {
+                            q.querySelector('textarea').value = val;
+                        }
+                    }
+                }
+            }
+            if (data.index) currentIndex = data.index;
+        }
+
+        // 考试模式也需要根据恢复的输入来重建“已答”标记
+        if (mode === 'exam') {
+            refreshAnsweredMarkersFromInputs();
+        }
+    } catch(e) {}
+}
+
+function resetQuizUI(){
+    // 清空列表状态
+    document.querySelectorAll('.q-item').forEach(item=>{
+        item.classList.remove('done-correct','done-wrong','answered');
+    });
+    // 清空题目状态
+    questions.forEach((q)=>{
+        q.classList.remove('checked-mode');
+        // 取消选中和禁用
+        q.querySelectorAll('input, textarea').forEach(el=>{
+            el.disabled=false;
+            if(el.type==='checkbox' || el.type==='radio') el.checked=false;
+            else el.value='';
+        });
+        // 去掉高亮
+        q.querySelectorAll('.correct-opt, .wrong-opt, .input-correct, .input-wrong').forEach(el=>{
+            el.classList.remove('correct-opt','wrong-opt','input-correct','input-wrong');
+        });
+        // 清理独立答案/解析卡片
+        hideAnswerExplainDock();
+    });
+    // 重置按钮显示状态
+    const btnCheck=document.getElementById('btn-check');
+    const btnNext=document.getElementById('btn-next');
+    if(btnCheck) btnCheck.style.display='block';
+    if(btnNext) btnNext.style.display='none';
+
+    currentIndex=0;
+    showQuestion(0);
+}
+
+async function clearProgress(confirmMsg = "确定要清除当前模式的做题进度吗？") {
+    if(confirm(confirmMsg)) {
+        localStorage.removeItem(progressKey());
+        if (LOGGED_IN) {
+            try { await fetch(`/api/progress?key=${encodeURIComponent(progressKey())}`, { method: 'DELETE' }); } catch(e) {}
+        }
+        resetQuizUI(); // Reset the UI to its initial state
+        showToast('进度已清除');
+        return true; // Indicates data was cleared
+    }
+    return false; // User cancelled
+}
+
+async function reshuffle() {
+    const confirmed = confirm("重新打乱将清空当前进度，确定要继续吗？");
+    if (confirmed) {
+        // 1. Clear progress data without reloading
+        localStorage.removeItem(progressKey());
+        if (LOGGED_IN) {
+            try { await fetch(`/api/progress?key=${encodeURIComponent(progressKey())}`, { method: 'DELETE' }); } catch(e) {}
+        }
+
+        // 2. Get all question elements
+        const mainCard = document.getElementById('mainCard');
+        const questionBoxes = Array.from(mainCard.querySelectorAll('.question-box'));
+        const sidebarList = document.getElementById('question-list');
+        const listItemsElements = Array.from(sidebarList.querySelectorAll('.q-item'));
+
+        // 3. Create a mapping from original DOM index to elements
+        const questionMap = {};
+        questionBoxes.forEach((box, i) => {
+            questionMap[i] = { box: box, item: listItemsElements[i] };
+        });
+
+        // 4. Shuffle the indices
+        let indices = Object.keys(questionMap).map(Number);
+        for (let i = indices.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [indices[i], indices[j]] = [indices[j], indices[i]];
+        }
+
+        // 5. Re-append elements in the new order and update attributes
+        const footer = mainCard.querySelector('.footer');
+        questionBoxes.forEach(box => box.remove());
+        listItemsElements.forEach(item => item.remove());
+
+        indices.forEach((originalIndex, newIndex) => {
+            const pair = questionMap[originalIndex];
+            const box = pair.box;
+            const item = pair.item;
+
+            // Update question box
+            box.id = `q-${newIndex}`;
+            box.dataset.index = newIndex;
+            mainCard.insertBefore(box, footer);
+
+            // Update list item
+            item.id = `list-item-${newIndex}`;
+            item.querySelector('span:first-child').textContent = newIndex + 1;
+            item.setAttribute('onclick', `jumpTo(${newIndex})`);
+            sidebarList.appendChild(item);
+        });
+
+        // 6. Reset UI state
+        window.questions = document.querySelectorAll('.question-box');
+        window.listItems = document.querySelectorAll('.q-item');
+        
+        window.questions.forEach((q, index) => {
+            q.classList.remove('checked-mode');
+            q.querySelectorAll('input, textarea').forEach(el => {
+                el.disabled = false;
+                if (el.type === 'checkbox' || el.type === 'radio') el.checked = false;
+                else el.value = '';
+            });
+            q.querySelectorAll('.correct-opt, .wrong-opt, .input-correct, .input-wrong').forEach(el => {
+                el.classList.remove('correct-opt', 'wrong-opt', 'input-correct', 'input-wrong');
+            });
+            // 独立答案/解析卡片由 showQuestion/checkAnswer 控制，这里只需清理 dock
+            hideAnswerExplainDock();
+        });
+        window.listItems.forEach(item => {
+            item.classList.remove('done-correct', 'done-wrong', 'answered');
+        });
+
+        // 7. Show the first question
+        currentIndex = 0;
+        showQuestion(0);
+        showToast('题目已重新排序');
+    }
+}
+
+function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.innerText = msg;
+    t.style.display = 'block';
+    setTimeout(() => t.style.display = 'none', 2000);
+}
+
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.getElementById('overlay').classList.toggle('show');
+}
+
+function toggleTheme() {
+    document.body.classList.toggle('dark-mode');
+    localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+}
+
+function toggleStar(btn, id) {
+     fetch('/api/favorite', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ question_id: id })
+    }).then(res => res.json()).then(data => {
+        if(data.status === 'success') {
+            btn.classList.toggle('active');
+        }
+    });
+}
+
+function applyReviewFromServer() {
+    try {
+        const uaMap = USER_ANSWERS || {};
+        questions.forEach(q => {
+            const qid = parseInt(q.getAttribute('data-id'));
+            const type = q.getAttribute('data-type');
+            const stdAns = q.getAttribute('data-answer');
+            const ua = uaMap[qid] || '';
+            // 填充用户答案
+            if (type === '选择题') {
+                const chosen = new Set((ua || '').split(''));
+                q.querySelectorAll('input[type="checkbox"]').forEach(i => { i.checked = chosen.has(i.value); });
+            } else if (type === '判断题') {
+                q.querySelectorAll('input[type="radio"]').forEach(i => { i.checked = (i.value === ua); });
+            } else if (type === '填空题') {
+                // ua 可能是单空字符串，也可能是多空 JSON 数组字符串
+                let uaList = null;
+                try {
+                    const tmp = JSON.parse(ua);
+                    if (Array.isArray(tmp)) uaList = tmp;
+                } catch(e) { uaList = null; }
+                const inputs = q.querySelectorAll('input[type="text"]');
+                if (inputs && inputs.length > 1 && uaList) {
+                    inputs.forEach((input, i) => { if (typeof uaList[i] !== 'undefined') input.value = uaList[i] || ''; });
+                } else {
+                    const inp = q.querySelector('input[type="text"]'); if (inp) inp.value = ua;
+                }
+            } else {
+                const ta = q.querySelector('textarea'); if (ta) ta.value = ua;
+            }
+            // 展示解析与高亮
+            const isCorrect = (function(){
+                if (type === '选择题') return (ua.split('').sort().join('') === (stdAns||'').split('').sort().join('')) && ua !== '';
+                if (type === '判断题') return ua === stdAns && ua !== '';
+                if (type === '填空题') {
+                    // 标准答案：不同空用 ";;" 分隔；每空多答案用 ";" 分隔
+                    // 例：北京;北平;;上海;沪
+                    const std = (stdAns||'').trim();
+                    const stdBlanks = std ? std.split(';;').map(s=>s.trim()) : [''];
+
+                    // 用户答案：多空用 JSON 数组字符串提交，否则为单空字符串
+                    let uaList = null;
+                    try {
+                        const tmp = JSON.parse(ua);
+                        if (Array.isArray(tmp)) uaList = tmp.map(x => (x||'').toString().trim());
+                    } catch(e) { uaList = null; }
+
+                    function matchOne(userOne, stdOne){
+                        const u = (userOne||'').toString().trim();
+                        if(!u) return false;
+                        const cands = (stdOne||'').split(';').map(x=>x.trim()).filter(Boolean);
+                        const arr = cands.length ? cands : [(stdOne||'').trim()];
+                        return arr.some(x=>x===u);
+                    }
+
+                    if (uaList) {
+                        if (uaList.length !== stdBlanks.length) return false;
+                        return stdBlanks.every((s, i) => matchOne(uaList[i], s));
+                    }
+
+                    // 单空
+                    if (stdBlanks.length > 1) return false;
+                    return matchOne(ua, stdBlanks[0]);
+                }
+                return !!ua;
+            })();
+            styleFeedback(q, type, stdAns, isCorrect);
+            // 回顾模式下，答案/解析在 showQuestion 时渲染到独立卡片
+            disableInputs(q);
+        });
+        // 初始化进度条
+        const plabel = document.getElementById('progress-label');
+        if (plabel) plabel.innerText = `1 / ${questions.length}`;
+        const pf = document.getElementById('progress-fill');
+        if (pf) pf.style.width = (questions.length? (1/questions.length*100):0)+'%';
+    } catch(e) {}
+}
+
+function collectExamAnswers() {
+    const arr = [];
+    questions.forEach(q => {
+        const qid = parseInt(q.getAttribute('data-id'));
+        const type = q.getAttribute('data-type');
+        let ua = '';
+        if (type === '选择题') {
+            ua = Array.from(q.querySelectorAll('input[type="checkbox"]:checked')).map(i=>i.value).join('');
+        } else if (type === '判断题') {
+            const r = q.querySelector('input[type="radio"]:checked');
+            ua = r ? r.value : '';
+        } else if (type === '填空题') {
+            const inputs = q.querySelectorAll('input[type="text"]');
+            if (inputs && inputs.length > 1) {
+                ua = JSON.stringify(Array.from(inputs).map(x => (x.value || '').trim()));
+            } else {
+                const i = q.querySelector('input[type="text"]');
+                ua = i ? (i.value || '') : '';
+            }
+        } else {
+            const t = q.querySelector('textarea');
+            ua = t ? (t.value || '') : '';
+        }
+        arr.push({ question_id: qid, user_answer: ua });
+    });
+    return arr;
+}
+async function sendExamAnswers() {
+    if (!EXAM_ID) return;
+    try {
+        const answers = collectExamAnswers();
+        const res = await fetch('/api/exams/submit', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ exam_id: EXAM_ID, answers }) });
+        const js = await res.json();
+        if (res.ok && js.status === 'success') {
+            // 以服务端结果为准更新分数与统计
+            if (typeof js.total_score !== 'undefined') {
+                const fs = document.getElementById('finalScore');
+                if (fs) fs.innerText = js.total_score;
+            }
+            if (typeof js.total !== 'undefined' && typeof js.correct !== 'undefined') {
+                const sd = document.getElementById('scoreDetail');
+                if (sd) sd.innerText = `答对 ${js.correct} / ${js.total} 题`;
+            }
+        }
+    } catch(e) { /* 忽略网络错误 */ }
+}
+
+function applyDraftFromServer(){
+    try {
+        const uaMap = USER_ANSWERS || {};
+        questions.forEach(q => {
+            const qid = parseInt(q.getAttribute('data-id'));
+            const type = q.getAttribute('data-type');
+            const ua = uaMap[qid] || '';
+            if (!ua) return;
+
+            // 若本地/页面上已经有输入，则不覆盖（避免 loadState 后被服务端草稿冲掉）
+            if (type === '选择题') {
+                const existed = Array.from(q.querySelectorAll('input[type="checkbox"]')).some(i => i.checked);
+                if (existed) return;
+                const chosen = new Set((ua || '').split(''));
+                q.querySelectorAll('input[type="checkbox"]').forEach(i => { i.checked = chosen.has(i.value); });
+            } else if (type === '判断题') {
+                const existed = !!q.querySelector('input[type="radio"]:checked');
+                if (existed) return;
+                q.querySelectorAll('input[type="radio"]').forEach(i => { i.checked = (i.value === ua); });
+            } else if (type === '填空题') {
+                const inputs = q.querySelectorAll('input[type="text"].main-input, input[type="text"]');
+                const existed = Array.from(inputs).some(i => (i.value || '').trim().length > 0);
+                if (existed) return;
+
+                // ua 可能是单空字符串，也可能是多空 JSON 数组字符串
+                let uaList = null;
+                try {
+                    const tmp = JSON.parse(ua);
+                    if (Array.isArray(tmp)) uaList = tmp;
+                } catch(e) { uaList = null; }
+
+                if (inputs.length > 1 && uaList) {
+                    inputs.forEach((input, i) => { if (typeof uaList[i] !== 'undefined') input.value = uaList[i] || ''; });
+                } else {
+                    const inp = q.querySelector('input[type="text"].main-input, input[type="text"]');
+                    if (inp) inp.value = ua;
+                }
+            } else {
+                const ta = q.querySelector('textarea');
+                const existed = !!(ta && (ta.value || '').trim().length > 0);
+                if (existed) return;
+                if (ta) ta.value = ua;
+            }
+        });
+
+        // 补齐完草稿后，刷新一次“已答”标记（考试侧边栏）
+        try {
+            questions.forEach((q, idx) => { if (hasAnswered(q, q.getAttribute('data-type'))) { const it=document.getElementById(`list-item-${idx}`); if(it) it.classList.add('answered'); } });
+        } catch(e) {}
+    } catch(e) {}
+}
+let autoSaveTimer = null;
+function scheduleAutoSave(){
+    if (!EXAM_ID) return;
+    try {
+        window.addEventListener('beforeunload', function(){
+            try {
+                const payload = JSON.stringify({ exam_id: EXAM_ID, answers: collectExamAnswers() });
+                if (navigator.sendBeacon) {
+                    const blob = new Blob([payload], {type: 'application/json'});
+                    navigator.sendBeacon('/api/exams/save_draft', blob);
+                }
+            } catch(e){}
+        });
+    } catch(e){}
+    autoSaveTimer = setInterval(async ()=>{
+        try {
+            const answers = collectExamAnswers();
+            await fetch('/api/exams/save_draft', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ exam_id: EXAM_ID, answers }) });
+        } catch(e) {}
+    }, 5000);
+}
+
+// Mobile swipe gesture for next/prev question
+const mainCard = document.getElementById('mainCard');
+if (mainCard) {
+    let touchStartX = 0;
+    let touchStartY = 0;
+
+    mainCard.addEventListener('touchstart', e => {
+        touchStartX = e.changedTouches[0].screenX;
+        touchStartY = e.changedTouches[0].screenY;
+    }, { passive: true });
+
+    mainCard.addEventListener('touchend', e => {
+        const touchEndX = e.changedTouches[0].screenX;
+        const touchEndY = e.changedTouches[0].screenY;
+        handleSwipe(touchStartX, touchStartY, touchEndX, touchEndY);
+    }, { passive: true });
+}
+
+function handleSwipe(startX, startY, endX, endY) {
+    const diffX = endX - startX;
+    const diffY = endY - startY;
+
+    // Only trigger if horizontal swipe is significant and vertical swipe is not
+    if (Math.abs(diffX) > 200 && Math.abs(diffY) < 200) {
+        if (diffX < 0) {
+            // Swiped left
+            nextQuestion();
+        } else {
+            // Swiped right
+            prevQuestion();
+        }
+    }
+}
+
+init();
+
+document.addEventListener('keydown', function(e) {
+    const isInputFocused = document.activeElement.tagName === 'INPUT';
+    const isTextareaFocused = document.activeElement.tagName === 'TEXTAREA';
+
+    // 如果成绩弹窗显示，则禁用所有快捷键
+    if (document.getElementById('scoreOverlay').style.display === 'flex') {
+        return;
+    }
+
+    // Enter 键的逻辑
+    if (e.key === 'Enter') {
+        // 当焦点在问答题的文本域时，允许默认的换行行为
+        if (isTextareaFocused) {
+            return;
+        }
+        // 阻止其他所有 Enter 的默认行为（比如表单提交）
+        e.preventDefault();
+
+        // 优先点击“下一题”按钮（包括普通模式和考试模式）
+        const btnNext = document.getElementById('btn-next');
+        if (btnNext && btnNext.style.display !== 'none') {
+            btnNext.click();
+            return;
+        }
+        const btnNextExam = document.getElementById('btn-next-exam');
+        if (btnNextExam && btnNextExam.style.display !== 'none') {
+            btnNextExam.click();
+            return;
+        }
+        
+        // 其次，点击“查看结果”按钮
+        const btnCheck = document.getElementById('btn-check');
+        if (btnCheck && btnCheck.style.display !== 'none') {
+            btnCheck.click();
+            return;
+        }
+        return; // Enter 键逻辑处理完毕
+    }
+
+    // 填空题中，使用上下箭头键切换输入框
+    if (isInputFocused && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+        const currentQ = questions[currentIndex];
+        if (currentQ && currentQ.dataset.type === '填空题') {
+            const inputs = Array.from(currentQ.querySelectorAll('.main-input'));
+            if (inputs.length > 1) {
+                const focusedIndex = inputs.indexOf(document.activeElement);
+                if (focusedIndex !== -1) {
+                    e.preventDefault(); // 阻止光标移动到行首/行尾
+                    let nextIndex;
+                    if (e.key === 'ArrowDown') {
+                        nextIndex = (focusedIndex + 1) % inputs.length;
+                    } else { // ArrowUp
+                        nextIndex = (focusedIndex - 1 + inputs.length) % inputs.length;
+                    }
+                    inputs[nextIndex].focus();
+                    return; // 功能已处理，退出
+                }
+            }
+        }
+    }
+
+    // 如果焦点在任何输入框或文本域中，则不触发以下的快捷键
+    if (isInputFocused || isTextareaFocused) {
+        return;
+    }
+
+    const currentQ = questions[currentIndex];
+    if (!currentQ) return;
+    const options = currentQ.querySelectorAll('.options label');
+
+    switch (e.key) {
+        case '1':
+        case '2':
+        case '3':
+        case '4':
+            e.preventDefault();
+            const optionIndex = parseInt(e.key) - 1;
+            if (options[optionIndex]) {
+                options[optionIndex].querySelector('input').click();
+            }
+            break;
+        case 'ArrowLeft':
+            e.preventDefault();
+            prevQuestion();
+            break;
+        case 'ArrowRight':
+            e.preventDefault();
+            nextQuestion();
+            break;
+        case 'f':
+        case 'F':
+            e.preventDefault();
+            const favBtn = currentQ.querySelector('.fav-btn');
+            if (favBtn) {
+                favBtn.click();
+            }
+            break;
+    }
+});
+
+function nextQuestion() {
+    if (typeof currentIndex === 'undefined') currentIndex = 0;
+    if (currentIndex < totalQuestions - 1) {
+        showQuestion(currentIndex + 1);
+    }
+}
+function prevQuestion() {
+    if (typeof currentIndex === 'undefined') currentIndex = 0;
+    if (currentIndex > 0) {
+        showQuestion(currentIndex - 1);
+    }
+}
+
+function setupImageGallery(questionElement) {
+    const gallery = questionElement.querySelector('.question-image-gallery');
+    if (!gallery) return;
+
+    let images = [];
+    try {
+        const imageData = gallery.dataset.images;
+        // Compatibility for both JSON string and plain string
+        if (imageData.startsWith('[')) {
+            images = JSON.parse(imageData);
+        } else if (imageData) {
+            images = [imageData];
+        }
+    } catch (e) {
+        console.error('Failed to parse image data:', e);
+        images = [];
+    }
+
+    if (images.length === 0) {
+        gallery.style.display = 'none';
+        return;
+    }
+
+    gallery.style.display = 'block';
+    const imageWrapper = gallery.querySelector('.gallery-main-image-wrapper');
+    const controls = gallery.querySelector('.gallery-controls');
+    const counter = gallery.querySelector('.gallery-counter');
+    const prevBtn = gallery.querySelector('.gallery-prev');
+    const nextBtn = gallery.querySelector('.gallery-next');
+
+    let currentImageIndex = 0;
+
+    function showImage(index) {
+        imageWrapper.innerHTML = `<img src="{{ url_for('main.serve_upload', filename='') }}${images[index]}" alt="题目图片 ${index + 1}" style="max-width: 100%; max-height: 400px; border-radius: 12px; border: 1px solid var(--border-color);">`;
+        if (images.length > 1) {
+            counter.textContent = `${index + 1} / ${images.length}`;
+        }
+    }
+
+    if (images.length > 1) {
+        controls.style.display = 'flex';
+        prevBtn.onclick = () => {
+            currentImageIndex = (currentImageIndex - 1 + images.length) % images.length;
+            showImage(currentImageIndex);
+        };
+        nextBtn.onclick = () => {
+            currentImageIndex = (currentImageIndex + 1) % images.length;
+            showImage(currentImageIndex);
+        };
+    } else {
+        controls.style.display = 'none';
+    }
+
+    showImage(0);
+}
+
+function gotoPage(p){
+    const url = new URL(window.location.href);
+    url.searchParams.set('page', p);
+    const szSel = document.getElementById('pageSize');
+    if (szSel) url.searchParams.set('size', szSel.value);
+    window.location.href = url.toString();
+}
+function changeSize(sz){
+    const url = new URL(window.location.href);
+    url.searchParams.set('size', sz);
+    url.searchParams.set('page', 1);
+    window.location.href = url.toString();
+}

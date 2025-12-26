@@ -3,7 +3,7 @@
 认证路由蓝图
 """
 import sqlite3
-from flask import Blueprint, render_template, request, jsonify, session, current_app
+from flask import Blueprint, render_template, request, jsonify, session, current_app, make_response
 from werkzeug.security import generate_password_hash, check_password_hash
 from ..extensions import limiter
 from ..utils.database import get_db
@@ -103,39 +103,45 @@ def api_register():
 @auth_bp.route('/api/login', methods=['POST'])
 @limiter.limit("5 per minute")
 def api_login():
-    """登录API"""
+    """登录API（支持“保持登录”）"""
     data = request.json or {}
     username = (data.get('username') or '').strip()
     password = data.get('password') or ''
-    
+    remember = bool(data.get('remember'))
+
     if not username or not password:
         current_app.logger.warning(f'登录失败: 缺少用户名或密码 - IP: {request.remote_addr}')
         return jsonify({'status': 'error', 'message': '用户名和密码不能为空'}), 400
-    
+
     conn = get_db()
     row = conn.execute(
         'SELECT id, password_hash, is_admin, is_locked, session_version FROM users WHERE username=?',
         (username,)
     ).fetchone()
-    
+
     if not row or not check_password_hash(row['password_hash'], password):
         current_app.logger.warning(f'登录失败: 用户名或密码错误 - 用户: {username}, IP: {request.remote_addr}')
         return jsonify({'status': 'error', 'message': '用户名或密码错误'}), 400
-    
+
     if row['is_locked']:
         current_app.logger.warning(f'登录失败: 账户已锁定 - 用户: {username}, IP: {request.remote_addr}')
         return jsonify({'status': 'error', 'message': '账户已被锁定，请联系管理员'}), 403
-    
+
+    # 关键：使用 Flask 的永久会话机制
+    # remember=True -> session.permanent=True，由 PERMANENT_SESSION_LIFETIME 控制过期时间
+    session.permanent = remember
+
     session['user_id'] = row['id']
     session['username'] = username
     session['is_admin'] = bool(row['is_admin'])
     session['session_version'] = row['session_version'] or 0
-    
-    current_app.logger.info(f'用户登录成功 - 用户: {username}, IP: {request.remote_addr}')
-    
-    # 获取重定向地址
-    redirect_url = request.json.get('redirect', '/') if request.json else '/'
-    return jsonify({'status': 'success', 'redirect': redirect_url})
+
+    current_app.logger.info(
+        f'用户登录成功 - 用户: {username}, remember={remember}, IP: {request.remote_addr}'
+    )
+
+    redirect_url = data.get('redirect', '/') if isinstance(data, dict) else '/'
+    return jsonify({'status': 'success', 'redirect': redirect_url, 'remember': remember})
 
 
 @auth_bp.route('/api/logout', methods=['POST'])

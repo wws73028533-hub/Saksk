@@ -142,14 +142,19 @@
     </div>
 
     <div class="grid">
+
+
       <div class="card">
-        <h2>进行中的考试 <span class="tag">{{ ongoing|length }}</span></h2>
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom: 10px;">
+          <h2 style="margin:0;">进行中的考试</h2>
+          <span class="tag">{{ ongoing|length }}</span>
+        </div>
         <table>
           <thead>
             <tr>
               <th>ID</th>
               <th>科目</th>
-              <th>时长(分钟)</th>
+              <th>时长</th>
               <th>开始时间</th>
               <th>操作</th>
             </tr>
@@ -159,25 +164,25 @@
             <tr>
               <td>{{ e.id }}</td>
               <td>{{ e.subject or '全部' }}</td>
-              <td>{{ e.duration_minutes }}</td>
+              <td>{{ e.duration_minutes }} 分钟</td>
               <td>{{ e.started_at }}</td>
               <td class="actions">
-                <a class="btn btn-primary" href="/quiz?mode=exam&exam_id={{ e.id }}">继续考试</a>
+                <a class="btn btn-primary" href="/quiz?mode=exam&exam_id={{ e.id }}">继续</a>
                 <button class="btn" onclick="delExam({{ e.id }})">删除</button>
               </td>
             </tr>
             {% else %}
-            <tr><td colspan="5" style="color:#666;">暂无进行中的考试</td></tr>
+            <tr><td colspan="5" style="color:var(--text-sub);">暂无进行中的考试</td></tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
 
       <div class="card">
-        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom: 10px;">
           <h2 style="margin:0;">已提交的考试</h2>
           <div style="display:flex; gap:8px; align-items:center;">
-            <label style="color:#666; font-size:13px;">科目过滤</label>
+            <label style="color:var(--text-sub); font-size:13px;">科目</label>
             <select id="selSub" onchange="applyFilter()">
               <option value="all" {% if filter_subject=='all' %}selected{% endif %}>全部</option>
               {% for s in subjects %}
@@ -186,6 +191,7 @@
             </select>
           </div>
         </div>
+
         <table>
           <thead>
             <tr>
@@ -206,22 +212,23 @@
               <td>{{ e.started_at }}</td>
               <td>{{ e.submitted_at }}</td>
               <td class="actions">
-                <a class="btn" href="/exams/{{ e.id }}">查看成绩</a>
-                <a class="btn" href="/quiz?mode=exam&exam_id={{ e.id }}">回顾题目</a>
-                <button class="btn" onclick="toMistakes({{ e.id }})">加入错题本</button>
+                <a class="btn" href="/exams/{{ e.id }}">成绩</a>
+                <a class="btn" href="/quiz?mode=exam&exam_id={{ e.id }}">回顾</a>
+                <button class="btn" onclick="toMistakes({{ e.id }})">错题</button>
                 <button class="btn" onclick="delExam({{ e.id }})">删除</button>
               </td>
             </tr>
             {% else %}
-            <tr><td colspan="6" style="color:#666;">暂无已提交的考试</td></tr>
+            <tr><td colspan="6" style="color:var(--text-sub);">暂无已提交的考试</td></tr>
             {% endfor %}
           </tbody>
         </table>
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
-          <div style="color:#666; font-size:13px;">共 {{ total }} 条</div>
-          <div style="display:flex; gap:6px; align-items:center;">
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; padding: 0 2px;">
+          <div style="color:var(--text-sub); font-size:13px;">共 {{ total }} 条</div>
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap: wrap; justify-content:flex-end;">
             <button class="btn" onclick="gotoPage({{ page-1 }})" {% if page<=1 %}disabled{% endif %}>上一页</button>
-            <span style="color:#666; font-size:13px;">第 {{ page }} 页</span>
+            <span style="color:var(--text-sub); font-size:13px;">第 {{ page }} 页</span>
             {% set total_pages = (total + size - 1) // size %}
             <button class="btn" onclick="gotoPage({{ page+1 }})" {% if page>=total_pages %}disabled{% endif %}>下一页</button>
             <select id="selSize" onchange="changeSize(this.value)">
@@ -232,6 +239,7 @@
           </div>
         </div>
       </div>
+
     </div>
   </div>
   <script>
@@ -245,6 +253,7 @@
       window.location.href = buildUrl({ subject: sub, page: 1 });
     }
     function gotoPage(p){
+      if(p < 1) return;
       const sub = document.getElementById('selSub').value;
       window.location.href = buildUrl({ subject: sub, page: p });
     }

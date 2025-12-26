@@ -29,6 +29,9 @@ class Config:
     JSON_AS_ASCII = False
     JSONIFY_MIMETYPE = 'application/json; charset=utf-8'
     
+    # 会话配置：启用永久会话，默认 7 天
+    PERMANENT_SESSION_LIFETIME = 60 * 60 * 24 * 7  # 7 天（秒）
+    
     # 限流配置
     RATELIMIT_STORAGE_URL = 'memory://'
     RATELIMIT_DEFAULT = "10000 per day;1000 per hour"

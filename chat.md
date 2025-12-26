@@ -30,7 +30,7 @@
 - 修改：`app/utils/database.py` 的 `init_db()` 创建表
   - `chat_conversations`
   - `chat_members`（含 `last_read_message_id`）
-  - `chat_messages`（含 `content_type`，支持 text/image/audio）
+  - `chat_messages`（含 `content_type`，支持 text/image/audio/question）
 - 修改：`app/utils/database.py` 的 `_create_indexes()` 新增索引
   - `idx_chat_members_user (user_id, conversation_id)`
   - `idx_chat_messages_conversation (conversation_id, id DESC)`
@@ -160,7 +160,7 @@
 
 ---
 
-## 10. 新增：用户名搜索体验优化（避免 wxr / wxr2 误选）
+## 10. 新增：用户名搜索体验优化（避免误选）
 ### 10.1 前端
 - 搜索回车创建会话：优先精确匹配用户名；当匹配多个用户时提供“选择列表”弹层。
 
@@ -202,26 +202,87 @@
   - “···”菜单支持：设置备注 / 清除备注 / 复制用户名 / 复制 ID
   - 朋友圈预览区块（占位）
   - 底部按钮：发消息（回到聊天）/ 音视频通话（占位提示）
-- 头像修复：资料页头像使用 `.profile-avatar` 强制 `cover + center`，避免显示异常
 
 ---
 
-## 13. 输入区 UI 迭代（更像移动端 IM）
+## 13. 新增：题目转发（从刷题页转发到聊天）
+### 13.1 使用方式
+- 在刷题页面（`/quiz`）点击“转发题目”按钮
+- 搜索并选择用户 → 系统自动创建/复用会话并发送“题目卡片”
+
+### 13.2 后端
+- 新增：`POST /api/chat/messages/send_question`
+  - 参数：`conversation_id`, `question_id`
+  - 写入 `chat_messages`：`content_type='question'`
+  - `content` 存 JSON（包含题干/题型/科目/选项/答案/解析等）
+
+- 新增：`GET /api/chat/question/<question_id>`
+  - 用于历史题目卡片补全详情（当消息体字段不全时，弹层会从该接口拉取完整题目）
+
+### 13.3 前端
+- `chat.html`：新增题目卡片渲染（`content_type='question'`）
+- 点击题目卡片：不再跳转页面，改为弹层（`#questionModal`）展示题目详情
+  - 选择题：显示选项/答案/解析
+  - 填空题：题干 `__` 以占位块展示；答案按“空1/空2…”结构化展示
+- UI 约束：遵循 `UI.txt`（iOS 18 极简、单色、玻璃拟态、留白、柔和阴影）
+- 隐私：题目卡片与弹层默认隐藏题目 ID（但可通过“复制ID”按钮复制）
+
+---
+
+## 14. 输入区 UI 迭代（更像移动端 IM）
 - 输入区改为：左侧 “+” 圆按钮 + 中间胶囊输入框 + 右侧（语音/发送互斥）
 - 有文字时显示“绿色圆形上箭头发送”，无文字时显示麦克风
 - “+” 支持弹出菜单（图片/文件占位）
 
 ---
 
-## 14. 常见注意点
-- `read_lints` 对 `chat.html` 中 Jinja 语法（如 `{{ user_id }}`）可能误报 JS 错误：属静态解析误判。
+## 15. 未读角标不消失：排查与修复（线上故障记录）
+
+### 15.1 现象
+- 首页右上角 `#chatUnreadBadge` 显示未读数（如 2 / 3），但用户在聊天页看起来已经“全部已读”，角标仍不归零。
+
+### 15.2 根因（高频）
+- 历史遗留的重复 direct 会话：
+  - 旧会话 `direct_pair_key IS NULL`
+  - `chat_members.last_read_message_id` 仍为 0
+  - 前端会话列表会按 `peer_user_id` 去重显示“最新的一条会话”，旧会话被隐藏
+  - 但后端 `/api/chat/unread_count` 若直接对所有会话求和，会把隐藏旧会话的未读也算进去
+
+### 15.3 后端修复（代码）
+1) `/api/chat/messages` 已读推进修复：
+- 旧逻辑：仅当本次拉取有新消息时才推进已读
+- 新逻辑：每次请求都推进到当前会话最新消息 `MAX(id)`（避免 after_id/limit 导致返回空时已读无法推进）
+
+2) `/api/chat/unread_count` 统计修复（防脏）：
+- 对 direct 会话：按 `direct_pair_key` 分组，只统计每个 pair 的最新会话（避免重复旧会话污染角标）
+- SQL 使用窗口函数 `ROW_NUMBER()`，对 `updated_at`（TEXT DATETIME）按 `datetime(updated_at)` 排序
+
+### 15.4 线上快速止血（仅对单用户/单会话）
+- 直接在 SQLite 推进某用户某会话的已读：
+  - 数据库：`/home/quizapp/quiz-app/instance/submissions.db`
+  - 示例（uid=14, cid=1）：
+    ```bash
+    python3 -c "import sqlite3; uid=14; cid=1; db='/home/quizapp/quiz-app/instance/submissions.db'; conn=sqlite3.connect(db); cur=conn.cursor(); max_id=cur.execute('SELECT COALESCE(MAX(id),0) FROM chat_messages WHERE conversation_id=?',(cid,)).fetchone()[0]; cur.execute('UPDATE chat_members SET last_read_message_id=? WHERE user_id=? AND conversation_id=?',(max_id,uid,cid)); conn.commit(); print('updated',{'uid':uid,'cid':cid,'max_id':max_id}); conn.close()"
+    ```
+
+### 15.5 direct_pair_key 补齐说明（遇到唯一约束冲突）
+- 线上可能已有 `direct_pair_key` 的唯一索引/约束
+- 对历史重复 direct 会话，补齐 `direct_pair_key` 会触发 `UNIQUE constraint failed`
+- 在“不合并/不删记录”的策略下：
+  - 可补齐的补齐
+  - 冲突的旧会话保持 `direct_pair_key=NULL`
+  - 依赖 `/api/chat/unread_count` 的“按 pair 去重统计”确保角标不再被污染
+
+---
+
+## 16. 常见注意点
 - UI 改动后建议 Ctrl+F5 强制刷新，避免缓存导致样式不生效。
 
 ---
 
-## 15. 关键文件列表（便于新对话定位）
+## 17. 关键文件列表（便于新对话定位）
 - `app/routes/chat.py`
-- `app/routes/__init__.py`
-- `app/utils/database.py`
 - `app/templates/chat.html`
+- `app/templates/quiz.html`
 - `app/templates/index.html`
+- `app/utils/database.py`

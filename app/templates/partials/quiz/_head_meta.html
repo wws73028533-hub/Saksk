@@ -1,0 +1,26 @@
+{# quiz head: meta/title/icon/style #}
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+
+{% if mode == 'exam' %}
+  <title>模拟考试</title>
+{% elif mode == 'memo' %}
+  <title>{{ '收藏本背题' if is_fav_scope else ('错题本背题' if is_mis_scope else '背题模式') }}</title>
+{% else %}
+  <title>{{ '收藏本' if is_fav_scope else ('错题本' if is_mis_scope else '刷题') }}</title>
+{% endif %}
+
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Crect width='128' height='128' rx='24' fill='%23007bff'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='central' text-anchor='middle' font-size='88' fill='white'%3E%F0%9F%93%98%3C/text%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Crect width='128' height='128' rx='24' fill='%23007bff'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='central' text-anchor='middle' font-size='88' fill='white'%3E%F0%9F%93%98%3C/text%3E%3C/svg%3E">
+<meta name="theme-color" content="#007bff">
+
+{#
+  说明：为降低回归风险，第一阶段仍保留内联 CSS。
+  后续可将此块整体迁移至 static/quiz.css。
+#}
+<style>
+{% include 'partials/quiz/_inline_css.html' %}
+</style>

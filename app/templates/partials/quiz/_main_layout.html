@@ -1,0 +1,11 @@
+<div class="main-area" data-template-version="INJECT_DOCK_MARKER_20251225">
+  <div class="card-container" id="mainCard" data-exam-id="{{ exam_id or '' }}">
+    {% include 'partials/quiz/_header.html' %}
+    {% include 'partials/quiz/_progress.html' %}
+    {% include 'partials/quiz/_question.html' %}
+    {% include 'partials/quiz/_footer.html' %}
+  </div>
+
+  {% include 'partials/quiz/_dock.html' %}
+</div>
+

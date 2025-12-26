@@ -304,6 +304,33 @@
     .img-modal .hint{ position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); color: rgba(255,255,255,0.85);
       font-size: 12px; background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.18); border-radius: 999px; padding: 6px 10px; }
 
+    /* 题目弹层：填空题占位与答案列表（遵循 UI.txt：单色、圆角、留白、轻阴影） */
+    .blank-slot{
+      display:inline-block;
+      width: 64px;
+      height: 1.15em;
+      vertical-align: -0.15em;
+      border-radius: 10px;
+      background: rgba(142,142,147,0.10);
+      border: 1px solid var(--border);
+      box-shadow: 0 1px 0 rgba(0,0,0,0.03) inset;
+      margin: 0 6px;
+    }
+    .blank-ans{ display:flex; flex-direction:column; gap:10px; }
+    .blank-row{ display:flex; gap:12px; align-items:flex-start; }
+    .blank-idx{ width: 48px; flex-shrink:0; font-size:12px; color: var(--sub); padding-top: 2px; }
+    .blank-vals{ display:flex; flex-wrap:wrap; gap:8px; }
+    .ans-pill{
+      display:inline-flex;
+      align-items:center;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(142,142,147,0.08);
+      font-size: 13px;
+      color: var(--text);
+    }
+
     /* + 菜单（类似信息/RCS） */
     .plus-menu{ position: fixed; z-index: 3200; display:none; background: var(--card2); border: 1px solid var(--border);
       border-radius: 16px; box-shadow: var(--shadow); padding: 8px; min-width: 180px;
@@ -470,6 +497,41 @@
         <div style="margin-top: 14px; display:flex; flex-direction:column; gap:10px;">
           <button class="btn primary" onclick="profileSendMessage();" style="width:100%;">发消息</button>
           <button class="btn" onclick="profileCallPlaceholder();" style="width:100%;">音视频通话（占位）</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 题目详情弹层 -->
+  <div class="img-modal" id="questionModal" onclick="closeQuestionModal(event)">
+    <button class="close" onclick="closeQuestionModal(event)">×</button>
+    <div class="card" style="width:min(92vw,760px); max-height: 86vh; overflow:auto; background: var(--card2); border: 1px solid var(--border); border-radius: 18px; box-shadow: var(--shadow);" onclick="event.stopPropagation()">
+      <div style="padding: 14px 16px; border-bottom: 1px solid var(--border); display:flex; align-items:flex-start; justify-content:space-between; gap:12px;">
+        <div style="min-width:0;">
+          <div id="qmTitle" style="font-weight:900; font-size:16px; line-height:1.2;">题目详情</div>
+          <div id="qmMeta" style="margin-top:6px; color:var(--sub); font-size:12px;"></div>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center;">
+          <button class="btn" type="button" onclick="copyQuestionLink()">复制ID</button>
+          <button class="btn" type="button" onclick="closeQuestionModal()">关闭</button>
+        </div>
+      </div>
+      <div style="padding: 14px 16px 18px;">
+        <div id="qmContent" style="font-size:16px; line-height:1.7; white-space:pre-wrap; word-break:break-word;"></div>
+
+        <div id="qmOptionsWrap" style="margin-top: 14px; display:none;">
+          <div style="font-weight:800; margin-bottom:8px;">选项</div>
+          <div id="qmOptions" style="display:flex; flex-direction:column; gap:8px;"></div>
+        </div>
+
+        <div id="qmAnswerWrap" style="margin-top: 14px; display:none;">
+          <div style="font-weight:800; margin-bottom:8px;">答案</div>
+          <div id="qmAnswer" style="padding: 10px 12px; border-radius: 14px; background: rgba(52, 199, 89, 0.14); border: 1px solid rgba(52, 199, 89, 0.22); white-space:pre-wrap; word-break:break-word;"></div>
+        </div>
+
+        <div id="qmExplainWrap" style="margin-top: 14px; display:none;">
+          <div style="font-weight:800; margin-bottom:8px;">解析</div>
+          <div id="qmExplain" style="padding: 10px 12px; border-radius: 14px; background: rgba(10, 132, 255, 0.10); border: 1px solid rgba(10, 132, 255, 0.18); white-space:pre-wrap; word-break:break-word;"></div>
         </div>
       </div>
     </div>
@@ -965,6 +1027,155 @@
     img.src = url;
     modal.classList.add('show');
   }
+
+  let currentModalQuestion = null;
+
+  function closeQuestionModal(e) {
+      if (e) {
+          if (e.target.id !== 'questionModal' && !e.target.classList.contains('close')) return;
+      }
+      const modal = document.getElementById('questionModal');
+      if (modal) modal.classList.remove('show');
+      currentModalQuestion = null;
+  }
+
+  function renderFillBlankContent(text){
+      // 把 "__" 替换成更清晰的占位符（iOS 单色风格）
+      const safe = escapeHtml(String(text || ''));
+      // 用 span 做下划线块
+      return safe.replace(/__+/g, '<span class="blank-slot" aria-hidden="true"></span>');
+  }
+
+  function renderFillBlankAnswer(answer){
+      // 标准：不同空用 ";;" 分隔；每空多答案用 ";" 分隔
+      const raw = String(answer || '').trim();
+      if (!raw) return '';
+      const blanks = raw.split(';;').map(s=>s.trim()).filter(Boolean);
+      if (!blanks.length) return escapeHtml(raw);
+
+      const rows = blanks.map((b, idx)=>{
+          const alts = b.split(';').map(x=>x.trim()).filter(Boolean);
+          const pretty = alts.map(x=>`<span class="ans-pill">${escapeHtml(x)}</span>`).join('');
+          return `
+            <div class="blank-row">
+              <div class="blank-idx">空 ${idx+1}</div>
+              <div class="blank-vals">${pretty || '<span class="ans-pill">(空)</span>'}</div>
+            </div>
+          `;
+      }).join('');
+      return `<div class="blank-ans">${rows}</div>`;
+  }
+
+  function _renderQuestionModal(qInfo){
+      // 标题/元信息
+      document.getElementById('qmTitle').textContent = '题目详情';
+      const metaParts = [];
+      // UI：meta 默认隐藏题目ID，只展示题型/科目
+      if (qInfo.type) metaParts.push(String(qInfo.type));
+      if (qInfo.subject) metaParts.push(String(qInfo.subject));
+      document.getElementById('qmMeta').textContent = metaParts.join(' · ');
+
+      // 题干（填空题做特殊渲染）
+      const contentEl = document.getElementById('qmContent');
+      const qType = String(qInfo.type || '');
+      if (qType === '填空题') {
+        contentEl.innerHTML = renderFillBlankContent(String(qInfo.content || ''));
+      } else {
+        contentEl.textContent = qInfo.content || '';
+      }
+
+      const qmAnswerWrap = document.getElementById('qmAnswerWrap');
+      const qmExplainWrap = document.getElementById('qmExplainWrap');
+      const qmOptionsWrap = document.getElementById('qmOptionsWrap');
+
+      const answer = qInfo.answer || '';
+      const explain = qInfo.explanation || '';
+      const opts = Array.isArray(qInfo.options) ? qInfo.options : [];
+      // 调试
+      try { console.log('[QuestionModal] render opts len=', opts.length, opts.slice(0,2)); } catch(e) {}
+
+      // 选项
+      if (opts.length) {
+          const optsHtml = opts.map(o => {
+              const k = (o && o.key) ? String(o.key).trim() : '';
+              const v = (o && o.value) ? String(o.value).trim() : '';
+              return `<div style="padding: 10px 12px; border-radius: 14px; border: 1px solid var(--border); background: rgba(142,142,147,0.06);"><strong style="margin-right:6px;">${k ? (escapeHtml(k)+'.') : ''}</strong>${escapeHtml(v)}</div>`;
+          }).join('');
+          document.getElementById('qmOptions').innerHTML = optsHtml;
+          qmOptionsWrap.style.display = 'block';
+      } else {
+          document.getElementById('qmOptions').innerHTML = '';
+          qmOptionsWrap.style.display = 'none';
+      }
+
+      // 答案（填空题结构化展示）
+      if (answer) {
+        const ansEl = document.getElementById('qmAnswer');
+        if (qType === '填空题') {
+          ansEl.innerHTML = renderFillBlankAnswer(String(answer));
+        } else {
+          ansEl.textContent = answer;
+        }
+        qmAnswerWrap.style.display = 'block';
+      } else {
+        document.getElementById('qmAnswer').textContent = '';
+        qmAnswerWrap.style.display = 'none';
+      }
+
+      // 解析
+      if (explain) {
+        document.getElementById('qmExplain').textContent = explain;
+        qmExplainWrap.style.display = 'block';
+      } else {
+        document.getElementById('qmExplain').textContent = '';
+        qmExplainWrap.style.display = 'none';
+      }
+  }
+
+  async function openQuestionModal(qInfo) {
+      if (!qInfo || !qInfo.id) return;
+      const modal = document.getElementById('questionModal');
+      if (!modal) return;
+
+      modal.classList.add('show');
+
+      console.log('[QuestionModal] initial qInfo', qInfo);
+      // 如果消息里不带完整信息（历史消息/旧结构），则请求后端补全
+      const hasFull = !!qInfo.has_full_data;
+      if (!hasFull) {
+          console.log('[QuestionModal] fetching full question from api', qInfo.id);
+          document.getElementById('qmTitle').textContent = '题目详情';
+          // UI：meta 不显示题目ID
+          document.getElementById('qmMeta').textContent = '';
+          document.getElementById('qmContent').textContent = '加载中...';
+          try {
+              const res = await fetch(`/api/chat/question/${encodeURIComponent(qInfo.id)}`);
+              const js = await res.json();
+              console.log('[QuestionModal] api resp', js);
+              if (res.ok && js.status === 'success' && js.question) {
+                  qInfo = Object.assign({}, qInfo, js.question);
+                  console.log('[QuestionModal] merged qInfo', qInfo);
+              }
+          } catch(e) {
+              // ignore
+          }
+      }
+
+      currentModalQuestion = qInfo;
+      _renderQuestionModal(qInfo);
+  }
+
+  function copyQuestionLink(){
+      if (!currentModalQuestion || !currentModalQuestion.id) return;
+      try {
+          navigator.clipboard.writeText(String(currentModalQuestion.id));
+          showToast('题目 ID 已复制');
+      } catch(e) {
+          showToast('复制失败');
+      }
+  }
+
+
   function closeImgModal(e){
     if (e) e.stopPropagation();
     const modal = document.getElementById('imgModal');
@@ -984,6 +1195,12 @@
         modal.classList.remove('show');
         const img = document.getElementById('imgModalImg');
         if (img) img.src = '';
+      }
+      // 关闭题目详情
+      const qModal = document.getElementById('questionModal');
+      if (qModal && qModal.classList.contains('show')) {
+        qModal.classList.remove('show');
+        currentModalQuestion = null;
       }
       // 关闭用户选择
       const uModal = document.getElementById('userPickModal');
@@ -1132,6 +1349,18 @@
 
   function isImageMsg(m){ return (m && m.content_type === 'image'); }
   function isAudioMsg(m){ return (m && m.content_type === 'audio'); }
+  function isQuestionMsg(m){ return (m && m.content_type === 'question'); }
+
+  function parseQuestionContent(content){
+    if (!content) return null;
+    if (typeof content !== 'string') return null;
+    const s = content.trim();
+    if (!s) return null;
+    if (s.startsWith('{') && s.endsWith('}')) {
+      try { return JSON.parse(s); } catch(e) { return null; }
+    }
+    return null;
+  }
 
   function parseAudioContent(content){
     // 兼容旧数据：纯 URL
@@ -1526,6 +1755,55 @@
         wrapA.appendChild(audio);
 
         bubble.appendChild(wrapA);
+      } else if (isQuestionMsg(m)) {
+        // 题目卡片：不要再用 bubble.textContent，否则会把 DOM 结构抹掉
+        const info = parseQuestionContent(m.content) || {};
+        const qid = info.id || '';
+        const qtype = info.type || '';
+        const subject = info.subject || '';
+        const text = (info.content || '').toString().trim();
+
+        // 清空并用 DOM 构建（避免 innerText / textContent 覆盖）
+        bubble.innerHTML = '';
+        bubble.style.background = 'var(--other)';
+        bubble.style.border = '1px solid var(--border)';
+        bubble.style.color = 'var(--text)';
+        bubble.style.cursor = qid ? 'pointer' : 'default';
+
+        const title = document.createElement('div');
+        title.style.fontWeight = '800';
+        title.style.marginBottom = '6px';
+        title.textContent = `[题目]${qtype ? (' ' + qtype) : ''}`;
+
+        const content = document.createElement('div');
+        content.style.fontSize = '14px';
+        content.style.lineHeight = '1.55';
+        content.textContent = text ? (text.length > 120 ? (text.slice(0,120) + '…') : text) : '';
+
+        const meta = document.createElement('div');
+        meta.style.marginTop = '8px';
+        meta.style.fontSize = '12px';
+        meta.style.opacity = '0.9';
+        // UI：卡片 meta 隐藏题目ID，只展示科目
+        meta.textContent = `${subject ? subject : ''}`.trim();
+
+        const hint = document.createElement('div');
+        hint.style.marginTop = '6px';
+        hint.style.fontSize = '12px';
+        hint.style.opacity = '0.85';
+        hint.textContent = qid ? '点击查看题目' : '';
+
+        bubble.appendChild(title);
+        if (content.textContent) bubble.appendChild(content);
+        if (meta.textContent) bubble.appendChild(meta);
+        if (hint.textContent) bubble.appendChild(hint);
+
+        if (qid) {
+          bubble.addEventListener('click', ()=>{
+            // 先给一个可用的跳转：打开搜索页，用关键词 "id:xxxx" 让用户定位
+            openQuestionModal(info);
+          });
+        }
       } else {
         bubble.textContent = m.content || '';
       }

@@ -7,6 +7,7 @@ from datetime import datetime
 from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for
 from ..utils.database import get_db
 from ..utils.validators import parse_int
+from ..models.exam import Exam
 
 exam_bp = Blueprint('exam', __name__)
 
@@ -69,7 +70,10 @@ def page_exam_detail(exam_id):
     conn = get_db()
     exam = conn.execute('SELECT * FROM exams WHERE id=?', (exam_id,)).fetchone()
     
-    if not exam or exam['user_id'] != uid:
+    # 管理员可查看任意用户的考试
+    if not exam:
+        return "考试不存在或无权限", 403
+    if exam['user_id'] != uid and not session.get('is_admin'):
         return "考试不存在或无权限", 403
     
     # 统计每题对错
@@ -102,59 +106,14 @@ def api_exams_create():
     uid = session.get('user_id')
     if not uid:
         return jsonify({'status': 'unauthorized', 'message': '请先登录'}), 401
-    
+
     data = request.json or {}
     subject = data.get('subject') or 'all'
-    
-    try:
-        duration = int(data.get('duration') or 60)
-    except:
-        duration = 60
-    
+    duration = data.get('duration') or 60
     types_cfg = data.get('types') or {}
     scores_cfg = data.get('scores') or {}
-    
-    conn = get_db()
-    
-    # 创建考试记录
-    cfg_json = json.dumps({
-        'subject': subject,
-        'duration': duration,
-        'types': types_cfg,
-        'scores': scores_cfg
-    }, ensure_ascii=False)
-    
-    cursor = conn.execute(
-        'INSERT INTO exams (user_id, subject, duration_minutes, config_json, status) VALUES (?, ?, ?, ?, ?)',
-        (uid, subject, duration, cfg_json, 'ongoing')
-    )
-    exam_id = cursor.lastrowid
-    
-    order_index = 0
-    sub_sql = " AND s.name = ?" if subject != 'all' else ""
-    sub_param = [subject] if subject != 'all' else []
-    
-    for q_t, count in (types_cfg or {}).items():
-        try:
-            cnt = int(count)
-        except:
-            cnt = 0
-        if cnt <= 0:
-            continue
-        
-        sql = f"SELECT q.* FROM questions q LEFT JOIN subjects s ON q.subject_id = s.id WHERE q.q_type = ?{sub_sql} ORDER BY RANDOM() LIMIT ?"
-        params = [q_t] + sub_param + [cnt]
-        rows = conn.execute(sql, params).fetchall()
-        
-        for row in rows:
-            score_val = float(scores_cfg.get(q_t, 1))
-            conn.execute(
-                'INSERT INTO exam_questions (exam_id, question_id, order_index, score_val) VALUES (?, ?, ?, ?)',
-                (exam_id, row['id'], order_index, score_val)
-            )
-            order_index += 1
-    
-    conn.commit()
+
+    exam_id = Exam.create(uid, subject, duration, types_cfg, scores_cfg)
     return jsonify({'status': 'success', 'exam_id': exam_id})
 
 
@@ -164,83 +123,22 @@ def api_exams_submit():
     uid = session.get('user_id')
     if not uid:
         return jsonify({'status': 'unauthorized', 'message': '请先登录'}), 401
-    
+
     data = request.json or {}
     exam_id = data.get('exam_id')
     answers = data.get('answers') or []
-    
+
     if not exam_id:
-        return jsonify({'status':'error','message':'缺少 exam_id'}), 400
-    
-    conn = get_db()
-    exam = conn.execute('SELECT * FROM exams WHERE id=?', (exam_id,)).fetchone()
-    
-    if not exam or exam['user_id'] != uid:
-        return jsonify({'status':'error','message':'考试不存在或无权限'}), 403
-    
-    if exam['status'] == 'submitted':
-        return jsonify({'status':'error','message':'考试已提交'}), 400
-    
-    ans_map = {}
-    for a in answers:
-        try:
-            qid = int(a.get('question_id'))
-        except:
-            continue
-        ans_map[qid] = (a.get('user_answer') or '').strip()
-    
-    # 读取试题并判分
-    rows = conn.execute('''
-        SELECT eq.id as eq_id, eq.question_id, eq.score_val, q.answer, q.q_type
-        FROM exam_questions eq
-        JOIN questions q ON q.id = eq.question_id
-        WHERE eq.exam_id=?
-    ''', (exam_id,)).fetchall()
-    
-    total = len(rows)
-    correct = 0
-    total_score = 0.0
-    
-    for r in rows:
-        qid = r['question_id']
-        user_ans = ans_map.get(qid, '')
-        std_ans = (r['answer'] or '').strip()
-        qtype = r['q_type'] or ''
-        
-        is_correct = 0
-        if qtype in ('选择题','判断题'):
-            ua = ''.join(sorted(list(user_ans))) if qtype=='选择题' else user_ans
-            sa = ''.join(sorted(list(std_ans))) if qtype=='选择题' else std_ans
-            if ua == sa and ua != '':
-                is_correct = 1
-        elif qtype == '填空题':
-            if user_ans and (user_ans.strip() == std_ans):
-                is_correct = 1
-        else:
-            if user_ans:
-                is_correct = 1
-        
-        conn.execute(
-            'UPDATE exam_questions SET user_answer=?, is_correct=?, answered_at=CURRENT_TIMESTAMP WHERE id=?',
-            (user_ans, is_correct, r['eq_id'])
-        )
-        
-        if is_correct:
-            correct += 1
-            total_score += float(r['score_val'] or 0)
-    
-    conn.execute(
-        'UPDATE exams SET total_score=?, status="submitted", submitted_at=CURRENT_TIMESTAMP WHERE id=?',
-        (total_score, exam_id)
-    )
-    conn.commit()
-    
+        return jsonify({'status': 'error', 'message': '缺少 exam_id'}), 400
+
+    result = Exam.submit(exam_id, uid, answers)
+    if not result:
+        return jsonify({'status': 'error', 'message': '考试不存在/无权限/已提交'}), 400
+
     return jsonify({
-        'status':'success',
+        'status': 'success',
         'exam_id': exam_id,
-        'total': total,
-        'correct': correct,
-        'total_score': total_score
+        **result
     })
 
 

@@ -6,6 +6,7 @@ import json
 import random
 from flask import Blueprint, render_template, request, session
 from ..utils.database import get_db
+from ..utils.options_parser import parse_options
 
 quiz_bp = Blueprint('quiz', __name__)
 
@@ -155,16 +156,8 @@ def quiz_page():
 
         if q.get('options'):
             try:
-                options_list = json.loads(q['options'])
-                # 将 ["A、内容"] 转换为 [{'key':'A', 'value':'内容'}]
-                new_options = []
-                if isinstance(options_list, list):
-                    for item_str in options_list:
-                        delimiter = '、' if '、' in item_str else '.'
-                        parts = item_str.split(delimiter, 1)
-                        if len(parts) == 2:
-                            new_options.append({'key': parts[0].strip(), 'value': parts[1].strip()})
-                q['options'] = new_options
+                # 统一 options 解析（兼容有/无 A/B 前缀、数字列表、结构化等）
+                q['options'] = parse_options(q['options'])
 
                 # 打乱选项顺序
                 if shuffle_options and q['options'] and q.get('q_type') == '选择题':
@@ -184,14 +177,14 @@ def quiz_page():
                     new_answer_keys = []
                     for i, option in enumerate(q['options']):
                         if i < len(abcd):
-                            original_key = option['key'] # 保存原始key
+                            # original_key = option['key']  # 保存原始key（当前逻辑未使用，保留注释）
                             option['key'] = abcd[i] # 重新分配key
                             if option['value'] in correct_texts:
                                 new_answer_keys.append(option['key'])
                     
                     # 4. 更新答案
                     q['answer'] = ''.join(sorted(new_answer_keys))
-            except:
+            except Exception:
                 q['options'] = []
         questions.append(q)
         question_ids.append(q['id'])

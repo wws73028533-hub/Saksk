@@ -13,6 +13,7 @@
 from flask import Blueprint, render_template, request, jsonify, session, current_app
 from werkzeug.utils import secure_filename
 from ..utils.database import get_db
+from ..utils.options_parser import parse_options
 from ..extensions import limiter
 import os
 import uuid
@@ -220,6 +221,8 @@ def chat_conversations():
             d['last_message'] = '[语音]'
         elif d.get('last_message_type') == 'file':
             d['last_message'] = '[文件]'
+        elif d.get('last_message_type') == 'question':
+            d['last_message'] = '[题目]' 
         data.append(d)
 
     return jsonify({'status': 'success', 'data': data})
@@ -410,6 +413,14 @@ def chat_user_profile():
 @chat_bp.route('/api/chat/messages')
 @limiter.exempt
 def chat_messages():
+    """拉取会话消息（增量）并推进已读。
+
+    关键点：已读推进应当以“当前会话的最新消息 id”为准，而不是仅推进到本次返回的最后一条。
+
+    否则会出现：
+    - 其他轮询/页面（如首页 /api/chat/unread_count）仍显示未读
+    - 当 after_id 很大或 limit 较小导致返回为空时，已读永远无法推进
+    """
     if not session.get('user_id'):
         return jsonify({'status': 'unauthorized', 'message': '请先登录'}), 401
 
@@ -440,12 +451,20 @@ def chat_messages():
         (conversation_id, after_id, limit)
     ).fetchall()
 
-    # 更新已读到最新一条消息
-    if rows:
-        last_id = rows[-1]['id']
+    # 更新已读到当前会话的最新消息ID（无论是否有新消息）
+    # 注意：这里使用 MAX(id) 而不是 rows[-1]['id']，因为可能因为 after_id 过大而返回空列表
+    latest_msg = conn.execute(
+        "SELECT COALESCE(MAX(id), 0) as max_id FROM chat_messages WHERE conversation_id=?",
+        (conversation_id,)
+    ).fetchone()
+    if latest_msg and latest_msg['max_id'] > 0:
         conn.execute(
-            "UPDATE chat_members SET last_read_message_id = MAX(COALESCE(last_read_message_id,0), ?) WHERE conversation_id=? AND user_id=?",
-            (last_id, conversation_id, uid)
+            """
+            UPDATE chat_members 
+            SET last_read_message_id = MAX(COALESCE(last_read_message_id, 0), ?) 
+            WHERE conversation_id = ? AND user_id = ?
+            """,
+            (latest_msg['max_id'], conversation_id, uid)
         )
         conn.commit()
 
@@ -756,6 +775,139 @@ def chat_upload_audio():
     })
 
 
+@chat_bp.route('/api/chat/messages/send_question', methods=['POST'])
+@limiter.exempt
+def chat_send_question():
+    if not session.get('user_id'):
+        return jsonify({'status': 'unauthorized', 'message': '请先登录'}), 401
+
+    uid = session.get('user_id')
+    data = request.json or {}
+    conversation_id = int(data.get('conversation_id') or 0)
+    question_id = int(data.get('question_id') or 0)
+
+    if conversation_id <= 0:
+        return jsonify({'status': 'error', 'message': 'conversation_id 不合法'}), 400
+    if question_id <= 0:
+        return jsonify({'status': 'error', 'message': 'question_id 不合法'}), 400
+
+    conn = get_db()
+    if not _is_member(conn, conversation_id, uid):
+        return jsonify({'status': 'forbidden', 'message': '无权发送到该会话'}), 403
+
+    # 获取题目信息
+    q = conn.execute(
+        'SELECT q.id, q.content, q.q_type, q.options, q.answer, q.explanation, q.image_path, s.name as subject_name '
+        'FROM questions q LEFT JOIN subjects s ON q.subject_id = s.id WHERE q.id = ?',
+        (question_id,)
+    ).fetchone()
+    if not q:
+        return jsonify({'status': 'error', 'message': '题目不存在'}), 404
+
+    # 解析 options（统一入口）
+    options_payload = []
+    try:
+        current_app.logger.info(f"[send_question] qid={q['id']} raw_options={q['options']}")
+    except Exception:
+        pass
+
+    try:
+        options_payload = parse_options(q['options'])
+    except Exception as _e:
+        options_payload = []
+        try:
+            current_app.logger.warning(f"[send_question] qid={q['id']} options_parse_failed err={_e}")
+        except Exception:
+            pass
+
+    try:
+        current_app.logger.info(f"[send_question] qid={q['id']} options_payload_len={len(options_payload)} head={options_payload[:2]}")
+    except Exception:
+        pass
+
+    content_obj = {
+        'id': q['id'],
+        'content': q['content'],
+        'type': q['q_type'],
+        'subject': q['subject_name'] or '',
+        'options': options_payload,
+        'answer': (q['answer'] or ''),
+        'explanation': (q['explanation'] or ''),
+        'image_path': (q['image_path'] or ''),
+        'has_full_data': True,
+    }
+    content_str = json.dumps(content_obj, ensure_ascii=False)
+
+    cur = conn.cursor()
+    cur.execute(
+        """
+        INSERT INTO chat_messages (conversation_id, sender_id, content, content_type)
+        VALUES (?, ?, ?, 'question')
+        """,
+        (conversation_id, uid, content_str)
+    )
+    mid = cur.lastrowid
+
+    conn.execute(
+        "UPDATE chat_conversations SET updated_at=CURRENT_TIMESTAMP WHERE id=?",
+        (conversation_id,)
+    )
+    conn.execute(
+        "UPDATE chat_members SET last_read_message_id = MAX(COALESCE(last_read_message_id,0), ?) WHERE conversation_id=? AND user_id=?",
+        (mid, conversation_id, uid)
+    )
+
+    conn.commit()
+    return jsonify({'status': 'success', 'message_id': mid})
+
+
+@chat_bp.route('/api/chat/question/<int:question_id>')
+@limiter.exempt
+def chat_get_question_detail(question_id: int):
+    """获取题目完整信息（用于历史题目卡片弹层补全）"""
+    if not session.get('user_id'):
+        return jsonify({'status': 'unauthorized', 'message': '请先登录'}), 401
+
+    conn = get_db()
+    q = conn.execute(
+        'SELECT q.id, q.content, q.q_type, q.options, q.answer, q.explanation, q.image_path, s.name as subject_name '
+        'FROM questions q LEFT JOIN subjects s ON q.subject_id = s.id WHERE q.id = ?',
+        (int(question_id),)
+    ).fetchone()
+    if not q:
+        return jsonify({'status': 'error', 'message': '题目不存在'}), 404
+
+    options_payload = []
+    try:
+        options_payload = parse_options(q['options'])
+    except Exception as _e:
+        options_payload = []
+        try:
+            current_app.logger.warning(f"[get_question] qid={q['id']} options_parse_failed err={_e}")
+        except Exception:
+            pass
+
+    try:
+        current_app.logger.info(f"[get_question] qid={q['id']} options_payload_len={len(options_payload)} head={options_payload[:2]}")
+    except Exception:
+        pass
+
+    return jsonify({
+        'status': 'success',
+        'question': {
+            'id': q['id'],
+            'content': q['content'],
+            'type': q['q_type'],
+            'subject': q['subject_name'] or '',
+            'options': options_payload,
+            'answer': (q['answer'] or ''),
+            'explanation': (q['explanation'] or ''),
+            'image_path': (q['image_path'] or ''),
+            'has_full_data': True,
+        }
+    })
+
+
 @chat_bp.route('/api/chat/unread_count')
 @limiter.exempt
 def chat_unread_count():
@@ -765,21 +917,51 @@ def chat_unread_count():
 
     uid = session.get('user_id')
     conn = get_db()
+    # 说明：历史上可能存在重复的 direct 私聊会话（尤其 direct_pair_key 为空的遗留数据）。
+    # 前端会话列表会按 peer_user_id 去重显示“最新的一条”，但首页角标如果直接对所有会话求和，
+    # 就会把这些隐藏的旧会话也算进去，造成角标长期不归零。
+    #
+    # 这里做“按 pair 去重”：
+    # - 对 direct：按 direct_pair_key 分组，只取 updated_at 最新的会话参与统计
+    # - 对非 direct：按会话 id 直接参与统计
     row = conn.execute(
         """
+        WITH
+        my_convs AS (
+          SELECT
+            c.id AS conversation_id,
+            c.c_type,
+            c.updated_at,
+            COALESCE(c.direct_pair_key, CAST(c.id AS TEXT)) AS gkey
+          FROM chat_conversations c
+          JOIN chat_members cm ON cm.conversation_id = c.id AND cm.user_id = ?
+        ),
+        latest_per_key AS (
+          SELECT conversation_id
+          FROM (
+            SELECT
+              conversation_id,
+              ROW_NUMBER() OVER (
+                PARTITION BY gkey
+                ORDER BY datetime(updated_at) DESC, conversation_id DESC
+              ) AS rn
+            FROM my_convs
+          )
+          WHERE rn = 1
+        )
         SELECT COALESCE(SUM(
-            (
-              SELECT COUNT(1)
-              FROM chat_messages m
-              WHERE m.conversation_id = c.id
-                AND m.id > COALESCE(cm.last_read_message_id, 0)
-                AND m.sender_id != ?
-            )
-        ),0) AS cnt
-        FROM chat_conversations c
-        JOIN chat_members cm ON cm.conversation_id=c.id AND cm.user_id=?
+          (
+            SELECT COUNT(1)
+            FROM chat_messages m
+            JOIN chat_members cm ON cm.conversation_id = l.conversation_id AND cm.user_id = ?
+            WHERE m.conversation_id = l.conversation_id
+              AND m.id > COALESCE(cm.last_read_message_id, 0)
+              AND m.sender_id != ?
+          )
+        ), 0) AS cnt
+        FROM latest_per_key l
         """,
-        (uid, uid)
+        (uid, uid, uid)
     ).fetchone()
 
     return jsonify({'status': 'success', 'count': int(row['cnt'] or 0)})

@@ -13,6 +13,7 @@ import datetime
 from werkzeug.security import generate_password_hash
 from ..utils.database import get_db
 from ..utils.validators import parse_int, validate_password
+from ..utils.fill_blank_parser import parse_fill_blank
 from ..extensions import limiter
 import pandas as pd
 
@@ -347,6 +348,12 @@ def api_add_subject():
         conn.execute('INSERT INTO subjects (name) VALUES (?)', (name,))
         conn.commit()
         return jsonify({'status': 'success', 'message': '科目添加成功'})
+    except sqlite3.IntegrityError as e:
+        # 常见原因：该用户仍被其它表外键引用（例如聊天消息、通知、考试记录等）
+        msg = str(e)
+        if 'FOREIGN KEY constraint failed' in msg:
+            return jsonify({'status': 'error', 'message': '删除失败：该用户仍有关联数据（外键约束），请先删除/转移其相关记录后再删除。'}), 400
+        return jsonify({'status': 'error', 'message': msg}), 400
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
@@ -499,22 +506,51 @@ def toggle_admin_status(user_id):
 @admin_bp.route('/users/<int:user_id>', methods=['DELETE'])
 def delete_user(user_id):
     """删除用户"""
+
+    def _ref_counts(uid: int):
+        """统计哪些表还在引用该用户，用于给管理员友好提示"""
+        # 说明：这里列出的是数据库里对 users.id 有外键/逻辑关联的主要表
+        checks = [
+            ('favorites', 'SELECT COUNT(1) FROM favorites WHERE user_id=?'),
+            ('mistakes', 'SELECT COUNT(1) FROM mistakes WHERE user_id=?'),
+            ('user_answers', 'SELECT COUNT(1) FROM user_answers WHERE user_id=?'),
+            ('user_progress', 'SELECT COUNT(1) FROM user_progress WHERE user_id=?'),
+            ('exams', 'SELECT COUNT(1) FROM exams WHERE user_id=?'),
+            ('chat_messages(发送者)', 'SELECT COUNT(1) FROM chat_messages WHERE sender_id=?'),
+            ('chat_members(会话成员)', 'SELECT COUNT(1) FROM chat_members WHERE user_id=?'),
+            ('user_remarks(备注-owner)', 'SELECT COUNT(1) FROM user_remarks WHERE owner_user_id=?'),
+            ('user_remarks(备注-target)', 'SELECT COUNT(1) FROM user_remarks WHERE target_user_id=?'),
+            ('notification_dismissals', 'SELECT COUNT(1) FROM notification_dismissals WHERE user_id=?'),
+            ('notifications(创建者)', 'SELECT COUNT(1) FROM notifications WHERE created_by=?'),
+            ('questions(出题人)', 'SELECT COUNT(1) FROM questions WHERE created_by=?'),
+        ]
+        details = []
+        for name, sql in checks:
+            try:
+                c = conn.execute(sql, (uid,)).fetchone()[0]
+                if c and int(c) > 0:
+                    details.append({'table': name, 'count': int(c)})
+            except Exception:
+                # 兼容：有些表可能在老库不存在/字段不同，忽略即可
+                pass
+        return details
+
     if user_id == session.get('user_id'):
         return jsonify({'status': 'error', 'message': '不能删除自己'}), 400
-    
+
     conn = get_db()
     try:
-        u = conn.execute('SELECT id, is_admin FROM users WHERE id=?', (user_id,)).fetchone()
-        
+        u = conn.execute('SELECT id, is_admin, username FROM users WHERE id=?', (user_id,)).fetchone()
+
         if not u:
             return jsonify({'status': 'error', 'message': '用户不存在'}), 404
-        
+
         if u['is_admin']:
             admin_count = conn.execute('SELECT COUNT(1) FROM users WHERE is_admin = 1').fetchone()[0]
             if admin_count <= 1:
                 return jsonify({'status': 'error', 'message': '不能删除最后一个管理员'}), 400
-        
-        # 级联清理
+
+        # 级联清理（仅清理我们明确知道的表；其余若还有外键引用，会被 IntegrityError 拦住）
         conn.execute('DELETE FROM favorites WHERE user_id=?', (user_id,))
         conn.execute('DELETE FROM mistakes WHERE user_id=?', (user_id,))
         conn.execute('DELETE FROM user_answers WHERE user_id=?', (user_id,))
@@ -522,8 +558,29 @@ def delete_user(user_id):
         conn.execute('UPDATE questions SET created_by=NULL WHERE created_by=?', (user_id,))
         conn.execute('DELETE FROM users WHERE id=?', (user_id,))
         conn.commit()
-        
+
         return jsonify({'status': 'success', 'message': '用户已删除'})
+
+    except sqlite3.IntegrityError as e:
+        # 外键约束失败：返回“哪些表还在引用”
+        msg = str(e)
+        if 'FOREIGN KEY constraint failed' in msg:
+            details = _ref_counts(user_id)
+            if details:
+                # 生成更易读的提示
+                detail_str = '、'.join([f"{x['table']}({x['count']})" for x in details])
+                return jsonify({
+                    'status': 'error',
+                    'message': f"删除失败：该用户仍有关联数据，请先处理后再删除。关联项：{detail_str}",
+                    'details': details
+                }), 400
+            return jsonify({
+                'status': 'error',
+                'message': '删除失败：该用户仍有关联数据（外键约束），请先删除/转移其相关记录后再删除。',
+                'details': []
+            }), 400
+        return jsonify({'status': 'error', 'message': msg}), 400
+
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
@@ -752,11 +809,12 @@ def import_questions_api():
             if q_type == '选择题':
                 opts_json = json.dumps(item.get('选项', []), ensure_ascii=False)
             elif q_type == '填空题':
-                import re
-                matches = re.findall(r'\{(.*?)\}', content)
-                if matches:
-                    answer = ' '.join(matches)
-                    content = re.sub(r'\{.*?\}', '______', content)
+                # 支持题干中用 {答案} 标记空位，并自动提取答案
+                # 例："...{答案1}...{答案2}..." -> content="...__...__...", answer="答案1;;答案2"
+                new_content, new_answer, _blank_count = parse_fill_blank(content)
+                if new_answer:
+                    content = new_content
+                    answer = new_answer
             
             conn.execute('''
                 INSERT INTO questions (subject_id, q_type, content, options, answer, explanation)

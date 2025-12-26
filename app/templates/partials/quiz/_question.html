@@ -1,0 +1,108 @@
+{# 题目列表：保持原结构，确保 JS 不变 #}
+{% for q in questions %}
+<div class="question-box" id="q-{{ loop.index0 }}" 
+     data-type="{{ q.q_type }}" 
+     data-answer="{{ q.answer }}"
+     data-id="{{ q.id }}"
+     data-score="{{ q.score_val if q.score_val else 0 }}"
+     data-index="{{ loop.index0 }}">
+
+  {% if mode != 'exam' and logged_in %}
+    <div class="fav-btn {{ 'active' if q.is_fav else '' }}" onclick="toggleStar(this, {{ q.id }})" title="收藏" aria-label="收藏">
+      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+    </div>
+  {% elif mode != 'exam' and not logged_in %}
+    <div class="fav-btn" style="opacity:0.4; cursor:not-allowed;" title="登录后可收藏" aria-label="登录后可收藏">
+      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+    </div>
+  {% endif %}
+
+  <div>
+    <span class="q-type-label">{{ q.q_type }}</span>
+    {% if mode == 'exam' %}<span style="font-size:12px; color:#666;">({{ q.score_val }}分)</span>{% endif %}
+
+    <div class="q-content">{{ q.content|replace('\n', '<br>')|safe }}</div>
+
+    <div class="question-image-gallery" data-images='{{ q.image_path_json }}' style="display: none; margin-bottom: 24px;">
+      <div class="gallery-main-image-wrapper" style="position: relative; text-align: center;">
+        <!-- Main image will be injected here -->
+      </div>
+      <div class="gallery-controls" style="display: none; justify-content: center; align-items: center; gap: 15px; margin-top: 10px;">
+        <button class="gallery-prev" style="background: none; border: 1px solid var(--border-color); border-radius: 50%; width: 30px; height: 30px; cursor: pointer;">‹</button>
+        <span class="gallery-counter" style="font-size: 12px; color: var(--text-sub);"></span>
+        <button class="gallery-next" style="background: none; border: 1px solid var(--border-color); border-radius: 50%; width: 30px; height: 30px; cursor: pointer;">›</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="input-area">
+    {% if q.q_type == '选择题' %}
+      <div class="options mc-options">
+        {% for opt in q.options %}
+          <label data-opt="{{ opt.key }}">
+            {% if q.answer|length > 1 %}
+              <input type="checkbox" value="{{ opt.key }}">
+            {% else %}
+              <input type="checkbox" value="{{ opt.key }}" onchange="{{ 'markAnswered(' ~ loop.index0 ~ ')' if mode == 'exam' else 'autoCheck()' }}">
+            {% endif %}
+            <span data-opt-text>{{ opt.value }}</span>
+          </label>
+        {% endfor %}
+      </div>
+
+    {% elif q.q_type == '判断题' %}
+      <div class="options tf-options">
+        <label data-opt="✓">
+          <input type="radio" name="rad-{{ loop.index0 }}" value="正确" onchange="{{ 'markAnswered(' ~ loop.index0 ~ ')' if mode == 'exam' else 'autoCheck()' }}">
+          <span data-opt-text>正确</span>
+        </label>
+        <label data-opt="✕">
+          <input type="radio" name="rad-{{ loop.index0 }}" value="错误" onchange="{{ 'markAnswered(' ~ loop.index0 ~ ')' if mode == 'exam' else 'autoCheck()' }}">
+          <span data-opt-text>错误</span>
+        </label>
+      </div>
+
+    {% elif q.q_type == '填空题' %}
+      <div class="fill-in-the-blanks">
+        {% set num_blanks = q.content.count('__') %}
+        {% if num_blanks > 0 %}
+          {% for i in range(num_blanks) %}
+            <div class="blank-item">
+              <label>空 {{ loop.index }}:</label>
+              <input type="text" class="main-input" placeholder="输入答案 {{ loop.index }}" oninput="{{ 'markAnswered(' ~ loop.index0 ~ ')' if mode == 'exam' else '' }}">
+            </div>
+          {% endfor %}
+        {% else %}
+          <input type="text" class="main-input" placeholder="输入答案" oninput="{{ 'markAnswered(' ~ loop.index0 ~ ')' if mode == 'exam' else '' }}">
+        {% endif %}
+      </div>
+
+    {% elif q.q_type == '问答题' %}
+      <textarea class="main-input" rows="4" placeholder="请作答..." oninput="{{ 'markAnswered(' ~ loop.index0 ~ ')' if mode == 'exam' else '' }}"></textarea>
+    {% endif %}
+  </div>
+
+  <!-- 答案与解析卡片，默认隐藏，由 JS 移动到外部容器显示 -->
+  <div class="quiz-card card-answer" style="display:none;">
+    <div class="analysis-title">
+      <span class="dot" aria-hidden="true"></span>
+      <strong>答案</strong>
+    </div>
+    <p>
+      <span class="answer correct">{{ q.answer|replace('\n', '<br>')|safe }}</span>
+    </p>
+  </div>
+
+  {% if q.explanation %}
+    <div class="quiz-card card-explain" style="display:none;">
+      <div class="analysis-title">
+        <span class="dot" aria-hidden="true"></span>
+        <strong>解析</strong>
+      </div>
+      <p>
+        <span class="answer">{{ q.explanation|replace('\n', '<br>')|safe }}</span>
+      </p>
+    </div>
+  {% endif %}
+</div>
+{% endfor %}
