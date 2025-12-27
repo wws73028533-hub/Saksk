@@ -14,6 +14,8 @@ class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-change-in-production'
     
     # 数据库配置
+    # 统一主数据库：submissions.db
+    # 说明：历史上可能存在 instance/app.db 这种空文件/旧文件，容易造成“查不到数据”的误会。
     DATABASE_PATH = os.path.join(BASE_DIR, 'instance', 'submissions.db')
     
     # 上传文件配置

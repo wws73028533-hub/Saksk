@@ -113,11 +113,16 @@ function renderForwardUserList(users){
         const avatar = u.avatar || '';
         const initial = (name || 'U').slice(0,1).toUpperCase();
         const avHtml = avatar
-          ? (()=>{ const safeUrl = String(avatar||'').replace(/'/g,'%27').replace(/\)/g,'%29'); return `<div style="width:38px;height:38px;border-radius:999px;background-image:url('${safeUrl}');background-size:cover;background-position:center;"></div>`; })()
+          ? (()=>{
+                const safeUrl = String(avatar||'')
+                    .replace(/'/g, '%27')
+                    .replace(/\)/g, '%29');
+                return '<div style="width:38px;height:38px;border-radius:999px;background-image:url(&quot;' + safeUrl + '&quot;);background-size:cover;background-position:center;"></div>';
+            })()
           : `<div style="width:38px;height:38px;border-radius:999px;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;">${escapeHtml(initial)}</div>`;
 
         return `
-          <div style="display:flex; align-items:center; gap:10px; padding:10px 10px; border-radius:14px; border:1px solid var(--border-color); cursor:pointer;" onclick='forwardToUser(${Number(u.id||0)})'>
+          <div style="display:flex; align-items:center; gap:10px; padding:10px 10px; border-radius:14px; border:1px solid var(--border-color); cursor:pointer;" onclick="forwardToUser(${Number(u.id||0)})">
             ${avHtml}
             <div style="flex:1; min-width:0;">
               <div style="font-weight:700;">${escapeHtml(name)}</div>
@@ -171,8 +176,476 @@ let timerSeconds = {{ duration * 60 if duration else 0 }};
 let timerInterval;
 let cachedOrder = null; // 缓存题目顺序，保存进度时需要保留
 
+// ===== 悬浮球（Fab）+ 圆环菜单 + 可拖动 =====
+const FAB_ENABLED_KEY = 'quiz_fab_enabled_v1';
+const FAB_AUTO_NEXT_KEY = 'quiz_fab_auto_next';
+const FAB_POS_KEY = 'quiz_fab_pos_v1';
+let fabOpen = false;
+
+function isFabEnabled(){
+    // 默认开启；用户在题库设置页关闭后写入 '0'
+    return localStorage.getItem(FAB_ENABLED_KEY) !== '0';
+}
+
+function clamp(v, min, max){ return Math.max(min, Math.min(max, v)); }
+
+function getFabSize(){
+    // 与 CSS .quiz-fab width/height 保持一致
+    return 56;
+}
+
+function isFabAutoNextEnabled(){
+    return localStorage.getItem(FAB_AUTO_NEXT_KEY) === '1';
+}
+function setFabAutoNextEnabled(on){
+    localStorage.setItem(FAB_AUTO_NEXT_KEY, on ? '1' : '0');
+}
+
+function saveFabPos(left, top){
+    try { localStorage.setItem(FAB_POS_KEY, JSON.stringify({ left, top })); } catch(e) {}
+}
+function loadFabPos(){
+    try {
+        const raw = localStorage.getItem(FAB_POS_KEY);
+        if (!raw) return null;
+        const js = JSON.parse(raw);
+        if (!js || typeof js.left !== 'number' || typeof js.top !== 'number') return null;
+        return js;
+    } catch(e) { return null; }
+}
+
+function calcDefaultFabPos(){
+    const size = getFabSize();
+    const rightGap = 14;
+    const bottomGap = 84;
+    const left = Math.max(8, window.innerWidth - rightGap - size);
+    const top = Math.max(8, window.innerHeight - bottomGap - size);
+    return { left, top };
+}
+
+function normalizeFabPos(pos){
+    const size = getFabSize();
+    const margin = 8;
+    const maxLeft = window.innerWidth - size - margin;
+    const maxTop = window.innerHeight - size - margin;
+    return {
+        left: clamp(pos.left, margin, Math.max(margin, maxLeft)),
+        top: clamp(pos.top, margin, Math.max(margin, maxTop))
+    };
+}
+
+function applyFabPos(left, top){
+    const fab = document.getElementById('quizFab');
+    const menu = document.getElementById('quizFabMenu');
+    if (!fab || !menu) return;
+
+    fab.style.left = `${left}px`;
+    fab.style.top = `${top}px`;
+    fab.style.right = 'auto';
+    fab.style.bottom = 'auto';
+
+    menu.style.left = `${left}px`;
+    menu.style.top = `${top}px`;
+    menu.style.right = 'auto';
+    menu.style.bottom = 'auto';
+}
+
+function updateFabUI(){
+    const fab = document.getElementById('quizFab');
+    const menu = document.getElementById('quizFabMenu');
+    if (!fab || !menu) return;
+
+    fab.classList.toggle('open', fabOpen);
+    menu.classList.toggle('open', fabOpen);
+    menu.setAttribute('aria-hidden', fabOpen ? 'false' : 'true');
+
+    const btnAuto = menu.querySelector('.quiz-fab-item[data-action="autoNext"] .quiz-fab-icon');
+    if (btnAuto) btnAuto.textContent = isFabAutoNextEnabled() ? '✓✓' : '✓';
+
+    // 根据贴边方向调整菜单展开方向（贴左→向右展开；贴右→向左展开）
+    try {
+        const rect = fab.getBoundingClientRect();
+        const size = getFabSize();
+        const centerX = rect.left + size / 2;
+        const isLeft = centerX < (window.innerWidth / 2);
+        menu.classList.toggle('edge-left', isLeft);
+    } catch(e) {}
+
+    // 确保菜单始终跟随悬浮球
+    try {
+        const rect = fab.getBoundingClientRect();
+        const pos = normalizeFabPos({ left: rect.left, top: rect.top });
+        applyFabPos(pos.left, pos.top);
+    } catch(e) {}
+}
+
+function toggleFab(open){
+    fabOpen = typeof open === 'boolean' ? open : !fabOpen;
+    updateFabUI();
+}
+
+async function toggleCurrentFavorite(){
+    if (!LOGGED_IN) { showToast('请先登录'); return; }
+    const q = questions[currentIndex];
+    const favBtn = q ? q.querySelector('.fav-btn') : null;
+    if (favBtn && typeof favBtn.click === 'function') {
+        favBtn.click();
+        return;
+    }
+    showToast('收藏按钮不可用');
+}
+
+async function openAIExplain(){
+    if (!LOGGED_IN) { showToast('请先登录'); return; }
+    const q = questions[currentIndex];
+    if (!q) return;
+    const qid = q.getAttribute('data-id') || '';
+    const qtype = q.getAttribute('data-type') || '';
+    const contentEl = q.querySelector('.q-content');
+    const content = contentEl ? (contentEl.innerText || '').trim() : '';
+
+    let options = [];
+    try {
+        const optNodes = q.querySelectorAll('.option');
+        if (optNodes && optNodes.length) {
+            options = Array.from(optNodes).map(node => {
+                const key = (node.querySelector('.opt-key') || {}).innerText || '';
+                const val = (node.querySelector('.opt-text') || {}).innerText || node.innerText || '';
+                return { key: key.trim(), value: val.trim() };
+            });
+        }
+    } catch(e) {}
+
+    try {
+        const explainCard = document.getElementById('aiExplainCard') || document.getElementById('explainCard');
+        if (explainCard) {
+            explainCard.style.display = 'block';
+            explainCard.innerHTML = `
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                    <div style="font-weight:800;">AI 解析</div>
+                    <div style="font-size:12px; color:var(--text-sub);">生成中…</div>
+                </div>
+                <div style="margin-top:10px; color:var(--text-sub); font-size:14px; line-height:1.6;">请稍候</div>
+            `;
+        }
+    } catch(e) {}
+
+    try {
+        const res = await fetch('/api/ai/explain', {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ question_id: qid ? Number(qid) : null, q_type: qtype, content, options })
+        });
+        const js = await res.json();
+        if (!res.ok || !js || js.status !== 'success') {
+            showToast(js.message || 'AI 解析失败');
+            return;
+        }
+        const explain = (js.data && js.data.explain) ? js.data.explain : '';
+        const explainCard = document.getElementById('aiExplainCard') || document.getElementById('explainCard');
+        if (explainCard) {
+            explainCard.style.display = 'block';
+            explainCard.innerHTML = `
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                    <div style="font-weight:800;">AI 解析</div>
+                    <button class="btn" style="padding:6px 10px; font-size:12px;" id="aiExplainCopyBtn">复制</button>
+                </div>
+                <pre style="margin:10px 0 0 0; white-space:pre-wrap; font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial; font-size:14px; line-height:1.6; color:var(--text-color);">${escapeHtml(explain)}</pre>
+            `;
+            const btn = document.getElementById('aiExplainCopyBtn');
+            if (btn) {
+                btn.onclick = async function(){
+                    try { await navigator.clipboard.writeText(explain || ''); showToast('已复制'); }
+                    catch(e) { showToast('复制失败'); }
+                };
+            }
+        }
+    } catch(e) {
+        showToast('AI 解析失败');
+    }
+}
+
+function bindFab(){
+    const fab = document.getElementById('quizFab');
+    const menu = document.getElementById('quizFabMenu');
+    if (!fab || !menu) return;
+
+    // 初始位置（优先读取已保存的位置）
+    const saved = loadFabPos();
+    const initial = normalizeFabPos(saved || calcDefaultFabPos());
+    applyFabPos(initial.left, initial.top);
+
+    // 拖拽（pointer events）
+    let dragging = false;
+    let moved = false;
+    let startX = 0;
+    let startY = 0;
+    let startLeft = 0;
+    let startTop = 0;
+
+    fab.addEventListener('pointerdown', (e)=>{
+        dragging = true;
+        moved = false;
+        startX = e.clientX;
+        startY = e.clientY;
+        const rect = fab.getBoundingClientRect();
+        startLeft = rect.left;
+        startTop = rect.top;
+
+        // 拖动时关闭菜单
+        if (fabOpen) toggleFab(false);
+
+        try { fab.setPointerCapture(e.pointerId); } catch(err) {}
+    });
+
+    fab.addEventListener('pointermove', (e)=>{
+        if (!dragging) return;
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        if (Math.abs(dx) + Math.abs(dy) > 6) moved = true;
+        const next = normalizeFabPos({ left: startLeft + dx, top: startTop + dy });
+        applyFabPos(next.left, next.top);
+    });
+
+    const endDrag = (e)=>{
+        if (!dragging) return;
+        dragging = false;
+        const rect = fab.getBoundingClientRect();
+        let next = normalizeFabPos({ left: rect.left, top: rect.top });
+
+        // 自动吸边（左右贴边）+ 平滑动画（仅吸附时生效）
+        const size = getFabSize();
+        const margin = 8;
+        const maxLeft = window.innerWidth - size - margin;
+        const snapLeft = margin;
+        const snapRight = Math.max(margin, maxLeft);
+        const centerX = next.left + size / 2;
+        next.left = (centerX < window.innerWidth / 2) ? snapLeft : snapRight;
+
+        // 只在吸附时开启 transition，避免拖动过程有延迟
+        try {
+            fab.style.transition = 'left .16s ease, top .16s ease, transform .22s ease, box-shadow .22s ease, background-color .22s ease';
+            const menu = document.getElementById('quizFabMenu');
+            if (menu) menu.style.transition = 'left .16s ease, top .16s ease';
+        } catch(e) {}
+
+        applyFabPos(next.left, next.top);
+        saveFabPos(next.left, next.top);
+
+        // 动画结束后恢复默认（防止拖动时“粘滞”）
+        setTimeout(()=>{
+            try {
+                fab.style.transition = '';
+                const menu = document.getElementById('quizFabMenu');
+                if (menu) menu.style.transition = '';
+            } catch(e) {}
+        }, 220);
+
+        // 如果是拖动导致的 pointerup，阻止随后 click 打开菜单
+        if (moved) {
+            fab._suppressClickOnce = true;
+            setTimeout(()=>{ fab._suppressClickOnce = false; }, 0);
+        }
+
+        try { fab.releasePointerCapture(e.pointerId); } catch(err) {}
+    };
+
+    fab.addEventListener('pointerup', endDrag);
+    fab.addEventListener('pointercancel', endDrag);
+
+    // 点击打开/关闭菜单
+    fab.addEventListener('click', (e)=>{
+        if (fab._suppressClickOnce) return;
+        e.preventDefault();
+        e.stopPropagation();
+        toggleFab();
+    });
+
+    // 菜单按钮
+    menu.querySelectorAll('.quiz-fab-item').forEach(btn => {
+        btn.addEventListener('click', async (e)=>{
+            e.preventDefault();
+            e.stopPropagation();
+            const action = btn.dataset.action;
+            if (!action) return;
+
+            if (action === 'autoNext') {
+                // 考试回顾（已交卷）禁用
+                if (mode === 'exam' && EXAM_SUBMITTED) {
+                    showToast('回顾模式：该功能不可用');
+                    toggleFab(false);
+                    return;
+                }
+                const next = !isFabAutoNextEnabled();
+                setFabAutoNextEnabled(next);
+                updateFabUI();
+                showToast(next ? '已开启：答对自动切题' : '已关闭：答对自动切题');
+                return;
+            }
+
+            if (action === 'aiExplain') {
+                // 再次点击：关闭 AI 解析（作为一个 toggle）
+                const explainCard = document.getElementById('aiExplainCard') || document.getElementById('explainCard');
+                const isOpen = !!(explainCard && explainCard.style.display !== 'none');
+                if (isOpen) {
+                    // 只关闭 AI 解析，不影响题目自身“解析/答案”dock
+                    try { explainCard.style.display = 'none'; explainCard.innerHTML = ''; explainCard.classList.remove('show'); } catch(e) {}
+                    // 如果右侧/下方 dock 需要根据空状态自适应，这里顺便刷新
+                    try { updateDockEmptyState(); } catch(e) {}
+                } else {
+                    await openAIExplain();
+                }
+                toggleFab(false);
+                return;
+            }
+
+            if (action === 'bookmark') {
+                await toggleCurrentFavorite();
+                toggleFab(false);
+                return;
+            }
+
+            if (action === 'focus') {
+                document.body.classList.toggle('quiz-focus-mode');
+                showToast(document.body.classList.contains('quiz-focus-mode') ? '已开启专注模式' : '已退出专注模式');
+                toggleFab(false);
+                return;
+            }
+
+            if (action === 'clearCurrent') {
+                const q = questions[currentIndex];
+                if (!q) { showToast('未找到当前题目'); toggleFab(false); return; }
+
+                const type = q.getAttribute('data-type') || '';
+
+                // 考试回顾（已交卷）禁用
+                if (mode === 'exam' && EXAM_SUBMITTED) {
+                    showToast('回顾模式：无法清除本题');
+                    toggleFab(false);
+                    return;
+                }
+                // 考试进行中：也不允许清除（避免影响考试作答流程）
+                if (mode === 'exam' && isSubmitted) {
+                    showToast('考试中：无法清除本题');
+                    toggleFab(false);
+                    return;
+                }
+
+                // 1) 清除输入
+                try {
+                    if (type === '选择题' || type === '判断题') {
+                        q.querySelectorAll('input[type="checkbox"], input[type="radio"]').forEach(inp => {
+                            inp.checked = false;
+                            const lab = inp.closest('label');
+                            if (lab) lab.classList.remove('selected');
+                        });
+                    } else if (type === '填空题') {
+                        q.querySelectorAll('.main-input').forEach(inp => {
+                            inp.value = '';
+                            inp.classList.remove('input-correct', 'input-wrong');
+                        });
+                    } else if (type === '问答题') {
+                        const ta = q.querySelector('textarea');
+                        if (ta) ta.value = '';
+                    } else if (type === '计算题') {
+                        // 计算题如果也是 textarea/输入框，尽量清空
+                        const ta = q.querySelector('textarea');
+                        if (ta) ta.value = '';
+                        q.querySelectorAll('input[type="text"], .main-input').forEach(inp => { inp.value = ''; });
+                    }
+                } catch(e) {}
+
+                // 2) 恢复可编辑状态（若之前已判题/禁用）
+                try {
+                    q.classList.remove('checked-mode');
+                    q.querySelectorAll('input, textarea').forEach(el => {
+                        el.disabled = false;
+                    });
+                    // 移除选项/输入高亮
+                    q.querySelectorAll('.correct-opt, .wrong-opt, .input-correct, .input-wrong').forEach(el => {
+                        el.classList.remove('correct-opt', 'wrong-opt', 'input-correct', 'input-wrong');
+                    });
+                } catch(e) {}
+
+                // 3) 清除侧边栏该题状态
+                try {
+                    const idx = q.getAttribute('data-index');
+                    const li = document.getElementById(`list-item-${idx !== null ? idx : currentIndex}`);
+                    if (li) li.classList.remove('done-correct', 'done-wrong', 'answered');
+                } catch(e) {}
+
+                // 4) 清掉 dock（答案/解析/AI）和徽标
+                try { hideAnswerExplainDock(); } catch(e) {}
+
+                // 5) 恢复底部按钮显示逻辑（尽量与 showQuestion 的规则一致）
+                try {
+                    if (mode !== 'exam') {
+                        const btnCheck = document.getElementById('btn-check');
+                        const btnNext = document.getElementById('btn-next');
+                        const isAutoTypes = (type === '选择题' || type === '判断题');
+                        if (btnCheck) btnCheck.style.display = isAutoTypes ? 'none' : 'block';
+                        if (btnNext) btnNext.style.display = isAutoTypes ? 'block' : 'none';
+                    }
+                } catch(e) {}
+
+                // 6) 保存进度（会写本地/登录则同步）
+                try {
+                    if (mode !== 'exam' || (mode === 'exam' && !isSubmitted)) {
+                        saveState(true);
+                    }
+                } catch(e) {}
+
+                // 7) 重新计算“已答”标记（考试模式侧边栏）
+                try {
+                    if (mode === 'exam') markAnswered(currentIndex);
+                } catch(e) {}
+
+                showToast('已清除本题进度');
+                toggleFab(false);
+                return;
+            }
+        });
+    });
+
+    document.addEventListener('click', ()=>{ if (fabOpen) toggleFab(false); });
+    document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape' && fabOpen) toggleFab(false); });
+
+    // resize 时保证悬浮球不出界 + 保持吸边
+    window.addEventListener('resize', ()=>{
+        const cur = loadFabPos() || calcDefaultFabPos();
+        let n = normalizeFabPos(cur);
+        const size = getFabSize();
+        const margin = 8;
+        const maxLeft = window.innerWidth - size - margin;
+        // 若当前更靠左/右，则吸附到对应边
+        const centerX = n.left + size / 2;
+        n.left = (centerX < window.innerWidth / 2) ? margin : Math.max(margin, maxLeft);
+        applyFabPos(n.left, n.top);
+        saveFabPos(n.left, n.top);
+    });
+
+    updateFabUI();
+}
+
 async function init() {
     if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark-mode');
+
+    // 悬浮球开关：题库设置页可关闭/开启。
+    // 规则：
+    // - 用户关闭：任何模式都不显示
+    // - 考试进行中：自动隐藏（无视开关）
+    // - 考试回顾（已交卷）：允许显示（前提是用户没关闭）
+    const shouldShowFab = isFabEnabled() && (mode !== 'exam' || (mode === 'exam' && EXAM_SUBMITTED));
+    if (shouldShowFab) {
+        bindFab();
+    } else {
+        try {
+            const fab = document.getElementById('quizFab');
+            const menu = document.getElementById('quizFabMenu');
+            if (fab) fab.style.display = 'none';
+            if (menu) menu.style.display = 'none';
+        } catch(e) {}
+    }
     // 进度加载：考试模式（未交卷）也启用，与刷题/背题一致（localStorage + /api/progress）
     if (mode !== 'exam' || (mode === 'exam' && !EXAM_SUBMITTED)) {
         await preloadProgress();
@@ -668,9 +1141,11 @@ function updateDockEmptyState(){
     if (!mainArea) return;
     const a = document.getElementById('answerCard');
     const e = document.getElementById('explainCard');
+    const ai = document.getElementById('aiExplainCard');
     const aShown = a && a.style.display !== 'none' && a.innerHTML.trim().length > 0;
     const eShown = e && e.style.display !== 'none' && e.innerHTML.trim().length > 0;
-    mainArea.classList.toggle('dock-empty', !(aShown || eShown));
+    const aiShown = ai && ai.style.display !== 'none' && ai.innerHTML.trim().length > 0;
+    mainArea.classList.toggle('dock-empty', !(aShown || eShown || aiShown));
 }
 
 function renderAnswerExplainFromQuestion(qEl) {
@@ -764,8 +1239,11 @@ function renderAnswerExplainFromQuestion(qEl) {
 function hideAnswerExplainDock() {
     const answerHost = document.getElementById('answerCard');
     const explainHost = document.getElementById('explainCard');
+    const aiHost = document.getElementById('aiExplainCard');
     if (answerHost) { answerHost.style.display = 'none'; answerHost.innerHTML = ''; answerHost.classList.remove('show'); }
     if (explainHost) { explainHost.style.display = 'none'; explainHost.innerHTML = ''; explainHost.classList.remove('show'); }
+    // AI 解析独立卡片一并隐藏
+    if (aiHost) { aiHost.style.display = 'none'; aiHost.innerHTML = ''; aiHost.classList.remove('show'); }
     setAnswerResultBadge(null);
     updateDockEmptyState();
 }
@@ -816,6 +1294,24 @@ function checkAnswer(isManualClick) {
     }
 
     saveState(true); // 答题后立即同步到服务器
+
+    // ===== 答对自动下一题（悬浮球 ✓✓） =====
+    // 仅在刷题/背题等非考试模式生效（本函数开头已拦截 exam）。
+    // 触发时机：判题并渲染反馈完成之后。
+    try {
+        if (isCorrect && isFabAutoNextEnabled()) {
+            // 最后一题不自动切，避免闪动
+            if (currentIndex < totalQuestions - 1) {
+                // 给用户一个很短的反馈停留时间
+                setTimeout(() => {
+                    // 若用户在等待期间已手动切题/改变索引，则不强行覆盖
+                    if (questions[currentIndex] === currentQ) {
+                        nextQuestion();
+                    }
+                }, 350);
+            }
+        }
+    } catch (e) {}
 }
 
 function finishQuiz() {
@@ -829,11 +1325,11 @@ function finishQuiz() {
         if (isRight) correctCount++;
         
         if (isRight) {
-            gridHtml += `<div class="score-item s-correct" onclick='reviewJump(${index})'>${index+1}</div>`;
+            gridHtml += `<div class="score-item s-correct" onclick="reviewJump(${index})">${index+1}</div>`;
         } else if (isWrong) {
-            gridHtml += `<div class="score-item s-wrong" onclick='reviewJump(${index})'>${index+1}</div>`;
+            gridHtml += `<div class="score-item s-wrong" onclick="reviewJump(${index})">${index+1}</div>`;
         } else {
-            gridHtml += `<div class="score-item" onclick='reviewJump(${index})'>${index+1}</div>`;
+            gridHtml += `<div class="score-item" onclick="reviewJump(${index})">${index+1}</div>`;
         }
     });
 
@@ -980,7 +1476,10 @@ function hasAnswered(q, type) {
         return !!(one && (one.value || '').trim());
     }
 
-    if (type === '问答题') return !!q.querySelector('textarea')?.value.trim();
+    if (type === '问答题') {
+        const ta = q.querySelector('textarea');
+        return !!(ta && ta.value && ta.value.trim());
+    }
     return false;
 }
 
@@ -1615,6 +2114,44 @@ function handleSwipe(startX, startY, endX, endY) {
 
 init();
 
+function getQuizHotkeys(){
+    const DEFAULT_QUIZ_HOTKEYS = {
+        prev_question: 'ArrowLeft',
+        next_question: 'ArrowRight',
+        toggle_favorite: 'KeyF',
+        choose_option_1: 'Digit1',
+        choose_option_2: 'Digit2',
+        choose_option_3: 'Digit3',
+        choose_option_4: 'Digit4',
+        blank_prev: 'ArrowUp',
+        blank_next: 'ArrowDown',
+        submit_or_next: 'Enter'
+    };
+    try {
+        const js = JSON.parse(localStorage.getItem('quiz_hotkeys_v1') || 'null');
+        if (!js || typeof js !== 'object') return { ...DEFAULT_QUIZ_HOTKEYS };
+        return { ...DEFAULT_QUIZ_HOTKEYS, ...js };
+    } catch(e) {
+        return { ...DEFAULT_QUIZ_HOTKEYS };
+    }
+}
+
+function normalizeEventToken(e){
+    const mods = [];
+    if (e.ctrlKey) mods.push('Ctrl');
+    if (e.altKey) mods.push('Alt');
+    if (e.shiftKey) mods.push('Shift');
+    if (e.metaKey) mods.push('Meta');
+
+    const code = e.code || '';
+    const isModifierOnly = ['ShiftLeft','ShiftRight','ControlLeft','ControlRight','AltLeft','AltRight','MetaLeft','MetaRight'].includes(code);
+    if (isModifierOnly) return '';
+
+    const keyCode = (code === 'Space') ? ' ' : (code || e.key || '');
+    if (!keyCode) return '';
+    return mods.length ? `${mods.join('+')}+${keyCode}` : keyCode;
+}
+
 document.addEventListener('keydown', function(e) {
     const isInputFocused = document.activeElement.tagName === 'INPUT';
     const isTextareaFocused = document.activeElement.tagName === 'TEXTAREA';
@@ -1624,8 +2161,11 @@ document.addEventListener('keydown', function(e) {
         return;
     }
 
-    // Enter 键的逻辑
-    if (e.key === 'Enter') {
+    const HK = getQuizHotkeys();
+    const token = normalizeEventToken(e);
+
+    // 提交/查看结果/下一题（可自定义，默认 Enter）
+    if ((HK.submit_or_next && token === HK.submit_or_next) || (!HK.submit_or_next && e.key === 'Enter')) {
         // 当焦点在问答题的文本域时，允许默认的换行行为
         if (isTextareaFocused) {
             return;
@@ -1654,8 +2194,11 @@ document.addEventListener('keydown', function(e) {
         return; // Enter 键逻辑处理完毕
     }
 
-    // 填空题中，使用上下箭头键切换输入框
-    if (isInputFocused && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+    // 填空题中，使用自定义快捷键切换输入框（当 input 聚焦时）
+    if (isInputFocused && ((HK.blank_prev && token === HK.blank_prev) || (HK.blank_next && token === HK.blank_next) || e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+        const isPrev = (HK.blank_prev && token === HK.blank_prev) || (!HK.blank_prev && e.key === 'ArrowUp') || e.key === 'ArrowUp';
+        const isNext = (HK.blank_next && token === HK.blank_next) || (!HK.blank_next && e.key === 'ArrowDown') || e.key === 'ArrowDown';
+        const arrowKey = isNext ? 'ArrowDown' : 'ArrowUp';
         const currentQ = questions[currentIndex];
         if (currentQ && currentQ.dataset.type === '填空题') {
             const inputs = Array.from(currentQ.querySelectorAll('.main-input'));
@@ -1664,7 +2207,7 @@ document.addEventListener('keydown', function(e) {
                 if (focusedIndex !== -1) {
                     e.preventDefault(); // 阻止光标移动到行首/行尾
                     let nextIndex;
-                    if (e.key === 'ArrowDown') {
+                    if (arrowKey === 'ArrowDown') {
                         nextIndex = (focusedIndex + 1) % inputs.length;
                     } else { // ArrowUp
                         nextIndex = (focusedIndex - 1 + inputs.length) % inputs.length;
@@ -1685,33 +2228,46 @@ document.addEventListener('keydown', function(e) {
     if (!currentQ) return;
     const options = currentQ.querySelectorAll('.options label');
 
-    switch (e.key) {
-        case '1':
-        case '2':
-        case '3':
-        case '4':
-            e.preventDefault();
-            const optionIndex = parseInt(e.key) - 1;
-            if (options[optionIndex]) {
-                options[optionIndex].querySelector('input').click();
-            }
-            break;
-        case 'ArrowLeft':
-            e.preventDefault();
-            prevQuestion();
-            break;
-        case 'ArrowRight':
-            e.preventDefault();
-            nextQuestion();
-            break;
-        case 'f':
-        case 'F':
-            e.preventDefault();
-            const favBtn = currentQ.querySelector('.fav-btn');
-            if (favBtn) {
-                favBtn.click();
-            }
-            break;
+    // 选项选择（选择题/判断题）
+    const chooseMap = {
+        [HK.choose_option_1 || 'Digit1']: 0,
+        [HK.choose_option_2 || 'Digit2']: 1,
+        [HK.choose_option_3 || 'Digit3']: 2,
+        [HK.choose_option_4 || 'Digit4']: 3,
+        // 兼容原先的 e.key 数字输入
+        'Digit1': 0,
+        'Digit2': 1,
+        'Digit3': 2,
+        'Digit4': 3
+    };
+    if (token in chooseMap) {
+        e.preventDefault();
+        const optionIndex = chooseMap[token];
+        if (options[optionIndex]) {
+            const optInp = options[optionIndex].querySelector('input');
+            if (optInp) optInp.click();
+        }
+        return;
+    }
+
+    // 上/下一题
+    if ((HK.prev_question && token === HK.prev_question) || e.key === 'ArrowLeft') {
+        e.preventDefault();
+        prevQuestion();
+        return;
+    }
+    if ((HK.next_question && token === HK.next_question) || e.key === 'ArrowRight') {
+        e.preventDefault();
+        nextQuestion();
+        return;
+    }
+
+    // 收藏
+    if ((HK.toggle_favorite && token === HK.toggle_favorite) || e.key === 'f' || e.key === 'F') {
+        e.preventDefault();
+        const favBtn = currentQ.querySelector('.fav-btn');
+        if (favBtn) favBtn.click();
+        return;
     }
 });
 

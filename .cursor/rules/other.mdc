@@ -1,0 +1,4 @@
+---
+alwaysApply: true
+---
+Each conversation must start with a statement of which model you are in the header, in the format 【Model】

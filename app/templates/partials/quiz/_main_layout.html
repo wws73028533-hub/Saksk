@@ -7,5 +7,26 @@
   </div>
 
   {% include 'partials/quiz/_dock.html' %}
-</div>
 
+  {# 悬浮球 + 圆环功能菜单（答题页快捷功能） #}
+  <div id="quizFab" class="quiz-fab" role="button" aria-label="快捷功能" title="快捷功能">
+    <div class="quiz-fab-core">⋯</div>
+  </div>
+  <div id="quizFabMenu" class="quiz-fab-menu" aria-hidden="true">
+    <button class="quiz-fab-item" data-action="autoNext" title="答对自动切题" aria-label="答对自动切题">
+      <span class="quiz-fab-icon">✓</span>
+    </button>
+    <button class="quiz-fab-item" data-action="aiExplain" title="AI 解析" aria-label="AI 解析">
+      <span class="quiz-fab-icon">AI</span>
+    </button>
+    <button class="quiz-fab-item" data-action="bookmark" title="收藏/取消收藏" aria-label="收藏/取消收藏">
+      <span class="quiz-fab-icon">★</span>
+    </button>
+    <button class="quiz-fab-item" data-action="focus" title="专注模式" aria-label="专注模式">
+      <span class="quiz-fab-icon">◻︎</span>
+    </button>
+    <button class="quiz-fab-item" data-action="clearCurrent" title="清除本题进度" aria-label="清除本题进度">
+      <span class="quiz-fab-icon">↺</span>
+    </button>
+  </div>
+</div>

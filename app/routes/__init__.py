@@ -10,6 +10,8 @@ from .exam import exam_bp
 from .user import user_bp
 from .admin import admin_bp
 from .chat import chat_bp
+from .notifications import notifications_bp
+from .notifications_page import notifications_page_bp
 
 
 def register_all_routes(app):
@@ -37,5 +39,9 @@ def register_all_routes(app):
 
     # 注册聊天蓝图
     app.register_blueprint(chat_bp)
+
+    # 注册通知蓝图（用户侧 API + 页面）
+    app.register_blueprint(notifications_bp)
+    app.register_blueprint(notifications_page_bp)
     
-    app.logger.info('所有路由蓝图已注册 (8个蓝图)')
+    app.logger.info('所有路由蓝图已注册 (10个蓝图)')

@@ -329,8 +329,8 @@
         .feature-card.contact::before { background: var(--purple); }
         .feature-card.contact .icon { color: var(--purple); }
 
-        .feature-card.about::before { background: var(--text-sub); }
-        .feature-card.about .icon { color: var(--text-sub); }
+        .feature-card.about::before { background: var(--warning); }
+        .feature-card.about .icon { color: var(--warning); }
 
         .feature-card.admin::before { background: var(--danger); }
         .feature-card.admin .icon { color: var(--danger); }
@@ -445,7 +445,7 @@
                 </div>
             </a>
 
-            <a href="#" class="feature-card settings" onclick="alert('功能待开发'); return false;">
+            <a href="/quiz_settings" class="feature-card settings">
                 <span class="icon">⚙️</span>
                 <div>
                     <div class="title">题库设置</div>
@@ -461,7 +461,7 @@
                 </div>
             </a>
 
-            <a href="#" class="feature-card contact" onclick="alert('功能待开发'); return false;">
+            <a href="/contact_admin" class="feature-card contact">
                 <span class="icon">📧</span>
                 <div>
                     <div class="title">联系管理员</div>
@@ -469,11 +469,11 @@
                 </div>
             </a>
 
-            <a href="#" class="feature-card about" onclick="alert('功能待开发'); return false;">
-                <span class="icon">ℹ️</span>
+            <a href="/notifications" class="feature-card about">
+                <span class="icon">🔔</span>
                 <div>
-                    <div class="title">关于</div>
-                    <div class="description">了解全能刷题库的版本信息和更新日志</div>
+                    <div class="title">历史通知</div>
+                    <div class="description">查看系统公告和重要通知</div>
                 </div>
             </a>
 

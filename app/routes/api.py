@@ -2,7 +2,6 @@
 """
 API路由蓝图
 """
-import json
 from flask import Blueprint, request, jsonify, session
 from ..utils.database import get_db
 from ..extensions import limiter
@@ -274,15 +273,24 @@ def progress_api():
             return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
-@api_bp.route('/notifications', methods=['GET'])
+# 注意：用户侧“历史通知”功能使用 app/routes/notifications.py 中的接口：
+#   GET  /api/notifications
+#   GET  /api/notifications/<id>
+#   POST /api/notifications/<id>/read
+#   GET  /api/notifications/unread_count
+# 这里原本也实现了 /api/notifications（返回 notifications 字段），
+# 会与新接口产生冲突并导致前端拿到空列表。
+# 为避免破坏首页等可能旧逻辑，改为旧接口走 /api/notifications_legacy。
+
+@api_bp.route('/notifications_legacy', methods=['GET'])
 @limiter.exempt
-def get_notifications():
-    """获取当前用户可见的通知列表"""
+def get_notifications_legacy():
+    """[兼容] 获取当前用户可见的通知列表（旧接口）"""
     uid = session.get('user_id')
     conn = get_db()
 
     if uid:
-        # 登录用户：排除已关闭的通知
+        # 登录用户：排除已关闭的通知（旧逻辑：关闭=不显示）
         sql = '''
             SELECT n.id, n.title, n.content, n.n_type, n.priority
             FROM notifications n
@@ -313,10 +321,10 @@ def get_notifications():
     })
 
 
-@api_bp.route('/notifications/<int:nid>/dismiss', methods=['POST'])
+@api_bp.route('/notifications_legacy/<int:nid>/dismiss', methods=['POST'])
 @limiter.exempt
-def dismiss_notification(nid):
-    """关闭/隐藏指定通知"""
+def dismiss_notification_legacy(nid):
+    """[兼容] 关闭/隐藏指定通知（旧接口）"""
     uid = session.get('user_id')
     if not uid:
         return jsonify({'status': 'error', 'message': '请先登录'}), 401
@@ -331,4 +339,82 @@ def dismiss_notification(nid):
         return jsonify({'status': 'success', 'message': '通知已关闭'})
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+@api_bp.route('/subjects', methods=['GET'])
+@limiter.exempt
+
+def api_subjects():
+    """获取科目列表（给前端设置页使用）"""
+    conn = get_db()
+    try:
+        rows = conn.execute('SELECT name FROM subjects ORDER BY id').fetchall()
+        subjects = [r[0] for r in rows if r and r[0]]
+        return jsonify({'status': 'success', 'subjects': subjects})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e), 'subjects': []}), 500
+
+
+@api_bp.route('/ai/explain', methods=['POST'])
+@limiter.exempt
+
+def api_ai_explain():
+    """AI 解析占位接口：返回基于题目信息的模板化解析。
+
+    说明：
+    - 本项目默认不集成真实大模型（避免泄露密钥/部署复杂度）。
+    - 你可以后续把这里替换为 OpenAI/Claude/自建模型调用。
+    """
+    if not session.get('user_id'):
+        return jsonify({'status': 'unauthorized', 'message': '请先登录后使用 AI 解析'}), 401
+
+    data = request.json or {}
+    question_id = data.get('question_id')
+    content = (data.get('content') or '').strip()
+    q_type = (data.get('q_type') or '').strip()
+    options = data.get('options')  # 可选
+
+    # 简单校验
+    if not question_id and not content:
+        return jsonify({'status': 'error', 'message': '缺少题目信息'}), 400
+
+    # 返回“模板化解析”（可替换为真实 AI）
+    text_lines = []
+    text_lines.append('AI 解析（占位）：')
+    if q_type:
+        text_lines.append(f'- 题型：{q_type}')
+    if question_id:
+        text_lines.append(f'- 题目ID：{question_id}')
+    if content:
+        preview = content.replace('\n', ' ').strip()
+        if len(preview) > 80:
+            preview = preview[:80] + '…'
+        text_lines.append(f'- 题干要点：{preview}')
+
+    if isinstance(options, list) and options:
+        # options 可能是 [{key,value}]，也可能是字符串
+        try:
+            opt_preview = []
+            for opt in options[:6]:
+                if isinstance(opt, dict):
+                    opt_preview.append(f"{opt.get('key','')}. {opt.get('value','')}")
+                else:
+                    opt_preview.append(str(opt))
+            text_lines.append('- 选项：' + ' / '.join(opt_preview))
+        except Exception:
+            pass
+
+    text_lines.append('')
+    text_lines.append('建议解题思路：')
+    text_lines.append('1) 先圈出关键词与限定条件。')
+    text_lines.append('2) 把题干转为可验证的结论/公式/步骤。')
+    text_lines.append('3) 对选择题：用排除法 + 代入验证。')
+    text_lines.append('4) 对填空/问答题：列步骤，逐步推导，最后回代检查。')
+
+    return jsonify({
+        'status': 'success',
+        'data': {
+            'explain': '\n'.join(text_lines)
+        }
+    })
 

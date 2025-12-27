@@ -237,6 +237,19 @@ def account_page():
     return render_template('profile.html')
 
 
+@main_bp.route('/quiz_settings')
+def quiz_settings_page():
+    """题库设置页面"""
+    if not session.get('user_id'):
+        return redirect('/login')
+    return render_template(
+        'quiz_settings.html',
+        logged_in=True,
+        username=session.get('username'),
+        user_id=session.get('user_id')
+    )
+
+
 @main_bp.route('/uploads/<path:filename>')
 def serve_upload(filename):
     """安全地提供上传的文件（支持音视频 Range 请求）"""
@@ -245,4 +258,73 @@ def serve_upload(filename):
     # 让浏览器/音频组件更愿意做断点/Range 拉取（部分移动端对流式更敏感）
     resp.headers.setdefault('Accept-Ranges', 'bytes')
     return resp
+
+
+@main_bp.route('/contact_admin')
+def contact_admin_page():
+    """联系管理员入口页
+
+    目标：
+    - 普通用户：可一键跳转到与管理员的私聊（自动创建/复用会话）
+    - 管理员：提示“不可用”（避免自己联系自己）
+
+    说明：此页仅做入口/路由分流，实际聊天在 /chat 页面内完成。
+    """
+    if not session.get('user_id'):
+        return redirect('/login')
+
+    # 管理员不需要“联系管理员”（避免自己给自己发起会话）
+    if session.get('is_admin'):
+        return render_template(
+            'contact_admin.html',
+            logged_in=True,
+            username=session.get('username'),
+            is_admin=True,
+            disabled=True,
+            reason='您当前已是管理员，无需联系管理员。',
+        )
+
+    conn = get_db()
+
+    # 选一个管理员作为接收方：优先按 last_active 最新，其次 id 最小
+    admin = conn.execute(
+        """
+        SELECT id, username
+        FROM users
+        WHERE is_admin = 1
+        ORDER BY (last_active IS NULL) ASC, last_active DESC, id ASC
+        LIMIT 1
+        """
+    ).fetchone()
+
+    if not admin:
+        return render_template(
+            'contact_admin.html',
+            logged_in=True,
+            username=session.get('username'),
+            is_admin=False,
+            disabled=True,
+            reason='系统暂未配置管理员账号，请稍后再试。',
+        )
+
+    return render_template(
+        'contact_admin.html',
+        logged_in=True,
+        username=session.get('username'),
+        is_admin=False,
+        disabled=False,
+        admin_user_id=admin['id'],
+        admin_username=admin['username'],
+    )
+
+
+@main_bp.route('/about')
+def about_page():
+    """关于页面（占位）"""
+    return render_template(
+        'about.html',
+        logged_in=bool(session.get('user_id')),
+        username=session.get('username'),
+        is_admin=session.get('is_admin', False),
+    )
 

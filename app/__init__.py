@@ -188,9 +188,9 @@ def _register_before_request(app):
             # 这个 API 允许未登录访问（返回0）
             return
 
-        # 通知 API 允许未登录访问（游客也能看通知）
-        if path == '/api/notifications':
-            return
+        # 通知 API（以及页面）需要登录：历史通知属于用户中心功能
+        if path.startswith('/api/notifications') or path == '/notifications':
+            return jsonify({'status': 'unauthorized', 'message': '请先登录'}), 401
         
         # 需要登录的功能路径
         login_required_paths = {

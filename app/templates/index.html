@@ -1747,6 +1747,7 @@
         const TYPE_KEY = 'home_type';
         const SHUFFLE_QUESTIONS_KEY = 'shuffle_questions';
         const SHUFFLE_OPTIONS_KEY = 'shuffle_options';
+        const HOME_VISIBLE_SUBJECTS_KEY = 'home_visible_subjects';
 
         function toggleChip(input){ const label = input.parentElement; if (input.checked){ label.classList.add('active'); } else { label.classList.remove('active'); } saveShuffleSettings(); }
         function saveShuffleSettings(){
@@ -1765,8 +1766,23 @@
             if (oCheckbox) oCheckbox.checked = shuffleO;
         }
 
+        function getVisibleSubjects(){
+            try {
+                const arr = JSON.parse(localStorage.getItem(HOME_VISIBLE_SUBJECTS_KEY) || '[]');
+                return Array.isArray(arr) ? arr : [];
+            } catch(e) { return []; }
+        }
+
         function currentSubject(){
-            return localStorage.getItem(SUBJECT_KEY) || getFirstChipValue('chipsSubject');
+            // 如果用户已设置“首页可见科目”，且当前 subject 不在可见列表里，则自动回退到可见列表第一个
+            const visible = getVisibleSubjects();
+            const saved = localStorage.getItem(SUBJECT_KEY) || '';
+            const first = getFirstChipValue('chipsSubject');
+            if (!visible.length) {
+                return saved || first;
+            }
+            if (saved && visible.includes(saved)) return saved;
+            return visible[0] || first;
         }
         function currentType(){
             return localStorage.getItem(TYPE_KEY) || 'all';
@@ -1873,33 +1889,48 @@
             await updateUserCounts();
         }
         function initChips(){
-            const sub = currentSubject();
             const sb = document.getElementById('chipsSubject');
+            if (!sb) return;
 
-            if (sb) {
-                let matched = false;
-                let activeSubject = '';
-                sb.querySelectorAll('.chip').forEach(x => {
-                    if(x.dataset.val === sub) {
-                        x.classList.add('active');
-                        matched = true;
-                        activeSubject = sub;
-                    }
+            // 1) 根据设置过滤科目 chips（不选=全部）
+            const visible = getVisibleSubjects();
+            if (visible.length) {
+                sb.querySelectorAll('.chip').forEach(chip => {
+                    const val = chip.dataset.val;
+                    chip.style.display = visible.includes(val) ? '' : 'none';
                 });
+            } else {
+                sb.querySelectorAll('.chip').forEach(chip => { chip.style.display = ''; });
+            }
 
-                if (!matched) {
-                    const f = sb.querySelector('.chip');
-                    if(f) {
-                        f.classList.add('active');
-                        activeSubject = f.dataset.val;
-                        localStorage.setItem(SUBJECT_KEY, activeSubject);
-                    }
-                }
+            // 2) 选择默认科目（确保在可见列表内）
+            const sub = currentSubject();
+            let matched = false;
+            let activeSubject = '';
 
-                // 根据激活的科目更新题型列表
-                if (activeSubject) {
-                    updateQuestionTypes(activeSubject);
+            sb.querySelectorAll('.chip').forEach(x => {
+                x.classList.remove('active');
+                if (x.style.display === 'none') return;
+                if (x.dataset.val === sub) {
+                    x.classList.add('active');
+                    matched = true;
+                    activeSubject = sub;
                 }
+            });
+
+            if (!matched) {
+                // 找第一个“可见”的 chip
+                const f = Array.from(sb.querySelectorAll('.chip')).find(c => c.style.display !== 'none');
+                if (f) {
+                    f.classList.add('active');
+                    activeSubject = f.dataset.val;
+                    localStorage.setItem(SUBJECT_KEY, activeSubject);
+                }
+            }
+
+            // 3) 根据激活的科目更新题型列表
+            if (activeSubject) {
+                updateQuestionTypes(activeSubject);
             }
         }
 
@@ -2097,11 +2128,34 @@
             if (e.target === this) closeModal();
         });
 
-        initChips();
-        loadShuffleSettings();
-        document.querySelectorAll('.shuffle-chip input').forEach(inp=>toggleChip(inp));
-        updateCount();
-        loadNotifications();
+        async function loadUserSettingsFromServerAndApply(){
+            try {
+                const res = await fetch(`/api/progress?key=${encodeURIComponent('user_settings_v1')}`);
+                if (!res.ok) return;
+                const js = await res.json();
+                if (!js || js.status !== 'success' || !js.data) return;
+                const remote = js.data || {};
+                const remoteTs = Number(remote.updated_at || 0);
+                const localTs = Number(localStorage.getItem('settings_updated_at') || '0');
+                if (remoteTs > localTs) {
+                    // 用云端覆盖本地
+                    localStorage.setItem(SHUFFLE_QUESTIONS_KEY, remote.shuffle_questions ? '1' : '0');
+                    localStorage.setItem(SHUFFLE_OPTIONS_KEY, remote.shuffle_options ? '1' : '0');
+                    try { localStorage.setItem(HOME_VISIBLE_SUBJECTS_KEY, JSON.stringify(Array.isArray(remote.home_visible_subjects) ? remote.home_visible_subjects : [])); } catch(e) {}
+                    localStorage.setItem('settings_updated_at', String(remoteTs));
+                }
+            } catch(e) {}
+        }
+
+        // 初始化：优先拉取云端设置（跨设备），再渲染首页
+        (async function(){
+            await loadUserSettingsFromServerAndApply();
+            initChips();
+            loadShuffleSettings();
+            document.querySelectorAll('.shuffle-chip input').forEach(inp=>toggleChip(inp));
+            updateCount();
+            loadNotifications();
+        })();
 
         // 通知功能
         const NOTIFICATION_ICONS = {
@@ -2116,14 +2170,16 @@
                 const res = await fetch('/api/notifications');
                 if (!res.ok) return;
                 const js = await res.json();
-                if (js.status !== 'success' || !js.notifications) return;
+                // 兼容：新通知接口返回 data；旧接口返回 notifications
+                const list = js.data || js.notifications || [];
+                if (js.status !== 'success') return;
 
                 const container = document.getElementById('notificationContainer');
                 if (!container) return;
 
                 container.innerHTML = '';
                 let unreadCount = 0;
-                js.notifications.forEach(n => {
+                list.forEach(n => {
                     const banner = createNotificationBanner(n);
                     container.appendChild(banner);
                     requestAnimationFrame(()=> {

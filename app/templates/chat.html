@@ -657,13 +657,174 @@
 <script>
   const LOGGED_IN = {{ 'true' if logged_in else 'false' }};
   const MY_ID = {{ user_id or 0 }};
-  let currentConversationId = 0;
-  let lastMessageId = 0;
-  let pollTimer = null;
+
+  // =====================================================
+  // Commit 1：前端模块化骨架（不改功能）
+  // - 引入 Chat / ChatState，先收拢最核心状态变量
+  // - 其余函数逻辑保持不变，后续 commit 再逐步迁移
+  // =====================================================
+  const Chat = {};
+  const ChatState = {
+    currentConversationId: 0,
+    lastMessageId: 0,
+    pollTimer: null,
+  };
+
+  // =====================================================
+  // Commit 2：抽取 Chat.utils（工具函数，不改功能）
+  // - 先把纯工具/通用方法收敛到 Chat.utils
+  // - 仍保留同名函数作为兼容层（转调到 Chat.utils），避免一次性大面积替换
+  // =====================================================
+  Chat.utils = {
+    prefersReducedMotion(){
+      return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    },
+    escapeHtml(s){
+      const div = document.createElement('div');
+      div.textContent = s || '';
+      return div.innerHTML;
+    },
+    escapeAttr(s){
+      return String(s || '').replace(/'/g, '%27').replace(/\"/g, '%22');
+    },
+    setLoading(btn, state){
+      if (!btn) return;
+      btn.dataset.loading = state ? 'true' : 'false';
+      btn.disabled = !!state;
+    },
+    safeParseTime(s){
+      // 支持：ISO / "YYYY-MM-DD HH:mm:ss" / "YYYY/MM/DD HH:mm" 等常见格式
+      // 注意：后端 SQLite CURRENT_TIMESTAMP 通常返回 "YYYY-MM-DD HH:mm:ss"（UTC）
+      // JS 直接 new Date("YYYY-MM-DD HH:mm:ss") 会被当作“本地时间”，导致与系统时间不符。
+      // 这里把该格式显式按 UTC 解析，再转换为本地时间显示。
+      if (!s) return null;
+      if (s instanceof Date) return s;
+      const str = String(s).trim();
+      if (!str) return null;
+
+      // 1) 先处理 SQLite UTC 时间：YYYY-MM-DD HH:mm:ss
+      const m = str.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?$/);
+      if (m) {
+        const y = Number(m[1]);
+        const mo = Number(m[2]) - 1;
+        const d = Number(m[3]);
+        const hh = Number(m[4]);
+        const mm = Number(m[5]);
+        const ss = Number(m[6] || '0');
+        const utcMs = Date.UTC(y, mo, d, hh, mm, ss);
+        const dt = new Date(utcMs);
+        if (!isNaN(dt.getTime())) return dt;
+      }
+
+      // 2) ISO / RFC：交给原生解析（包含 Z 或时区偏移时不会有歧义）
+      let d1 = new Date(str);
+      if (!isNaN(d1.getTime())) return d1;
+
+      // 3) Safari 兼容：把 - 替换为 /
+      d1 = new Date(str.replace(/-/g,'/'));
+      if (!isNaN(d1.getTime())) return d1;
+
+      return null;
+    },
+    formatConvTimestamp(ts){
+      const date = Chat.utils.safeParseTime(ts);
+      if (!date) return '';
+
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+
+      const targetDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+      if (targetDate.getTime() === today.getTime()) {
+        // Today: HH:mm
+        return String(date.getHours()).padStart(2, '0') + ':' + String(date.getMinutes()).padStart(2, '0');
+      } else if (targetDate.getTime() === yesterday.getTime()) {
+        // Yesterday
+        return '昨天';
+      } else if (date.getFullYear() === now.getFullYear()) {
+        // This year: MM-DD
+        return String(date.getMonth() + 1) + '-' + String(date.getDate());
+      } else {
+        // Older: YYYY-MM-DD
+        return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+      }
+    },
+    formatFullTime(d){
+      // YYYY-MM-DD HH:mm:ss（本地时间显示）
+      const y = d.getFullYear();
+      const mo = String(d.getMonth() + 1).padStart(2,'0');
+      const da = String(d.getDate()).padStart(2,'0');
+      const hh = String(d.getHours()).padStart(2,'0');
+      const mm = String(d.getMinutes()).padStart(2,'0');
+      const ss = String(d.getSeconds()).padStart(2,'0');
+      return `${y}-${mo}-${da} ${hh}:${mm}:${ss}`;
+    },
+    formatDividerTime(d){
+      const now = new Date();
+      const sameDay = d.toDateString() === now.toDateString();
+      const hh = String(d.getHours()).padStart(2,'0');
+      const mm = String(d.getMinutes()).padStart(2,'0');
+      if (sameDay) return `${hh}:${mm}`;
+      const mo = String(d.getMonth()+1).padStart(2,'0');
+      const da = String(d.getDate()).padStart(2,'0');
+      return `${mo}-${da} ${hh}:${mm}`;
+    }
+  };
+
+  // =====================================================
+  // Commit 3：抽取 Chat.ui（DOM 缓存 + Toast，不改功能）
+  // - 提供最小 DOM 缓存能力：Chat.ui.dom.get(id)
+  // - 提供 toast：Chat.ui.toast.show(msg)
+  // - 保留 showToast 作为兼容层（内部转调）
+  // =====================================================
+  Chat.ui = {
+    dom: {
+      _cache: Object.create(null),
+      get(id){
+        if (!id) return null;
+        // 注意：不要缓存 null；DOM 可能尚未出现，或页面局部重绘导致引用失效
+        // 每次取到元素都校验是否仍在 document 中（避免返回脱离文档的旧引用）
+        const cached = this._cache[id];
+        if (cached && document.contains(cached)) return cached;
+
+        const el = document.getElementById(id);
+        if (el) this._cache[id] = el;
+        return el;
+      },
+      // 当 DOM 被替换/重绘导致缓存失效时可手动清理（目前先留接口）
+      clear(id){
+        if (!id) {
+          // 不要替换 this._cache 对象引用：否则已闭包引用到旧对象的 get() 会失效
+          // 这里直接清空 key，保证 get() 总能命中最新缓存对象
+          for (const k in this._cache) delete this._cache[k];
+          return;
+        }
+        delete this._cache[id];
+      }
+    },
+    toast: {
+      timer: null,
+      show(msg){
+        const t = Chat.ui.dom.get('toast');
+        if (!t) return;
+        t.textContent = msg;
+        t.style.display = 'block';
+        if (this.timer) clearTimeout(this.timer);
+        this.timer = setTimeout(()=>{ t.style.display='none'; }, Chat.utils.prefersReducedMotion() ? 1500 : 2200);
+      }
+    }
+  };
+
+  // =====================================================
+  // Commit 1/2：仍然保留的基础函数（尚未模块化到 Chat.ui 之外）
+  // 说明：这些函数需要在 Chat.ui 初始化后才能使用 Chat.ui.dom
+  // =====================================================
 
   // iOS/Apple 风格：尽量减少打扰，采用更细腻的动态
   function prefersReducedMotion(){
-    return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    return Chat.utils.prefersReducedMotion();
   }
 
   function toggleTheme(){
@@ -675,30 +836,26 @@
   })();
 
   function isMobile(){ return window.innerWidth <= 900; }
+
   function toggleDrawer(open){
-    const dr = document.getElementById('drawer');
-    const ov = document.getElementById('overlay');
+    const dr = Chat.ui.dom.get('drawer');
+    const ov = Chat.ui.dom.get('overlay');
     if (!dr || !ov) return;
     if (open) { dr.classList.add('open'); ov.classList.add('show'); }
     else { dr.classList.remove('open'); ov.classList.remove('show'); }
   }
+
   function updateMobileListButton(){
-    const btn = document.getElementById('btnMobileList');
+    const btn = Chat.ui.dom.get('btnMobileList');
     if (!btn) return;
     btn.style.display = isMobile() ? 'inline-block' : 'none';
   }
   window.addEventListener('resize', updateMobileListButton);
   updateMobileListButton();
 
-  // Toast
-  let toastTimer = null;
+  // Toast（兼容层）
   function showToast(msg){
-    const t = document.getElementById('toast');
-    if (!t) return;
-    t.textContent = msg;
-    t.style.display = 'block';
-    if (toastTimer) clearTimeout(toastTimer);
-    toastTimer = setTimeout(()=>{ t.style.display='none'; }, prefersReducedMotion() ? 1500 : 2200);
+    return Chat.ui.toast.show(msg);
   }
 
   // 语音“移出取消”浮层
@@ -807,8 +964,7 @@
     modal.classList.add('show');
 
     try {
-      const res = await fetch(`/api/chat/user_profile?user_id=${userId}`);
-      const js = await res.json();
+      const { res, js } = await Chat.api.getUserProfile(userId);
       if (!res.ok || js.status !== 'success') {
         alert(js.message || '加载资料失败');
         closeUserProfileModal();
@@ -889,7 +1045,7 @@
     // 回到聊天并聚焦输入框
     closeUserProfileModal();
     try {
-      const ta = document.getElementById('composer');
+      const ta = Chat.ui.dom.get('composer');
       if (ta) ta.focus();
     } catch(e) {}
   }
@@ -913,13 +1069,7 @@
 
     setLoading(btn, true);
     try {
-      const sRes = await fetch('/api/chat/user_remark', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ target_user_id: currentProfileUserId, remark: v })
-      });
-      let sJs = {};
-      try { sJs = await sRes.json(); } catch(e) { sJs = {}; }
+      const { res: sRes, js: sJs } = await Chat.api.setUserRemark(currentProfileUserId, v);
       if (!sRes.ok || sJs.status !== 'success') {
         alert((sJs && sJs.message) ? sJs.message : (`设置备注失败（HTTP ${sRes.status}）`));
         return;
@@ -934,7 +1084,7 @@
       await refreshConversations();
       try {
         const list = await fetchConversations();
-        const cur = (list || []).find(x => x.conversation_id === currentConversationId);
+        const cur = (list || []).find(x => x.conversation_id === ChatState.currentConversationId);
         if (cur) {
           const name = (cur.c_type === 'direct' ? (cur.peer_remark || cur.peer_username || '私聊') : (cur.title || '会话'));
           const t = document.getElementById('chatTitle');
@@ -1217,11 +1367,106 @@
     }
   });
 
+  // =====================================================
+  // Commit 4：抽取 Chat.api（统一 fetch 封装，不改功能）
+  // - API 层只负责请求与 JSON 解析，不负责 alert/confirm
+  // - 先封装最核心的 conversations/messages，其他接口后续再逐步迁移
+  // =====================================================
+  Chat.api = {
+    async _json(res){
+      let js = {};
+      try { js = await res.json(); } catch(e) { js = {}; }
+      return js;
+    },
+
+    async fetchConversations(){
+      const res = await fetch('/api/chat/conversations');
+      const js = await this._json(res);
+      if (!res.ok || js.status !== 'success') return [];
+      return js.data || [];
+    },
+
+    async fetchMessages({conversationId, afterId=0, limit=80}){
+      const cid = Number(conversationId || 0);
+      const aid = Number(afterId || 0);
+      const lim = Number(limit || 80);
+      const res = await fetch(`/api/chat/messages?conversation_id=${cid}&after_id=${aid}&limit=${lim}`);
+      const js = await this._json(res);
+      return { res, js };
+    },
+
+    async searchUsers(q){
+      const kw = String(q || '').trim();
+      const res = await fetch(`/api/chat/users?q=${encodeURIComponent(kw)}`);
+      const js = await this._json(res);
+      if (!res.ok || js.status !== 'success') return [];
+      return js.data || [];
+    },
+
+    async createConversation(peerUserId){
+      const pid = Number(peerUserId || 0);
+      const res = await fetch('/api/chat/conversations/create', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ peer_user_id: pid })
+      });
+      const js = await this._json(res);
+      return { res, js };
+    },
+
+    async sendText({conversationId, content}){
+      const cid = Number(conversationId || 0);
+      const text = String(content || '');
+      const res = await fetch('/api/chat/messages/send', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ conversation_id: cid, content: text })
+      });
+      const js = await this._json(res);
+      return { res, js };
+    },
+
+    async uploadImage(formData){
+      const res = await fetch('/api/chat/messages/upload_image', { method:'POST', body: formData });
+      const js = await this._json(res);
+      return { res, js };
+    },
+
+    async uploadAudio(formData){
+      const res = await fetch('/api/chat/messages/upload_audio', { method:'POST', body: formData });
+      const js = await this._json(res);
+      return { res, js };
+    },
+
+    async getUserProfile(userId){
+      const uid = Number(userId || 0);
+      const res = await fetch(`/api/chat/user_profile?user_id=${encodeURIComponent(uid)}`);
+      const js = await this._json(res);
+      return { res, js };
+    },
+
+    async getUserRemark(targetUserId){
+      const tid = Number(targetUserId || 0);
+      const res = await fetch(`/api/chat/user_remark?target_user_id=${encodeURIComponent(tid)}`);
+      const js = await this._json(res);
+      return { res, js };
+    },
+
+    async setUserRemark(targetUserId, remark){
+      const tid = Number(targetUserId || 0);
+      const r = String(remark || '');
+      const res = await fetch('/api/chat/user_remark', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ target_user_id: tid, remark: r })
+      });
+      const js = await this._json(res);
+      return { res, js };
+    },
+  };
+
   async function fetchConversations(){
-    const res = await fetch('/api/chat/conversations');
-    const js = await res.json();
-    if (!res.ok || js.status !== 'success') return [];
-    return js.data || [];
+    return Chat.api.fetchConversations();
   }
 
   function renderConversations(list){
@@ -1248,7 +1493,7 @@
     });
 
     const html = (uniqueList||[]).map(c => {
-      const active = (c.conversation_id === currentConversationId) ? 'active' : '';
+      const active = (c.conversation_id === ChatState.currentConversationId) ? 'active' : '';
       const displayName = (c.c_type === 'direct' ? (c.peer_remark || c.peer_username || '私聊') : (c.title || '会话'));
       const avatarUrl = c.peer_avatar || '';
       const sub = c.last_message || '';
@@ -1280,13 +1525,11 @@
   }
 
   function escapeHtml(s){
-    const div = document.createElement('div');
-    div.textContent = s || '';
-    return div.innerHTML;
+    return Chat.utils.escapeHtml(s);
   }
 
   function escapeAttr(s){
-    return String(s || '').replace(/'/g, '%27').replace(/\"/g, '%22');
+    return Chat.utils.escapeAttr(s);
   }
 
   async function refreshConversations(){
@@ -1295,25 +1538,26 @@
   }
 
   function setEmptyStateVisible(show){
-    const es = document.getElementById('emptyState');
+    const es = Chat.ui.dom.get('emptyState');
     if (!es) return;
     es.style.display = show ? 'block' : 'none';
   }
 
-  let currentPeerUserId = 0;
+  let currentPeerUserId = 0; // TODO(Commit 1+): 后续收拢到 ChatState
+
 
   async function openConversation(conversationId){
     // 切换会话时停止正在播放的语音
     try { stopCurrentAudio(); } catch(e) {}
 
-    currentConversationId = conversationId;
+    ChatState.currentConversationId = conversationId;
     currentPeerUserId = 0;
-    lastMessageId = 0;
-    const msgBox = document.getElementById('messages');
+    ChatState.lastMessageId = 0;
+    const msgBox = Chat.ui.dom.get('messages');
     if (msgBox) {
       // 清空并保留空状态占位
       msgBox.innerHTML = '';
-      const es = document.getElementById('emptyState');
+      const es = Chat.ui.dom.get('emptyState');
       if (es) msgBox.appendChild(es);
     }
     setEmptyStateVisible(true);
@@ -1343,8 +1587,8 @@
 
     if (isMobile()) toggleDrawer(false);
 
-    if (pollTimer) clearInterval(pollTimer);
-    pollTimer = setInterval(()=>pollMessages(false), 2000);
+    if (ChatState.pollTimer) clearInterval(ChatState.pollTimer);
+    ChatState.pollTimer = setInterval(()=>pollMessages(false), 2000);
   }
 
   function isImageMsg(m){ return (m && m.content_type === 'image'); }
@@ -1441,86 +1685,19 @@
   }
 
   function safeParseTime(s){
-    // 支持：ISO / "YYYY-MM-DD HH:mm:ss" / "YYYY/MM/DD HH:mm" 等常见格式
-    // 注意：后端 SQLite CURRENT_TIMESTAMP 通常返回 "YYYY-MM-DD HH:mm:ss"（UTC）
-    // JS 直接 new Date("YYYY-MM-DD HH:mm:ss") 会被当作“本地时间”，导致与系统时间不符。
-    // 这里把该格式显式按 UTC 解析，再转换为本地时间显示。
-    if (!s) return null;
-    if (s instanceof Date) return s;
-    const str = String(s).trim();
-    if (!str) return null;
-
-    // 1) 先处理 SQLite UTC 时间：YYYY-MM-DD HH:mm:ss
-    const m = str.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?$/);
-    if (m) {
-      const y = Number(m[1]);
-      const mo = Number(m[2]) - 1;
-      const d = Number(m[3]);
-      const hh = Number(m[4]);
-      const mm = Number(m[5]);
-      const ss = Number(m[6] || '0');
-      const utcMs = Date.UTC(y, mo, d, hh, mm, ss);
-      const dt = new Date(utcMs);
-      if (!isNaN(dt.getTime())) return dt;
-    }
-
-    // 2) ISO / RFC：交给原生解析（包含 Z 或时区偏移时不会有歧义）
-    let d1 = new Date(str);
-    if (!isNaN(d1.getTime())) return d1;
-
-    // 3) Safari 兼容：把 - 替换为 /
-    d1 = new Date(str.replace(/-/g,'/'));
-    if (!isNaN(d1.getTime())) return d1;
-
-    return null;
+    return Chat.utils.safeParseTime(s);
   }
 
   function formatConvTimestamp(ts) {
-    const date = safeParseTime(ts);
-    if (!date) return '';
-
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    const targetDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-
-    if (targetDate.getTime() === today.getTime()) {
-        // Today: HH:mm
-        return String(date.getHours()).padStart(2, '0') + ':' + String(date.getMinutes()).padStart(2, '0');
-    } else if (targetDate.getTime() === yesterday.getTime()) {
-        // Yesterday
-        return '昨天';
-    } else if (date.getFullYear() === now.getFullYear()) {
-        // This year: MM-DD
-        return String(date.getMonth() + 1) + '-' + String(date.getDate());
-    } else {
-        // Older: YYYY-MM-DD
-        return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
-    }
+    return Chat.utils.formatConvTimestamp(ts);
   }
 
   function formatFullTime(d){
-    // YYYY-MM-DD HH:mm:ss（本地时间显示）
-    const y = d.getFullYear();
-    const mo = String(d.getMonth() + 1).padStart(2,'0');
-    const da = String(d.getDate()).padStart(2,'0');
-    const hh = String(d.getHours()).padStart(2,'0');
-    const mm = String(d.getMinutes()).padStart(2,'0');
-    const ss = String(d.getSeconds()).padStart(2,'0');
-    return `${y}-${mo}-${da} ${hh}:${mm}:${ss}`;
+    return Chat.utils.formatFullTime(d);
   }
 
   function formatDividerTime(d){
-    const now = new Date();
-    const sameDay = d.toDateString() === now.toDateString();
-    const hh = String(d.getHours()).padStart(2,'0');
-    const mm = String(d.getMinutes()).padStart(2,'0');
-    if (sameDay) return `${hh}:${mm}`;
-    const mo = String(d.getMonth()+1).padStart(2,'0');
-    const da = String(d.getDate()).padStart(2,'0');
-    return `${mo}-${da} ${hh}:${mm}`;
+    return Chat.utils.formatDividerTime(d);
   }
 
   function maybeInsertTimeDivider(box, message){
@@ -1569,13 +1746,13 @@
   }
 
   function appendMessages(msgs){
-    const box = document.getElementById('messages');
+    const box = Chat.ui.dom.get('messages');
     if (!box) return;
     if (msgs && msgs.length) setEmptyStateVisible(false);
     let shouldStick = (box.scrollTop + box.clientHeight >= box.scrollHeight - 40);
 
     msgs.forEach(m => {
-      lastMessageId = Math.max(lastMessageId, m.id);
+      ChatState.lastMessageId = Math.max(ChatState.lastMessageId, m.id);
       const isMe = (m.sender_id === MY_ID);
 
       // 时间分隔（更像 IM）：间隔较久时插入一条小胶囊时间
@@ -1826,9 +2003,12 @@
   }
 
   async function pollMessages(force){
-    if (!currentConversationId) return;
-    const res = await fetch(`/api/chat/messages?conversation_id=${currentConversationId}&after_id=${lastMessageId}&limit=80`);
-    const js = await res.json();
+    if (!ChatState.currentConversationId) return;
+    const { res, js } = await Chat.api.fetchMessages({
+      conversationId: ChatState.currentConversationId,
+      afterId: ChatState.lastMessageId,
+      limit: 80
+    });
     if (!res.ok || js.status !== 'success') return;
     const msgs = js.data || [];
     if (msgs.length) {
@@ -1848,29 +2028,24 @@
   }
 
   function setLoading(btn, state){
-    if (!btn) return;
-    btn.dataset.loading = state ? 'true' : 'false';
-    btn.disabled = !!state;
+    return Chat.utils.setLoading(btn, state);
   }
 
   async function sendMessage(){
-    const ta = document.getElementById('composer');
-    const btn = document.getElementById('btnSendText');
+    const ta = Chat.ui.dom.get('composer');
+    const btn = Chat.ui.dom.get('btnSendText');
     if (!ta) return;
     const content = (ta.value || '').trim();
     if (!content) return;
-    if (!currentConversationId) { alert('请先选择或创建一个会话'); return; }
+    if (!ChatState.currentConversationId) { alert('请先选择或创建一个会话'); return; }
 
     ta.value = '';
     updateComposerActions();
     setLoading(btn, true);
-    const res = await fetch('/api/chat/messages/send', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ conversation_id: currentConversationId, content })
+    const { res, js } = await Chat.api.sendText({
+      conversationId: ChatState.currentConversationId,
+      content
     });
-    let js = {};
-    try { js = await res.json(); } catch(e) {}
     setLoading(btn, false);
 
     if (!res.ok || js.status !== 'success') {
@@ -2006,7 +2181,7 @@
     const btnImg = document.getElementById('btnPlus');
     setLoading(btnImg, true);
     try {
-      if (!currentConversationId) { alert('请先选择或创建一个会话'); return; }
+      if (!ChatState.currentConversationId) { alert('请先选择或创建一个会话'); return; }
 
       // 压缩 & 生成缩略图
       let prepared = null;
@@ -2018,7 +2193,7 @@
       }
 
       const fd = new FormData();
-      fd.append('conversation_id', String(currentConversationId));
+      fd.append('conversation_id', String(ChatState.currentConversationId));
       fd.append('image', prepared.main);
       if (prepared.thumb) fd.append('thumb', prepared.thumb);
       if (prepared.meta && (prepared.meta.w || prepared.meta.h)) {
@@ -2026,9 +2201,7 @@
         fd.append('height', String(prepared.meta.h || ''));
       }
 
-      const res = await fetch('/api/chat/messages/upload_image', { method:'POST', body: fd });
-      let js = {};
-      try { js = await res.json(); } catch(e) {}
+      const { res, js } = await Chat.api.uploadImage(fd);
       setLoading(btnImg, false);
 
       if (!res.ok || js.status !== 'success') {
@@ -2049,7 +2222,7 @@
 
   async function sendImageFile(input){
     try {
-      if (!currentConversationId) { alert('请先选择或创建一个会话'); input.value=''; return; }
+      if (!ChatState.currentConversationId) { alert('请先选择或创建一个会话'); input.value=''; return; }
       const file = input.files && input.files[0];
       if (!file) return;
       if (file.size > 5 * 1024 * 1024) { alert('图片不能超过 5MB'); input.value=''; return; }
@@ -2062,7 +2235,7 @@
   }
 
   function updateComposerActions(){
-    const ta = document.getElementById('composer');
+    const ta = Chat.ui.dom.get('composer');
     const btnSend = document.getElementById('btnSendText');
     const btnVoice = document.getElementById('btnVoice');
     if (!ta || !btnSend || !btnVoice) return;
@@ -2079,7 +2252,7 @@
 
     // 无会话或无文字时禁用发送，避免误触
     try {
-      btnSend.disabled = (!currentConversationId) || (!hasText);
+      btnSend.disabled = (!ChatState.currentConversationId) || (!hasText);
     } catch(e) {}
   }
 
@@ -2092,14 +2265,11 @@
 
   async function onUserSearchKey(e, desktop=false){
     if (e.key !== 'Enter') return;
-    const inp = desktop ? document.getElementById('userSearchDesk') : document.getElementById('userSearch');
+    const inp = desktop ? Chat.ui.dom.get('userSearchDesk') : Chat.ui.dom.get('userSearch');
     const kw = (inp.value || '').trim();
     if (!kw) return;
 
-    const res = await fetch(`/api/chat/users?q=${encodeURIComponent(kw)}`);
-    const js = await res.json();
-    if (!res.ok || js.status !== 'success') return;
-    const users = js.data || [];
+    const users = await Chat.api.searchUsers(kw);
     if (!users.length) { alert('没有找到用户'); return; }
 
     const exact = users.find(x => (x.username || '').toLowerCase() === kw.toLowerCase());
@@ -2107,12 +2277,7 @@
     // 多个匹配：弹出列表让用户选择（更直观）
     if (!exact && users.length > 1) {
       openUserPickModal(users, kw, async (picked)=>{
-        const cRes = await fetch('/api/chat/conversations/create', {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ peer_user_id: picked.id })
-        });
-        const cJs = await cRes.json();
+        const { res: cRes, js: cJs } = await Chat.api.createConversation(picked.id);
         if (!cRes.ok || cJs.status !== 'success') { alert(cJs.message || '创建会话失败'); return; }
 
         inp.value = '';
@@ -2124,12 +2289,7 @@
 
     // 单个匹配 or 精确匹配：直接创建
     const u = exact || users[0];
-    const cRes = await fetch('/api/chat/conversations/create', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ peer_user_id: u.id })
-    });
-    const cJs = await cRes.json();
+    const { res: cRes, js: cJs } = await Chat.api.createConversation(u.id);
     if (!cRes.ok || cJs.status !== 'success') { alert(cJs.message || '创建会话失败'); return; }
 
     inp.value = '';
@@ -2157,14 +2317,14 @@
   }
 
   document.addEventListener('dragenter', (e)=>{
-    if (!currentConversationId) return;
+    if (!ChatState.currentConversationId) return;
     const dt = e.dataTransfer;
     if (!dt) return;
     const hasImg = Array.from(dt.items || []).some(it => it.kind === 'file' && (it.type || '').startsWith('image/'));
     if (hasImg) showDropHint(true);
   });
   document.addEventListener('dragover', (e)=>{
-    if (!currentConversationId) return;
+    if (!ChatState.currentConversationId) return;
     const dt = e.dataTransfer;
     if (!dt) return;
     const hasImg = Array.from(dt.items || []).some(it => it.kind === 'file' && (it.type || '').startsWith('image/'));
@@ -2178,7 +2338,7 @@
   });
   document.addEventListener('drop', async (e)=>{
     showDropHint(false);
-    if (!currentConversationId) return;
+    if (!ChatState.currentConversationId) return;
     const files = extractImageFilesFromDataTransfer(e.dataTransfer);
     if (!files.length) return;
     e.preventDefault();
@@ -2191,7 +2351,7 @@
 
   // 粘贴图片：在输入框里 Ctrl+V
   document.addEventListener('paste', async (e)=>{
-    if (!currentConversationId) return;
+    if (!ChatState.currentConversationId) return;
     // 如果聚焦不在聊天输入区，也允许（体验更好）
     const items = (e.clipboardData && e.clipboardData.items) ? e.clipboardData.items : [];
     const imgs = [];
@@ -2245,7 +2405,7 @@
   }
 
   function updateVoiceBtn(){
-    const btn = document.getElementById('btnVoice');
+    const btn = Chat.ui.dom.get('btnVoice');
     if (!btn) return;
     if (isRecording) {
       // 录音中：是否取消由 shouldCancelVoice 控制（移出按钮区域则取消）
@@ -2266,13 +2426,13 @@
   }
 
   async function startVoiceRecord(){
-    if (!currentConversationId) { alert('请先选择或创建一个会话'); return; }
+    if (!ChatState.currentConversationId) { alert('请先选择或创建一个会话'); return; }
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       alert('当前浏览器不支持录音');
       return;
     }
 
-    const btn = document.getElementById('btnVoice');
+    const btn = Chat.ui.dom.get('btnVoice');
     setLoading(btn, true);
 
     try {
@@ -2341,13 +2501,13 @@
   function isInteractiveVoiceTarget(el){
     // SVG 内部点到 path 也算按钮
     if (!el) return false;
-    const btn = document.getElementById('btnVoice');
+    const btn = Chat.ui.dom.get('btnVoice');
     if (!btn) return false;
     return el === btn || btn.contains(el);
   }
 
   function bindHoldToTalk(){
-    const btn = document.getElementById('btnVoice');
+    const btn = Chat.ui.dom.get('btnVoice');
     if (!btn) return;
 
     // 防止长按选中文本/弹出菜单
@@ -2357,7 +2517,7 @@
 
     const onPress = async (e)=>{
       // 只在有会话时允许
-      if (!currentConversationId) { alert('请先选择或创建一个会话'); return; }
+      if (!ChatState.currentConversationId) { alert('请先选择或创建一个会话'); return; }
       e.preventDefault();
       e.stopPropagation();
       if (isRecording) return;
@@ -2436,9 +2596,9 @@
   }
 
   async function uploadVoiceBlob(blob, durationSec){
-    if (!currentConversationId) return;
+    if (!ChatState.currentConversationId) return;
 
-    const btn = document.getElementById('btnVoice');
+    const btn = Chat.ui.dom.get('btnVoice');
     setLoading(btn, true);
     try {
       const mime = blob.type || 'audio/webm';
@@ -2446,13 +2606,11 @@
       const file = new File([blob], `voice_${Date.now()}.${ext}`, { type: mime });
 
       const fd = new FormData();
-      fd.append('conversation_id', String(currentConversationId));
+      fd.append('conversation_id', String(ChatState.currentConversationId));
       fd.append('audio', file);
       fd.append('duration', String(durationSec || ''));
 
-      const res = await fetch('/api/chat/messages/upload_audio', { method:'POST', body: fd });
-      let js = {};
-      try { js = await res.json(); } catch(e) {}
+      const { res, js } = await Chat.api.uploadAudio(fd);
 
       if (!res.ok || js.status !== 'success') {
         const ok = confirm((js.message || '语音发送失败') + "\n\n是否重试？");
@@ -2472,8 +2630,7 @@
   async function openRemarkPrompt(){
     if (!currentPeerUserId) return;
     try {
-      const res = await fetch(`/api/chat/user_remark?target_user_id=${currentPeerUserId}`);
-      const js = await res.json();
+      const { res, js } = await Chat.api.getUserRemark(currentPeerUserId);
       if (!res.ok || js.status !== 'success') { alert(js.message || '读取备注失败'); return; }
 
       const curVal = (js.remark || '').trim();
@@ -2481,13 +2638,7 @@
       if (next === null) return; // 用户取消
 
       const v = String(next || '').trim();
-      const sRes = await fetch('/api/chat/user_remark', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ target_user_id: currentPeerUserId, remark: v })
-      });
-      let sJs = {};
-      try { sJs = await sRes.json(); } catch(e) { sJs = {}; }
+      const { res: sRes, js: sJs } = await Chat.api.setUserRemark(currentPeerUserId, v);
       if (!sRes.ok || sJs.status !== 'success') {
         alert((sJs && sJs.message) ? sJs.message : (`设置备注失败（HTTP ${sRes.status}）`));
         return;
@@ -2497,7 +2648,7 @@
       // 重新用会话列表信息刷新标题
       try {
         const list = await fetchConversations();
-        const cur = (list || []).find(x => x.conversation_id === currentConversationId);
+        const cur = (list || []).find(x => x.conversation_id === ChatState.currentConversationId);
         if (cur) {
           const name = (cur.c_type === 'direct' ? (cur.peer_remark || cur.peer_username || '私聊') : (cur.title || '会话'));
           const t = document.getElementById('chatTitle');
@@ -2565,13 +2716,24 @@
 
   async function init(){
     if (!LOGGED_IN) { alert('请先登录'); location.href='/login'; return; }
+
+    // 支持通过 URL 直接打开某个会话：/chat?conversation_id=123
+    const sp = new URLSearchParams(window.location.search || '');
+    const preOpenId = Number(sp.get('conversation_id') || 0);
+
     await refreshConversations();
     setEmptyStateVisible(true);
+
+    if (preOpenId > 0) {
+      // 打开指定会话（若无权限/不存在，后端会拦截；前端会显示空状态）
+      await openConversation(preOpenId);
+    }
+
     updateVoiceBtn();
     bindHoldToTalk();
 
     // 输入区交互：有内容显示“发送”，无内容显示“语音”
-    const ta = document.getElementById('composer');
+    const ta = Chat.ui.dom.get('composer');
     if (ta) {
       ta.addEventListener('input', updateComposerActions);
       ta.addEventListener('blur', updateComposerActions);
