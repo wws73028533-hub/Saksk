@@ -1,0 +1,435 @@
+# -*- coding: utf-8 -*-
+"""
+数据库工具函数
+"""
+import sqlite3
+from flask import g, current_app
+
+
+def get_db():
+    """获取数据库连接（使用Flask g对象实现连接池）"""
+    if 'db' not in g:
+        db = sqlite3.connect(current_app.config['DATABASE_PATH'])
+        db.row_factory = sqlite3.Row
+        db.execute('PRAGMA foreign_keys = ON')
+        g.db = db
+    return g.db
+
+
+def close_db(error=None):
+    """关闭数据库连接"""
+    db = g.pop('db', None)
+    if db is not None:
+        db.close()
+
+
+def init_db():
+    """初始化数据库（创建表和索引）"""
+    conn = sqlite3.connect(current_app.config['DATABASE_PATH'])
+    conn.row_factory = sqlite3.Row
+    
+    try:
+        # 创建表
+        _create_tables(conn)
+        # 创建索引
+        _create_indexes(conn)
+        conn.commit()
+        print('[OK] 数据库初始化完成')
+    except Exception as e:
+        print(f'[ERROR] 数据库初始化失败: {str(e)}')
+        conn.rollback()
+    finally:
+        conn.close()
+
+
+def _create_tables(conn):
+    """创建数据库表"""
+    # 基础表：用户表
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            is_admin INTEGER DEFAULT 0,
+            is_locked INTEGER DEFAULT 0,
+            session_version INTEGER DEFAULT 0,
+            avatar TEXT,
+            contact TEXT,
+            college TEXT,
+            last_active DATETIME,
+            is_subject_admin INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    # 基础表：科目表
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS subjects (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT UNIQUE NOT NULL,
+            description TEXT,
+            is_locked INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    # 基础表：题目表
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS questions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            subject_id INTEGER,
+            content TEXT NOT NULL,
+            q_type TEXT NOT NULL,
+            options TEXT,
+            answer TEXT,
+            explanation TEXT,
+            difficulty INTEGER DEFAULT 1,
+            image_path TEXT,
+            code_template TEXT,
+            programming_language TEXT DEFAULT "python",
+            time_limit INTEGER DEFAULT 5,
+            memory_limit INTEGER DEFAULT 128,
+            test_cases_json TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(subject_id) REFERENCES subjects(id) ON DELETE SET NULL
+        )
+    ''')
+    
+    # 基础表：收藏表
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS favorites (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            question_id INTEGER NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, question_id),
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY(question_id) REFERENCES questions(id) ON DELETE CASCADE
+        )
+    ''')
+    
+    # 基础表：错题表
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS mistakes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            question_id INTEGER NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, question_id),
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY(question_id) REFERENCES questions(id) ON DELETE CASCADE
+        )
+    ''')
+    
+    # 基础表：用户答题记录表
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS user_answers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            question_id INTEGER NOT NULL,
+            user_answer TEXT,
+            is_correct INTEGER,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY(question_id) REFERENCES questions(id) ON DELETE CASCADE
+        )
+    ''')
+    
+    # 用户进度表
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS user_progress (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            p_key TEXT NOT NULL,
+            data TEXT NOT NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, p_key),
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    ''')
+
+    # 考试表
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS exams (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            subject TEXT,
+            duration_minutes INTEGER NOT NULL,
+            config_json TEXT,
+            total_score REAL DEFAULT 0,
+            status TEXT DEFAULT 'ongoing',
+            started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            submitted_at DATETIME,
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        )
+    ''')
+    
+    # 考试题目表
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS exam_questions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            exam_id INTEGER NOT NULL,
+            question_id INTEGER NOT NULL,
+            order_index INTEGER NOT NULL,
+            score_val REAL DEFAULT 1,
+            user_answer TEXT,
+            is_correct INTEGER,
+            answered_at DATETIME,
+            FOREIGN KEY(exam_id) REFERENCES exams(id) ON DELETE CASCADE
+        )
+    ''')
+    
+    # 添加用户表列（如果不存在）- 兼容旧数据库
+    try:
+        cur = conn.cursor()
+        # 检查users表是否存在
+        table_check = cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'").fetchone()
+        if table_check:
+            cols = [r['name'] for r in cur.execute("PRAGMA table_info(users)").fetchall()]
+            if 'is_locked' not in cols:
+                cur.execute('ALTER TABLE users ADD COLUMN is_locked INTEGER DEFAULT 0')
+            if 'session_version' not in cols:
+                cur.execute('ALTER TABLE users ADD COLUMN session_version INTEGER DEFAULT 0')
+            if 'avatar' not in cols:
+                cur.execute('ALTER TABLE users ADD COLUMN avatar TEXT')
+            if 'contact' not in cols:
+                cur.execute('ALTER TABLE users ADD COLUMN contact TEXT')
+            if 'college' not in cols:
+                cur.execute('ALTER TABLE users ADD COLUMN college TEXT')
+            if 'last_active' not in cols:
+                cur.execute('ALTER TABLE users ADD COLUMN last_active DATETIME')
+            if 'is_subject_admin' not in cols:
+                cur.execute('ALTER TABLE users ADD COLUMN is_subject_admin INTEGER DEFAULT 0')
+
+        # 添加 questions 表的字段（如果不存在）- 兼容旧数据库
+        table_check = cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='questions'").fetchone()
+        if table_check:
+            question_cols = [r['name'] for r in cur.execute("PRAGMA table_info(questions)").fetchall()]
+            if 'image_path' not in question_cols:
+                cur.execute('ALTER TABLE questions ADD COLUMN image_path TEXT')
+            
+            # 添加编程题相关字段（如果不存在）
+            # 重新获取列信息，确保包含最新添加的字段
+            question_cols = [r['name'] for r in cur.execute("PRAGMA table_info(questions)").fetchall()]
+            if 'code_template' not in question_cols:
+                cur.execute('ALTER TABLE questions ADD COLUMN code_template TEXT')
+            if 'programming_language' not in question_cols:
+                cur.execute('ALTER TABLE questions ADD COLUMN programming_language TEXT DEFAULT "python"')
+            if 'time_limit' not in question_cols:
+                cur.execute('ALTER TABLE questions ADD COLUMN time_limit INTEGER DEFAULT 5')
+            if 'memory_limit' not in question_cols:
+                cur.execute('ALTER TABLE questions ADD COLUMN memory_limit INTEGER DEFAULT 128')
+            if 'test_cases_json' not in question_cols:
+                cur.execute('ALTER TABLE questions ADD COLUMN test_cases_json TEXT')
+        
+        # 添加 subjects 表的 is_locked 字段（如果不存在）- 兼容旧数据库
+        table_check = cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='subjects'").fetchone()
+        if table_check:
+            subject_cols = [r['name'] for r in cur.execute("PRAGMA table_info(subjects)").fetchall()]
+            if 'is_locked' not in subject_cols:
+                cur.execute('ALTER TABLE subjects ADD COLUMN is_locked INTEGER DEFAULT 0')
+    except Exception as e:
+        print(f'[WARN] 添加字段失败: {e}')
+        pass
+    
+    # 添加user_progress表的created_at字段（如果不存在）
+    try:
+        cur = conn.cursor()
+        progress_cols = [r['name'] for r in cur.execute("PRAGMA table_info(user_progress)").fetchall()]
+        if 'created_at' not in progress_cols:
+            # SQLite不支持带非常量默认值的ALTER TABLE,所以不设置默认值
+            cur.execute('ALTER TABLE user_progress ADD COLUMN created_at TIMESTAMP')
+    except Exception:
+        pass
+
+    # 聊天：会话表
+    # 说明：为从根源杜绝 direct 私聊重复会话，增加 direct_pair_key：
+    # - direct 私聊：存 "min_uid:max_uid"（例如 "1:10"）
+    # - 非 direct：可为空
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS chat_conversations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            c_type TEXT NOT NULL DEFAULT 'direct',
+            title TEXT,
+            direct_pair_key TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    # 聊天：用户备注表（每个用户对“其他用户”的备注，仅自己可见）
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS user_remarks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            owner_user_id INTEGER NOT NULL,
+            target_user_id INTEGER NOT NULL,
+            remark TEXT NOT NULL,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(owner_user_id, target_user_id),
+            FOREIGN KEY(owner_user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY(target_user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    ''')
+
+    # 兼容老库：补字段 direct_pair_key（如果不存在）
+    try:
+        cur = conn.cursor()
+        conv_cols = [r['name'] for r in cur.execute("PRAGMA table_info(chat_conversations)").fetchall()]
+        if 'direct_pair_key' not in conv_cols:
+            cur.execute('ALTER TABLE chat_conversations ADD COLUMN direct_pair_key TEXT')
+    except Exception:
+        pass
+
+    # 聊天：会话成员表
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS chat_members (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            conversation_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            role TEXT DEFAULT 'member',
+            last_read_message_id INTEGER DEFAULT 0,
+            joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(conversation_id, user_id),
+            FOREIGN KEY(conversation_id) REFERENCES chat_conversations(id) ON DELETE CASCADE,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    ''')
+
+    # 聊天：消息表
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS chat_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            conversation_id INTEGER NOT NULL,
+            sender_id INTEGER NOT NULL,
+            content TEXT NOT NULL,
+            content_type TEXT DEFAULT 'text',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(conversation_id) REFERENCES chat_conversations(id) ON DELETE CASCADE,
+            FOREIGN KEY(sender_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    ''')
+
+    # 通知表
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS notifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            content TEXT NOT NULL,
+            n_type TEXT NOT NULL DEFAULT 'info',
+            priority INTEGER DEFAULT 0,
+            is_active INTEGER DEFAULT 1,
+            start_at DATETIME,
+            end_at DATETIME,
+            created_by INTEGER,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE SET NULL
+        )
+    ''')
+
+    # 用户关闭通知记录表
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS notification_dismissals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            notification_id INTEGER NOT NULL,
+            dismissed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, notification_id),
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY(notification_id) REFERENCES notifications(id) ON DELETE CASCADE
+        )
+    ''')
+
+    # 代码提交历史表（用于记录编程题的提交记录）
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS code_submissions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            question_id INTEGER NOT NULL,
+            code TEXT NOT NULL,
+            language TEXT NOT NULL,
+            status TEXT NOT NULL,
+            passed_cases INTEGER DEFAULT 0,
+            total_cases INTEGER DEFAULT 0,
+            execution_time REAL,
+            error_message TEXT,
+            submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY(question_id) REFERENCES questions(id) ON DELETE CASCADE
+        )
+    ''')
+
+
+def _create_indexes(conn):
+    """创建数据库索引"""
+    # 检查表是否存在，只对存在的表创建索引
+    cur = conn.cursor()
+    existing_tables = {row[0] for row in cur.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+    
+    indexes = []
+    
+    # 用户相关索引（只对存在的表创建）
+    if 'favorites' in existing_tables:
+        indexes.append('CREATE INDEX IF NOT EXISTS idx_favorites_user_question ON favorites(user_id, question_id)')
+    if 'mistakes' in existing_tables:
+        indexes.append('CREATE INDEX IF NOT EXISTS idx_mistakes_user_question ON mistakes(user_id, question_id)')
+    if 'user_answers' in existing_tables:
+        indexes.extend([
+            'CREATE INDEX IF NOT EXISTS idx_user_answers_user ON user_answers(user_id, created_at)',
+            'CREATE INDEX IF NOT EXISTS idx_user_answers_question ON user_answers(question_id)',
+        ])
+        
+        # 题目相关索引（只对存在的表创建）
+        if 'questions' in existing_tables:
+            indexes.extend([
+                'CREATE INDEX IF NOT EXISTS idx_questions_subject ON questions(subject_id)',
+                'CREATE INDEX IF NOT EXISTS idx_questions_type ON questions(q_type)',
+                'CREATE INDEX IF NOT EXISTS idx_questions_subject_type ON questions(subject_id, q_type)',
+            ])
+        
+        # 考试相关索引（只对存在的表创建）
+        if 'exams' in existing_tables:
+            indexes.extend([
+                'CREATE INDEX IF NOT EXISTS idx_exams_user_status ON exams(user_id, status)',
+                'CREATE INDEX IF NOT EXISTS idx_exams_submitted ON exams(submitted_at)',
+            ])
+        if 'exam_questions' in existing_tables:
+            indexes.extend([
+                'CREATE INDEX IF NOT EXISTS idx_exam_questions_exam ON exam_questions(exam_id)',
+                'CREATE INDEX IF NOT EXISTS idx_exam_questions_question ON exam_questions(question_id)',
+            ])
+        
+        # 用户进度索引（只对存在的表创建）
+        if 'user_progress' in existing_tables:
+            indexes.append('CREATE INDEX IF NOT EXISTS idx_user_progress_key ON user_progress(user_id, p_key)')
+
+        # 聊天相关索引（只对存在的表创建）
+        if 'chat_members' in existing_tables:
+            indexes.append('CREATE INDEX IF NOT EXISTS idx_chat_members_user ON chat_members(user_id, conversation_id)')
+        if 'chat_messages' in existing_tables:
+            indexes.append('CREATE INDEX IF NOT EXISTS idx_chat_messages_conversation ON chat_messages(conversation_id, id DESC)')
+        if 'chat_conversations' in existing_tables:
+            # direct 私聊唯一键：从根源杜绝重复会话（仅当 c_type='direct' 时生效）
+            indexes.append("CREATE UNIQUE INDEX IF NOT EXISTS ux_chat_direct_pair ON chat_conversations(direct_pair_key) WHERE c_type='direct' AND direct_pair_key IS NOT NULL")
+        if 'user_remarks' in existing_tables:
+            # 用户备注：便于查询
+            indexes.append('CREATE INDEX IF NOT EXISTS idx_user_remarks_owner ON user_remarks(owner_user_id, target_user_id)')
+
+        # 通知相关索引（只对存在的表创建）
+        if 'notifications' in existing_tables:
+            indexes.extend([
+                'CREATE INDEX IF NOT EXISTS idx_notifications_active ON notifications(is_active, priority DESC)',
+                'CREATE INDEX IF NOT EXISTS idx_notifications_time ON notifications(start_at, end_at)',
+            ])
+        if 'notification_dismissals' in existing_tables:
+            indexes.append('CREATE INDEX IF NOT EXISTS idx_notification_dismissals_user ON notification_dismissals(user_id, notification_id)')
+        
+        # 代码提交相关索引（只对存在的表创建）
+        if 'code_submissions' in existing_tables:
+            indexes.append('CREATE INDEX IF NOT EXISTS idx_code_submissions_user_question ON code_submissions(user_id, question_id, submitted_at DESC)')
+    
+    for index_sql in indexes:
+        conn.execute(index_sql)
+

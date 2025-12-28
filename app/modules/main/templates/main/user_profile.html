@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>个人资料 - 全能刷题库</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Crect width='128' height='128' rx='24' fill='%23007bff'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='central' text-anchor='middle' font-size='88' fill='white'%3EQ%3C/text%3E%3C/svg%3E">
+    <style>
+        :root {
+            --bg-color: #fafafa;
+            --card-bg: rgba(255, 255, 255, 0.75);
+            --card-bg-solid: rgba(255, 255, 255, 0.95);
+            --text-color: #1d1d1f;
+            --text-sub: #86868b;
+            --border-color: rgba(0, 0, 0, 0.08);
+            --primary: #007AFF;
+            --primary-light: rgba(0, 122, 255, 0.12);
+            --shadow: 0 2px 16px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+            --shadow-hover: 0 4px 24px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.06);
+            --success: #34c759;
+            --danger: #ff3b30;
+            --blur: blur(60px) saturate(200%);
+        }
+
+        body.dark-mode {
+            --bg-color: #000000;
+            --card-bg: rgba(28, 28, 30, 0.6);
+            --card-bg-solid: rgba(28, 28, 30, 0.95);
+            --text-color: #f5f5f7;
+            --text-sub: #a1a1a6;
+            --border-color: rgba(255, 255, 255, 0.12);
+            --primary: #0a84ff;
+            --primary-light: rgba(10, 132, 255, 0.2);
+            --shadow: 0 2px 16px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
+            --shadow-hover: 0 4px 24px rgba(0, 0, 0, 0.6), 0 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        /* 全局滚动条样式 - 极简风格 */
+        * { scrollbar-width: thin; scrollbar-color: transparent transparent; }
+        *:hover { scrollbar-color: rgba(128, 128, 128, 0.3) transparent; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: transparent; border-radius: 3px; }
+        *:hover::-webkit-scrollbar-thumb { background: rgba(128, 128, 128, 0.3); }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(128, 128, 128, 0.5); }
+        body.dark-mode ::-webkit-scrollbar-thumb { background: transparent; }
+        body.dark-mode *:hover::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); }
+        body.dark-mode ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.25); }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            transition: background-color .3s ease, color .3s ease;
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        body::after, body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+            transition: opacity .3s ease;
+        }
+        body::after {
+            background: linear-gradient(180deg, #ffffff 0%, #fafafa 30%, #f5f5f7 70%, #f0f0f2 100%);
+        }
+        body::before {
+            background: linear-gradient(180deg, #1c1c1e 0%, #000000 40%, #000000 100%);
+            opacity: 0;
+        }
+        body.dark-mode::before { opacity: 1; }
+        body.dark-mode::after { opacity: 0; }
+
+        .main-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+        }
+
+        .header-title {
+            font-size: 36px;
+            font-weight: 700;
+            letter-spacing: -0.8px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: var(--blur);
+            -webkit-backdrop-filter: var(--blur);
+            padding: 32px;
+            border-radius: 20px;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            margin-bottom: 24px;
+        }
+        body.dark-mode .card {
+            background: rgba(28, 28, 30, 0.65);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .profile-header {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        .avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 40px;
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+            background-size: cover;
+            background-position: center;
+            border: 2px solid rgba(255,255,255,0.5);
+        }
+        .avatar-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.4); color: white; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s; font-size: 14px; text-align: center; }
+        .avatar:hover .avatar-overlay { opacity: 1; }
+        #avatarInput { display: none; }
+
+        .user-info h2 { margin: 0 0 8px; font-size: 28px; font-weight: 600; }
+        .user-info p { margin: 0; color: var(--text-sub); }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 500;
+            color: var(--text-sub);
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .info-value, .main-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 0.5px solid var(--border-color);
+            border-radius: 12px;
+            font-size: 16px;
+            background: var(--card-bg-solid);
+            color: var(--text-color);
+            box-sizing: border-box;
+            transition: all 0.2s ease;
+        }
+        .main-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-light);
+        }
+        .info-value {
+            background: rgba(142, 142, 147, 0.05);
+            min-height: 45px;
+            display: flex;
+            align-items: center;
+        }
+        body.dark-mode .info-value {
+            background: rgba(142, 142, 147, 0.1);
+        }
+        .info-value.empty { color: var(--text-sub); font-style: italic; }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 500;
+        }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { opacity: 0.85; }
+        .btn-secondary { background: rgba(142, 142, 147, 0.15); color: var(--text-color); }
+        .btn-secondary:hover { background: rgba(142, 142, 147, 0.25); }
+        .btn-success { background: var(--success); color: white; }
+        .btn-success:hover { opacity: 0.85; }
+
+        .actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        @media (max-width: 768px) {
+            .main-container { padding: 24px 16px; }
+            .header-title { font-size: 28px; }
+            .profile-header { flex-direction: column; text-align: center; }
+            .avatar { width: 120px; height: 120px; }
+            .form-grid { grid-template-columns: 1fr; }
+            .card { padding: 24px; }
+        }
+    </style>
+</head>
+<body>
+    <main class="container main-container">
+        <header class="page-header">
+            <h1 class="header-title">个人资料</h1>
+            <a href="/user_hub" class="btn btn-secondary">← 返回</a>
+        </header>
+
+        <div class="card">
+            <div class="profile-header">
+                <div class="avatar" id="avatarDisplay" onclick="document.getElementById('avatarInput').click()">
+                    <span id="avatarText"></span>
+                    <div class="avatar-overlay">更换头像</div>
+                    <input type="file" id="avatarInput" accept="image/*" onchange="uploadAvatar(this)">
+                </div>
+                <div class="user-info">
+                    <h2 id="usernameDisplay"></h2>
+                    <p>{{ '管理员' if is_admin else '普通用户' }}</p>
+                </div>
+            </div>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="usernameInput">👤 昵称</label>
+                    <div class="info-value" id="usernameDisplayInfo"></div>
+                    <input type="text" id="usernameInput" class="main-input" style="display:none;" disabled>
+                </div>
+                <div class="form-group">
+                    <label for="registerDisplay">📅 注册时间</label>
+                    <div class="info-value" id="registerDisplay"><span class="empty">未知</span></div>
+                </div>
+                <div class="form-group">
+                    <label for="contactInput">📧 联系方式</label>
+                    <div class="info-value" id="contactDisplay"><span class="empty">未设置</span></div>
+                    <input type="text" id="contactInput" class="main-input" placeholder="请输入联系方式" style="display:none;">
+                </div>
+                <div class="form-group">
+                    <label for="collegeInput">🏫 学院</label>
+                    <div class="info-value" id="collegeDisplay"><span class="empty">未设置</span></div>
+                    <input type="text" id="collegeInput" class="main-input" placeholder="请输入学院" style="display:none;">
+                </div>
+            </div>
+
+            <div class="actions">
+                <button id="editBtn" onclick="toggleEdit()" class="btn btn-primary">✏️ 编辑资料</button>
+                <button id="saveBtn" onclick="saveProfile()" class="btn btn-success" style="display:none;">💾 保存</button>
+                <button id="cancelBtn" onclick="cancelEdit()" class="btn btn-secondary" style="display:none;">❌ 取消</button>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let originalData = {};
+
+        async function loadProfile(){
+            try{
+                const res = await fetch('/api/profile');
+                if(!res.ok) throw new Error('加载失败');
+                const d = await res.json();
+                if(d.status !== 'success') throw new Error(d.message || '加载失败');
+                
+                const u = d.data || {};
+                originalData = u;
+                
+                document.getElementById('usernameDisplay').textContent = u.username || '用户';
+                document.getElementById('usernameDisplayInfo').textContent = u.username || '用户';
+                document.getElementById('usernameInput').value = u.username || '';
+                
+                const avatarDisplay = document.getElementById('avatarDisplay');
+                const avatarText = document.getElementById('avatarText');
+                if(u.avatar) {
+                    avatarDisplay.style.backgroundImage = `url(${u.avatar})`;
+                    avatarText.style.display = 'none';
+                } else {
+                    avatarDisplay.style.backgroundImage = 'none';
+                    avatarText.textContent = (u.username || 'U').charAt(0).toUpperCase();
+                    avatarText.style.display = 'flex';
+                }
+                
+                const contactDisplay = document.getElementById('contactDisplay');
+                if(u.contact) {
+                    contactDisplay.textContent = u.contact;
+                    contactDisplay.classList.remove('empty');
+                } else {
+                    contactDisplay.innerHTML = '<span class="empty">未设置</span>';
+                }
+                document.getElementById('contactInput').value = u.contact || '';
+
+                const collegeDisplay = document.getElementById('collegeDisplay');
+                if(u.college) {
+                    collegeDisplay.textContent = u.college;
+                    collegeDisplay.classList.remove('empty');
+                } else {
+                    collegeDisplay.innerHTML = '<span class="empty">未设置</span>';
+                }
+                document.getElementById('collegeInput').value = u.college || '';
+                
+                if(u.created_at) {
+                    document.getElementById('registerDisplay').textContent = u.created_at;
+                }
+            } catch(e) {
+                alert('加载失败: ' + e.message);
+            }
+        }
+        
+        function toggleEdit() {
+            document.getElementById('editBtn').style.display = 'none';
+            document.getElementById('saveBtn').style.display = 'inline-block';
+            document.getElementById('cancelBtn').style.display = 'inline-block';
+            
+            document.getElementById('contactDisplay').style.display = 'none';
+            document.getElementById('contactInput').style.display = 'block';
+            document.getElementById('collegeDisplay').style.display = 'none';
+            document.getElementById('collegeInput').style.display = 'block';
+        }
+        
+        function cancelEdit() {
+            document.getElementById('editBtn').style.display = 'inline-block';
+            document.getElementById('saveBtn').style.display = 'none';
+            document.getElementById('cancelBtn').style.display = 'none';
+            
+            document.getElementById('contactDisplay').style.display = 'block';
+            document.getElementById('contactInput').style.display = 'none';
+            document.getElementById('collegeDisplay').style.display = 'block';
+            document.getElementById('collegeInput').style.display = 'none';
+            
+            document.getElementById('contactInput').value = originalData.contact || '';
+            document.getElementById('collegeInput').value = originalData.college || '';
+        }
+        
+        async function saveProfile() {
+            const contact = document.getElementById('contactInput').value.trim();
+            const college = document.getElementById('collegeInput').value.trim();
+            
+            try {
+                const res = await fetch('/api/profile/update', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ contact, college })
+                });
+                const data = await res.json();
+                if(!res.ok || data.status !== 'success') throw new Error(data.message || '更新失败');
+                
+                alert('✅ 更新成功');
+                await loadProfile();
+                cancelEdit();
+            } catch(e) {
+                alert('❌ ' + e.message);
+            }
+        }
+        
+        async function uploadAvatar(input) {
+            if(!input.files || input.files.length === 0) return;
+            const file = input.files[0];
+            const formData = new FormData();
+            formData.append('avatar', file);
+            
+            try {
+                const res = await fetch('/api/profile/avatar', { method: 'POST', body: formData });
+                const data = await res.json();
+                if(!res.ok || data.status !== 'success') throw new Error(data.message || '上传失败');
+                
+                alert('✅ 头像上传成功');
+                document.getElementById('avatarDisplay').style.backgroundImage = `url(${data.avatar_url})`;
+                document.getElementById('avatarText').style.display = 'none';
+            } catch(e) {
+                alert('❌ ' + e.message);
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            if (localStorage.getItem('theme') === 'dark') {
+                document.body.classList.add('dark-mode');
+            }
+            loadProfile();
+        });
+    </script>
+</body>
+</html>

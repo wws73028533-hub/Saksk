@@ -1,0 +1,19 @@
+{# Score overlay modal #}
+<div class="overlay" id="scoreOverlay" style="z-index: 2000;">
+    <div class="card-container score-modal" style="width: 350px; min-height: auto;">
+        <h2 style="margin-top:0;" id="scoreTitle">📄 考试成绩单</h2>
+        <div class="score-circle" id="scoreCircle">
+            <div class="score-val" id="finalScore">0</div>
+            <div class="score-label" id="finalLabel">总分</div>
+        </div>
+        <p id="scoreDetail">答对 0 / 0 题</p>
+        {% if mode != 'exam' %}
+            <p style="font-size:12px; color:#666; margin-top:-10px;">(错题已自动加入错题本)</p>
+        {% endif %}
+        <div class="score-grid" id="scoreGrid"></div>
+        <div style="margin-top:20px;">
+            <button class="btn btn-check" onclick="reviewExam()">🔍 回顾题目</button>
+            <a href="/" class="btn btn-nav" style="text-decoration:none;">退出</a>
+        </div>
+    </div>
+</div>

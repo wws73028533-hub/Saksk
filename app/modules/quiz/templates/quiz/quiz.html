@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    {% set is_fav_scope = (source == 'favorites' or mode == 'favorites') %}
+    {% set is_mis_scope = (source == 'mistakes' or mode == 'mistakes') %}
+
+  {% include 'quiz/partials/quiz/_head_meta.html' %}
+</head>
+<body class="{{ 'memo-mode' if mode == 'memo' else ('exam-mode' if mode == 'exam' else '') }}">
+  <div class="app-container">
+    {% include 'quiz/partials/quiz/_sidebar.html' %}
+    {% include 'quiz/partials/quiz/_main_layout.html' %}
+    </div>
+
+  {% include 'quiz/partials/quiz/_modals_forward.html' %}
+  {% include 'quiz/partials/quiz/_modals_score.html' %}
+
+  {% include 'quiz/partials/quiz/_scripts_main.html' %}
+</body>
+</html>

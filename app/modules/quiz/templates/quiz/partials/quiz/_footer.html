@@ -1,0 +1,14 @@
+{# Footer navigation buttons #}
+<div class="footer">
+    <button class="btn btn-nav" onclick="prevQuestion()" id="btn-prev">← 上一题</button>
+    
+    {% if mode == 'exam' %}
+        <button class="btn btn-submit" id="btn-submit-exam" onclick="submitExam()">交卷</button>
+        <button class="btn btn-nav" id="btn-next-exam" onclick="nextQuestion()">下一题 →</button>
+    {% else %}
+        <button class="btn btn-check" onclick="checkAnswer(true)" id="btn-check" 
+                style="display: {{ 'none' if mode == 'memo' else 'block' }}">👀 查看结果</button>
+        <button class="btn btn-next-green" onclick="nextQuestion()" id="btn-next" 
+                style="display: {{ 'block' if mode == 'memo' else 'none' }}">下一题 →</button>
+    {% endif %}
+</div>

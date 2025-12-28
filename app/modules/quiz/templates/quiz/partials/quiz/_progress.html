@@ -1,0 +1,7 @@
+{# Progress Bar #}
+{% if questions|length > 0 %}
+<div class="progress-bar">
+    <div class="progress-fill" id="progress-fill"></div>
+    <div class="progress-label" id="progress-label">0 / {{ questions|length }}</div>
+</div>
+{% endif %}

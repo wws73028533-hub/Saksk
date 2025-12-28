@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>刷题统计</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Crect width='128' height='128' rx='24' fill='%23007bff'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='central' text-anchor='middle' font-size='88' fill='white'%3E%F0%9F%93%98%3C/text%3E%3C/svg%3E">
+    <meta name="theme-color" content="#f5f5f7">
+    <style>
+        :root {
+            --bg-color: #f5f5f7;
+            --card-bg: rgba(255, 255, 255, 0.72);
+            --card-bg-solid: rgba(255, 255, 255, 0.92);
+            --text-color: #1d1d1f;
+            --text-sub: #6e6e73;
+            --border-color: rgba(0, 0, 0, 0.06);
+            --primary: #007AFF;
+            --primary-light: rgba(0, 122, 255, 0.12);
+            --shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+            --shadow-hover: 0 14px 44px rgba(0, 0, 0, 0.10);
+            --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.04);
+            --success: #34c759;
+            --warning: #ff9500;
+            --danger: #ff3b30;
+            --blur: blur(40px) saturate(180%);
+            --radius-xl: 24px;
+            --radius-lg: 18px;
+            --radius-md: 14px;
+            --radius-sm: 12px;
+            --glow: 0 0 20px rgba(255, 255, 255, 0.22);
+        }
+
+        body.dark-mode {
+            --bg-color: #000000;
+            --card-bg: rgba(28, 28, 30, 0.6);
+            --card-bg-solid: rgba(28, 28, 30, 0.95);
+            --text-color: #f5f5f7;
+            --text-sub: #a1a1a6;
+            --border-color: rgba(255, 255, 255, 0.12);
+            --primary: #0a84ff;
+            --primary-light: rgba(10, 132, 255, 0.2);
+            --shadow: 0 2px 16px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
+            --shadow-hover: 0 4px 24px rgba(0, 0, 0, 0.6), 0 2px 4px rgba(0, 0, 0, 0.5);
+            --shadow-soft: 0 1px 4px rgba(0, 0, 0, 0.3);
+            --glow: 0 0 20px rgba(255, 255, 255, 0.05);
+        }
+
+        /* 全局滚动条样式 - 极简风格 */
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: transparent transparent;
+        }
+        *:hover {
+            scrollbar-color: rgba(128, 128, 128, 0.3) transparent;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: transparent;
+            border-radius: 3px;
+            transition: background 0.3s ease;
+        }
+        *:hover::-webkit-scrollbar-thumb {
+            background: rgba(128, 128, 128, 0.3);
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(128, 128, 128, 0.5);
+        }
+        body.dark-mode ::-webkit-scrollbar-thumb {
+            background: transparent;
+        }
+        body.dark-mode *:hover::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+        }
+        body.dark-mode ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        body {
+            margin: 0;
+            padding: 24px;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
+            background: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 20% 50%, rgba(142, 142, 147, 0.02) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(142, 142, 147, 0.02) 0%, transparent 50%);
+            color: var(--text-color);
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            letter-spacing: -0.01em;
+            position: relative;
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.4'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.02;
+            mix-blend-mode: overlay;
+        }
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(180deg, #ffffff 0%, #fafafa 30%, #f5f5f7 70%, #f0f0f2 100%);
+            z-index: -1;
+            pointer-events: none;
+        }
+        body.dark-mode::after {
+            background: linear-gradient(180deg, #1c1c1e 0%, #000000 40%, #000000 100%);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* 页面头部 */
+        .page-header {
+            background: var(--card-bg);
+            backdrop-filter: var(--blur);
+            -webkit-backdrop-filter: var(--blur);
+            padding: 32px 40px;
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow);
+            border: 0.5px solid var(--border-color);
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: transform 0.24s ease, box-shadow 0.24s ease;
+        }
+        .page-header:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-hover);
+        }
+        .page-header h1 {
+            margin: 0;
+            font-size: 32px;
+            font-weight: 600;
+            color: var(--text-color);
+            letter-spacing: -0.02em;
+        }
+        .page-header p {
+            margin: 8px 0 0 0;
+            font-size: 15px;
+            color: var(--text-sub);
+            font-weight: 400;
+        }
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 20px;
+            background: var(--card-bg);
+            backdrop-filter: var(--blur);
+            -webkit-backdrop-filter: var(--blur);
+            color: var(--text-color);
+            text-decoration: none;
+            border-radius: var(--radius-md);
+            border: 0.5px solid var(--border-color);
+            font-size: 15px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            box-shadow: var(--shadow-soft);
+        }
+        .back-btn:hover {
+            background: var(--primary-light);
+            border-color: var(--primary);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow);
+        }
+
+        /* 内容区域 */
+        .content-section {
+            background: var(--card-bg);
+            backdrop-filter: var(--blur);
+            -webkit-backdrop-filter: var(--blur);
+            padding: 32px 40px;
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow);
+            border: 0.5px solid var(--border-color);
+            margin-bottom: 24px;
+            transition: transform 0.24s ease, box-shadow 0.24s ease;
+        }
+        .content-section:hover {
+            box-shadow: var(--shadow-hover);
+        }
+        .content-section h2 {
+            color: var(--text-color);
+            margin: 0 0 8px 0;
+            font-size: 24px;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+        }
+        .content-section p {
+            color: var(--text-sub);
+            margin: 0 0 24px 0;
+            font-size: 15px;
+        }
+
+        /* 统计卡片网格 - Bento Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            backdrop-filter: var(--blur);
+            -webkit-backdrop-filter: var(--blur);
+            padding: 24px;
+            border-radius: var(--radius-lg);
+            border: 0.5px solid var(--border-color);
+            box-shadow: var(--shadow-soft);
+            transition: all 0.24s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: var(--radius-lg);
+            padding: 0.5px;
+            background: linear-gradient(135deg, 
+                rgba(255, 255, 255, 0.4) 0%,
+                rgba(255, 255, 255, 0.1) 50%,
+                rgba(255, 255, 255, 0.4) 100%
+            );
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask-composite: exclude;
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow);
+            border-color: var(--primary);
+        }
+        .stat-card .icon {
+            font-size: 32px;
+            margin-bottom: 12px;
+            opacity: 0.8;
+            display: block;
+        }
+        .stat-card .label {
+            font-size: 13px;
+            color: var(--text-sub);
+            margin-bottom: 8px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .stat-card .value {
+            font-size: 36px;
+            font-weight: 700;
+            color: var(--text-color);
+            line-height: 1.1;
+            letter-spacing: -0.02em;
+        }
+
+        /* 图表容器 */
+        .chart-container {
+            height: 350px;
+            margin-bottom: 24px;
+            background: var(--card-bg);
+            backdrop-filter: var(--blur);
+            -webkit-backdrop-filter: var(--blur);
+            border-radius: var(--radius-lg);
+            border: 0.5px solid var(--border-color);
+            box-shadow: var(--shadow-soft);
+            padding: 20px;
+            transition: box-shadow 0.24s ease;
+        }
+        .chart-container:hover {
+            box-shadow: var(--shadow);
+        }
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 24px;
+        }
+        @media (min-width: 992px) {
+            .charts-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        /* 表格样式 - iOS 18风格 */
+        .table-wrapper {
+            overflow-x: auto;
+            border-radius: var(--radius-lg);
+            border: 0.5px solid var(--border-color);
+            box-shadow: var(--shadow-soft);
+            background: var(--card-bg);
+            backdrop-filter: var(--blur);
+            -webkit-backdrop-filter: var(--blur);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: transparent;
+        }
+        thead {
+            background: var(--card-bg-solid);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        th {
+            padding: 16px 20px;
+            text-align: left;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 0.5px solid var(--border-color);
+        }
+        tbody tr {
+            border-bottom: 0.5px solid var(--border-color);
+            transition: background-color 0.2s ease;
+        }
+        tbody tr:hover {
+            background: var(--primary-light);
+        }
+        tbody tr:last-child {
+            border-bottom: none;
+        }
+        td {
+            padding: 16px 20px;
+            font-size: 15px;
+            color: var(--text-color);
+        }
+        td pre {
+            margin: 0;
+            font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
+            font-size: 13px;
+            color: var(--text-sub);
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+        }
+        .status-badge.accepted {
+            background: rgba(52, 199, 89, 0.12);
+            color: var(--success);
+        }
+        .status-badge.wrong {
+            background: rgba(255, 59, 48, 0.12);
+            color: var(--danger);
+        }
+        body.dark-mode .status-badge.accepted {
+            background: rgba(52, 199, 89, 0.2);
+        }
+        body.dark-mode .status-badge.wrong {
+            background: rgba(255, 59, 48, 0.2);
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            body {
+                padding: 16px;
+            }
+            .page-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 16px;
+                padding: 24px;
+            }
+            .content-section {
+                padding: 24px;
+            }
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            .chart-container {
+                height: 280px;
+            }
+            th, td {
+                padding: 12px 16px;
+                font-size: 14px;
+            }
+        }
+
+        /* 空状态 */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-sub);
+        }
+        .empty-state-icon {
+            font-size: 64px;
+            opacity: 0.3;
+            margin-bottom: 16px;
+        }
+        .empty-state-text {
+            font-size: 17px;
+            font-weight: 500;
+        }
+
+    </style>
+</head>
+<body>
+    <main class="container">
+        <div class="page-header">
+            <div>
+                <h1>刷题统计</h1>
+                <p>查看您的答题记录、正确率和学习趋势</p>
+            </div>
+            <a href="/user_hub" class="back-btn">← 返回</a>
+        </div>
+
+        <!-- 学习统计区域 -->
+        <div class="content-section">
+            <h2>我的学习统计</h2>
+            <p>数据是您努力的证明</p>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <span class="icon">📚</span>
+                    <div class="label">累计答题</div>
+                    <div class="value" id="stat_total">0</div>
+                </div>
+                <div class="stat-card">
+                    <span class="icon">✅</span>
+                    <div class="label">正确题数</div>
+                    <div class="value" id="stat_correct">0</div>
+                </div>
+                <div class="stat-card">
+                    <span class="icon">🎯</span>
+                    <div class="label">正确率</div>
+                    <div class="value" id="stat_acc">0%</div>
+                </div>
+                <div class="stat-card">
+                    <span class="icon">⭐</span>
+                    <div class="label">收藏/错题</div>
+                    <div class="value" id="stat_fc">0 / 0</div>
+                </div>
+            </div>
+            <div id="chartDaily" class="chart-container"></div>
+            <div class="charts-grid">
+                <div id="chartSubject" class="chart-container"></div>
+                <div id="chartType" class="chart-container"></div>
+            </div>
+        </div>
+
+        <!-- 提交历史记录区域 -->
+        <div class="content-section">
+            <h2>提交历史记录</h2>
+            <div class="table-wrapper">
+                {% if records %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>提交时间</th>
+                            <th>状态</th>
+                            <th>代码片段</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in records %}
+                        <tr>
+                            <td>{{ row[0] }}</td>
+                            <td>{{ row[2] }}</td>
+                            <td>
+                                <span class="status-badge {{ 'accepted' if row[1] == 'Accepted' else 'wrong' }}">
+                                    {{ row[1] }}
+                                </span>
+                            </td>
+                            <td><pre>{{ row[3][:50] }}...</pre></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="empty-state">
+                    <div class="empty-state-icon">📝</div>
+                    <div class="empty-state-text">暂无提交记录</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+    <script>
+        // 主题切换功能
+        (function() {
+            // 从localStorage读取主题偏好
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-mode');
+            } else if (!savedTheme && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                // 如果没有保存的主题，检测系统偏好
+                document.body.classList.add('dark-mode');
+                localStorage.setItem('theme', 'dark');
+            }
+
+            // 监听系统主题变化
+            if (window.matchMedia) {
+                window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+                    if (!localStorage.getItem('theme')) {
+                        if (e.matches) {
+                            document.body.classList.add('dark-mode');
+                        } else {
+                            document.body.classList.remove('dark-mode');
+                        }
+                    }
+                });
+            }
+        })();
+
+        // 保存图表实例
+        let chartInstances = [];
+
+        // 主题切换功能（保留功能，可通过键盘快捷键触发）
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+            const isDark = document.body.classList.contains('dark-mode');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            
+            // 重新渲染图表以适配新主题
+            setTimeout(() => {
+                renderCharts();
+            }, 50); // 延迟一下确保CSS变量已更新
+        }
+
+        // 添加键盘快捷键：Ctrl+Shift+T 或 Cmd+Shift+T 切换主题
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'T') {
+                e.preventDefault();
+                toggleTheme();
+            }
+        });
+
+        // 加载统计数据
+        async function loadStats() {
+            try {
+                const res = await fetch('/api/profile');
+                if (!res.ok) throw new Error('加载资料失败');
+                const d = await res.json();
+                if (d.status !== 'success') throw new Error(d.message || '加载资料失败');
+                
+                const u = d.data || {};
+                document.getElementById('stat_total').innerText = u.total_answered || 0;
+                document.getElementById('stat_correct').innerText = u.correct_answered || 0;
+                document.getElementById('stat_acc').innerText = (u.accuracy || 0) + '%';
+                document.getElementById('stat_fc').innerText = (u.favorites_count || 0) + ' / ' + (u.mistakes_count || 0);
+            } catch (error) {
+                console.error('加载统计数据失败:', error);
+            }
+        }
+
+        // 渲染图表
+        async function renderCharts() {
+            try {
+                // 如果图表已存在，先销毁
+                chartInstances.forEach(chart => {
+                    if (chart && !chart.isDisposed()) {
+                        chart.dispose();
+                    }
+                });
+                chartInstances = [];
+
+                // 获取CSS变量
+                const getCSSVar = (varName) => {
+                    return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+                };
+                const isDark = document.body.classList.contains('dark-mode');
+                const primaryColor = isDark ? '#0a84ff' : '#007AFF';
+                const successColor = isDark ? '#30d158' : '#34c759';
+                const textColor = getCSSVar('--text-color');
+                const textSub = getCSSVar('--text-sub');
+                const bgColor = getCSSVar('--card-bg');
+
+                // 图表通用配置
+                const chartOption = {
+                    backgroundColor: 'transparent',
+                    textStyle: {
+                        color: textColor,
+                        fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif'
+                    },
+                    grid: {
+                        left: '3%',
+                        right: '4%',
+                        bottom: '10%',
+                        top: '10%',
+                        containLabel: true
+                    }
+                };
+
+                // 近30日学习趋势
+                const dailyRes = await fetch('/api/stats/daily?days=30');
+                const daily = (await dailyRes.json()).data || [];
+                const ec1 = echarts.init(document.getElementById('chartDaily'));
+                ec1.setOption({
+                    ...chartOption,
+                    title: { 
+                        text: '近30日学习趋势',
+                        left: 'center',
+                        top: 20,
+                        textStyle: { color: textColor, fontSize: 16, fontWeight: 600 }
+                    },
+                    tooltip: { 
+                        trigger: 'axis',
+                        backgroundColor: bgColor,
+                        borderColor: getCSSVar('--border-color'),
+                        textStyle: { color: textColor }
+                    },
+                    legend: { 
+                        data: ['作答数', '正确数'],
+                        bottom: 10,
+                        textStyle: { color: textSub }
+                    },
+                    xAxis: { 
+                        type: 'category',
+                        data: daily.map(x => x.date),
+                        axisLine: { lineStyle: { color: getCSSVar('--border-color') } },
+                        axisLabel: { color: textSub }
+                    },
+                    yAxis: { 
+                        type: 'value',
+                        axisLine: { lineStyle: { color: getCSSVar('--border-color') } },
+                        axisLabel: { color: textSub },
+                        splitLine: { lineStyle: { color: getCSSVar('--border-color'), opacity: 0.3 } }
+                    },
+                    series: [
+                        { 
+                            name: '作答数',
+                            type: 'line',
+                            data: daily.map(x => x.total),
+                            smooth: true,
+                            itemStyle: { color: primaryColor },
+                            lineStyle: { width: 3 }
+                        },
+                        { 
+                            name: '正确数',
+                            type: 'line',
+                            data: daily.map(x => x.correct),
+                            smooth: true,
+                            itemStyle: { color: successColor },
+                            lineStyle: { width: 3 }
+                        }
+                    ]
+                });
+
+                // 各科目掌握情况
+                const subRes = await fetch('/api/stats/by_subject');
+                const subs = (await subRes.json()).data || [];
+                const ec2 = echarts.init(document.getElementById('chartSubject'));
+                ec2.setOption({
+                    ...chartOption,
+                    title: { 
+                        text: '各科目掌握情况',
+                        left: 'center',
+                        top: 20,
+                        textStyle: { color: textColor, fontSize: 16, fontWeight: 600 }
+                    },
+                    tooltip: {
+                        trigger: 'axis',
+                        backgroundColor: bgColor,
+                        borderColor: getCSSVar('--border-color'),
+                        textStyle: { color: textColor }
+                    },
+                    legend: { 
+                        data: ['作答数', '正确率%'],
+                        bottom: 10,
+                        textStyle: { color: textSub }
+                    },
+                    xAxis: { 
+                        type: 'category',
+                        data: subs.map(x => x.subject),
+                        axisLine: { lineStyle: { color: getCSSVar('--border-color') } },
+                        axisLabel: { color: textSub, rotate: 15 }
+                    },
+                    yAxis: [
+                        { 
+                            type: 'value',
+                            name: '作答数',
+                            axisLine: { lineStyle: { color: getCSSVar('--border-color') } },
+                            axisLabel: { color: textSub },
+                            splitLine: { lineStyle: { color: getCSSVar('--border-color'), opacity: 0.3 } }
+                        },
+                        { 
+                            type: 'value',
+                            name: '正确率%',
+                            axisLine: { lineStyle: { color: getCSSVar('--border-color') } },
+                            axisLabel: { color: textSub, formatter: '{value}%' }
+                        }
+                    ],
+                    series: [
+                        { 
+                            name: '作答数',
+                            type: 'bar',
+                            data: subs.map(x => x.total),
+                            itemStyle: { color: primaryColor, borderRadius: [4, 4, 0, 0] }
+                        },
+                        { 
+                            name: '正确率%',
+                            type: 'line',
+                            yAxisIndex: 1,
+                            data: subs.map(x => (x.total ? Math.round(x.correct * 100 / x.total) : 0)),
+                            itemStyle: { color: successColor },
+                            lineStyle: { width: 3 }
+                        }
+                    ]
+                });
+
+                // 各题型掌握情况
+                const typeRes = await fetch('/api/stats/by_type');
+                const types = (await typeRes.json()).data || [];
+                const ec3 = echarts.init(document.getElementById('chartType'));
+                ec3.setOption({
+                    ...chartOption,
+                    title: { 
+                        text: '各题型掌握情况',
+                        left: 'center',
+                        top: 20,
+                        textStyle: { color: textColor, fontSize: 16, fontWeight: 600 }
+                    },
+                    tooltip: {
+                        trigger: 'axis',
+                        backgroundColor: bgColor,
+                        borderColor: getCSSVar('--border-color'),
+                        textStyle: { color: textColor }
+                    },
+                    legend: { 
+                        data: ['作答数', '正确率%'],
+                        bottom: 10,
+                        textStyle: { color: textSub }
+                    },
+                    xAxis: { 
+                        type: 'category',
+                        data: types.map(x => x.q_type),
+                        axisLine: { lineStyle: { color: getCSSVar('--border-color') } },
+                        axisLabel: { color: textSub, rotate: 15 }
+                    },
+                    yAxis: [
+                        { 
+                            type: 'value',
+                            name: '作答数',
+                            axisLine: { lineStyle: { color: getCSSVar('--border-color') } },
+                            axisLabel: { color: textSub },
+                            splitLine: { lineStyle: { color: getCSSVar('--border-color'), opacity: 0.3 } }
+                        },
+                        { 
+                            type: 'value',
+                            name: '正确率%',
+                            axisLine: { lineStyle: { color: getCSSVar('--border-color') } },
+                            axisLabel: { color: textSub, formatter: '{value}%' }
+                        }
+                    ],
+                    series: [
+                        { 
+                            name: '作答数',
+                            type: 'bar',
+                            data: types.map(x => x.total),
+                            itemStyle: { color: primaryColor, borderRadius: [4, 4, 0, 0] }
+                        },
+                        { 
+                            name: '正确率%',
+                            type: 'line',
+                            yAxisIndex: 1,
+                            data: types.map(x => (x.total ? Math.round(x.correct * 100 / x.total) : 0)),
+                            itemStyle: { color: successColor },
+                            lineStyle: { width: 3 }
+                        }
+                    ]
+                });
+
+                // 保存图表实例
+                chartInstances = [ec1, ec2, ec3];
+
+                // 响应式调整
+                window.addEventListener('resize', () => {
+                    chartInstances.forEach(chart => chart.resize());
+                });
+            } catch (e) {
+                console.error('渲染图表失败:', e);
+            }
+        }
+
+        // 初始化加载
+        loadStats();
+        renderCharts();
+    </script>
+</body>
+</html>

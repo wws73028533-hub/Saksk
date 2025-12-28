@@ -1,0 +1,1456 @@
+{% extends "admin/admin_base.html" %}
+
+{% block title %}通知管理{% endblock %}
+
+{% block head %}
+<style>
+    /* 使用基础模板的CSS变量，不再重复定义 */
+
+    .container { 
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(30px) saturate(180%);
+        -webkit-backdrop-filter: blur(30px) saturate(180%);
+        padding: 40px; 
+        border-radius: var(--radius-lg); 
+        box-shadow: var(--shadow-soft);
+        border: 0.5px solid var(--border-color);
+        animation: fadeIn 0.3s ease-in;
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    h1 { 
+        font-size: 24px; 
+        margin: 0; 
+        color: var(--text-color);
+        font-weight: 700;
+    }
+
+    .toolbar { 
+        display:flex; 
+        justify-content: space-between; 
+        align-items: center; 
+        gap: 16px; 
+        margin-bottom: 24px; 
+        flex-wrap: wrap; 
+    }
+
+    .toolbar-left { 
+        display:flex; 
+        align-items:center; 
+        gap: 16px; 
+        flex-wrap: wrap;
+    }
+
+    .toolbar-right { 
+        display:flex; 
+        align-items:center; 
+        gap: 10px; 
+        flex-wrap: wrap;
+    }
+
+    /* 搜索和筛选栏 */
+    .filter-bar {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+        align-items: flex-start;
+    }
+
+    .search-box {
+        position: relative;
+        flex: 1 1 300px;
+        min-width: 250px;
+        max-width: 100%;
+    }
+
+    .search-box input {
+        width: 100%;
+        padding: 10px 14px;
+        border: 0.5px solid var(--border-color);
+        border-radius: var(--radius-md);
+        font-size: 14px;
+        transition: all 0.2s;
+        box-sizing: border-box;
+    }
+
+    .search-box input:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px var(--primary-light);
+    }
+
+    .search-icon {
+        display: none;
+    }
+
+    .clear-search {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: var(--text-sub);
+        cursor: pointer;
+        padding: 4px;
+        display: none;
+        font-size: 18px;
+        line-height: 1;
+    }
+
+    .clear-search:hover {
+        color: var(--text-color);
+    }
+
+    .filter-group {
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .filter-label {
+        font-size: 14px;
+        color: var(--text-sub);
+        font-weight: 500;
+        line-height: 32px;
+        white-space: nowrap;
+    }
+
+    .filter-chips {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .filter-chip {
+        padding: 6px 14px;
+        border: 1px solid var(--border-color);
+        border-radius: 20px;
+        font-size: 13px;
+        cursor: pointer;
+        transition: all 0.2s;
+        background: rgba(255, 255, 255, 0.7);
+        color: var(--text-sub);
+        font-weight: 500;
+        white-space: nowrap;
+        line-height: 1.5;
+    }
+
+    .filter-chip:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+    }
+
+    .filter-chip.active {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+
+    /* 黑暗模式下的筛选按钮样式 */
+    [data-theme="dark"] .filter-chip {
+        background: rgba(28, 28, 30, 0.6);
+        color: var(--text-color);
+        border-color: var(--border-color);
+    }
+
+    [data-theme="dark"] .filter-chip:hover {
+        background: rgba(28, 28, 30, 0.8);
+        border-color: var(--primary);
+        color: var(--primary);
+    }
+
+    [data-theme="dark"] .filter-chip.active {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+
+    /* 统计卡片 */
+    .stats-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+
+    .stat-card {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(30px) saturate(180%);
+        -webkit-backdrop-filter: blur(30px) saturate(180%);
+        padding: 20px;
+        border-radius: var(--radius-lg);
+        color: var(--text-color);
+        box-shadow: var(--shadow-soft);
+        border: 0.5px solid var(--border-color);
+        min-height: 80px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow);
+        border-color: rgba(0, 0, 0, 0.12);
+    }
+
+    .stat-card.info, .stat-card.success, .stat-card.warning, .stat-card.danger {
+        background: rgba(255, 255, 255, 0.7);
+    }
+
+    .stat-label {
+        font-size: 13px;
+        opacity: 0.9;
+        margin-bottom: 8px;
+        line-height: 1.4;
+    }
+
+    .stat-value {
+        font-size: 28px;
+        font-weight: 600;
+        line-height: 1;
+        letter-spacing: -0.5px;
+    }
+
+    input[type="text"], input[type="datetime-local"], input[type="number"], textarea, select { 
+        padding: 10px 12px; 
+        border:1px solid var(--border-color); 
+        border-radius:8px; 
+        font-size:14px;
+        transition: all 0.2s;
+    }
+
+    input:focus, textarea:focus, select:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px var(--primary-light);
+    }
+
+    textarea { 
+        resize: vertical; 
+        min-height: 100px;
+        font-family: inherit;
+    }
+
+    /* 表格样式优化 */
+    .table-wrapper {
+        overflow-x: auto;
+        border-radius: var(--radius-lg);
+        border: 0.5px solid var(--border-color);
+        margin-top: 24px;
+        clear: both;
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(30px) saturate(180%);
+        -webkit-backdrop-filter: blur(30px) saturate(180%);
+        box-shadow: var(--shadow-soft);
+    }
+
+    table { 
+        width:100%; 
+        border-collapse:collapse; 
+    }
+
+    th, td { 
+        padding: 14px 16px; 
+        border-bottom:1px solid var(--border-color); 
+        text-align:left; 
+    }
+
+    thead th { 
+        background: rgba(142, 142, 147, 0.06);
+        font-weight:600; 
+        color: var(--text-color);
+        font-size: 13px;
+        text-transform: none;
+        letter-spacing: -0.01em;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+
+    tbody tr {
+        transition: background-color 0.15s;
+    }
+
+    tbody tr:hover { 
+        background: rgba(142, 142, 147, 0.12); 
+    }
+
+    tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .actions { 
+        display:flex; 
+        gap: 6px; 
+        flex-wrap: wrap; 
+        align-items: center;
+    }
+
+    /* 操作按钮下拉菜单 */
+    .action-menu-wrapper {
+        position: relative;
+        display: inline-block;
+    }
+    
+    .btn-sm {
+        padding: 8px 16px;
+        min-height: 36px;
+        font-size: 14px;
+        border-radius: var(--radius-md);
+        border: none;
+        cursor: pointer;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .btn-sm:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .btn-action {
+        background: rgba(142, 142, 147, 0.1);
+        color: var(--text-color);
+        border: 0.5px solid var(--border-color);
+        position: relative;
+        padding: 8px 20px;
+        min-width: 80px;
+    }
+    
+    .btn-action::after {
+        content: '';
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 0;
+        height: 0;
+        border-left: 4px solid transparent;
+        border-right: 4px solid transparent;
+        border-top: 5px solid var(--text-color);
+        opacity: 0.6;
+    }
+    
+    .btn-action:hover {
+        background: rgba(142, 142, 147, 0.15);
+        border-color: var(--border-color);
+    }
+    
+    .action-menu {
+        display: none;
+        position: absolute;
+        right: 0;
+        top: calc(100% + 4px);
+        background: var(--card-bg);
+        backdrop-filter: blur(30px) saturate(180%);
+        -webkit-backdrop-filter: blur(30px) saturate(180%);
+        border: 0.5px solid var(--border-color);
+        border-radius: var(--radius-md);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+        min-width: 120px;
+        z-index: 1000;
+        overflow: hidden;
+    }
+    
+    .action-menu.show {
+        display: block;
+        animation: slideDown 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-8px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .action-menu-item {
+        display: block;
+        width: 100%;
+        padding: 12px 16px;
+        text-align: left;
+        background: none;
+        border: none;
+        color: var(--text-color);
+        font-size: 14px;
+        cursor: pointer;
+        transition: background 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        border-radius: 0;
+    }
+    
+    .action-menu-item:hover {
+        background: rgba(142, 142, 147, 0.1);
+    }
+    
+    .action-menu-item:first-child {
+        border-radius: var(--radius-md) var(--radius-md) 0 0;
+    }
+    
+    .action-menu-item:last-child {
+        border-radius: 0 0 var(--radius-md) var(--radius-md);
+    }
+    
+    .action-menu-item.danger {
+        color: var(--danger);
+    }
+    
+    .action-menu-item.danger:hover {
+        background: rgba(255, 59, 48, 0.1);
+    }
+    
+    .action-menu-divider {
+        height: 0.5px;
+        background: var(--border-color);
+        margin: 4px 0;
+    }
+
+    /* 黑暗模式下的操作按钮 */
+    [data-theme="dark"] .btn-action {
+        background: rgba(28, 28, 30, 0.6);
+        border-color: var(--border-color);
+    }
+
+    [data-theme="dark"] .btn-action:hover {
+        background: rgba(28, 28, 30, 0.8);
+    }
+
+    [data-theme="dark"] .action-menu {
+        background: rgba(28, 28, 30, 0.9);
+        border-color: var(--border-color);
+    }
+
+    .actions button {
+        font-size: 13px;
+        padding: 6px 12px;
+    }
+
+    .muted { 
+        color: var(--text-sub); 
+        font-size: 13px; 
+    }
+
+    .tag { 
+        display:inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding:4px 12px; 
+        border-radius: 12px; 
+        font-size: 12px; 
+        font-weight: 600;
+        letter-spacing: 0.3px;
+    }
+
+    .tag-info { background:#dbeafe; color:#1e40af; }
+    .tag-announcement { background:#cffafe; color:#0e7490; }
+    .tag-reminder { background:#fef3c7; color:#92400e; }
+    .tag-warning { background:#fee2e2; color:#991b1b; }
+    .tag-active { background:#d1fae5; color:#065f46; }
+    .tag-inactive { background:#f3f4f6; color:#4b5563; }
+
+    .content-preview { 
+        max-width: 300px; 
+        overflow: hidden; 
+        text-overflow: ellipsis; 
+        white-space: nowrap;
+        color: var(--text-sub);
+        font-size: 14px;
+    }
+
+    .priority-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        font-weight: 700;
+        font-size: 13px;
+    }
+
+    .priority-high { background: #fee2e2; color: #991b1b; }
+    .priority-medium { background: #fef3c7; color: #92400e; }
+    .priority-low { background: #f3f4f6; color: #6b7280; }
+
+    /* 弹窗样式优化 */
+    .modal-overlay { 
+        display:none; 
+        position: fixed; 
+        inset: 0; 
+        background: rgba(0,0,0,.6); 
+        align-items:center; 
+        justify-content:center; 
+        z-index: 1000;
+        backdrop-filter: blur(4px);
+        animation: fadeInOverlay 0.2s ease-out;
+    }
+
+    @keyframes fadeInOverlay {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    .modal { 
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(40px) saturate(180%);
+        -webkit-backdrop-filter: blur(40px) saturate(180%);
+        padding: 32px; 
+        border-radius: var(--radius-xl); 
+        width: 560px; 
+        max-width: 90vw; 
+        max-height: 90vh; 
+        overflow-y: auto;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+        border: 0.5px solid var(--border-color);
+        animation: slideUp 0.3s ease-out;
+    }
+
+    @keyframes slideUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .modal h3 { 
+        margin: 0 0 24px; 
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--text-color);
+    }
+
+    .form-group { 
+        margin-bottom: 20px; 
+    }
+
+    .form-group label { 
+        display: block; 
+        margin-bottom: 8px; 
+        font-weight: 600; 
+        color: var(--text-color); 
+        font-size: 14px; 
+    }
+
+    .form-group label .required {
+        color: var(--danger);
+        margin-left: 2px;
+    }
+
+    .form-group input, .form-group select, .form-group textarea { 
+        width: 100%; 
+        box-sizing: border-box; 
+    }
+
+    .form-row { 
+        display: flex; 
+        gap: 16px; 
+    }
+
+    .form-row .form-group { 
+        flex: 1; 
+    }
+
+    .modal-actions { 
+        display:flex; 
+        gap:12px; 
+        justify-content:flex-end; 
+        margin-top: 24px; 
+        padding-top: 20px; 
+        border-top: 1px solid var(--border-color); 
+    }
+
+    /* 通知类型选择器优化 */
+    .type-selector { 
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+
+    .type-option { 
+        display: flex; 
+        align-items: center; 
+        gap: 10px; 
+        padding: 12px 16px; 
+        border: 2px solid var(--border-color); 
+        border-radius: 10px; 
+        cursor: pointer; 
+        transition: all 0.2s;
+        background: white;
+    }
+
+    .type-option:hover { 
+        border-color: #9ca3af;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    }
+
+    .type-option.selected { 
+        border-color: var(--primary); 
+        background: #eef2ff;
+        box-shadow: 0 0 0 3px var(--primary-light);
+    }
+
+    .type-option input { 
+        display: none; 
+    }
+
+    .type-dot { 
+        width: 16px; 
+        height: 16px; 
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+
+    .type-dot.info { background: #3b82f6; }
+    .type-dot.announcement { background: #06b6d4; }
+    .type-dot.reminder { background: #f59e0b; }
+    .type-dot.warning { background: #ef4444; }
+
+    .type-label {
+        font-weight: 600;
+        font-size: 14px;
+        color: var(--text-color);
+    }
+
+    /* 分页样式 */
+    .pagination {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 8px;
+        margin-top: 24px;
+        padding-top: 20px;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .pagination button {
+        padding: 8px 12px;
+        border: 1px solid var(--border-color);
+        background: white;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.2s;
+    }
+
+    .pagination button:hover:not(:disabled) {
+        border-color: var(--primary);
+        color: var(--primary);
+    }
+
+    .pagination button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .pagination .page-info {
+        padding: 0 12px;
+        font-size: 14px;
+        color: var(--text-sub);
+    }
+
+    /* 空状态 */
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: var(--text-sub);
+    }
+
+    .empty-state-icon {
+        display: none;
+    }
+
+    .empty-state-text {
+        font-size: 16px;
+        margin-bottom: 8px;
+        color: var(--text-color);
+    }
+
+    .empty-state-hint {
+        font-size: 14px;
+    }
+
+    /* 加载动画 */
+    .loading {
+        text-align: center;
+        padding: 40px;
+        color: var(--text-sub);
+    }
+
+    .loading-spinner {
+        display: inline-block;
+        width: 40px;
+        height: 40px;
+        border: 4px solid var(--border-color);
+        border-top-color: var(--primary);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    /* 响应式设计 */
+    @media (max-width: 1024px) {
+        .stats-row { 
+            grid-template-columns: repeat(2, 1fr); 
+        }
+        .filter-bar {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        .search-box {
+            max-width: 100%;
+            flex: 1 1 100%;
+        }
+        .filter-group {
+            width: 100%;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .container { padding: 16px; }
+        .toolbar { 
+            flex-direction: column; 
+            align-items: stretch;
+            gap: 12px;
+        }
+        .toolbar-left, .toolbar-right { 
+            width: 100%; 
+            justify-content: space-between; 
+        }
+        .filter-bar { 
+            flex-direction: column;
+            align-items: stretch;
+            gap: 16px;
+        }
+        .search-box { 
+            max-width: 100%;
+            flex: 1 1 100%;
+        }
+        .filter-group {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 10px;
+        }
+        .filter-label {
+            line-height: 1.5;
+        }
+        .stats-row { 
+            grid-template-columns: 1fr; 
+            gap: 12px;
+        }
+        .type-selector { grid-template-columns: 1fr; }
+        .form-row { flex-direction: column; }
+        .table-wrapper { 
+            font-size: 13px;
+            overflow-x: auto;
+        }
+        th, td { padding: 10px 8px; }
+        .actions { 
+            flex-direction: column;
+            gap: 4px;
+        }
+        .actions button { width: 100%; }
+    }
+
+    @media (max-width: 480px) {
+        .container { padding: 12px; }
+        h1 { font-size: 20px; }
+        .stat-value { font-size: 28px; }
+        .filter-chip { 
+            font-size: 12px;
+            padding: 5px 12px;
+        }
+    }
+
+    /* 字符计数器 */
+    .char-counter {
+        text-align: right;
+        font-size: 12px;
+        color: var(--text-sub);
+        margin-top: 4px;
+    }
+
+    .char-counter.warning {
+        color: var(--warning);
+    }
+
+    .char-counter.danger {
+        color: var(--danger);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="toolbar">
+        <div class="toolbar-left">
+            <h1>通知管理</h1>
+        </div>
+        <div class="toolbar-right">
+            <button class="btn-outline" onclick="refreshData()">刷新</button>
+            <button class="btn-primary" onclick="openCreate()">新建通知</button>
+        </div>
+    </div>
+
+    <!-- 统计卡片 -->
+    <div class="stats-row" id="statsRow"></div>
+
+    <!-- 搜索和筛选栏 -->
+    <div class="filter-bar">
+        <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="searchInput" placeholder="       搜索标题或内容..." oninput="handleSearch()">
+            <button class="clear-search" id="clearSearch" onclick="clearSearch()">×</button>
+        </div>
+    </div>
+    
+    <div class="filter-bar" style="margin-top: -8px;">
+        <div class="filter-group">
+            <span class="filter-label">类型:</span>
+            <div class="filter-chips">
+                <button class="filter-chip active" data-type="all" onclick="filterByType('all')">全部</button>
+                <button class="filter-chip" data-type="info" onclick="filterByType('info')">信息</button>
+                <button class="filter-chip" data-type="announcement" onclick="filterByType('announcement')">公告</button>
+                <button class="filter-chip" data-type="reminder" onclick="filterByType('reminder')">提醒</button>
+                <button class="filter-chip" data-type="warning" onclick="filterByType('warning')">警告</button>
+            </div>
+        </div>
+
+        <div class="filter-group">
+            <span class="filter-label">状态:</span>
+            <div class="filter-chips">
+                <button class="filter-chip active" data-status="all" onclick="filterByStatus('all')">全部</button>
+                <button class="filter-chip" data-status="active" onclick="filterByStatus('active')">启用</button>
+                <button class="filter-chip" data-status="inactive" onclick="filterByStatus('inactive')">禁用</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 表格 -->
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:50px;">ID</th>
+                    <th style="width:140px;">类型</th>
+                    <th>标题</th>
+                    <th>内容预览</th>
+                    <th style="width:80px;">优先级</th>
+                    <th style="width:90px;">状态</th>
+                    <th style="width:160px;">创建时间</th>
+                    <th style="width:100px;">操作</th>
+                </tr>
+            </thead>
+            <tbody id="tbody">
+                <tr>
+                    <td colspan="8" class="loading">
+                        <div class="loading-spinner"></div>
+                        <div style="margin-top: 12px;">加载中...</div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 分页 -->
+    <div class="pagination" id="pagination" style="display: none;">
+        <button onclick="changePage('first')" id="btnFirst">首页</button>
+        <button onclick="changePage('prev')" id="btnPrev">上一页</button>
+        <span class="page-info" id="pageInfo">第 1 页 / 共 1 页</span>
+        <button onclick="changePage('next')" id="btnNext">下一页</button>
+        <button onclick="changePage('last')" id="btnLast">末页</button>
+    </div>
+</div>
+
+<!-- 新建/编辑弹窗 -->
+<div id="dlgEdit" class="modal-overlay">
+    <div class="modal">
+        <h3 id="dlgTitle">新建通知</h3>
+        <input type="hidden" id="editId">
+
+        <div class="form-group">
+            <label>通知类型 <span class="required">*</span></label>
+            <div class="type-selector" id="typeSelector">
+                <label class="type-option selected" onclick="selectType('info')">
+                    <input type="radio" name="n_type" value="info" checked>
+                    <span class="type-dot info"></span>
+                    <span class="type-label">信息</span>
+                </label>
+                <label class="type-option" onclick="selectType('announcement')">
+                    <input type="radio" name="n_type" value="announcement">
+                    <span class="type-dot announcement"></span>
+                    <span class="type-label">公告</span>
+                </label>
+                <label class="type-option" onclick="selectType('reminder')">
+                    <input type="radio" name="n_type" value="reminder">
+                    <span class="type-dot reminder"></span>
+                    <span class="type-label">提醒</span>
+                </label>
+                <label class="type-option" onclick="selectType('warning')">
+                    <input type="radio" name="n_type" value="warning">
+                    <span class="type-dot warning"></span>
+                    <span class="type-label">警告</span>
+                </label>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>标题 <span class="required">*</span></label>
+            <input type="text" id="editTitle" placeholder="请输入通知标题" maxlength="100" oninput="updateCharCount('editTitle', 'titleCount', 100)">
+            <div class="char-counter" id="titleCount">0 / 100</div>
+        </div>
+
+        <div class="form-group">
+            <label>内容 <span class="required">*</span></label>
+            <textarea id="editContent" placeholder="请输入通知内容" maxlength="500" oninput="updateCharCount('editContent', 'contentCount', 500)"></textarea>
+            <div class="char-counter" id="contentCount">0 / 500</div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>优先级</label>
+                <input type="number" id="editPriority" value="0" min="0" max="100" placeholder="0-100">
+                <div class="muted" style="margin-top: 4px;">数字越大优先级越高</div>
+            </div>
+            <div class="form-group">
+                <label>状态</label>
+                <select id="editActive">
+                    <option value="1">✅ 启用</option>
+                    <option value="0">❌ 禁用</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>开始时间</label>
+                <input type="datetime-local" id="editStartAt">
+                <div class="muted" style="margin-top: 4px;">可选,留空表示立即生效</div>
+            </div>
+            <div class="form-group">
+                <label>结束时间</label>
+                <input type="datetime-local" id="editEndAt">
+                <div class="muted" style="margin-top: 4px;">可选,留空表示永久有效</div>
+            </div>
+        </div>
+
+        <div class="modal-actions">
+            <button class="btn-outline" onclick="closeEdit()">取消</button>
+            <button class="btn-primary" onclick="saveNotification()" id="btnSave">保存</button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const TYPE_LABELS = {
+        info: '信息',
+        announcement: '公告',
+        reminder: '提醒',
+        warning: '警告'
+    };
+
+    const TYPE_ICONS = {
+        info: '',
+        announcement: '',
+        reminder: '',
+        warning: ''
+    };
+
+    // 全局状态
+    let allNotifications = [];
+    let filteredNotifications = [];
+    let currentPage = 1;
+    const pageSize = 10;
+    let currentTypeFilter = 'all';
+    let currentStatusFilter = 'all';
+    let searchKeyword = '';
+
+    function qs(sel) { return document.querySelector(sel); }
+    function getVal(id) { return document.getElementById(id).value.trim(); }
+
+    async function loadNotifications() {
+        try {
+            const res = await fetch('/admin/api/notifications');
+            const js = await res.json();
+            if (!res.ok || js.status !== 'success') {
+                showError(js.message || '加载失败');
+                return;
+            }
+            allNotifications = js.notifications || [];
+            applyFilters();
+            renderStats();
+        } catch (e) {
+            console.error('加载通知失败:', e);
+            showError('加载通知失败');
+        }
+    }
+
+    function refreshData() {
+        showLoading();
+        loadNotifications();
+    }
+
+    function showLoading() {
+        const tb = document.getElementById('tbody');
+        tb.innerHTML = `<tr><td colspan="8" class="loading">
+            <div class="loading-spinner"></div>
+            <div style="margin-top: 12px;">加载中...</div>
+        </td></tr>`;
+    }
+
+    function showError(msg) {
+        const tb = document.getElementById('tbody');
+            tb.innerHTML = `<tr><td colspan="8" class="empty-state">
+                <div class="empty-state-text">加载失败</div>
+                <div class="empty-state-hint">${escapeHtml(msg)}</div>
+            </td></tr>`;
+    }
+
+    // 渲染统计卡片
+    function renderStats() {
+        const total = allNotifications.length;
+        const active = allNotifications.filter(n => n.is_active).length;
+        const inactive = total - active;
+        const highPriority = allNotifications.filter(n => n.priority >= 50).length;
+
+        const statsHtml = `
+            <div class="stat-card info">
+                <div class="stat-label">总通知数</div>
+                <div class="stat-value">${total}</div>
+            </div>
+            <div class="stat-card success">
+                <div class="stat-label">已启用</div>
+                <div class="stat-value">${active}</div>
+            </div>
+            <div class="stat-card warning">
+                <div class="stat-label">已禁用</div>
+                <div class="stat-value">${inactive}</div>
+            </div>
+            <div class="stat-card danger">
+                <div class="stat-label">高优先级 (≥50)</div>
+                <div class="stat-value">${highPriority}</div>
+            </div>
+        `;
+        
+        qs('#statsRow').innerHTML = statsHtml;
+    }
+
+    // 应用筛选
+    function applyFilters() {
+        filteredNotifications = allNotifications.filter(n => {
+            // 类型筛选
+            if (currentTypeFilter !== 'all' && n.n_type !== currentTypeFilter) {
+                return false;
+            }
+            
+            // 状态筛选
+            if (currentStatusFilter === 'active' && !n.is_active) {
+                return false;
+            }
+            if (currentStatusFilter === 'inactive' && n.is_active) {
+                return false;
+            }
+            
+            // 搜索关键词
+            if (searchKeyword) {
+                const keyword = searchKeyword.toLowerCase();
+                const title = (n.title || '').toLowerCase();
+                const content = (n.content || '').toLowerCase();
+                if (!title.includes(keyword) && !content.includes(keyword)) {
+                    return false;
+                }
+            }
+            
+            return true;
+        });
+        
+        currentPage = 1;
+        renderTable();
+    }
+
+    // 搜索处理
+    function handleSearch() {
+        const input = qs('#searchInput');
+        searchKeyword = input.value.trim();
+        const clearBtn = qs('#clearSearch');
+        clearBtn.style.display = searchKeyword ? 'block' : 'none';
+        applyFilters();
+    }
+
+    function clearSearch() {
+        qs('#searchInput').value = '';
+        searchKeyword = '';
+        qs('#clearSearch').style.display = 'none';
+        applyFilters();
+    }
+
+    // 类型筛选
+    function filterByType(type) {
+        currentTypeFilter = type;
+        document.querySelectorAll('[data-type]').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.type === type);
+        });
+        applyFilters();
+    }
+
+    // 状态筛选
+    function filterByStatus(status) {
+        currentStatusFilter = status;
+        document.querySelectorAll('[data-status]').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.status === status);
+        });
+        applyFilters();
+    }
+
+    // 分页处理
+    function changePage(action) {
+        const totalPages = Math.ceil(filteredNotifications.length / pageSize);
+        
+        switch(action) {
+            case 'first':
+                currentPage = 1;
+                break;
+            case 'prev':
+                if (currentPage > 1) currentPage--;
+                break;
+            case 'next':
+                if (currentPage < totalPages) currentPage++;
+                break;
+            case 'last':
+                currentPage = totalPages;
+                break;
+        }
+        
+        renderTable();
+    }
+
+    function renderTable() {
+        const tb = document.getElementById('tbody');
+        const totalPages = Math.ceil(filteredNotifications.length / pageSize);
+        
+        if (filteredNotifications.length === 0) {
+            tb.innerHTML = `<tr><td colspan="8" class="empty-state">
+                <div class="empty-state-text">暂无通知</div>
+                <div class="empty-state-hint">点击"新建通知"按钮创建第一条通知</div>
+            </td></tr>`;
+            qs('#pagination').style.display = 'none';
+            return;
+        }
+
+        // 分页数据
+        const start = (currentPage - 1) * pageSize;
+        const end = start + pageSize;
+        const pageData = filteredNotifications.slice(start, end);
+
+        tb.innerHTML = pageData.map(n => {
+            const typeClass = `tag-${n.n_type || 'info'}`;
+            const statusClass = n.is_active ? 'tag-active' : 'tag-inactive';
+            const statusText = n.is_active ? '启用' : '禁用';
+            const icon = TYPE_ICONS[n.n_type] || 'ℹ️';
+            
+            // 优先级徽章
+            let priorityClass = 'priority-low';
+            if (n.priority >= 70) priorityClass = 'priority-high';
+            else if (n.priority >= 30) priorityClass = 'priority-medium';
+
+            return `<tr>
+                <td>${n.id}</td>
+                <td><span class="tag ${typeClass}">${TYPE_LABELS[n.n_type] || n.n_type}</span></td>
+                <td><strong>${escapeHtml(n.title)}</strong></td>
+                <td class="content-preview" title="${escapeHtml(n.content)}">${escapeHtml(n.content)}</td>
+                <td><span class="priority-badge ${priorityClass}">${n.priority || 0}</span></td>
+                <td><span class="tag ${statusClass}">${statusText}</span></td>
+                <td class="muted">${formatDate(n.created_at)}</td>
+                <td class="actions">
+                    <div class="action-menu-wrapper">
+                        <button class="btn-sm btn-action" onclick="toggleActionMenu(${n.id}, event)" title="操作">操作</button>
+                        <div class="action-menu" id="actionMenu_${n.id}">
+                            <button class="action-menu-item" onclick="openEdit(${n.id}); closeActionMenu(${n.id})">编辑</button>
+                            <button class="action-menu-item" onclick="toggleActive(${n.id}); closeActionMenu(${n.id})">${n.is_active ? '禁用' : '启用'}</button>
+                            <div class="action-menu-divider"></div>
+                            <button class="action-menu-item danger" onclick="deleteNotification(${n.id}); closeActionMenu(${n.id})">删除</button>
+                        </div>
+                    </div>
+                </td>
+            </tr>`;
+        }).join('');
+
+        // 更新分页控件
+        if (totalPages > 1) {
+            qs('#pagination').style.display = 'flex';
+            qs('#pageInfo').innerText = `第 ${currentPage} 页 / 共 ${totalPages} 页 (共 ${filteredNotifications.length} 条)`;
+            qs('#btnFirst').disabled = currentPage === 1;
+            qs('#btnPrev').disabled = currentPage === 1;
+            qs('#btnNext').disabled = currentPage === totalPages;
+            qs('#btnLast').disabled = currentPage === totalPages;
+        } else {
+            qs('#pagination').style.display = 'none';
+        }
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text || '';
+        return div.innerHTML;
+    }
+
+    function formatDate(dateStr) {
+        if (!dateStr) return '';
+        try {
+            const d = new Date(dateStr);
+            return d.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+        } catch (e) {
+            return dateStr;
+        }
+    }
+
+    // 字符计数器
+    function updateCharCount(inputId, counterId, maxLength) {
+        const input = document.getElementById(inputId);
+        const counter = document.getElementById(counterId);
+        const length = input.value.length;
+        counter.textContent = `${length} / ${maxLength}`;
+        
+        counter.classList.remove('warning', 'danger');
+        if (length > maxLength * 0.9) {
+            counter.classList.add('danger');
+        } else if (length > maxLength * 0.7) {
+            counter.classList.add('warning');
+        }
+    }
+
+    function selectType(type) {
+        document.querySelectorAll('.type-option').forEach(el => {
+            const input = el.querySelector('input');
+            if (input.value === type) {
+                el.classList.add('selected');
+                input.checked = true;
+            } else {
+                el.classList.remove('selected');
+                input.checked = false;
+            }
+        });
+    }
+
+    function openCreate() {
+        qs('#dlgTitle').innerText = '新建通知';
+        qs('#editId').value = '';
+        qs('#editTitle').value = '';
+        qs('#editContent').value = '';
+        qs('#editPriority').value = '0';
+        qs('#editActive').value = '1';
+        qs('#editStartAt').value = '';
+        qs('#editEndAt').value = '';
+        selectType('info');
+        updateCharCount('editTitle', 'titleCount', 100);
+        updateCharCount('editContent', 'contentCount', 500);
+        qs('#dlgEdit').style.display = 'flex';
+    }
+
+    async function openEdit(id) {
+        try {
+            const res = await fetch(`/admin/api/notifications/${id}`);
+            const js = await res.json();
+            if (!res.ok || js.status !== 'success') {
+                alert(js.message || '获取通知失败');
+                return;
+            }
+
+            const n = js.notification;
+            qs('#dlgTitle').innerText = '编辑通知';
+            qs('#editId').value = n.id;
+            qs('#editTitle').value = n.title || '';
+            qs('#editContent').value = n.content || '';
+            qs('#editPriority').value = n.priority || 0;
+            qs('#editActive').value = n.is_active ? '1' : '0';
+            qs('#editStartAt').value = formatDateTimeLocal(n.start_at);
+            qs('#editEndAt').value = formatDateTimeLocal(n.end_at);
+            selectType(n.n_type || 'info');
+            updateCharCount('editTitle', 'titleCount', 100);
+            updateCharCount('editContent', 'contentCount', 500);
+            qs('#dlgEdit').style.display = 'flex';
+        } catch (e) {
+            console.error('获取通知失败:', e);
+            alert('获取通知失败');
+        }
+    }
+
+    function formatDateTimeLocal(dateStr) {
+        if (!dateStr) return '';
+        try {
+            const d = new Date(dateStr);
+            return d.toISOString().slice(0, 16);
+        } catch (e) {
+            return '';
+        }
+    }
+
+    function closeEdit() {
+        qs('#dlgEdit').style.display = 'none';
+    }
+
+    async function saveNotification() {
+        const id = qs('#editId').value;
+        const title = getVal('editTitle');
+        const content = getVal('editContent');
+        const n_type = qs('input[name="n_type"]:checked').value;
+        const priority = parseInt(qs('#editPriority').value) || 0;
+        const is_active = qs('#editActive').value === '1';
+        const start_at = qs('#editStartAt').value || null;
+        const end_at = qs('#editEndAt').value || null;
+
+        if (!title) {
+            alert('⚠️ 请填写标题');
+            qs('#editTitle').focus();
+            return;
+        }
+
+        if (!content) {
+            alert('⚠️ 请填写内容');
+            qs('#editContent').focus();
+            return;
+        }
+
+        if (priority < 0 || priority > 100) {
+            alert('⚠️ 优先级必须在 0-100 之间');
+            qs('#editPriority').focus();
+            return;
+        }
+
+        const data = { title, content, n_type, priority, is_active, start_at, end_at };
+        const btnSave = qs('#btnSave');
+        const originalText = btnSave.textContent;
+        btnSave.disabled = true;
+        btnSave.textContent = '保存中...';
+
+        try {
+            const url = id ? `/admin/api/notifications/${id}` : '/admin/api/notifications';
+            const method = id ? 'PUT' : 'POST';
+
+            const res = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            const js = await res.json();
+            if (!res.ok || js.status !== 'success') {
+                alert('❌ ' + (js.message || '保存失败'));
+                return;
+            }
+
+            alert('✅ ' + (js.message || '保存成功'));
+            closeEdit();
+            loadNotifications();
+        } catch (e) {
+            console.error('保存通知失败:', e);
+            alert('❌ 保存通知失败');
+        } finally {
+            btnSave.disabled = false;
+            btnSave.textContent = originalText;
+        }
+    }
+
+    async function toggleActive(id) {
+        try {
+            const res = await fetch(`/admin/api/notifications/${id}/toggle`, { method: 'POST' });
+            const js = await res.json();
+            if (!res.ok || js.status !== 'success') {
+                alert('❌ ' + (js.message || '操作失败'));
+                return;
+            }
+            loadNotifications();
+        } catch (e) {
+            console.error('切换状态失败:', e);
+            alert('❌ 切换状态失败');
+        }
+    }
+
+    // 操作菜单控制
+    function toggleActionMenu(notificationId, event) {
+        event.stopPropagation();
+        const menuId = `actionMenu_${notificationId}`;
+        const menu = document.getElementById(menuId);
+        const allMenus = document.querySelectorAll('.action-menu.show');
+        
+        // 关闭其他所有菜单
+        allMenus.forEach(m => {
+            if (m.id !== menuId) {
+                m.classList.remove('show');
+            }
+        });
+        
+        // 切换当前菜单
+        if (menu) {
+            menu.classList.toggle('show');
+        }
+    }
+    
+    function closeActionMenu(notificationId) {
+        const menu = document.getElementById(`actionMenu_${notificationId}`);
+        if (menu) {
+            menu.classList.remove('show');
+        }
+    }
+    
+    // 点击外部区域关闭所有菜单
+    document.addEventListener('click', function(event) {
+        if (!event.target.closest('.action-menu-wrapper')) {
+            document.querySelectorAll('.action-menu.show').forEach(menu => {
+                menu.classList.remove('show');
+            });
+        }
+    });
+    
+    // ESC键关闭菜单
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            document.querySelectorAll('.action-menu.show').forEach(menu => {
+                menu.classList.remove('show');
+            });
+        }
+    });
+
+    async function deleteNotification(id) {
+        if (!confirm('⚠️ 确定要删除这条通知吗?\n\n删除后将无法恢复!')) return;
+
+        try {
+            const res = await fetch(`/admin/api/notifications/${id}`, { method: 'DELETE' });
+            const js = await res.json();
+            if (!res.ok || js.status !== 'success') {
+                alert('❌ ' + (js.message || '删除失败'));
+                return;
+            }
+            alert('✅ ' + (js.message || '删除成功'));
+            loadNotifications();
+        } catch (e) {
+            console.error('删除通知失败:', e);
+            alert('❌ 删除通知失败');
+        }
+    }
+
+    // 点击弹窗外部关闭
+    qs('#dlgEdit').addEventListener('click', function(e) {
+        if (e.target === this) closeEdit();
+    });
+
+    // 初始化
+    loadNotifications();
+</script>
+{% endblock %}

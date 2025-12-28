@@ -1,0 +1,985 @@
+{% extends "admin_base.html" %}
+
+{% block title %}用户管理{% endblock %}
+
+{% block head %}
+<style>
+    .container { 
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(30px) saturate(180%);
+        -webkit-backdrop-filter: blur(30px) saturate(180%);
+        padding: 40px; 
+        border-radius: var(--radius-lg); 
+        box-shadow: var(--shadow-soft);
+        border: 0.5px solid var(--border-color);
+    }
+    h1 { font-size: 22px; margin: 0; }
+    .toolbar { display:flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+    .toolbar-left { display:flex; align-items:center; gap: 10px; flex-wrap: wrap; }
+    .toolbar-right { display:flex; align-items:center; gap: 8px; flex-wrap: wrap; }
+    input[type="text"], input[type="password"], select { padding: 8px 10px; border:1px solid var(--border-color); border-radius:6px; font-size:14px; }
+    
+    /* 搜索框优化 */
+    .search-box {
+        position: relative;
+        display: inline-block;
+    }
+    .search-box input {
+        padding-left: 10px;
+        width: 200px;
+        transition: width 0.3s, border-color 0.3s;
+    }
+    .search-box input:focus {
+        width: 250px;
+        border-color: var(--primary);
+        outline: none;
+    }
+    
+    /* 统计卡片 - iOS 18风格（优化大小） */
+    .stats-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 16px;
+        margin-bottom: 32px;
+    }
+    .stat-card {
+        padding: 20px;
+        border-radius: var(--radius-lg);
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(30px) saturate(180%);
+        -webkit-backdrop-filter: blur(30px) saturate(180%);
+        color: var(--text-color);
+        box-shadow: var(--shadow-soft);
+        border: 0.5px solid var(--border-color);
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow);
+        border-color: var(--border-color);
+    }
+    .stat-card.online, .stat-card.admin, .stat-card.locked {
+        background: rgba(255, 255, 255, 0.7);
+    }
+    .stat-card-label {
+        font-size: 12px;
+        opacity: 0.9;
+        margin-bottom: 4px;
+    }
+    .stat-card-value {
+        font-size: 28px;
+        font-weight: 600;
+        letter-spacing: -0.5px;
+    }
+    
+    /* 表格优化 - iOS 18风格 */
+    .table-wrapper {
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+        border: 0.5px solid var(--border-color);
+        box-shadow: var(--shadow-soft);
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(30px) saturate(180%);
+        -webkit-backdrop-filter: blur(30px) saturate(180%);
+    }
+    table { width:100%; border-collapse:collapse; }
+    th, td { padding: 16px; border-bottom:0.5px solid var(--border-color); text-align:left; }
+    thead th { 
+        background: rgba(142, 142, 147, 0.06);
+        font-weight:600;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        color: var(--text-color);
+        font-size: 13px;
+        letter-spacing: -0.01em;
+    }
+    tbody tr {
+        transition: background-color 0.2s;
+    }
+    tbody tr:hover {
+        background-color: rgba(142, 142, 147, 0.08);
+    }
+    /* 统一操作列样式 */
+    td.actions {
+        vertical-align: middle;
+        min-height: 50px;
+    }
+    .actions { 
+        display: flex; 
+        gap: 6px; 
+        flex-wrap: wrap; 
+        align-items: center; 
+        justify-content: flex-start;
+        width: 100%;
+        min-height: 36px;
+    }
+    .muted { 
+        color: #666; 
+        font-size: 12px;
+        display: inline-flex;
+        align-items: center;
+        padding: 8px 0;
+    }
+    .tag { display:inline-block; padding:3px 10px; border-radius: 12px; font-size: 12px; font-weight: 500; }
+    .tag-admin { background:rgba(0, 122, 255, 0.1); color:var(--primary); border: 0.5px solid rgba(0, 122, 255, 0.2); }
+    .tag-locked { background:rgba(255, 59, 48, 0.1); color:var(--danger); border: 0.5px solid rgba(255, 59, 48, 0.2); }
+    .tag-user { background:rgba(142, 142, 147, 0.1); color:var(--text-color); border: 0.5px solid var(--border-color); }
+    
+    /* 在线状态样式优化 */
+    .online-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 12px;
+        border-radius: 14px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    .online-status.online {
+        background: rgba(52, 199, 89, 0.15);
+        color: var(--success);
+        border: 0.5px solid rgba(52, 199, 89, 0.3);
+    }
+    .online-status.offline {
+        background: rgba(142, 142, 147, 0.1);
+        color: var(--text-sub);
+        border: 0.5px solid var(--border-color);
+    }
+    .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+    }
+    .status-dot.online {
+        background: var(--success);
+        box-shadow: 0 0 0 2px rgba(52, 199, 89, 0.2);
+        animation: pulse 2s ease-in-out infinite;
+    }
+    .status-dot.offline {
+        background: var(--text-sub);
+    }
+    @keyframes pulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.6; transform: scale(0.95); }
+    }
+    .last-active {
+        font-size: 11px;
+        color: var(--text-sub);
+        margin-top: 2px;
+    }
+    
+    /* 按钮优化 */
+    .btn-sm {
+        padding: 8px 16px;
+        min-height: 36px;
+        font-size: 14px;
+        border-radius: var(--radius-md);
+        border: none;
+        cursor: pointer;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .btn-sm:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    /* 操作按钮下拉菜单 */
+    .action-menu-wrapper {
+        position: relative;
+        display: inline-block;
+    }
+    
+    .btn-action {
+        background: rgba(142, 142, 147, 0.1);
+        color: var(--text-color);
+        border: 0.5px solid var(--border-color);
+        position: relative;
+        padding: 8px 20px;
+        min-width: 80px;
+    }
+    
+    .btn-action::after {
+        content: '';
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 0;
+        height: 0;
+        border-left: 4px solid transparent;
+        border-right: 4px solid transparent;
+        border-top: 5px solid var(--text-color);
+        opacity: 0.6;
+    }
+    
+    .btn-action:hover {
+        background: rgba(142, 142, 147, 0.15);
+        border-color: var(--border-color);
+    }
+    
+    .action-menu {
+        display: none;
+        position: absolute;
+        right: 0;
+        top: calc(100% + 4px);
+        background: var(--card-bg);
+        backdrop-filter: blur(30px) saturate(180%);
+        -webkit-backdrop-filter: blur(30px) saturate(180%);
+        border: 0.5px solid var(--border-color);
+        border-radius: var(--radius-md);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+        min-width: 120px;
+        z-index: 1000;
+        overflow: hidden;
+    }
+    
+    .action-menu.show {
+        display: block;
+        animation: slideDown 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-8px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .action-menu-item {
+        display: block;
+        width: 100%;
+        padding: 12px 16px;
+        text-align: left;
+        background: none;
+        border: none;
+        color: var(--text-color);
+        font-size: 14px;
+        cursor: pointer;
+        transition: background 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        border-radius: 0;
+    }
+    
+    .action-menu-item:hover {
+        background: rgba(142, 142, 147, 0.1);
+    }
+    
+    .action-menu-item:first-child {
+        border-radius: var(--radius-md) var(--radius-md) 0 0;
+    }
+    
+    .action-menu-item:last-child {
+        border-radius: 0 0 var(--radius-md) var(--radius-md);
+    }
+    
+    .action-menu-item.danger {
+        color: var(--danger);
+    }
+    
+    .action-menu-item.danger:hover {
+        background: rgba(255, 59, 48, 0.1);
+    }
+    
+    .action-menu-divider {
+        height: 0.5px;
+        background: var(--border-color);
+        margin: 4px 0;
+    }
+    
+    /* 弹窗优化 */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.5);
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        animation: fadeIn 0.2s;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    .modal-content {
+        background: var(--card-bg);
+        backdrop-filter: blur(40px) saturate(180%);
+        -webkit-backdrop-filter: blur(40px) saturate(180%);
+        padding: 32px;
+        border-radius: var(--radius-xl);
+        width: 400px;
+        max-width: 90vw;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+        border: 0.5px solid var(--border-color);
+        animation: slideUp 0.3s;
+    }
+    @keyframes slideUp {
+        from { transform: translateY(20px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+    .modal-content h3 {
+        margin: 0 0 16px;
+        font-size: 18px;
+        color: var(--text-color);
+    }
+    .form-group {
+        margin-bottom: 12px;
+    }
+    .form-group label {
+        display: block;
+        margin-bottom: 4px;
+        font-size: 13px;
+        color: var(--text-color);
+        font-weight: 500;
+    }
+    .form-group input[type="text"],
+    .form-group input[type="password"] {
+        width: 100%;
+        box-sizing: border-box;
+    }
+    .form-actions {
+        margin-top: 20px;
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+    }
+    
+    /* 筛选器样式 */
+    .filter-group {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+    .filter-label {
+        font-size: 13px;
+        color: #666;
+        font-weight: 500;
+    }
+    
+    /* 分页优化 */
+    .pagination {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid var(--border-color);
+    }
+    .page-jump {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+    .page-jump input {
+        width: 60px;
+        text-align: center;
+    }
+    
+    /* 加载动画 */
+    .loading {
+        text-align: center;
+        padding: 40px;
+        color: #999;
+    }
+    .loading::after {
+        content: '...';
+        animation: dots 1.5s steps(4, end) infinite;
+    }
+    @keyframes dots {
+        0%, 20% { content: '.'; }
+        40% { content: '..'; }
+        60%, 100% { content: '...'; }
+    }
+    
+    /* 空状态 */
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #999;
+    }
+    .empty-state-icon {
+        display: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <!-- 统计卡片 -->
+  <div class="stats-cards">
+    <div class="stat-card">
+      <div class="stat-card-label">总用户数</div>
+      <div class="stat-card-value" id="statTotal">-</div>
+    </div>
+    <div class="stat-card online">
+      <div class="stat-card-label">在线用户</div>
+      <div class="stat-card-value" id="statOnline">-</div>
+    </div>
+    <div class="stat-card admin">
+      <div class="stat-card-label">管理员</div>
+      <div class="stat-card-value" id="statAdmin">-</div>
+    </div>
+    <div class="stat-card" style="background:rgba(255, 149, 0, 0.1);">
+      <div class="stat-card-label">科目管理员</div>
+      <div class="stat-card-value" id="statSubjectAdmin">-</div>
+    </div>
+    <div class="stat-card locked">
+      <div class="stat-card-label">已锁定</div>
+      <div class="stat-card-value" id="statLocked">-</div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <div class="toolbar-left">
+      <h1>用户管理</h1>
+    </div>
+    <div class="toolbar-right">
+      <div class="search-box">
+        <input id="search" type="text" placeholder="搜索用户名" onkeydown="if(event.key==='Enter') loadUsers(1)">
+      </div>
+      <div class="filter-group">
+        <span class="filter-label">排序:</span>
+        <select id="sort" onchange="loadUsers(1)">
+          <option value="created_at:desc">创建时间↓</option>
+          <option value="created_at:asc">创建时间↑</option>
+          <option value="username:asc">用户名A-Z</option>
+          <option value="username:desc">用户名Z-A</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <span class="filter-label">显示:</span>
+        <select id="size" onchange="loadUsers(1)">
+          <option value="10">10/页</option>
+          <option value="20">20/页</option>
+          <option value="50">50/页</option>
+          <option value="100">100/页</option>
+        </select>
+      </div>
+      <button class="btn-outline" onclick="loadUsers(curPage)" title="刷新在线状态">刷新</button>
+      <button class="btn-primary" onclick="openCreate()">新建用户</button>
+      <a class="btn-outline" href="/admin/users/export" target="_blank">导出CSV</a>
+    </div>
+  </div>
+
+  <div id="tableContainer">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:60px;">序号</th>
+          <th>用户名</th>
+          <th style="width:150px;">在线状态</th>
+          <th style="width:100px;">身份</th>
+          <th style="width:90px;">状态</th>
+          <th style="width:160px;">创建时间</th>
+          <th style="width:100px;">操作</th>
+        </tr>
+      </thead>
+      <tbody id="tbody">
+        <tr>
+          <td colspan="7" class="loading">加载中</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="pagination">
+    <div class="muted" id="pageInfo">第 - / - 页</div>
+    <div class="page-jump">
+      <button class="btn-outline" onclick="gotoPage(curPage-1)" id="btnPrev">上一页</button>
+      <span class="muted">跳转到</span>
+      <input type="text" id="jumpPage" placeholder="页码" onkeydown="if(event.key==='Enter') jumpToPage()">
+      <button class="btn-outline" onclick="jumpToPage()">GO</button>
+      <button class="btn-outline" onclick="gotoPage(curPage+1)" id="btnNext">下一页</button>
+    </div>
+  </div>
+</div>
+
+<!-- 新建用户弹窗 -->
+<div id="dlgCreate" class="modal-overlay">
+  <div class="modal-content">
+    <h3>新建用户</h3>
+    <div class="form-group">
+      <label>用户名 *</label>
+      <input id="cu_name" type="text" placeholder="请输入用户名">
+    </div>
+    <div class="form-group">
+      <label>初始密码 *</label>
+      <input id="cu_pwd" type="password" placeholder="至少8位，含字母和数字">
+    </div>
+    <div class="form-group">
+      <label style="display: flex; align-items: center; cursor: pointer;">
+        <input id="cu_admin" type="checkbox" style="margin-right: 8px;">
+        <span>设为管理员</span>
+      </label>
+    </div>
+    <div class="form-actions">
+      <button class="btn-outline" onclick="closeCreate()">取消</button>
+      <button class="btn-primary" onclick="doCreate()">创建</button>
+    </div>
+  </div>
+</div>
+
+<!-- 重置密码弹窗 -->
+<div id="dlgReset" class="modal-overlay">
+  <div class="modal-content">
+    <h3>重置密码</h3>
+    <div class="form-group">
+      <label>新密码 *</label>
+      <input id="rp_pwd" type="password" placeholder="至少8位，含字母和数字">
+    </div>
+    <div class="form-group">
+      <label>确认密码 *</label>
+      <input id="rp_pwd_confirm" type="password" placeholder="再次输入新密码">
+    </div>
+    <div class="form-actions">
+      <button class="btn-outline" onclick="closeReset()">取消</button>
+      <button class="btn-primary" onclick="doReset()">确认重置</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  let curPage = 1; 
+  let pageSize = 10; 
+  let curSort = 'created_at:desc'; 
+  let curSearch = '';
+  const CURRENT_UID = {{ user_id if user_id else 'null' }};
+  let resetUserId = null;
+  let allStats = { total: 0, online: 0, admin: 0, locked: 0 };
+
+  function getVal(id){ return document.getElementById(id).value.trim(); }
+  function qs(sel){ return document.querySelector(sel); }
+
+  async function loadUsers(p){
+    curPage = p || curPage;
+    curSearch = getVal('search');
+    pageSize = parseInt(getVal('size')||'10');
+    curSort = getVal('sort');
+    const [sort, order] = curSort.split(':');
+    const url = `/admin/api/users?search=${encodeURIComponent(curSearch)}&page=${curPage}&size=${pageSize}&sort=${sort}&order=${order}`;
+    
+    try {
+      const res = await fetch(url);
+      const js = await res.json();
+      if(!res.ok || js.status!=='success'){ 
+        showError(js.message||'加载失败'); 
+        return; 
+      }
+      const rows = js.data || []; 
+      const total = js.total || 0;
+      
+      // 统计数据
+      const onlineCount = rows.filter(u => u.is_online).length;
+      const adminCount = rows.filter(u => u.is_admin).length;
+      const subjectAdminCount = rows.filter(u => u.is_subject_admin && !u.is_admin).length; // 科目管理员（不包括管理员）
+      const lockedCount = rows.filter(u => u.is_locked).length;
+      
+      allStats = { total, online: onlineCount, admin: adminCount, subjectAdmin: subjectAdminCount, locked: lockedCount };
+      
+      updateStats();
+      renderTable(rows);
+      renderPager(total);
+    } catch (error) {
+      showError('网络错误，请稍后重试');
+      console.error('加载用户失败:', error);
+    }
+  }
+
+  function updateStats() {
+    qs('#statTotal').textContent = allStats.total;
+    qs('#statOnline').textContent = allStats.online;
+    qs('#statAdmin').textContent = allStats.admin;
+    qs('#statSubjectAdmin').textContent = allStats.subjectAdmin || 0;
+    qs('#statLocked').textContent = allStats.locked;
+  }
+
+  function renderTable(rows){
+    const tb = document.getElementById('tbody');
+    
+    if (rows.length === 0) {
+      tb.innerHTML = `
+        <tr>
+          <td colspan="7" class="empty-state">
+            <div>暂无用户数据</div>
+          </td>
+        </tr>
+      `;
+      return;
+    }
+    
+    tb.innerHTML = rows.map((u,i)=>{
+      // 权限标签：管理员 > 科目管理员 > 普通用户
+      let adminTag = '';
+      if (u.is_admin) {
+        adminTag = '<span class="tag tag-admin">管理员</span>';
+      } else if (u.is_subject_admin) {
+        adminTag = '<span class="tag" style="background:rgba(255, 149, 0, 0.1); color:var(--warning); border:0.5px solid rgba(255, 149, 0, 0.2);">科目管理员</span>';
+      } else {
+        adminTag = '<span class="tag tag-user">普通用户</span>';
+      }
+      const lockTag = u.is_locked 
+        ? '<span class="tag tag-locked">已锁定</span>' 
+        : '<span class="tag" style="background:rgba(142, 142, 147, 0.1); color:var(--text-color); border:0.5px solid var(--border-color);">正常</span>';
+      
+      // 在线状态
+      let onlineHtml = '';
+      if (u.is_online) {
+        onlineHtml = `
+          <div class="online-status online">
+            <span class="status-dot online"></span>
+            <span>在线</span>
+          </div>
+        `;
+      } else {
+        const lastActiveText = u.last_active ? formatLastActive(u.last_active) : '';
+        onlineHtml = `
+          <div class="online-status offline">
+            <span class="status-dot offline"></span>
+            <span>离线</span>
+          </div>
+          ${lastActiveText ? `<div class="last-active">${lastActiveText}</div>` : ''}
+        `;
+      }
+      
+      // 操作按钮下拉菜单
+      let actionsHtml = '';
+      if (u.id === CURRENT_UID) {
+        actionsHtml = '<span class="muted">当前用户</span>';
+      } else {
+        actionsHtml = `
+          <div class="action-menu-wrapper">
+            <button class="btn-sm btn-action" onclick="toggleActionMenu(${u.id}, event)" title="操作">操作</button>
+            <div class="action-menu" id="actionMenu_${u.id}">
+              <button class="action-menu-item" onclick="window.location.href='/admin/users/${u.id}'">查看详情</button>
+              <button class="action-menu-item" onclick="openReset(${u.id}); closeActionMenu(${u.id})">重置密码</button>
+              <button class="action-menu-item" onclick="toggleLock(${u.id}); closeActionMenu(${u.id})">${u.is_locked ? '解锁用户' : '锁定用户'}</button>
+              <button class="action-menu-item" onclick="toggleAdmin(${u.id}); closeActionMenu(${u.id})">${u.is_admin ? '取消管理员' : '设为管理员'}</button>
+              <button class="action-menu-item" onclick="toggleSubjectAdmin(${u.id}); closeActionMenu(${u.id})">${u.is_subject_admin ? '取消科目管理员' : '设为科目管理员'}</button>
+              ${u.is_online ? `<button class="action-menu-item" onclick="forceLogout(${u.id}); closeActionMenu(${u.id})">强制下线</button>` : ''}
+              <div class="action-menu-divider"></div>
+              <button class="action-menu-item danger" onclick="delUser(${u.id}); closeActionMenu(${u.id})">删除用户</button>
+            </div>
+          </div>
+        `;
+      }
+      
+      return `<tr>
+        <td style="text-align:center;">${(curPage-1)*pageSize + i + 1}</td>
+        <td><a href="/admin/users/${u.id}" class="link" style="font-weight:500;">${escapeHtml(u.username)}</a></td>
+        <td>${onlineHtml}</td>
+        <td>${adminTag}</td>
+        <td>${lockTag}</td>
+        <td style="font-size:12px; color:#666;">${formatDateTime(u.created_at)}</td>
+        <td class="actions">${actionsHtml}</td>
+      </tr>`;
+    }).join('');
+  }
+  
+  // HTML转义
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+  
+  // 格式化日期时间
+  function formatDateTime(dateStr) {
+    if (!dateStr) return '-';
+    try {
+      const date = new Date(dateStr.replace(' ', 'T'));
+      return date.toLocaleString('zh-CN', { 
+        year: 'numeric', 
+        month: '2-digit', 
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (e) {
+      return dateStr;
+    }
+  }
+  
+  // 格式化离线时长
+  function formatLastActive(lastActive) {
+    if (!lastActive) return '';
+
+    try {
+      const lastActiveUTC = lastActive.includes('Z') ? lastActive : lastActive.replace(' ', 'T') + 'Z';
+      const now = new Date();
+      const last = new Date(lastActiveUTC);
+      const diffMs = now - last;
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMs / 3600000);
+      const diffDays = Math.floor(diffMs / 86400000);
+
+      if (diffMins < 1) return '刚刚离线';
+      if (diffMins < 60) return `${diffMins}分钟前`;
+      if (diffHours < 24) return `${diffHours}小时前`;
+      if (diffDays < 7) return `${diffDays}天前`;
+      
+      return last.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
+    } catch (e) {
+      return lastActive;
+    }
+  }
+
+  function renderPager(total){
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    qs('#pageInfo').innerText = `第 ${curPage} / ${totalPages} 页 (共 ${total} 条)`;
+    qs('#btnPrev').disabled = curPage<=1;
+    qs('#btnNext').disabled = curPage>=totalPages;
+  }
+  
+  function gotoPage(p){ 
+    const totalPages = Math.max(1, Math.ceil(allStats.total / pageSize));
+    if(p < 1 || p > totalPages) return; 
+    loadUsers(p); 
+  }
+  
+  function jumpToPage() {
+    const page = parseInt(getVal('jumpPage'));
+    if (isNaN(page) || page < 1) {
+      showError('请输入有效的页码');
+      return;
+    }
+    gotoPage(page);
+    qs('#jumpPage').value = '';
+  }
+
+  async function toggleAdmin(id){
+    if (!confirm('确定要切换该用户的管理员权限吗？')) return;
+    try {
+      const res = await fetch(`/admin/users/${id}/toggle_admin`, { method:'POST' });
+      const js = await res.json(); 
+      showMessage(js.message||'操作完成', js.status==='success'); 
+      if(js.status==='success') loadUsers(curPage);
+    } catch (error) {
+      showError('操作失败，请稍后重试');
+    }
+  }
+  
+  async function toggleSubjectAdmin(id){
+    if (!confirm('确定要切换该用户的科目管理员权限吗？')) return;
+    try {
+      const res = await fetch(`/admin/users/${id}/toggle_subject_admin`, { method:'POST' });
+      const js = await res.json(); 
+      showMessage(js.message||'操作完成', js.status==='success'); 
+      if(js.status==='success') loadUsers(curPage);
+    } catch (error) {
+      showError('操作失败，请稍后重试');
+    }
+  }
+  
+  async function toggleLock(id){
+    if (!confirm('确定要切换该用户的锁定状态吗？')) return;
+    try {
+      const res = await fetch(`/admin/users/${id}/toggle_lock`, { method:'POST' });
+      const js = await res.json(); 
+      showMessage(js.message||'操作完成', js.status==='success'); 
+      if(js.status==='success') loadUsers(curPage);
+    } catch (error) {
+      showError('操作失败，请稍后重试');
+    }
+  }
+  
+  function openCreate(){ 
+    qs('#cu_name').value = '';
+    qs('#cu_pwd').value = '';
+    qs('#cu_admin').checked = false;
+    qs('#dlgCreate').style.display='flex'; 
+  }
+  
+  function closeCreate(){ qs('#dlgCreate').style.display='none'; }
+  
+  async function doCreate(){
+    const name = getVal('cu_name'); 
+    const pwd = getVal('cu_pwd'); 
+    const isAdmin = qs('#cu_admin').checked;
+    
+    if(!name || !pwd){ 
+      showError('请输入用户名和初始密码'); 
+      return; 
+    }
+    
+    if(pwd.length < 8 || !(/[a-z]/i.test(pwd) && /\d/.test(pwd))) {
+      showError('密码至少8位且包含字母和数字');
+      return;
+    }
+    
+    try {
+      const res = await fetch('/admin/users/create', { 
+        method:'POST', 
+        headers:{'Content-Type':'application/json'}, 
+        body: JSON.stringify({ username:name, password:pwd, is_admin: isAdmin?1:0 }) 
+      });
+      const js = await res.json(); 
+      showMessage(js.message||'完成', js.status==='success'); 
+      if(js.status==='success'){ 
+        closeCreate(); 
+        loadUsers(1); 
+      }
+    } catch (error) {
+      showError('创建失败，请稍后重试');
+    }
+  }
+  
+  function openReset(id){ 
+    resetUserId = id; 
+    qs('#rp_pwd').value = '';
+    qs('#rp_pwd_confirm').value = '';
+    qs('#dlgReset').style.display='flex'; 
+  }
+  
+  function closeReset(){ qs('#dlgReset').style.display='none'; }
+  
+  async function doReset(){
+    const pwd = getVal('rp_pwd');
+    const confirmPwd = getVal('rp_pwd_confirm');
+    
+    if(!pwd || !confirmPwd) {
+      showError('请输入新密码并确认');
+      return;
+    }
+    
+    if(pwd !== confirmPwd) {
+      showError('两次输入的密码不一致');
+      return;
+    }
+    
+    if(pwd.length<8 || !( /[a-z]/i.test(pwd) && /\d/.test(pwd) )){ 
+      showError('新密码至少8位且包含字母和数字'); 
+      return; 
+    }
+    
+    try {
+      const res = await fetch(`/admin/users/${resetUserId}/reset_password`, { 
+        method:'POST', 
+        headers:{'Content-Type':'application/json'}, 
+        body: JSON.stringify({ new_password: pwd }) 
+      });
+      const js = await res.json(); 
+      showMessage(js.message||'完成', js.status==='success'); 
+      if(js.status==='success'){ 
+        closeReset(); 
+        loadUsers(curPage);
+      }
+    } catch (error) {
+      showError('重置失败，请稍后重试');
+    }
+  }
+  
+  async function forceLogout(id){
+    if (!confirm('确定要强制该用户下线吗？')) return;
+    try {
+      const res = await fetch(`/admin/users/${id}/force_logout`, { method:'POST' });
+      const js = await res.json(); 
+      showMessage(js.message||'操作完成', js.status==='success');
+      if(js.status==='success') loadUsers(curPage);
+    } catch (error) {
+      showError('操作失败，请稍后重试');
+    }
+  }
+  
+  // 操作菜单控制
+  function toggleActionMenu(userId, event) {
+    event.stopPropagation();
+    const menuId = `actionMenu_${userId}`;
+    const menu = document.getElementById(menuId);
+    const allMenus = document.querySelectorAll('.action-menu.show');
+    
+    // 关闭其他所有菜单
+    allMenus.forEach(m => {
+      if (m.id !== menuId) {
+        m.classList.remove('show');
+      }
+    });
+    
+    // 切换当前菜单
+    if (menu) {
+      menu.classList.toggle('show');
+    }
+  }
+  
+  function closeActionMenu(userId) {
+    const menu = document.getElementById(`actionMenu_${userId}`);
+    if (menu) {
+      menu.classList.remove('show');
+    }
+  }
+  
+  // 点击外部区域关闭所有菜单
+  document.addEventListener('click', function(event) {
+    if (!event.target.closest('.action-menu-wrapper')) {
+      document.querySelectorAll('.action-menu.show').forEach(menu => {
+        menu.classList.remove('show');
+      });
+    }
+  });
+  
+  // ESC键关闭菜单
+  document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+      document.querySelectorAll('.action-menu.show').forEach(menu => {
+        menu.classList.remove('show');
+      });
+    }
+  });
+
+  async function delUser(id){
+    if(!confirm('⚠️ 确定删除该用户？\n\n该操作将：\n• 删除用户账号\n• 清除所有相关数据\n• 此操作不可恢复！')) return;
+    
+    try {
+      const res = await fetch(`/admin/users/${id}`, { method:'DELETE' });
+      const js = await res.json(); 
+      showMessage(js.message||'已处理', js.status==='success'); 
+      if(js.status==='success') loadUsers(curPage);
+    } catch (error) {
+      showError('删除失败，请稍后重试');
+    }
+  }
+  
+  // 消息提示
+  function showMessage(msg, isSuccess = true) {
+    alert((isSuccess ? '✅ ' : '❌ ') + msg);
+  }
+  
+  function showError(msg) {
+    alert('❌ ' + msg);
+  }
+
+  // 初始化
+  (function init(){
+    document.getElementById('search').value = '';
+    document.getElementById('size').value = '10';
+    document.getElementById('sort').value = 'created_at:desc';
+    loadUsers(1);
+    
+    // 每30秒自动刷新一次用户列表（更新在线状态）
+    setInterval(() => {
+      loadUsers(curPage);
+    }, 30000);
+    
+    // ESC键关闭弹窗
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeCreate();
+        closeReset();
+      }
+    });
+    
+    // 点击遮罩层关闭弹窗
+    qs('#dlgCreate').addEventListener('click', (e) => {
+      if (e.target === qs('#dlgCreate')) closeCreate();
+    });
+    qs('#dlgReset').addEventListener('click', (e) => {
+      if (e.target === qs('#dlgReset')) closeReset();
+    });
+  })();
+</script>
+{% endblock %}

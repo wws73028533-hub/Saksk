@@ -7,9 +7,9 @@ import logging
 from logging.handlers import RotatingFileHandler
 from flask import Flask
 
-from .config import config
-from .extensions import init_extensions
-from .utils.database import close_db, init_db
+from .core.config import config
+from .core.extensions import init_extensions
+from .core.utils.database import close_db, init_db
 
 
 def create_app(config_name=None):
@@ -96,8 +96,9 @@ def _setup_logging(app):
 
 def _register_blueprints(app):
     """注册所有蓝图"""
-    from .routes import register_all_routes
-    register_all_routes(app)
+    # 注册所有模块
+    from .modules import register_all_modules
+    register_all_modules(app)
 
 
 def _register_context_processors(app):
@@ -117,7 +118,7 @@ def _register_context_processors(app):
 def _register_before_request(app):
     """注册请求前钩子"""
     from flask import request, session, redirect, url_for, jsonify
-    from .utils.database import get_db
+    from .core.utils.database import get_db
     
     @app.before_request
     def enforce_login():
@@ -128,10 +129,20 @@ def _register_before_request(app):
             try:
                 uid = session.get('user_id')
                 conn = get_db()
-                row = conn.execute(
-                    'SELECT is_locked, session_version FROM users WHERE id=?',
-                    (uid,)
-                ).fetchone()
+                
+                # 检查 is_subject_admin 字段是否存在
+                try:
+                    user_cols = [r['name'] for r in conn.execute("PRAGMA table_info(users)").fetchall()]
+                    has_subject_admin_field = 'is_subject_admin' in user_cols
+                except Exception:
+                    has_subject_admin_field = False
+                
+                if has_subject_admin_field:
+                    query = 'SELECT is_locked, is_admin, is_subject_admin, session_version FROM users WHERE id=?'
+                else:
+                    query = 'SELECT is_locked, is_admin, session_version FROM users WHERE id=?'
+                
+                row = conn.execute(query, (uid,)).fetchone()
                 
                 if not row or row['is_locked']:
                     session.clear()
@@ -146,6 +157,10 @@ def _register_before_request(app):
                         return jsonify({'status':'unauthorized','message':'会话已失效，请重新登录'}), 401
                     return redirect('/login')
                 
+                # 更新session中的权限信息（确保权限同步）
+                session['is_admin'] = bool(row['is_admin'])
+                session['is_subject_admin'] = bool(row['is_subject_admin']) if has_subject_admin_field and 'is_subject_admin' in row.keys() else False
+                
                 # 更新用户最后活动时间（排除静态资源请求）
                 if not path.startswith('/static') and not path.endswith('.ico'):
                     conn.execute(
@@ -158,7 +173,34 @@ def _register_before_request(app):
             
             # 管理后台权限校验
             if path.startswith('/admin') or path.startswith('/admin_'):
-                if not session.get('is_admin'):
+                is_admin_user = session.get('is_admin')
+                is_subject_admin_user = session.get('is_subject_admin')
+                
+                # 科目管理员允许访问的路由（科目和题集管理）
+                # 匹配规则：
+                # 1. /admin/subjects 及其子路径
+                # 2. /admin/api/subjects 及其子路径
+                # 3. /admin/questions 及其子路径（包括 /admin/questions/import, /admin/questions/export 等）
+                # 4. /admin/api/questions 相关路径（通过路径包含判断）
+                # 5. /admin/download_template（Excel模板下载）
+                is_subject_admin_path = (
+                    path.startswith('/admin/subjects') or
+                    path.startswith('/admin/api/subjects') or
+                    path.startswith('/admin/questions') or
+                    path == '/admin/types' or  # 题型列表API
+                    path == '/admin/download_template' or
+                    '/api/subjects' in path or
+                    '/api/questions' in path
+                )
+                
+                # 如果是科目管理员路径，允许科目管理员和管理员访问
+                if is_subject_admin_path:
+                    if not (is_admin_user or is_subject_admin_user):
+                        if path.startswith('/admin/'):
+                            return jsonify({'status': 'forbidden', 'message': '需要管理员或科目管理员权限'}), 403
+                        return redirect('/')
+                # 其他管理后台路由需要管理员权限
+                elif not is_admin_user:
                     if path.startswith('/admin/'):
                         return jsonify({'status': 'forbidden', 'message': '需要管理员权限'}), 403
                     return redirect('/')

@@ -1,0 +1,756 @@
+{% extends "admin/admin_base.html" %}
+
+{% block title %}编程题管理{% endblock %}
+
+{% block head %}
+<style>
+    .container {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(30px) saturate(180%);
+        -webkit-backdrop-filter: blur(30px) saturate(180%);
+        padding: 40px;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-soft);
+        border: 0.5px solid var(--border-color);
+    }
+    
+    /* 页面标题 */
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+        border-bottom: 2px solid var(--border-color);
+    }
+    .page-title {
+        font-size: 28px;
+        font-weight: bold;
+        color: var(--text-color);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    
+    /* 统计卡片 */
+    .stats-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 32px;
+    }
+    .stat-card {
+        padding: 20px;
+        border-radius: var(--radius-lg);
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(30px) saturate(180%);
+        -webkit-backdrop-filter: blur(30px) saturate(180%);
+        color: var(--text-color);
+        box-shadow: var(--shadow-soft);
+        border: 0.5px solid var(--border-color);
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow);
+    }
+    .stat-card-label {
+        font-size: 14px;
+        opacity: 0.9;
+        margin-bottom: 10px;
+        font-weight: 500;
+    }
+    .stat-card-value {
+        font-size: 32px;
+        font-weight: 600;
+        margin-bottom: 0;
+        letter-spacing: -0.5px;
+    }
+    
+    /* 工具栏 */
+    .toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+    .toolbar-left, .toolbar-right {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    
+    /* 表格 */
+    .table-wrapper {
+        border-radius: var(--radius-lg);
+        overflow: visible;
+        border: 0.5px solid var(--border-color);
+        box-shadow: var(--shadow-soft);
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(30px) saturate(180%);
+        -webkit-backdrop-filter: blur(30px) saturate(180%);
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 0;
+    }
+    th, td {
+        border-bottom: 1px solid var(--border-color);
+        padding: 16px;
+        text-align: left;
+        vertical-align: middle;
+    }
+    thead th {
+        background: rgba(142, 142, 147, 0.06);
+        border-bottom: 0.5px solid var(--border-color);
+        font-weight: 600;
+        color: var(--text-color);
+        font-size: 13px;
+    }
+    tbody tr {
+        transition: all 0.2s;
+    }
+    tbody tr:hover {
+        background-color: rgba(142, 142, 147, 0.08);
+    }
+    tbody tr:last-child td {
+        border-bottom: none;
+    }
+    
+    /* 按钮 */
+    .btn {
+        padding: 10px 20px;
+        border-radius: var(--radius-md);
+        border: 0.5px solid var(--border-color);
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(20px);
+        color: var(--text-color);
+    }
+    .btn-primary {
+        background: rgba(0, 122, 255, 0.7);
+        backdrop-filter: blur(20px);
+        color: white;
+        border-color: rgba(0, 122, 255, 0.3);
+    }
+    .btn-primary:hover {
+        background: rgba(0, 122, 255, 0.85);
+        transform: translateY(-1px);
+    }
+    .btn-outline {
+        background: rgba(255, 255, 255, 0.7);
+        border: 0.5px solid var(--border-color);
+    }
+    .btn-outline:hover {
+        background: rgba(142, 142, 147, 0.1);
+    }
+    .btn-danger {
+        background: rgba(255, 59, 48, 0.1);
+        color: var(--danger);
+        border-color: rgba(255, 59, 48, 0.2);
+    }
+    .btn-danger:hover {
+        background: rgba(255, 59, 48, 0.15);
+    }
+    .btn-sm {
+        padding: 6px 12px;
+        font-size: 13px;
+    }
+    
+    /* 模态框 */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+    .modal-overlay.show {
+        display: flex;
+    }
+    .modal-content {
+        background: var(--card-bg);
+        backdrop-filter: blur(40px) saturate(180%);
+        padding: 32px;
+        border-radius: var(--radius-xl);
+        width: 800px;
+        max-width: 90vw;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+        border: 0.5px solid var(--border-color);
+    }
+    .modal-header {
+        font-size: 20px;
+        font-weight: bold;
+        margin-bottom: 20px;
+        color: var(--text-color);
+    }
+    .form-group {
+        margin-bottom: 16px;
+    }
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text-color);
+    }
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+        width: 100%;
+        padding: 10px 14px;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        font-size: 14px;
+        box-sizing: border-box;
+        font-family: inherit;
+    }
+    .form-group textarea {
+        min-height: 100px;
+        resize: vertical;
+    }
+    .form-group textarea.code-template {
+        font-family: 'Courier New', monospace;
+        min-height: 200px;
+    }
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+    }
+    .modal-footer {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        margin-top: 24px;
+    }
+    
+    /* 代码编辑器容器 */
+    .code-editor-container {
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        overflow: hidden;
+        height: 300px;
+        margin-top: 8px;
+    }
+    #code-editor {
+        height: 100%;
+    }
+    
+    /* 空状态 */
+    .empty-state {
+        text-align: center;
+        padding: 80px 20px;
+        color: var(--text-sub);
+    }
+    .empty-state-text {
+        font-size: 18px;
+        margin-bottom: 10px;
+        font-weight: 500;
+        color: var(--text-color);
+    }
+    
+    /* 操作下拉菜单 */
+    .action-dropdown {
+        position: relative;
+        display: inline-block;
+    }
+    .action-menu {
+        display: none;
+        position: absolute;
+        left: 100%;
+        top: 0;
+        margin-left: 8px;
+        min-width: 160px;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border: 0.5px solid var(--border-color);
+        border-radius: var(--radius-md);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        padding: 4px 0;
+        z-index: 1000;
+    }
+    .action-menu.open {
+        display: block;
+    }
+    .action-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+        padding: 10px 16px;
+        background: none;
+        border: none;
+        text-align: left;
+        cursor: pointer;
+        font-size: 14px;
+        color: var(--text-color);
+    }
+    .action-item:hover {
+        background: rgba(142, 142, 147, 0.1);
+    }
+    .action-item.action-danger {
+        color: var(--danger);
+    }
+</style>
+<!-- Monaco Editor for code template editing -->
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor@latest/min/vs/loader.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- 页面标题 -->
+    <div class="page-header">
+        <div class="page-title">编程题管理</div>
+        <button class="btn btn-primary" onclick="openCreateModal()">+ 新建编程题</button>
+    </div>
+    
+    <!-- 统计卡片 -->
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="stat-card-label">总题目数</div>
+            <div class="stat-card-value" id="totalCount">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-label">Python 题目</div>
+            <div class="stat-card-value" id="pythonCount">0</div>
+        </div>
+    </div>
+    
+    <!-- 工具栏 -->
+    <div class="toolbar">
+        <div class="toolbar-left">
+            <input type="text" id="searchInput" placeholder="搜索题目..." style="padding: 10px 14px; border: 1px solid var(--border-color); border-radius: 6px; width: 300px;">
+        </div>
+        <div class="toolbar-right">
+            <select id="subjectFilter" style="padding: 10px 14px; border: 1px solid var(--border-color); border-radius: 6px;">
+                <option value="">所有科目</option>
+            </select>
+        </div>
+    </div>
+    
+    <!-- 题目列表 -->
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>题目内容</th>
+                    <th>科目</th>
+                    <th>语言</th>
+                    <th>时间限制</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody id="questionsTableBody">
+                <tr>
+                    <td colspan="6" class="empty-state">
+                        <div class="empty-state-text">加载中...</div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- 创建/编辑模态框 -->
+<div class="modal-overlay" id="questionModal">
+    <div class="modal-content">
+        <div class="modal-header" id="modalTitle">新建编程题</div>
+        <div class="modal-body">
+            <form id="questionForm">
+                <input type="hidden" id="questionId" name="id">
+                
+                <div class="form-group">
+                    <label>科目 *</label>
+                    <select id="subjectId" name="subject_id" required>
+                        <option value="">请选择科目</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>题目内容 *</label>
+                    <textarea id="content" name="content" rows="4" required placeholder="请输入题目描述..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>编程语言 *</label>
+                    <select id="programmingLanguage" name="programming_language" required>
+                        <option value="python">Python</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>代码模板</label>
+                    <textarea id="codeTemplate" name="code_template" class="code-template" placeholder="# 在这里编写代码模板&#10;def solve():&#10;    pass"></textarea>
+                    <small style="color: var(--text-sub); margin-top: 4px; display: block;">学生打开题目时将看到此模板代码</small>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>时间限制（秒）</label>
+                        <input type="number" id="timeLimit" name="time_limit" value="5" min="1" max="30">
+                    </div>
+                    <div class="form-group">
+                        <label>内存限制（MB）</label>
+                        <input type="number" id="memoryLimit" name="memory_limit" value="128" min="64" max="512">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>难度</label>
+                    <select id="difficulty" name="difficulty">
+                        <option value="简单">简单</option>
+                        <option value="中等" selected>中等</option>
+                        <option value="困难">困难</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>标签（用逗号分隔）</label>
+                    <input type="text" id="tags" name="tags" placeholder="例如: 算法, 数据结构">
+                </div>
+                
+                <div class="form-group">
+                    <label>解析</label>
+                    <textarea id="explanation" name="explanation" rows="3" placeholder="题目的解析说明..."></textarea>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeModal()">取消</button>
+            <button class="btn btn-primary" onclick="saveQuestion()">保存</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// 全局变量
+let questions = [];
+let subjects = [];
+let monacoEditor = null;
+
+// 页面加载时初始化
+document.addEventListener('DOMContentLoaded', function() {
+    loadSubjects();
+    loadQuestions();
+    
+    // 搜索功能
+    document.getElementById('searchInput').addEventListener('input', function() {
+        filterQuestions();
+    });
+    
+    // 科目筛选
+    document.getElementById('subjectFilter').addEventListener('change', function() {
+        filterQuestions();
+    });
+});
+
+// 加载科目列表
+async function loadSubjects() {
+    try {
+        const res = await fetch('/admin/api/subjects');
+        subjects = await res.json();
+        
+        const subjectSelect = document.getElementById('subjectFilter');
+        const formSubjectSelect = document.getElementById('subjectId');
+        
+        subjects.forEach(subject => {
+            const option1 = document.createElement('option');
+            option1.value = subject.id;
+            option1.textContent = subject.name;
+            subjectSelect.appendChild(option1);
+            
+            const option2 = document.createElement('option');
+            option2.value = subject.id;
+            option2.textContent = subject.name;
+            formSubjectSelect.appendChild(option2);
+        });
+    } catch (error) {
+        console.error('加载科目失败:', error);
+    }
+}
+
+// 加载编程题列表
+async function loadQuestions() {
+    try {
+        const res = await fetch('/admin/api/coding/questions');
+        const result = await res.json();
+        
+        if (result.status === 'success') {
+            questions = result.data;
+            updateStats();
+            renderQuestions();
+        } else {
+            alert('加载失败: ' + result.message);
+        }
+    } catch (error) {
+        console.error('加载题目失败:', error);
+        document.getElementById('questionsTableBody').innerHTML = '<tr><td colspan="6" class="empty-state"><div class="empty-state-text">加载失败</div></td></tr>';
+    }
+}
+
+// 更新统计
+function updateStats() {
+    const total = questions.length;
+    const python = questions.filter(q => q.programming_language === 'python').length;
+    
+    document.getElementById('totalCount').textContent = total;
+    document.getElementById('pythonCount').textContent = python;
+}
+
+// 渲染题目列表
+function renderQuestions(filteredQuestions = null) {
+    const tbody = document.getElementById('questionsTableBody');
+    const data = filteredQuestions || questions;
+    
+    if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><div class="empty-state-text">暂无编程题</div></td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = data.map(q => `
+        <tr>
+            <td>${q.id}</td>
+            <td style="max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${q.content || ''}</td>
+            <td>${q.subject_name || ''}</td>
+            <td>${q.programming_language || 'python'}</td>
+            <td>${q.time_limit || 5}秒</td>
+            <td>
+                <div class="action-dropdown">
+                    <button class="btn btn-sm btn-outline" onclick="toggleActionMenu(${q.id}, event)">操作 ▼</button>
+                    <div id="action-menu-${q.id}" class="action-menu">
+                        <button class="action-item" onclick="editQuestion(${q.id}); closeActionMenu(${q.id});">编辑</button>
+                        <button class="action-item action-danger" onclick="deleteQuestion(${q.id}); closeActionMenu(${q.id});">删除</button>
+                    </div>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// 筛选题目
+function filterQuestions() {
+    const searchText = document.getElementById('searchInput').value.toLowerCase();
+    const subjectId = document.getElementById('subjectFilter').value;
+    
+    let filtered = questions;
+    
+    if (searchText) {
+        filtered = filtered.filter(q => 
+            (q.content || '').toLowerCase().includes(searchText) ||
+            (q.id + '').includes(searchText)
+        );
+    }
+    
+    if (subjectId) {
+        filtered = filtered.filter(q => q.subject_id == subjectId);
+    }
+    
+    renderQuestions(filtered);
+}
+
+// 打开创建模态框
+function openCreateModal() {
+    document.getElementById('modalTitle').textContent = '新建编程题';
+    document.getElementById('questionForm').reset();
+    document.getElementById('questionId').value = '';
+    document.getElementById('timeLimit').value = 5;
+    document.getElementById('memoryLimit').value = 128;
+    document.getElementById('programmingLanguage').value = 'python';
+    document.getElementById('codeTemplate').value = '';
+    
+    // 初始化 Monaco Editor
+    initMonacoEditor();
+    
+    document.getElementById('questionModal').classList.add('show');
+}
+
+// 编辑题目
+async function editQuestion(id) {
+    const question = questions.find(q => q.id === id);
+    if (!question) return;
+    
+    document.getElementById('modalTitle').textContent = '编辑编程题';
+    document.getElementById('questionId').value = question.id;
+    document.getElementById('subjectId').value = question.subject_id;
+    document.getElementById('content').value = question.content || '';
+    document.getElementById('programmingLanguage').value = question.programming_language || 'python';
+    document.getElementById('codeTemplate').value = question.code_template || '';
+    document.getElementById('timeLimit').value = question.time_limit || 5;
+    document.getElementById('memoryLimit').value = question.memory_limit || 128;
+    document.getElementById('difficulty').value = question.difficulty || '中等';
+    document.getElementById('tags').value = question.tags || '';
+    document.getElementById('explanation').value = question.explanation || '';
+    
+    // 初始化 Monaco Editor
+    initMonacoEditor(question.code_template || '');
+    
+    document.getElementById('questionModal').classList.add('show');
+}
+
+// 初始化 Monaco Editor
+function initMonacoEditor(initialValue = '') {
+    if (typeof require === 'undefined') {
+        console.error('Monaco Editor not loaded');
+        return;
+    }
+    
+    require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@latest/min/vs' } });
+    
+    require(['vs/editor/editor.main'], function() {
+        const container = document.getElementById('code-editor');
+        if (!container) {
+            // 创建编辑器容器
+            const templateTextarea = document.getElementById('codeTemplate');
+            const wrapper = document.createElement('div');
+            wrapper.id = 'code-editor';
+            wrapper.className = 'code-editor-container';
+            templateTextarea.parentNode.insertBefore(wrapper, templateTextarea.nextSibling);
+            templateTextarea.style.display = 'none';
+        }
+        
+        if (monacoEditor) {
+            monacoEditor.dispose();
+        }
+        
+        monacoEditor = monaco.editor.create(document.getElementById('code-editor'), {
+            value: initialValue,
+            language: 'python',
+            theme: 'vs-light',
+            fontSize: 14,
+            lineNumbers: 'on',
+            minimap: { enabled: false },
+            wordWrap: 'on',
+        });
+        
+        // 同步到 textarea
+        monacoEditor.onDidChangeModelContent(() => {
+            document.getElementById('codeTemplate').value = monacoEditor.getValue();
+        });
+    });
+}
+
+// 保存题目
+async function saveQuestion() {
+    const form = document.getElementById('questionForm');
+    const formData = new FormData(form);
+    
+    // 获取 Monaco Editor 的值
+    if (monacoEditor) {
+        formData.set('code_template', monacoEditor.getValue());
+    }
+    
+    const data = Object.fromEntries(formData);
+    data.q_type = '编程题';
+    
+    // 验证必填字段
+    if (!data.subject_id || !data.content) {
+        alert('请填写必填字段');
+        return;
+    }
+    
+    try {
+        const url = data.id ? `/admin/api/coding/questions/${data.id}` : '/admin/api/coding/questions';
+        const method = data.id ? 'PUT' : 'POST';
+        
+        const res = await fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await res.json();
+        
+        if (result.status === 'success') {
+            alert('保存成功');
+            closeModal();
+            loadQuestions();
+        } else {
+            alert('保存失败: ' + result.message);
+        }
+    } catch (error) {
+        console.error('保存失败:', error);
+        alert('保存失败: ' + error.message);
+    }
+}
+
+// 删除题目
+async function deleteQuestion(id) {
+    if (!confirm('确定要删除这道编程题吗？')) {
+        return;
+    }
+    
+    try {
+        const res = await fetch(`/admin/api/coding/questions/${id}`, {
+            method: 'DELETE'
+        });
+        
+        const result = await res.json();
+        
+        if (result.status === 'success') {
+            alert('删除成功');
+            loadQuestions();
+        } else {
+            alert('删除失败: ' + result.message);
+        }
+    } catch (error) {
+        console.error('删除失败:', error);
+        alert('删除失败: ' + error.message);
+    }
+}
+
+// 关闭模态框
+function closeModal() {
+    document.getElementById('questionModal').classList.remove('show');
+    if (monacoEditor) {
+        monacoEditor.dispose();
+        monacoEditor = null;
+    }
+}
+
+// 操作菜单
+function toggleActionMenu(id, event) {
+    event.stopPropagation();
+    const menu = document.getElementById(`action-menu-${id}`);
+    const isOpen = menu.classList.contains('open');
+    
+    // 关闭所有菜单
+    document.querySelectorAll('.action-menu').forEach(m => m.classList.remove('open'));
+    
+    if (!isOpen) {
+        menu.classList.add('open');
+    }
+}
+
+function closeActionMenu(id) {
+    const menu = document.getElementById(`action-menu-${id}`);
+    if (menu) {
+        menu.classList.remove('open');
+    }
+}
+
+// 点击外部关闭菜单
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.action-dropdown')) {
+        document.querySelectorAll('.action-menu').forEach(m => m.classList.remove('open'));
+    }
+});
+</script>
+{% endblock %}
+
+
+
+
+

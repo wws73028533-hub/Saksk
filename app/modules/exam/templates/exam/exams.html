@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>我的考试</title>
+  <meta name="theme-color" content="#f5f5f7">
+  <style>
+    :root {
+      --bg-color: #f5f5f7;
+      --card-bg: rgba(255, 255, 255, 0.8);
+      --card-bg-solid: #ffffff;
+      --text-color: #1d1d1f;
+      --text-sub: #86868b;
+      --border-color: rgba(0, 0, 0, 0.1);
+      --primary: #007aff;
+      --primary-light: rgba(0, 122, 255, 0.1);
+      --shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+      --danger: #ff3b30;
+      --blur: blur(20px) saturate(180%);
+    }
+
+    /* 全局滚动条样式 - 极简风格 */
+    * { scrollbar-width: thin; scrollbar-color: transparent transparent; }
+    *:hover { scrollbar-color: rgba(128, 128, 128, 0.3) transparent; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: transparent; border-radius: 3px; }
+    *:hover::-webkit-scrollbar-thumb { background: rgba(128, 128, 128, 0.3); }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(128, 128, 128, 0.5); }
+
+    body { 
+      margin:0; 
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
+      background:var(--bg-color);
+      color:var(--text-color);
+      padding:40px 20px;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    .container { max-width: 980px; margin:0 auto; }
+    .topbar { 
+      display:flex; 
+      justify-content:space-between; 
+      align-items:center; 
+      margin-bottom:32px;
+      padding:0 4px;
+    }
+    a.link { 
+      color:var(--primary); 
+      text-decoration:none;
+      font-weight:500;
+      transition: opacity 0.2s;
+    }
+    a.link:hover {
+      opacity: 0.7;
+    }
+    h1 { 
+      margin:0; 
+      font-size:40px;
+      font-weight:600;
+      letter-spacing:-0.8px;
+    }
+    .grid { display:grid; grid-template-columns: 1fr; gap:20px; }
+    .card { 
+      background:var(--card-bg);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      border-radius:20px; 
+      box-shadow:var(--shadow);
+      border: 0.5px solid var(--border-color);
+      padding:32px; 
+    }
+    .card h2 { 
+      margin:0 0 20px; 
+      font-size:22px;
+      font-weight:600;
+      letter-spacing:-0.3px;
+    }
+    table { width:100%; border-collapse:collapse; }
+    th, td { 
+      text-align:left; 
+      padding:12px 16px; 
+      border-bottom:0.5px solid var(--border-color); 
+    }
+    thead th { 
+      background:var(--card-bg-solid);
+      font-weight:600;
+      font-size:13px;
+      text-transform:uppercase;
+      letter-spacing:0.5px;
+      color:var(--text-sub);
+    }
+    .actions { display:flex; gap:8px; flex-wrap:wrap; }
+    .btn { 
+      padding:8px 16px; 
+      border-radius:10px; 
+      border:0.5px solid var(--border-color); 
+      background:rgba(142, 142, 147, 0.12);
+      color:var(--text-color); 
+      cursor:pointer; 
+      text-decoration:none; 
+      font-size:15px;
+      font-weight:500;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .btn:hover {
+      background:rgba(142, 142, 147, 0.18);
+      transform: translateY(-1px);
+    }
+    .btn-primary { 
+      background:var(--primary); 
+      color:#fff; 
+      border-color:var(--primary);
+      box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+    }
+    .btn-primary:hover {
+      box-shadow: 0 4px 16px rgba(0, 122, 255, 0.4);
+    }
+    .tag { 
+      display:inline-block; 
+      padding:4px 10px; 
+      border-radius:12px; 
+      background:var(--primary-light);
+      color:var(--primary);
+      font-size:12px;
+      font-weight:600;
+    }
+    select {
+      padding:8px 12px;
+      border:0.5px solid var(--border-color);
+      border-radius:10px;
+      background:var(--card-bg-solid);
+      color:var(--text-color);
+      font-size:15px;
+      -webkit-appearance:none;
+    }
+    @media (max-width: 768px){ 
+      body{ padding:24px 16px;} 
+      h1 { font-size:32px; }
+      .card { padding:24px; }
+      table { font-size:14px; } 
+      .topbar { flex-direction:column; align-items:flex-start; gap:12px;} 
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="topbar">
+      <h1>我的考试</h1>
+      <a class="link" href="/">← 返回首页</a>
+    </div>
+
+    <div class="grid">
+
+
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom: 10px;">
+          <h2 style="margin:0;">进行中的考试</h2>
+          <span class="tag">{{ ongoing|length }}</span>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>科目</th>
+              <th>时长</th>
+              <th>开始时间</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for e in ongoing %}
+            <tr>
+              <td>{{ e.id }}</td>
+              <td>{{ e.subject or '全部' }}</td>
+              <td>{{ e.duration_minutes }} 分钟</td>
+              <td>{{ e.started_at }}</td>
+              <td class="actions">
+                <a class="btn btn-primary" href="/quiz?mode=exam&exam_id={{ e.id }}">继续</a>
+                <button class="btn" onclick="delExam({{ e.id }})">删除</button>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" style="color:var(--text-sub);">暂无进行中的考试</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom: 10px;">
+          <h2 style="margin:0;">已提交的考试</h2>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <label style="color:var(--text-sub); font-size:13px;">科目</label>
+            <select id="selSub" onchange="applyFilter()">
+              <option value="all" {% if filter_subject=='all' %}selected{% endif %}>全部</option>
+              {% for s in subjects %}
+              <option value="{{ s }}" {% if filter_subject==s %}selected{% endif %}>{{ s }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>科目</th>
+              <th>总分</th>
+              <th>开始时间</th>
+              <th>提交时间</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for e in submitted %}
+            <tr>
+              <td>{{ e.id }}</td>
+              <td>{{ e.subject or '全部' }}</td>
+              <td>{{ e.total_score }}</td>
+              <td>{{ e.started_at }}</td>
+              <td>{{ e.submitted_at }}</td>
+              <td class="actions">
+                <a class="btn" href="/exams/{{ e.id }}">成绩</a>
+                <a class="btn" href="/quiz?mode=exam&exam_id={{ e.id }}">回顾</a>
+                <button class="btn" onclick="toMistakes({{ e.id }})">错题</button>
+                <button class="btn" onclick="delExam({{ e.id }})">删除</button>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" style="color:var(--text-sub);">暂无已提交的考试</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; padding: 0 2px;">
+          <div style="color:var(--text-sub); font-size:13px;">共 {{ total }} 条</div>
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap: wrap; justify-content:flex-end;">
+            <button class="btn" onclick="gotoPage({{ page-1 }})" {% if page<=1 %}disabled{% endif %}>上一页</button>
+            <span style="color:var(--text-sub); font-size:13px;">第 {{ page }} 页</span>
+            {% set total_pages = (total + size - 1) // size %}
+            <button class="btn" onclick="gotoPage({{ page+1 }})" {% if page>=total_pages %}disabled{% endif %}>下一页</button>
+            <select id="selSize" onchange="changeSize(this.value)">
+              <option value="10" {% if size==10 %}selected{% endif %}>10/页</option>
+              <option value="20" {% if size==20 %}selected{% endif %}>20/页</option>
+              <option value="50" {% if size==50 %}selected{% endif %}>50/页</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+  <script>
+    function buildUrl(params){
+      const url = new URL(window.location.href);
+      Object.entries(params).forEach(([k,v])=>{ if(v===undefined||v===null||v==='') url.searchParams.delete(k); else url.searchParams.set(k, v); });
+      return url.toString();
+    }
+    function applyFilter(){
+      const sub = document.getElementById('selSub').value;
+      window.location.href = buildUrl({ subject: sub, page: 1 });
+    }
+    function gotoPage(p){
+      if(p < 1) return;
+      const sub = document.getElementById('selSub').value;
+      window.location.href = buildUrl({ subject: sub, page: p });
+    }
+    function changeSize(sz){
+      const sub = document.getElementById('selSub').value;
+      window.location.href = buildUrl({ subject: sub, page: 1, size: sz });
+    }
+    async function delExam(id){
+      if(!confirm('确定要删除该考试吗？此操作不可恢复。')) return;
+      try{
+        const res = await fetch(`/api/exams/${id}`, { method:'DELETE' });
+        const js = await res.json();
+        if(res.ok && js.status==='success') location.reload(); else alert(js.message||'删除失败');
+      }catch(e){ alert('删除失败'); }
+    }
+    async function toMistakes(id){
+      if(!confirm('将本次考试的错题加入错题本？')) return;
+      try{
+        const res = await fetch(`/api/exams/${id}/mistakes`, { method:'POST' });
+        const js = await res.json();
+        if(res.ok && js.status==='success') alert(`已加入错题本：${js.count} 题`); else alert(js.message||'操作失败');
+      }catch(e){ alert('操作失败'); }
+    }
+  </script>
+</body>
+</html>
+
