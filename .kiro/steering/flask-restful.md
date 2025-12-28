@@ -1,7 +1,5 @@
 ---
-alwaysApply: true
-description: This guide defines definitive best practices for building robust, maintainable, and modern REST APIs using Flask-RESTful, emphasizing Pydantic for validation and clear architectural patterns.
-globs: **/*.py
+inclusion: always
 ---
 # flask-restful Best Practices
 

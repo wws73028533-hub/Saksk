@@ -135,8 +135,8 @@ class Exam:
         user_ans = (user_ans or '').strip()
         std_ans = (std_ans or '').strip()
 
-        if q_type in ('选择题', '判断题'):
-            if q_type == '选择题':
+        if q_type in ('选择题', '判断题', '多选题'):
+            if q_type == '选择题' or q_type == '多选题':
                 ua = ''.join(sorted(list(user_ans)))
                 sa = ''.join(sorted(list(std_ans)))
             else:

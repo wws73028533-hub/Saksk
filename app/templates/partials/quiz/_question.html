@@ -50,6 +50,17 @@
         {% endfor %}
       </div>
 
+    {% elif q.q_type == '多选题' %}
+      <div class="options mc-options">
+        {% for opt in q.options %}
+          <label data-opt="{{ opt.key }}">
+            {# 多选题：不自动检查，需要点击"查看结果"按钮 #}
+            <input type="checkbox" value="{{ opt.key }}" onchange="{{ 'markAnswered(' ~ loop.index0 ~ ')' if mode == 'exam' else '' }}">
+            <span data-opt-text>{{ opt.value }}</span>
+          </label>
+        {% endfor %}
+      </div>
+
     {% elif q.q_type == '判断题' %}
       <div class="options tf-options">
         <label data-opt="✓">

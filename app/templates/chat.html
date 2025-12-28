@@ -38,6 +38,19 @@
       --me: rgba(48, 209, 88, 0.25); /* Green tint for my messages in dark mode */
       --other: rgba(58,58,60,0.75);
     }
+
+    /* 全局滚动条样式 - 极简风格 */
+    * { scrollbar-width: thin; scrollbar-color: transparent transparent; }
+    *:hover { scrollbar-color: rgba(128, 128, 128, 0.3) transparent; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: transparent; border-radius: 3px; }
+    *:hover::-webkit-scrollbar-thumb { background: rgba(128, 128, 128, 0.3); }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(128, 128, 128, 0.5); }
+    body.dark-mode ::-webkit-scrollbar-thumb { background: transparent; }
+    body.dark-mode *:hover::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); }
+    body.dark-mode ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.25); }
+
     body{ margin:0; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", "Arial", sans-serif; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
 
     .topbar{ position:sticky; top:0; z-index:10; display:flex; justify-content:space-between; align-items:center; padding:12px 18px;
@@ -65,6 +78,40 @@
       animation: spin .8s linear infinite;
     }
     @keyframes spin{ to { transform: rotate(360deg);} }
+
+    .theme-toggle {
+      border: var(--line) solid var(--border);
+      background: rgba(142,142,147,0.10);
+      color: var(--text);
+      padding: 8px;
+      border-radius: 10px;
+      cursor: pointer;
+      width: 40px;
+      height: 40px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .theme-toggle .theme-icon {
+      width: 20px;
+      height: 20px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    .theme-toggle .theme-icon img {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+      filter: invert(var(--icon-invert, 0));
+    }
+    .theme-toggle .icon-sun { opacity: 1; transform: scale(1) rotate(0deg); }
+    .theme-toggle .icon-moon { opacity: 0; transform: scale(0) rotate(-90deg); }
+    body.dark-mode .theme-toggle .theme-icon { --icon-invert: 1; }
+    body.dark-mode .theme-toggle .icon-sun { opacity: 0; transform: scale(0) rotate(90deg); }
+    body.dark-mode .theme-toggle .icon-moon { opacity: 1; transform: scale(1) rotate(0deg); }
 
     .layout{ display:flex; height: calc(100vh - 53px); max-width: 1400px; margin: 0 auto; } /* Adjusted height for new topbar padding */
     .sidebar{ width: 340px; border-right:var(--line) solid var(--border); background: var(--card);
@@ -579,11 +626,10 @@
     </div>
     <div style="display:flex; gap:10px; align-items:center;">
       <button class="btn" id="btnMobileList" style="display:none;" onclick="toggleDrawer(true)">会话</button>
-      <button class="btn" onclick="toggleTheme()" aria-label="切换深色模式" title="切换深色模式">
-        <span class="icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a6.5 6.5 0 0 0 9.8 9.8Z"/>
-          </svg>
+      <button class="theme-toggle" onclick="toggleTheme()" aria-label="切换深色模式">
+        <span class="theme-icon" aria-hidden="true">
+          <img src="/static/icons/theme-sun.svg" class="icon-sun" alt="" onerror="this.style.display='none'">
+          <img src="/static/icons/theme-moon.svg" class="icon-moon" alt="" onerror="this.style.display='none'">
         </span>
       </button>
     </div>

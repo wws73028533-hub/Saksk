@@ -22,6 +22,16 @@
       --blur: blur(40px) saturate(180%);
       --glow: 0 0 20px rgba(255, 255, 255, 0.5);
     }
+
+    /* 全局滚动条样式 - 极简风格 */
+    * { scrollbar-width: thin; scrollbar-color: transparent transparent; }
+    *:hover { scrollbar-color: rgba(128, 128, 128, 0.3) transparent; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: transparent; border-radius: 3px; }
+    *:hover::-webkit-scrollbar-thumb { background: rgba(128, 128, 128, 0.3); }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(128, 128, 128, 0.5); }
+
     body { 
       margin:0; 
       font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;

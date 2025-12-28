@@ -878,6 +878,7 @@
 
     function getTypeBadgeClass(type) {
         if (type === '选择题') return 'choice';
+        if (type === '多选题') return 'choice'; // 多选题使用选择题的样式
         if (type === '填空题') return 'blank';
         if (type === '判断题') return 'judge';
         return 'other';
@@ -998,8 +999,19 @@
             inputElement = document.createElement('input');
             inputElement.type = 'text';
             inputElement.id = 'qAnswer';
-            if (qType === '选择题' || qType === '多选题') {
-                 inputElement.placeholder = '例如: A, 或 ABC';
+            if (qType === '选择题') {
+                 inputElement.placeholder = '例如: A (单选题只需一个答案)';
+            } else if (qType === '多选题') {
+                 inputElement.placeholder = '例如: AB 或 ABC (多选题至少需要两个答案，用字母连续输入，无需逗号)';
+                 // 添加提示文本
+                 const hint = document.createElement('div');
+                 hint.style.fontSize = '12px';
+                 hint.style.color = '#6c757d';
+                 hint.style.marginTop = '6px';
+                 hint.textContent = '提示：多选题答案至少需要两个选项，例如 AB、ABC 等。答案会自动验证是否在选项范围内。';
+                 container.appendChild(inputElement);
+                 container.appendChild(hint);
+                 return; // 提前返回，因为已经添加了元素
             } else if (qType === '填空题') {
                 // 填空题：结构化多空/多答案编辑器（保存时会自动生成 answer 字符串）
                 container.innerHTML = `

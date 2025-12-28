@@ -39,6 +39,19 @@
             --shadow-hover: 0 4px 24px rgba(0, 0, 0, 0.6), 0 2px 4px rgba(0, 0, 0, 0.5);
             --hover-bg: rgba(142, 142, 147, 0.12);
         }
+
+        /* 全局滚动条样式 - 极简风格 */
+        * { scrollbar-width: thin; scrollbar-color: transparent transparent; }
+        *:hover { scrollbar-color: rgba(128, 128, 128, 0.3) transparent; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: transparent; border-radius: 3px; }
+        *:hover::-webkit-scrollbar-thumb { background: rgba(128, 128, 128, 0.3); }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(128, 128, 128, 0.5); }
+        body.dark-mode ::-webkit-scrollbar-thumb { background: transparent; }
+        body.dark-mode *:hover::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); }
+        body.dark-mode ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.25); }
+
         body {
             margin: 0;
             font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;

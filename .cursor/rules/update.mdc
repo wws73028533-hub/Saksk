@@ -1,4 +1,0 @@
----
-alwaysApply: true
----
-Before each conversation, read the initial guidance document for the functional module you were given. After each conversation, update the guidance document you were given. If you haven't been given a guidance document, create a new md file for the functional area related to the content of my question, place it in the same directory as that functional area, and name it clearly and concisely.

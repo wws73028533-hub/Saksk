@@ -159,8 +159,8 @@ def quiz_page():
                 # 统一 options 解析（兼容有/无 A/B 前缀、数字列表、结构化等）
                 q['options'] = parse_options(q['options'])
 
-                # 打乱选项顺序
-                if shuffle_options and q['options'] and q.get('q_type') == '选择题':
+                # 打乱选项顺序（使用确定性随机，确保同一用户同一题目的选项顺序一致）
+                if shuffle_options and q['options'] and q.get('q_type') in ('选择题', '多选题'):
                     # 1. 保存原始正确答案的文本
                     orig_answer_keys = str(q.get('answer') or '')
                     correct_texts = []
@@ -169,16 +169,18 @@ def quiz_page():
                         if key in options_map:
                             correct_texts.append(options_map[key])
                     
-                    # 2. 打乱选项列表
-                    random.shuffle(q['options'])
+                    # 2. 使用确定性随机打乱选项
+                    # 种子 = 用户ID + 题目ID，确保同一用户同一题目的选项顺序永远一致
+                    shuffle_seed = (uid if uid != -1 else 0) * 1000000 + q['id']
+                    rng = random.Random(shuffle_seed)
+                    rng.shuffle(q['options'])
                     
                     # 3. 根据打乱后的顺序，重新分配 A,B,C,D 并找到新答案
                     abcd = 'ABCD'
                     new_answer_keys = []
                     for i, option in enumerate(q['options']):
                         if i < len(abcd):
-                            # original_key = option['key']  # 保存原始key（当前逻辑未使用，保留注释）
-                            option['key'] = abcd[i] # 重新分配key
+                            option['key'] = abcd[i]  # 重新分配key
                             if option['value'] in correct_texts:
                                 new_answer_keys.append(option['key'])
                     

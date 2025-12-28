@@ -148,16 +148,38 @@ def add_question():
     uid = session.get('user_id')
     
     try:
+        q_type = data.get('q_type')
+        answer = (data.get('answer') or '').strip()
+        options_str = data.get('options', '[]')
+        
+        # 多选题验证：确保答案至少有两个选项
+        if q_type == '多选题':
+            if len(answer) < 2:
+                return jsonify({'status':'error','message':'多选题答案至少需要两个选项，例如：AB 或 ABC'}), 400
+            # 验证答案中的所有字母是否在选项范围内
+            try:
+                options_list = json.loads(options_str) if isinstance(options_str, str) else options_str
+                if isinstance(options_list, list) and len(options_list) > 0:
+                    from ..utils.options_parser import parse_options
+                    parsed_options = parse_options(options_list)
+                    valid_keys = {opt['key'] for opt in parsed_options if opt.get('key')}
+                    answer_keys = set(answer.upper())
+                    invalid_keys = answer_keys - valid_keys
+                    if invalid_keys:
+                        return jsonify({'status':'error','message':f'多选题答案中包含无效选项：{", ".join(sorted(invalid_keys))}。有效选项为：{", ".join(sorted(valid_keys))}'}), 400
+            except Exception:
+                pass  # 如果解析选项失败，跳过验证
+        
         conn = get_db()
         cursor = conn.execute('''
             INSERT INTO questions (subject_id, q_type, content, options, answer, explanation, difficulty, tags, image_path, created_by, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
         ''', (
             data.get('subject_id'),
-            data.get('q_type'),
+            q_type,
             data.get('content'),
-            data.get('options','[]'),
-            data.get('answer',''),
+            options_str,
+            answer,
             data.get('explanation',''),
             data.get('difficulty', 1),
             data.get('tags'),
@@ -178,6 +200,28 @@ def edit_question(question_id):
     data = request.json
     
     try:
+        q_type = data.get('q_type')
+        answer = (data.get('answer') or '').strip()
+        options_str = data.get('options', '[]')
+        
+        # 多选题验证：确保答案至少有两个选项
+        if q_type == '多选题':
+            if len(answer) < 2:
+                return jsonify({'status':'error','message':'多选题答案至少需要两个选项，例如：AB 或 ABC'}), 400
+            # 验证答案中的所有字母是否在选项范围内
+            try:
+                options_list = json.loads(options_str) if isinstance(options_str, str) else options_str
+                if isinstance(options_list, list) and len(options_list) > 0:
+                    from ..utils.options_parser import parse_options
+                    parsed_options = parse_options(options_list)
+                    valid_keys = {opt['key'] for opt in parsed_options if opt.get('key')}
+                    answer_keys = set(answer.upper())
+                    invalid_keys = answer_keys - valid_keys
+                    if invalid_keys:
+                        return jsonify({'status':'error','message':f'多选题答案中包含无效选项：{", ".join(sorted(invalid_keys))}。有效选项为：{", ".join(sorted(valid_keys))}'}), 400
+            except Exception:
+                pass  # 如果解析选项失败，跳过验证
+        
         conn = get_db()
         conn.execute('''
             UPDATE questions SET
@@ -186,10 +230,10 @@ def edit_question(question_id):
             WHERE id=?
         ''', (
             data.get('subject_id'),
-            data.get('q_type'),
+            q_type,
             data.get('content'),
-            data.get('options','[]'),
-            data.get('answer',''),
+            options_str,
+            answer,
             data.get('explanation',''),
             data.get('difficulty', 1),
             data.get('tags'),
@@ -806,8 +850,28 @@ def import_questions_api():
             explanation = item.get('解析', '')
             opts_json = '[]'
             
-            if q_type == '选择题':
+            if q_type == '选择题' or q_type == '多选题':
                 opts_json = json.dumps(item.get('选项', []), ensure_ascii=False)
+                # 多选题验证：确保答案至少有两个选项
+                if q_type == '多选题':
+                    answer = (answer or '').strip()
+                    if len(answer) < 2:
+                        # 跳过该题目，继续处理下一题，而不是中断整个导入
+                        continue
+                    # 验证答案中的所有字母是否在选项范围内
+                    try:
+                        options_list = item.get('选项', [])
+                        if isinstance(options_list, list) and len(options_list) > 0:
+                            from ..utils.options_parser import parse_options
+                            parsed_options = parse_options(options_list)
+                            valid_keys = {opt['key'] for opt in parsed_options if opt.get('key')}
+                            answer_keys = set(answer.upper())
+                            invalid_keys = answer_keys - valid_keys
+                            if invalid_keys:
+                                # 跳过该题目，继续处理下一题
+                                continue
+                    except Exception:
+                        pass  # 如果解析选项失败，跳过验证，继续导入
             elif q_type == '填空题':
                 # 支持题干中用 {答案} 标记空位，并自动提取答案
                 # 例："...{答案1}...{答案2}..." -> content="...__...__...", answer="答案1;;答案2"

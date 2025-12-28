@@ -446,7 +446,7 @@
         <ul class="recent-questions">
             {% for q in recent_questions %}
             <li>
-                <span class="question-type {{ 'choice' if q.q_type == '选择题' else ('blank' if q.q_type == '填空题' else 'judge') }}">
+                <span class="question-type {{ 'choice' if q.q_type == '选择题' or q.q_type == '多选题' else ('blank' if q.q_type == '填空题' else 'judge') }}">
                     {{ q.q_type }}
                 </span>
                 <span class="question-content">{{ q.content | truncate(60) }}</span>

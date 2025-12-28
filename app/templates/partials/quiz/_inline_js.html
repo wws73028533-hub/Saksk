@@ -4,6 +4,7 @@ const LOGGED_IN = {{ 'true' if logged_in else 'false' }};
 const USER_KEY = "{{ user_id if logged_in else 'guest' }}"; // 用 user_id 作为进度隔离键
 
 // 优化后的进度键生成函数 - 标准化参数顺序,避免重复进度
+// 重要：必须与后端 quiz.py 中的 key 生成逻辑保持一致！
 function progressKey(){
     const params = new URLSearchParams(window.location.search);
     const subject = params.get('subject') || 'all';
@@ -18,16 +19,25 @@ function progressKey(){
         }
     }
     
-    // 其他模式使用标准化的科目+题型+模式+打乱设置
+    // 计算 data_scope（与后端 quiz.py 保持一致）
+    // 后端逻辑：data_scope = target if target in ('favorites', 'mistakes') else 'all'
+    // target = source if source in ('favorites', 'mistakes') else mode
+    const sourceParam = params.get('source') || '';
+    let dataScope = 'all';
+    if (sourceParam === 'favorites' || sourceParam === 'mistakes') {
+        dataScope = sourceParam;
+    }
+    
+    // 其他模式使用标准化的科目+题型+模式+data_scope+打乱设置
     const shuffleQ = params.get('shuffle_questions') === '1' ? '1' : '0';
     const shuffleO = params.get('shuffle_options') === '1' ? '1' : '0';
-    return `quiz_progress_${USER_KEY}_${currentMode}_${subject}_${type}_q${shuffleQ}_o${shuffleO}`;
+    return `quiz_progress_${USER_KEY}_${currentMode}_${subject}_${type}_${dataScope}_q${shuffleQ}_o${shuffleO}`;
 }
-const questions = document.querySelectorAll('.question-box');
+let questions = document.querySelectorAll('.question-box');
 const EXAM_ID = (function(){ const el = document.getElementById('mainCard'); return el ? (el.dataset.examId || '') : ''; })();
 const EXAM_SUBMITTED = {{ 'true' if submitted else 'false' }};
 const USER_ANSWERS = {{ user_answers_json|safe if user_answers_json else '{}' }};
-const listItems = document.querySelectorAll('.q-item');
+let listItems = document.querySelectorAll('.q-item');
 
 // ===== 题目转发（发送到站内聊天） =====
 const forwardBtn = document.getElementById('forward-question-btn');
@@ -195,6 +205,8 @@ function getFabSize(){
 }
 
 function isFabAutoNextEnabled(){
+    // 如果悬浮球被禁用，所有悬浮球相关功能（包括自动切题）也应该禁用
+    if (!isFabEnabled()) return false;
     return localStorage.getItem(FAB_AUTO_NEXT_KEY) === '1';
 }
 function setFabAutoNextEnabled(on){
@@ -533,7 +545,7 @@ function bindFab(){
 
                 // 1) 清除输入
                 try {
-                    if (type === '选择题' || type === '判断题') {
+                    if (type === '选择题' || type === '判断题' || type === '多选题') {
                         q.querySelectorAll('input[type="checkbox"], input[type="radio"]').forEach(inp => {
                             inp.checked = false;
                             const lab = inp.closest('label');
@@ -649,6 +661,15 @@ async function init() {
     // 进度加载：考试模式（未交卷）也启用，与刷题/背题一致（localStorage + /api/progress）
     if (mode !== 'exam' || (mode === 'exam' && !EXAM_SUBMITTED)) {
         await preloadProgress();
+    }
+    
+    // 如果是乱序模式且 cachedOrder 还没有被设置，从当前 DOM 中收集题目顺序
+    // 这确保了即使服务器获取失败，也能正确保存顺序
+    const params = new URLSearchParams(window.location.search);
+    const isShuffleMode = params.get('shuffle_questions') === '1';
+    if (isShuffleMode && !cachedOrder && questions.length > 0) {
+        cachedOrder = Array.from(questions).map(q => parseInt(q.getAttribute('data-id')));
+        console.log('[进度初始化] 从 DOM 收集题目顺序:', cachedOrder.length, '题');
     }
 
     if (mode === 'exam') {
@@ -967,7 +988,7 @@ function showQuestion(index) {
                 btnNext.style.backgroundColor = '#6610f2';
                 btnNext.onclick = finishQuiz;
             } else {
-                btnNext.innerText = "下一题 (Enter) →";
+                btnNext.innerText = "下一题 →";
                 btnNext.classList.add('btn-next-green');
                 btnNext.style.backgroundColor = '';
                 btnNext.onclick = nextQuestion;
@@ -985,7 +1006,7 @@ function showQuestion(index) {
 }
 
 function fillAnswer(q, type, answer) {
-    if (type === '选择题' || type === '判断题') {
+    if (type === '选择题' || type === '判断题' || type === '多选题') {
         q.querySelectorAll('input').forEach(input => {
             const label = input.parentElement;
             label.classList.remove('correct-opt');
@@ -1015,13 +1036,14 @@ function disableInputs(q) {
 }
 
 function autoCheck() {
-    // 方案A：选择题/判断题自动出结果；填空/问答保留“查看结果”按钮
+    // 方案A：选择题/判断题自动出结果；多选题/填空/问答保留"查看结果"按钮
     const currentQ = questions[currentIndex];
     if (!currentQ) return;
     const type = currentQ.getAttribute('data-type');
     if (type === '选择题' || type === '判断题') {
         checkAnswer(false);
     }
+    // 多选题不自动检查，需要用户点击"查看结果"按钮
 }
 
 // 判断题：隐藏原生 radio 后，用整行高亮来表现选中态
@@ -1435,7 +1457,7 @@ function reviewJump(index) {
 }
 
 function judgeQuestion(q, type, answer) {
-    if (type === '选择题' || type === '判断题') {
+    if (type === '选择题' || type === '判断题' || type === '多选题') {
         const inputs = q.querySelectorAll('input');
         let userVals = [];
         inputs.forEach(i => { if(i.checked) userVals.push(i.value) });
@@ -1463,7 +1485,7 @@ function judgeQuestion(q, type, answer) {
 }
 
 function hasAnswered(q, type) {
-    if (type === '选择题' || type === '判断题') return !!q.querySelector('input:checked');
+    if (type === '选择题' || type === '判断题' || type === '多选题') return !!q.querySelector('input:checked');
 
     if (type === '填空题') {
         // 多空时：必须所有输入框都非空才算“已作答”
@@ -1484,7 +1506,7 @@ function hasAnswered(q, type) {
 }
 
 function styleFeedback(q, type, answer, isCorrect) {
-    if (type === '选择题' || type === '判断题') {
+    if (type === '选择题' || type === '判断题' || type === '多选题') {
         q.querySelectorAll('input').forEach(input => {
             const label = input.parentElement;
             label.classList.remove('correct-opt', 'wrong-opt');
@@ -1549,7 +1571,7 @@ function saveState(immediate = false) {
         const q = document.getElementById(`q-${index}`);
         if (q) {
             const type = q.getAttribute('data-type');
-            if (type === '选择题' || type === '判断题') {
+            if (type === '选择题' || type === '判断题' || type === '多选题') {
                 const checked = Array.from(q.querySelectorAll('input:checked')).map(i => i.value);
                 answerMap[index] = checked;
             } else if (type === '填空题') {
@@ -1672,7 +1694,7 @@ function loadState() {
                         // 1. 恢复用户的选择 (必须在 styleFeedback 之前)
                         if (data.answers && data.answers[idx]) {
                             const userAnswer = data.answers[idx];
-                            if ((type === '选择题' || type === '判断题') && Array.isArray(userAnswer)) {
+                            if ((type === '选择题' || type === '判断题' || type === '多选题') && Array.isArray(userAnswer)) {
                                 q.querySelectorAll('input').forEach(i => { i.checked = userAnswer.includes(i.value); });
                             } else if (type === '填空题') {
                                 // 填空题：这里保存的是数组（每空一个值），需要逐个恢复
@@ -1704,7 +1726,7 @@ function loadState() {
                     const q = document.getElementById(`q-${idx}`);
                     if (q) {
                         const type = q.getAttribute('data-type');
-                        if ((type === '选择题' || type === '判断题') && Array.isArray(val)) {
+                        if ((type === '选择题' || type === '判断题' || type === '多选题') && Array.isArray(val)) {
                             q.querySelectorAll('input').forEach(i => { i.checked = val.includes(i.value); });
                         } else if (type === '填空题' && Array.isArray(val)) {
                             const inputs = q.querySelectorAll('.main-input');
@@ -1823,11 +1845,11 @@ async function reshuffle() {
             sidebarList.appendChild(item);
         });
 
-        // 6. Reset UI state
-        window.questions = document.querySelectorAll('.question-box');
-        window.listItems = document.querySelectorAll('.q-item');
+        // 6. Reset UI state - 重新获取 DOM 元素（注意：这里直接赋值给模块级变量，不是 window 属性）
+        questions = document.querySelectorAll('.question-box');
+        listItems = document.querySelectorAll('.q-item');
         
-        window.questions.forEach((q, index) => {
+        questions.forEach((q, index) => {
             q.classList.remove('checked-mode');
             q.querySelectorAll('input, textarea').forEach(el => {
                 el.disabled = false;
@@ -1840,13 +1862,21 @@ async function reshuffle() {
             // 独立答案/解析卡片由 showQuestion/checkAnswer 控制，这里只需清理 dock
             hideAnswerExplainDock();
         });
-        window.listItems.forEach(item => {
+        listItems.forEach(item => {
             item.classList.remove('done-correct', 'done-wrong', 'answered');
         });
 
-        // 7. Show the first question
+        // 7. 收集新的题目顺序并更新 cachedOrder，然后同步到服务器
+        const newOrder = Array.from(questions).map(q => parseInt(q.getAttribute('data-id')));
+        cachedOrder = newOrder;
+        
+        // 8. Show the first question
         currentIndex = 0;
         showQuestion(0);
+        
+        // 9. 立即保存新顺序到服务器（重要：必须在 showQuestion 之后，因为 showQuestion 也会调用 saveState）
+        saveState(true);
+        
         showToast('题目已重新排序');
     }
 }
@@ -1889,7 +1919,7 @@ function applyReviewFromServer() {
             const stdAns = q.getAttribute('data-answer');
             const ua = uaMap[qid] || '';
             // 填充用户答案
-            if (type === '选择题') {
+            if (type === '选择题' || type === '多选题') {
                 const chosen = new Set((ua || '').split(''));
                 q.querySelectorAll('input[type="checkbox"]').forEach(i => { i.checked = chosen.has(i.value); });
             } else if (type === '判断题') {
@@ -1912,7 +1942,7 @@ function applyReviewFromServer() {
             }
             // 展示解析与高亮
             const isCorrect = (function(){
-                if (type === '选择题') return (ua.split('').sort().join('') === (stdAns||'').split('').sort().join('')) && ua !== '';
+                if (type === '选择题' || type === '多选题') return (ua.split('').sort().join('') === (stdAns||'').split('').sort().join('')) && ua !== '';
                 if (type === '判断题') return ua === stdAns && ua !== '';
                 if (type === '填空题') {
                     // 标准答案：不同空用 ";;" 分隔；每空多答案用 ";" 分隔

@@ -36,6 +36,18 @@
             --shadow-hover: 0 4px 24px rgba(0, 0, 0, 0.6), 0 2px 4px rgba(0, 0, 0, 0.5);
         }
 
+        /* 全局滚动条样式 - 极简风格 */
+        * { scrollbar-width: thin; scrollbar-color: transparent transparent; }
+        *:hover { scrollbar-color: rgba(128, 128, 128, 0.3) transparent; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: transparent; border-radius: 3px; }
+        *:hover::-webkit-scrollbar-thumb { background: rgba(128, 128, 128, 0.3); }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(128, 128, 128, 0.5); }
+        body.dark-mode ::-webkit-scrollbar-thumb { background: transparent; }
+        body.dark-mode *:hover::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); }
+        body.dark-mode ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.25); }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
             background: var(--bg-color);
@@ -140,6 +152,27 @@
             transform: scale(1.05);
             box-shadow: var(--shadow-hover);
         }
+
+        .theme-toggle .theme-icon {
+            width: 20px;
+            height: 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        .theme-toggle .theme-icon img {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            filter: invert(var(--icon-invert, 0));
+        }
+        .theme-toggle .icon-sun { opacity: 1; transform: scale(1) rotate(0deg); }
+        .theme-toggle .icon-moon { opacity: 0; transform: scale(0) rotate(-90deg); }
+        body.dark-mode .theme-toggle .theme-icon { --icon-invert: 1; }
+        body.dark-mode .theme-toggle .icon-sun { opacity: 0; transform: scale(0) rotate(90deg); }
+        body.dark-mode .theme-toggle .icon-moon { opacity: 1; transform: scale(1) rotate(0deg); }
 
         /* Search Bar */
         .search-section {
@@ -675,7 +708,12 @@
                 <h1 class="page-title">搜索结果</h1>
             </div>
             <div class="header-right">
-                <button class="theme-toggle" onclick="toggleTheme()">&#127763;</button>
+                <button class="theme-toggle" onclick="toggleTheme()" aria-label="切换深色模式">
+                    <span class="theme-icon" aria-hidden="true">
+                        <img src="/static/icons/theme-sun.svg" class="icon-sun" alt="" onerror="this.style.display='none'">
+                        <img src="/static/icons/theme-moon.svg" class="icon-moon" alt="" onerror="this.style.display='none'">
+                    </span>
+                </button>
             </div>
         </div>
 
@@ -766,11 +804,11 @@
                 {% endif %}
 
                 <div class="expandable-content">
-                    {% if q.options and q.q_type == '选择题' %}
+                    {% if q.options and (q.q_type == '选择题' or q.q_type == '多选题') %}
                     <div class="result-options">
                         <ul>
                         {% for option in q.options %}
-                            <li class="{{ 'correct-answer' if option.key == q.answer else '' }}"><strong>{{ option.key }}:</strong> {{ option.value }}</li>
+                            <li class="{{ 'correct-answer' if option.key in q.answer else '' }}"><strong>{{ option.key }}:</strong> {{ option.value }}</li>
                         {% endfor %}
                         </ul>
                     </div>
