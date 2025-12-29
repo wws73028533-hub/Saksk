@@ -1,0 +1,340 @@
+{% extends "admin/admin_base.html" %}
+
+{% block title %}题目集管理{% endblock %}
+
+{% block head %}
+<style>
+    .container {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(30px) saturate(180%);
+        -webkit-backdrop-filter: blur(30px) saturate(180%);
+        padding: 40px;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-soft);
+        border: 0.5px solid var(--border-color);
+    }
+    
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+    }
+    
+    .page-title {
+        font-size: 24px;
+        font-weight: bold;
+        color: var(--text-color);
+    }
+    
+    .btn-create {
+        padding: 10px 20px;
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        font-size: 15px;
+        font-weight: 500;
+    }
+    
+    .btn-create:hover {
+        background: #0051d5;
+    }
+    
+    .subjects-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 20px;
+        margin-top: 20px;
+    }
+    
+    .subject-card {
+        background: var(--card-bg);
+        border: 0.5px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        padding: 20px;
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+    
+    .subject-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow);
+    }
+    
+    .subject-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+    }
+    
+    .subject-name {
+        font-size: 18px;
+        font-weight: 600;
+        color: var(--text-color);
+    }
+    
+    .subject-locked {
+        padding: 4px 8px;
+        background: rgba(255, 59, 48, 0.15);
+        color: #ff3b30;
+        border-radius: 6px;
+        font-size: 12px;
+    }
+    
+    .subject-stats {
+        display: flex;
+        gap: 16px;
+        margin-top: 12px;
+        font-size: 14px;
+        color: var(--text-sub);
+    }
+    
+    .subject-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 0.5px solid var(--border-color);
+    }
+    
+    .btn-action {
+        padding: 6px 12px;
+        border: 0.5px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        background: var(--card-bg);
+        cursor: pointer;
+        font-size: 13px;
+        flex: 1;
+        text-align: center;
+    }
+    
+    .btn-action:hover {
+        background: var(--primary-light);
+    }
+    
+    .btn-manage {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+    
+    .btn-manage:hover {
+        background: #0051d5;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1 class="page-title">题目集管理</h1>
+        <button class="btn-create" onclick="showCreateModal()">创建题目集</button>
+    </div>
+    
+    <div id="subjects-container">
+        <div style="text-align: center; padding: 40px;">加载中...</div>
+    </div>
+</div>
+
+<!-- 创建/编辑模态框 -->
+<div id="modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: var(--card-bg); padding: 32px; border-radius: var(--radius-lg); max-width: 500px; width: 90%;">
+        <h2 id="modal-title">创建题目集</h2>
+        <form id="subject-form" onsubmit="saveSubject(event)">
+            <div style="margin-bottom: 16px;">
+                <label>题目集名称 *</label>
+                <input type="text" name="name" required style="width: 100%; padding: 10px; margin-top: 8px; border: 0.5px solid var(--border-color); border-radius: var(--radius-sm);">
+            </div>
+            <div style="margin-bottom: 16px;">
+                <label>描述</label>
+                <textarea name="description" rows="3" style="width: 100%; padding: 10px; margin-top: 8px; border: 0.5px solid var(--border-color); border-radius: var(--radius-sm);"></textarea>
+            </div>
+            <div style="margin-bottom: 16px;">
+                <label>
+                    <input type="checkbox" name="is_locked" style="margin-right: 8px;">
+                    锁定（锁定后用户无法访问）
+                </label>
+            </div>
+            <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                <button type="button" onclick="closeModal()" style="padding: 10px 20px; border: 0.5px solid var(--border-color); border-radius: var(--radius-sm); background: var(--card-bg); cursor: pointer;">取消</button>
+                <button type="submit" style="padding: 10px 20px; border: none; border-radius: var(--radius-sm); background: var(--primary); color: white; cursor: pointer;">保存</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+let currentEditId = null;
+
+// 加载题目集列表
+async function loadSubjects() {
+    const container = document.getElementById('subjects-container');
+    try {
+        const res = await fetch('/admin/coding/api/subjects');
+        const result = await res.json();
+        
+        if (result.status === 'success') {
+            renderSubjects(result.data.subjects);
+        } else {
+            container.innerHTML = '<div style="text-align: center; padding: 40px;">加载失败</div>';
+        }
+    } catch (error) {
+        console.error('加载失败:', error);
+        container.innerHTML = '<div style="text-align: center; padding: 40px;">加载失败</div>';
+    }
+}
+
+// 渲染题目集列表
+function renderSubjects(subjects) {
+    const container = document.getElementById('subjects-container');
+    
+    if (subjects.length === 0) {
+        container.innerHTML = '<div style="text-align: center; padding: 40px;">暂无题目集</div>';
+        return;
+    }
+    
+    const grid = document.createElement('div');
+    grid.className = 'subjects-grid';
+    
+    subjects.forEach(subject => {
+        const card = document.createElement('div');
+        card.className = 'subject-card';
+        
+        card.innerHTML = `
+            <div class="subject-header">
+                <div class="subject-name">${escapeHtml(subject.name)}</div>
+                ${subject.is_locked ? '<span class="subject-locked">已锁定</span>' : ''}
+            </div>
+            ${subject.description ? `<div style="color: var(--text-sub); margin-bottom: 12px;">${escapeHtml(subject.description)}</div>` : ''}
+            <div class="subject-stats">
+                <span>函数题: ${subject.function_count}</span>
+                <span>编程题: ${subject.coding_count}</span>
+                <span>总计: ${subject.total_count}</span>
+            </div>
+            <div class="subject-actions">
+                <button class="btn-action btn-manage" onclick="manageQuestions(${subject.id})">管理题目</button>
+                <button class="btn-action" onclick="editSubject(${subject.id})">编辑</button>
+                <button class="btn-action" onclick="deleteSubject(${subject.id})" style="color: var(--danger);">删除</button>
+            </div>
+        `;
+        
+        grid.appendChild(card);
+    });
+    
+    container.innerHTML = '';
+    container.appendChild(grid);
+}
+
+// 管理题目
+function manageQuestions(subjectId) {
+    window.location.href = `/admin/coding/questions?subject=${subjectId}`;
+}
+
+// 显示创建模态框
+function showCreateModal() {
+    currentEditId = null;
+    document.getElementById('modal-title').textContent = '创建题目集';
+    document.getElementById('subject-form').reset();
+    document.getElementById('modal').style.display = 'flex';
+}
+
+// 编辑题目集
+async function editSubject(id) {
+    try {
+        const res = await fetch('/admin/coding/api/subjects');
+        const result = await res.json();
+        
+        if (result.status === 'success') {
+            const subject = result.data.subjects.find(s => s.id === id);
+            if (subject) {
+                currentEditId = id;
+                document.getElementById('modal-title').textContent = '编辑题目集';
+                document.querySelector('[name="name"]').value = subject.name || '';
+                document.querySelector('[name="description"]').value = subject.description || '';
+                document.querySelector('[name="is_locked"]').checked = subject.is_locked || false;
+                document.getElementById('modal').style.display = 'flex';
+            }
+        }
+    } catch (error) {
+        alert('加载题目集失败');
+    }
+}
+
+// 保存题目集
+async function saveSubject(event) {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    const data = {
+        name: formData.get('name'),
+        description: formData.get('description'),
+        is_locked: formData.get('is_locked') === 'on'
+    };
+    
+    try {
+        const url = currentEditId 
+            ? `/admin/coding/api/subjects/${currentEditId}`
+            : '/admin/coding/api/subjects';
+        const method = currentEditId ? 'PUT' : 'POST';
+        
+        const res = await fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await res.json();
+        
+        if (result.status === 'success') {
+            alert(result.message);
+            closeModal();
+            loadSubjects();
+        } else {
+            alert(result.message);
+        }
+    } catch (error) {
+        alert('保存失败');
+    }
+}
+
+// 删除题目集
+async function deleteSubject(id) {
+    if (!confirm('确定要删除这个题目集吗？删除后无法恢复。')) return;
+    
+    try {
+        const res = await fetch(`/admin/coding/api/subjects/${id}`, {
+            method: 'DELETE'
+        });
+        
+        const result = await res.json();
+        
+        if (result.status === 'success') {
+            alert(result.message);
+            loadSubjects();
+        } else {
+            alert(result.message);
+        }
+    } catch (error) {
+        alert('删除失败');
+    }
+}
+
+function closeModal() {
+    document.getElementById('modal').style.display = 'none';
+    currentEditId = null;
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// 初始化
+loadSubjects();
+</script>
+{% endblock %}
+
+

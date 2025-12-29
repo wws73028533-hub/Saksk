@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 """编程题路由"""
-from flask import Blueprint
+# 注意：蓝图在 app/modules/coding/__init__.py 中注册
+# 这里只导出子蓝图，不创建主蓝图
 from .pages import coding_pages_bp
 from .api import coding_api_bp
 
-coding_bp = Blueprint('coding', __name__, url_prefix='/coding')
-coding_bp.register_blueprint(coding_pages_bp)
-coding_bp.register_blueprint(coding_api_bp, url_prefix='/api')
+__all__ = ['coding_pages_bp', 'coding_api_bp']
 

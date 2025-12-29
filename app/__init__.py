@@ -168,7 +168,9 @@ def _register_before_request(app):
                         (uid,)
                     )
                     conn.commit()
-            except Exception:
+            except Exception as e:
+                # 记录错误但不中断请求
+                app.logger.warning(f"会话验证异常: {e}", exc_info=True)
                 pass
             
             # 管理后台权限校验
@@ -239,7 +241,8 @@ def _register_before_request(app):
             '/quiz': 'quiz',
             '/exams': 'exams', 
             '/profile': 'profile',
-            '/search': 'search'
+            '/search': 'search',
+            '/coding': '编程模式'
         }
         
         for required_path, tip_key in login_required_paths.items():
@@ -270,7 +273,8 @@ def _register_before_request(app):
             '/api/favorite',
             '/api/record_result',
             '/api/progress',
-            '/api/exams'
+            '/api/exams',
+            '/coding/api'
         ]
         
         for api_path in login_required_apis:

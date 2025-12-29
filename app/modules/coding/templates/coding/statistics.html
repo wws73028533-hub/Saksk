@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>排名</title>
+    <style>
+        :root {
+            --bg-color: #f5f5f7;
+            --card-bg: rgba(255, 255, 255, 0.72);
+            --card-bg-solid: rgba(255, 255, 255, 0.92);
+            --text-color: #1d1d1f;
+            --text-sub: #6e6e73;
+            --border-color: rgba(0, 0, 0, 0.06);
+            --primary: #007AFF;
+            --primary-light: rgba(0, 122, 255, 0.12);
+            --shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+            --success: #34c759;
+            --warning: #ff9500;
+            --danger: #ff3b30;
+            --blur: blur(40px) saturate(180%);
+            --radius-lg: 18px;
+            --radius-sm: 12px;
+            --sidebar-width: 100px;
+        }
+
+        body.dark-mode {
+            --bg-color: #000000;
+            --card-bg: rgba(28, 28, 30, 0.6);
+            --card-bg-solid: rgba(28, 28, 30, 0.95);
+            --text-color: #f5f5f7;
+            --text-sub: #a1a1a6;
+            --border-color: rgba(255, 255, 255, 0.12);
+            --primary: #0a84ff;
+            --primary-light: rgba(10, 132, 255, 0.2);
+            --shadow: 0 2px 16px rgba(0, 0, 0, 0.5);
+        }
+
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: transparent transparent;
+        }
+        *:hover {
+            scrollbar-color: rgba(128, 128, 128, 0.3) transparent;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: transparent;
+            border-radius: 3px;
+            transition: background 0.3s ease;
+        }
+        *:hover::-webkit-scrollbar-thumb {
+            background: rgba(128, 128, 128, 0.3);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .top-header {
+            background: var(--card-bg);
+            backdrop-filter: var(--blur);
+            -webkit-backdrop-filter: var(--blur);
+            border-bottom: 0.5px solid var(--border-color);
+            padding: 12px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .btn-back {
+            padding: 6px 12px;
+            border: none;
+            background: transparent;
+            color: var(--text-color);
+            font-size: 16px;
+            cursor: pointer;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: color 0.2s ease;
+        }
+
+        .btn-back:hover {
+            color: var(--primary);
+        }
+
+        .header-title {
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--text-color);
+        }
+
+        .main-layout {
+            display: flex;
+            min-height: calc(100vh - 60px);
+        }
+
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--card-bg);
+            backdrop-filter: var(--blur);
+            -webkit-backdrop-filter: var(--blur);
+            border-right: 0.5px solid var(--border-color);
+            padding: 24px 0;
+        }
+
+        .sidebar-nav {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 0 8px;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 12px 4px;
+            color: var(--text-sub);
+            text-decoration: none;
+            font-size: 11px;
+            transition: all 0.2s ease;
+            border-radius: var(--radius-sm);
+            text-align: center;
+        }
+
+        .nav-item:hover {
+            background: var(--primary-light);
+            color: var(--primary);
+        }
+
+        .nav-item.active {
+            background: var(--primary-light);
+            color: var(--primary);
+            font-weight: 500;
+        }
+
+        .nav-icon {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 6px;
+        }
+
+        .nav-icon svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .nav-text {
+            line-height: 1.4;
+            word-break: break-word;
+        }
+
+        .content-area {
+            flex: 1;
+            padding: 32px 40px;
+            background: var(--bg-color);
+            overflow-y: auto;
+        }
+
+        .rankings-list {
+            background: var(--card-bg);
+            backdrop-filter: var(--blur);
+            -webkit-backdrop-filter: var(--blur);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow);
+            border: 0.5px solid var(--border-color);
+            overflow: hidden;
+        }
+
+        .ranking-item {
+            display: flex;
+            align-items: center;
+            padding: 16px 24px;
+            border-bottom: 0.5px solid var(--border-color);
+            transition: background 0.2s ease;
+        }
+
+        .ranking-item:last-child {
+            border-bottom: none;
+        }
+
+        .ranking-item:hover {
+            background: var(--primary-light);
+        }
+
+        .ranking-item.current-user {
+            background: var(--primary-light);
+            border-left: 3px solid var(--primary);
+        }
+
+        .rank-number {
+            width: 40px;
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-color);
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .rank-number.top1 {
+            color: #ffd700;
+        }
+
+        .rank-number.top2 {
+            color: #c0c0c0;
+        }
+
+        .rank-number.top3 {
+            color: #cd7f32;
+        }
+
+        .user-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-left: 16px;
+        }
+
+        .username {
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--text-color);
+        }
+
+        .user-stats {
+            display: flex;
+            gap: 16px;
+            font-size: 13px;
+            color: var(--text-sub);
+        }
+
+        .score-info {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .score-value {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .loading, .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-sub);
+        }
+    </style>
+</head>
+<body>
+    <header class="top-header">
+        <div class="header-left">
+            <a href="#" class="btn-back" id="back-link">←</a>
+            <h1 class="header-title" id="page-title">排名</h1>
+        </div>
+    </header>
+
+    <div class="main-layout">
+        <aside class="sidebar">
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item" id="overview-link">
+                    <div class="nav-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 6v6l4 2"/>
+                        </svg>
+                    </div>
+                    <span class="nav-text">概览</span>
+                </a>
+                <a href="#" class="nav-item" id="questions-link">
+                    <div class="nav-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                            <line x1="16" y1="13" x2="8" y2="13"/>
+                            <line x1="16" y1="17" x2="8" y2="17"/>
+                            <polyline points="10 9 9 9 8 9"/>
+                        </svg>
+                    </div>
+                    <span class="nav-text">题目<br>列表</span>
+                </a>
+                <a href="#" class="nav-item" id="submissions-link">
+                    <div class="nav-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="8" y1="6" x2="21" y2="6"/>
+                            <line x1="8" y1="12" x2="21" y2="12"/>
+                            <line x1="8" y1="18" x2="21" y2="18"/>
+                            <line x1="3" y1="6" x2="3.01" y2="6"/>
+                            <line x1="3" y1="12" x2="3.01" y2="12"/>
+                            <line x1="3" y1="18" x2="3.01" y2="18"/>
+                        </svg>
+                    </div>
+                    <span class="nav-text">提交<br>列表</span>
+                </a>
+                <a href="#" class="nav-item active" id="statistics-link">
+                    <div class="nav-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="20" x2="18" y2="10"/>
+                            <line x1="12" y1="20" x2="12" y2="4"/>
+                            <line x1="6" y1="20" x2="6" y2="14"/>
+                        </svg>
+                    </div>
+                    <span class="nav-text">排名</span>
+                </a>
+            </nav>
+        </aside>
+
+        <main class="content-area">
+            <div class="rankings-list" id="rankings-container">
+                <div class="loading">加载中...</div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const questionId = {{ question_id|default('null') }};
+        const subjectId = {{ subject_id|default('null') }};
+        let currentPage = 1;
+        const perPage = 20;
+
+        // 设置导航链接
+        function setupNavigation() {
+            const backLink = document.getElementById('back-link');
+            const overviewLink = document.getElementById('overview-link');
+            const questionsLink = document.getElementById('questions-link');
+            const submissionsLink = document.getElementById('submissions-link');
+
+            if (questionId) {
+                backLink.href = `/coding/${questionId}`;
+                overviewLink.href = `/coding/subject/${subjectId || ''}`;
+                questionsLink.href = `/coding/questions?subject=${subjectId || ''}`;
+                submissionsLink.href = `/coding/submissions?question=${questionId}`;
+            } else if (subjectId) {
+                backLink.href = `/coding/subject/${subjectId}`;
+                overviewLink.href = `/coding/subject/${subjectId}`;
+                questionsLink.href = `/coding/questions?subject=${subjectId}`;
+                submissionsLink.href = `/coding/submissions?subject=${subjectId}`;
+            } else {
+                backLink.href = '/coding';
+                overviewLink.href = '/coding/home';
+                questionsLink.href = '/coding';
+            }
+        }
+
+        // 加载排名
+        async function loadRankings() {
+            const container = document.getElementById('rankings-container');
+            container.innerHTML = '<div class="loading">加载中...</div>';
+
+            try {
+                if (!questionId) {
+                    container.innerHTML = '<div class="empty-state">请选择题目查看排名</div>';
+                    return;
+                }
+
+                const params = new URLSearchParams({
+                    page: currentPage,
+                    per_page: perPage
+                });
+                
+                const res = await fetch(`/coding/api/questions/${questionId}/rankings?${params}`);
+                const result = await res.json();
+
+                if (result.status === 'success') {
+                    renderRankings(result.data.rankings, result.data.total, result.data.user_rank);
+                } else {
+                    container.innerHTML = '<div class="empty-state">加载失败</div>';
+                }
+            } catch (error) {
+                console.error('加载排名失败:', error);
+                container.innerHTML = '<div class="empty-state">加载失败，请刷新重试</div>';
+            }
+        }
+
+        // 渲染排名列表
+        function renderRankings(rankings, total, userRank) {
+            const container = document.getElementById('rankings-container');
+            
+            if (rankings.length === 0) {
+                container.innerHTML = '<div class="empty-state">暂无排名数据</div>';
+                return;
+            }
+
+            const list = document.createElement('div');
+            list.className = 'rankings-list';
+
+            rankings.forEach((rank) => {
+                const item = document.createElement('div');
+                item.className = 'ranking-item';
+                
+                // 判断是否是当前用户（需要从后端获取当前用户ID，这里暂时用username判断）
+                // 实际应该通过API返回当前用户ID来判断
+
+                const rankClass = rank.rank === 1 ? 'top1' : 
+                                 rank.rank === 2 ? 'top2' :
+                                 rank.rank === 3 ? 'top3' : '';
+
+                item.innerHTML = `
+                    <div class="rank-number ${rankClass}">#${rank.rank}</div>
+                    <div class="user-info">
+                        <div class="username">${escapeHtml(rank.username)}</div>
+                        <div class="user-stats">
+                            <span>得分: ${rank.accepted_score}分</span>
+                            ${rank.best_score !== undefined && rank.best_score > 0 ? `<span>最佳得分: ${rank.best_score.toFixed(2)}分</span>` : ''}
+                            ${rank.best_time ? `<span>最佳时间: ${rank.best_time.toFixed(3)}s</span>` : ''}
+                            <span>提交次数: ${rank.total_submissions}</span>
+                        </div>
+                    </div>
+                    <div class="score-info">
+                        <div class="score-value">${rank.accepted_score}分</div>
+                    </div>
+                `;
+
+                list.appendChild(item);
+            });
+
+            // 显示用户排名信息
+            if (userRank) {
+                const userInfo = document.createElement('div');
+                userInfo.className = 'ranking-item current-user';
+                userInfo.style.marginTop = '20px';
+                userInfo.style.borderTop = '2px solid var(--primary)';
+                userInfo.innerHTML = `
+                    <div class="rank-number">#${userRank}</div>
+                    <div class="user-info">
+                        <div class="username">我的排名</div>
+                        <div class="user-stats">您的当前排名</div>
+                    </div>
+                `;
+                list.appendChild(userInfo);
+            }
+
+            container.innerHTML = '';
+            container.appendChild(list);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 初始化
+        setupNavigation();
+        loadRankings();
+    </script>
+</body>
+</html>
+

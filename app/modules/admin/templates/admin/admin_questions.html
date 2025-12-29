@@ -1789,7 +1789,7 @@
             previewWrapper.style.position = 'relative';
 
             const img = document.createElement('img');
-            img.src = `{{ url_for('main.serve_upload', filename='') }}${path}`;
+            img.src = `{{ url_for('main.main_pages.serve_upload', filename='') }}${path}`;
             img.style.width = '100px';
             img.style.height = '100px';
             img.style.objectFit = 'cover';

@@ -50,19 +50,13 @@ def admin_subjects_page():
     return render_template('admin/admin_subjects.html')
 
 
-@admin_pages_bp.route('/coding')
-def admin_coding_page():
-    """编程题管理页面"""
-    return render_template('admin/admin_coding.html')
-
-
 @admin_pages_bp.route('/subjects/<int:subject_id>/questions')
 def admin_questions_page(subject_id):
     """题集管理页面"""
     conn = get_db()
     
-    # 获取科目信息
-    subject = conn.execute('SELECT id, name FROM subjects WHERE id=?', (subject_id,)).fetchone()
+    # 获取科目信息（使用coding_subjects表）
+    subject = conn.execute('SELECT id, name FROM coding_subjects WHERE id=?', (subject_id,)).fetchone()
     
     if not subject:
         return "科目不存在", 404

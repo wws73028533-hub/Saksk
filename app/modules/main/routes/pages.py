@@ -8,9 +8,21 @@ from app.core.utils.database import get_db
 main_pages_bp = Blueprint('main_pages', __name__)
 
 
+@main_pages_bp.route('/hub')
+def hub():
+    """功能选择中心"""
+    uid = session.get('user_id')
+    return render_template('main/hub.html',
+                         logged_in=bool(uid),
+                         username=session.get('username'),
+                         is_admin=session.get('is_admin', False),
+                         is_subject_admin=session.get('is_subject_admin', False),
+                         user_id=uid or 0)
+
+
 @main_pages_bp.route('/')
 def index():
-    """首页"""
+    """首页（题库中心）"""
     uid = session.get('user_id')
     conn = get_db()
     

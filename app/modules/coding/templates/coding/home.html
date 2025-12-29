@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <title>编程题中心 - 程序设计类实验辅助教学平台</title>
+    <title>编程题中心 - 首页</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Crect width='128' height='128' rx='24' fill='%23007bff'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='central' text-anchor='middle' font-size='88' fill='white'%3EC%3C/text%3E%3C/svg%3E">
     <style>
         :root {
@@ -16,6 +16,7 @@
             --primary: #007AFF;
             --primary-light: rgba(0, 122, 255, 0.12);
             --shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+            --shadow-hover: 0 14px 44px rgba(0, 0, 0, 0.10);
             --success: #34c759;
             --warning: #ff9500;
             --danger: #ff3b30;
@@ -35,6 +36,7 @@
             --primary: #0a84ff;
             --primary-light: rgba(10, 132, 255, 0.2);
             --shadow: 0 2px 16px rgba(0, 0, 0, 0.5);
+            --shadow-hover: 0 4px 24px rgba(0, 0, 0, 0.6);
         }
 
         * {
@@ -119,7 +121,6 @@
             font-size: 14px;
             padding: 6px 0;
             transition: color 0.2s ease;
-            position: relative;
         }
 
         .nav-tab:hover {
@@ -228,209 +229,173 @@
         /* 主内容区 */
         .content-area {
             flex: 1;
-            padding: 32px 40px;
+            padding: 40px;
             background: var(--bg-color);
+            overflow-y: auto;
         }
 
-        .content-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 24px;
-        }
-
-        .tabs {
-            display: flex;
-            gap: 0;
-            border-bottom: 2px solid var(--border-color);
-        }
-
-        .tab {
-            padding: 12px 24px;
-            font-size: 15px;
-            color: var(--text-sub);
-            background: transparent;
-            border: none;
-            border-bottom: 2px solid transparent;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            margin-bottom: -2px;
-        }
-
-        .tab:hover {
-            color: var(--primary);
-        }
-
-        .tab.active {
-            color: var(--primary);
-            border-bottom-color: var(--primary);
-            font-weight: 500;
-        }
-
-        .sort-control {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .sort-select {
-            padding: 6px 12px;
-            border: 0.5px solid var(--border-color);
-            border-radius: var(--radius-sm);
-            background: var(--card-bg-solid);
+        .page-title {
+            font-size: 32px;
+            font-weight: 700;
             color: var(--text-color);
-            font-size: 13px;
-            cursor: pointer;
-            transition: all 0.2s ease;
+            margin-bottom: 32px;
         }
 
-        .sort-select:hover {
-            border-color: var(--primary);
+        /* 科目卡片网格 */
+        .subjects-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 24px;
+            margin-bottom: 40px;
         }
 
-        /* 题目列表 */
-        .questions-list {
+        .subject-card {
             background: var(--card-bg);
             backdrop-filter: var(--blur);
             -webkit-backdrop-filter: var(--blur);
             border-radius: var(--radius-lg);
             box-shadow: var(--shadow);
             border: 0.5px solid var(--border-color);
+            padding: 24px;
+            transition: all 0.24s ease;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+            position: relative;
             overflow: hidden;
         }
 
-        .question-item {
+        .subject-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--success));
+            opacity: 0;
+            transition: opacity 0.24s ease;
+        }
+
+        .subject-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        .subject-card:hover::before {
+            opacity: 1;
+        }
+
+        .subject-header {
             display: flex;
-            align-items: center;
-            padding: 16px 24px;
-            border-bottom: 0.5px solid var(--border-color);
-            transition: background 0.2s ease;
-            text-decoration: none;
-            color: inherit;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 16px;
         }
 
-        .question-item:last-child {
-            border-bottom: none;
+        .subject-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-color);
+            line-height: 1.4;
+            flex: 1;
         }
 
-        .question-item:hover {
+        .subject-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: var(--radius-sm);
             background: var(--primary-light);
-        }
-
-        .question-item.highlighted {
-            background: rgba(0, 122, 255, 0.08);
-        }
-
-        .question-icon {
-            width: 24px;
-            height: 24px;
-            margin-right: 16px;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: var(--text-sub);
+            font-size: 24px;
+            flex-shrink: 0;
+            margin-left: 12px;
         }
 
-        .question-content {
-            flex: 1;
+        .subject-stats {
             display: flex;
             flex-direction: column;
             gap: 8px;
+            margin-bottom: 16px;
         }
 
-        .question-title {
-            font-size: 15px;
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            color: var(--text-sub);
+        }
+
+        .stat-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .stat-value {
             font-weight: 500;
             color: var(--text-color);
         }
 
-        .question-meta {
-            display: flex;
-            gap: 16px;
-            font-size: 13px;
-            color: var(--text-sub);
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: var(--card-bg-solid);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 12px;
         }
 
-        .question-actions {
-            display: flex;
-            gap: 12px;
-            align-items: center;
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--success));
+            border-radius: 3px;
+            transition: width 0.3s ease;
         }
 
-        .status-badge {
-            padding: 4px 12px;
-            border-radius: 12px;
+        .progress-text {
             font-size: 12px;
-            font-weight: 500;
-            white-space: nowrap;
+            color: var(--text-sub);
+            text-align: right;
         }
 
-        .badge-open {
-            background: rgba(0, 122, 255, 0.15);
-            color: var(--primary);
+        .card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 16px;
+            border-top: 0.5px solid var(--border-color);
         }
 
-        .badge-closed {
-            background: rgba(255, 149, 0, 0.15);
-            color: var(--warning);
-        }
-
-        .badge-solved {
-            background: rgba(52, 199, 89, 0.15);
-            color: var(--success);
-        }
-
-        .btn-view {
-            padding: 6px 16px;
+        .btn-enter {
+            padding: 8px 20px;
             border: 0.5px solid var(--primary);
             border-radius: var(--radius-sm);
             background: var(--primary);
             color: white;
-            font-size: 13px;
+            font-size: 14px;
+            font-weight: 500;
             text-decoration: none;
             transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
         }
 
-        .btn-view:hover {
+        .btn-enter:hover {
             background: #0051d5;
             border-color: #0051d5;
-        }
-
-        .list-footer {
-            padding: 16px 24px;
-            text-align: center;
-            color: var(--text-sub);
-            font-size: 13px;
-            border-top: 0.5px solid var(--border-color);
+            transform: translateX(2px);
         }
 
         .loading, .empty-state {
             text-align: center;
             padding: 60px 20px;
             color: var(--text-sub);
-        }
-
-        /* 筛选器（可选，放在顶部） */
-        .filters-bar {
-            display: flex;
-            gap: 12px;
-            margin-bottom: 24px;
-            flex-wrap: wrap;
-        }
-
-        .filter-input, .filter-select {
-            padding: 8px 12px;
-            border: 0.5px solid var(--border-color);
-            border-radius: var(--radius-sm);
-            background: var(--card-bg-solid);
-            color: var(--text-color);
-            font-size: 13px;
-            transition: all 0.2s ease;
-        }
-
-        .filter-input:focus, .filter-select:focus {
-            outline: none;
-            border-color: var(--primary);
         }
 
         /* 响应式设计 */
@@ -450,6 +415,9 @@
             .nav-item {
                 white-space: nowrap;
             }
+            .subjects-grid {
+                grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            }
         }
 
         @media (max-width: 768px) {
@@ -465,14 +433,8 @@
             .content-area {
                 padding: 20px;
             }
-            .question-item {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 12px;
-            }
-            .question-actions {
-                width: 100%;
-                justify-content: flex-end;
+            .subjects-grid {
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -488,7 +450,7 @@
         </div>
         <nav class="header-nav">
             <a href="/" class="nav-tab">考试练习</a>
-            <a href="/coding" class="nav-tab active">编程题中心</a>
+            <a href="/coding" class="nav-tab">编程题中心</a>
         </nav>
         <div class="header-right">
             <button class="icon-btn" title="通知">🔔</button>
@@ -504,11 +466,11 @@
         <aside class="sidebar">
             <div class="sidebar-title">我的题目集</div>
             <nav class="sidebar-nav">
-                <a href="/coding/home" class="nav-item">
+                <a href="/coding/home" class="nav-item active">
                     <span class="nav-icon">🏠</span>
                     <span>首页</span>
                 </a>
-                <a href="/coding" class="nav-item active">
+                <a href="/coding" class="nav-item">
                     <span class="nav-icon">📄</span>
                     <span>我的题目集</span>
                 </a>
@@ -525,61 +487,18 @@
 
         <!-- 主内容区 -->
         <main class="content-area">
-            <div class="content-header">
-                <div class="tabs">
-                    <button class="tab active" onclick="switchTab('active')">活跃题目集</button>
-                    <button class="tab" onclick="switchTab('all')">所有题目集</button>
-                </div>
-                <div class="sort-control">
-                    <select class="sort-select" id="sort-select" onchange="handleSort()">
-                <option value="latest">最新创建</option>
-                <option value="title">按名称</option>
-                    </select>
-                </div>
-            </div>
-
-            <!-- 筛选器 -->
-            <div class="filters-bar">
-                <input type="text" class="filter-input" id="keyword" placeholder="搜索题目集..." style="flex: 1; min-width: 200px;">
-            </div>
-
-            <!-- 题目列表 -->
-            <div class="questions-list" id="questions-container">
+            <h1 class="page-title">选择科目或题集</h1>
+            
+            <div id="subjects-container">
                 <div class="loading">加载中...</div>
             </div>
         </main>
     </div>
 
     <script>
-        let currentPage = 1;
-        const perPage = 20;
-        let currentTab = 'active';
-        let currentSort = 'latest';
-        let filters = {
-            keyword: '',
-            subject: '',
-            difficulty: '',
-            status: 'all'
-        };
-
-        // 切换标签页
-        function switchTab(tab) {
-            currentTab = tab;
-            const tabs = document.querySelectorAll('.tab');
-            tabs.forEach(t => t.classList.remove('active'));
-            event.target.classList.add('active');
-            loadSubjects();
-        }
-
-        // 处理排序
-        function handleSort() {
-            currentSort = document.getElementById('sort-select').value;
-            loadSubjects();
-        }
-
-        // 加载题目集（科目）列表
+        // 加载科目统计信息
         async function loadSubjects() {
-            const container = document.getElementById('questions-container');
+            const container = document.getElementById('subjects-container');
             container.innerHTML = '<div class="loading">加载中...</div>';
 
             try {
@@ -587,94 +506,85 @@
                 const result = await res.json();
 
                 if (result.status === 'success') {
-                    let subjects = result.data.subjects || [];
-                    
-                    // 应用筛选
-                    if (filters.keyword) {
-                        subjects = subjects.filter(s => 
-                            s.name.toLowerCase().includes(filters.keyword.toLowerCase())
-                        );
-                    }
-                    
-                    // 应用排序
-                    if (currentSort === 'latest') {
-                        // 可以按创建时间排序，这里暂时不排序
-                    } else if (currentSort === 'title') {
-                        subjects.sort((a, b) => a.name.localeCompare(b.name));
-                    }
-                    
-                    // 应用活跃筛选（活跃题目集：有题目且已开放的）
-                    if (currentTab === 'active') {
-                        subjects = subjects.filter(s => s.total_questions > 0);
-                    }
-                    
-                    renderSubjects(subjects);
+                    renderSubjects(result.data.subjects);
                 } else {
                     container.innerHTML = '<div class="empty-state">加载失败</div>';
                 }
             } catch (error) {
-                console.error('加载题目集失败:', error);
+                console.error('加载科目失败:', error);
                 container.innerHTML = '<div class="empty-state">加载失败，请刷新重试</div>';
             }
         }
 
-        // 渲染题目集（科目）列表
+        // 渲染科目卡片
         function renderSubjects(subjects) {
-            const container = document.getElementById('questions-container');
+            const container = document.getElementById('subjects-container');
             
             if (subjects.length === 0) {
-                container.innerHTML = '<div class="empty-state">暂无题目集</div>';
+                container.innerHTML = '<div class="empty-state">暂无科目</div>';
                 return;
             }
 
-            const list = document.createElement('div');
-            list.className = 'questions-list';
+            const grid = document.createElement('div');
+            grid.className = 'subjects-grid';
 
-            subjects.forEach((subject, index) => {
-                const item = document.createElement('div');
-                item.className = 'question-item';
-                
-                // 判断是否开放（有题目且进度大于0或总题目数大于0）
-                const isOpen = subject.total_questions > 0;
-                const statusBadge = isOpen ? 
-                    '<span class="status-badge badge-open">已开放</span>' : 
-                    '<span class="status-badge badge-closed">未开放</span>';
+            subjects.forEach(subject => {
+                const card = document.createElement('a');
+                card.href = `/coding/subject/${subject.id}`;
+                card.className = 'subject-card';
+
+                const progress = subject.total_questions > 0 
+                    ? (subject.solved_questions / subject.total_questions * 100).toFixed(1)
+                    : 0;
 
                 // 根据科目名称选择图标
                 const icon = getSubjectIcon(subject.name);
-                
-                // 计算通过率
-                const acceptanceRate = subject.total_submissions > 0 
-                    ? ((subject.solved_questions / subject.total_submissions) * 100).toFixed(1)
-                    : '0.0';
 
-                item.innerHTML = `
-                    <div class="question-icon">${icon}</div>
-                    <div class="question-content">
-                        <div class="question-title">${escapeHtml(subject.name)}</div>
-                        <div class="question-meta">
-                            <span>总题目: ${subject.total_questions}</span>
-                            <span>已解决: ${subject.solved_questions}</span>
-                            <span>通过率: ${acceptanceRate}%</span>
+                card.innerHTML = `
+                    <div class="subject-header">
+                        <div class="subject-title">${escapeHtml(subject.name)}</div>
+                        <div class="subject-icon">${icon}</div>
+                    </div>
+                    <div class="subject-stats">
+                        <div class="stat-item">
+                            <span class="stat-label">
+                                <span>📝</span>
+                                <span>总题目数</span>
+                            </span>
+                            <span class="stat-value">${subject.total_questions}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">
+                                <span>✅</span>
+                                <span>已解决</span>
+                            </span>
+                            <span class="stat-value">${subject.solved_questions}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">
+                                <span>📊</span>
+                                <span>总提交</span>
+                            </span>
+                            <span class="stat-value">${subject.total_submissions}</span>
                         </div>
                     </div>
-                    <div class="question-actions">
-                        ${statusBadge}
-                        <a href="/coding/subject/${subject.id}" class="btn-view" onclick="event.stopPropagation();">查看</a>
+                    ${subject.total_questions > 0 ? `
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${progress}%"></div>
+                        </div>
+                        <div class="progress-text">完成度: ${progress}%</div>
+                    ` : ''}
+                    <div class="card-footer">
+                        <span style="font-size: 12px; color: var(--text-sub);">点击进入</span>
+                        <span class="btn-enter">进入 →</span>
                     </div>
                 `;
 
-                list.appendChild(item);
+                grid.appendChild(card);
             });
 
-            // 添加底部统计
-            const footer = document.createElement('div');
-            footer.className = 'list-footer';
-            footer.textContent = `共${subjects.length}条数据`;
-            list.appendChild(footer);
-
             container.innerHTML = '';
-            container.appendChild(list);
+            container.appendChild(grid);
         }
 
         // 根据科目名称返回图标
@@ -689,40 +599,13 @@
             return '💻';
         }
 
-        function formatDate(dateString) {
-            if (!dateString) return '';
-            const date = new Date(dateString);
-            return date.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
-        }
-
         function escapeHtml(text) {
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
         }
 
-        // 筛选器事件
-        document.getElementById('keyword').addEventListener('input', debounce((e) => {
-            filters.keyword = e.target.value;
-            loadSubjects();
-        }, 500));
-
-        // 移除科目、难度、状态的筛选（因为这是题目集列表，不是题目列表）
-        // 或者可以保留作为备用筛选
-
-        function debounce(func, wait) {
-            let timeout;
-            return function executedFunction(...args) {
-                const later = () => {
-                    clearTimeout(timeout);
-                    func(...args);
-                };
-                clearTimeout(timeout);
-                timeout = setTimeout(later, wait);
-            };
-        }
-
-        // 初始化加载
+        // 页面加载时初始化
         loadSubjects();
     </script>
 </body>

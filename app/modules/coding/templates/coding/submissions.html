@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>提交列表</title>
+    <style>
+        :root {
+            --bg-color: #f5f5f7;
+            --card-bg: rgba(255, 255, 255, 0.72);
+            --card-bg-solid: rgba(255, 255, 255, 0.92);
+            --text-color: #1d1d1f;
+            --text-sub: #6e6e73;
+            --border-color: rgba(0, 0, 0, 0.06);
+            --primary: #007AFF;
+            --primary-light: rgba(0, 122, 255, 0.12);
+            --shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+            --success: #34c759;
+            --warning: #ff9500;
+            --danger: #ff3b30;
+            --blur: blur(40px) saturate(180%);
+            --radius-lg: 18px;
+            --radius-sm: 12px;
+            --sidebar-width: 100px;
+        }
+
+        body.dark-mode {
+            --bg-color: #000000;
+            --card-bg: rgba(28, 28, 30, 0.6);
+            --card-bg-solid: rgba(28, 28, 30, 0.95);
+            --text-color: #f5f5f7;
+            --text-sub: #a1a1a6;
+            --border-color: rgba(255, 255, 255, 0.12);
+            --primary: #0a84ff;
+            --primary-light: rgba(10, 132, 255, 0.2);
+            --shadow: 0 2px 16px rgba(0, 0, 0, 0.5);
+        }
+
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: transparent transparent;
+        }
+        *:hover {
+            scrollbar-color: rgba(128, 128, 128, 0.3) transparent;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: transparent;
+            border-radius: 3px;
+            transition: background 0.3s ease;
+        }
+        *:hover::-webkit-scrollbar-thumb {
+            background: rgba(128, 128, 128, 0.3);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .top-header {
+            background: var(--card-bg);
+            backdrop-filter: var(--blur);
+            -webkit-backdrop-filter: var(--blur);
+            border-bottom: 0.5px solid var(--border-color);
+            padding: 12px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .btn-back {
+            padding: 6px 12px;
+            border: none;
+            background: transparent;
+            color: var(--text-color);
+            font-size: 16px;
+            cursor: pointer;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: color 0.2s ease;
+        }
+
+        .btn-back:hover {
+            color: var(--primary);
+        }
+
+        .header-title {
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--text-color);
+        }
+
+        .main-layout {
+            display: flex;
+            min-height: calc(100vh - 60px);
+        }
+
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--card-bg);
+            backdrop-filter: var(--blur);
+            -webkit-backdrop-filter: var(--blur);
+            border-right: 0.5px solid var(--border-color);
+            padding: 24px 0;
+        }
+
+        .sidebar-nav {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 0 8px;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 12px 4px;
+            color: var(--text-sub);
+            text-decoration: none;
+            font-size: 11px;
+            transition: all 0.2s ease;
+            border-radius: var(--radius-sm);
+            text-align: center;
+        }
+
+        .nav-item:hover {
+            background: var(--primary-light);
+            color: var(--primary);
+        }
+
+        .nav-item.active {
+            background: var(--primary-light);
+            color: var(--primary);
+            font-weight: 500;
+        }
+
+        .nav-icon {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 6px;
+        }
+
+        .nav-icon svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .nav-text {
+            line-height: 1.4;
+            word-break: break-word;
+        }
+
+        .content-area {
+            flex: 1;
+            padding: 32px 40px;
+            background: var(--bg-color);
+            overflow-y: auto;
+        }
+
+        .submissions-list {
+            background: var(--card-bg);
+            backdrop-filter: var(--blur);
+            -webkit-backdrop-filter: var(--blur);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow);
+            border: 0.5px solid var(--border-color);
+            overflow: hidden;
+        }
+
+        .submission-item {
+            display: flex;
+            align-items: center;
+            padding: 16px 24px;
+            border-bottom: 0.5px solid var(--border-color);
+            transition: background 0.2s ease;
+        }
+
+        .submission-item:last-child {
+            border-bottom: none;
+        }
+
+        .submission-item:hover {
+            background: var(--primary-light);
+        }
+
+        .submission-status {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 16px;
+            flex-shrink: 0;
+        }
+
+        .submission-status.accepted {
+            background: var(--success);
+        }
+
+        .submission-status.wrong_answer {
+            background: var(--danger);
+        }
+
+        .submission-status.time_limit_exceeded {
+            background: var(--warning);
+        }
+
+        .submission-status.runtime_error {
+            background: var(--danger);
+        }
+
+        .submission-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .submission-title {
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--text-color);
+        }
+
+        .submission-meta {
+            display: flex;
+            gap: 16px;
+            font-size: 13px;
+            color: var(--text-sub);
+        }
+
+        .submission-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .badge-accepted {
+            background: rgba(52, 199, 89, 0.15);
+            color: var(--success);
+        }
+
+        .badge-error {
+            background: rgba(255, 59, 48, 0.15);
+            color: var(--danger);
+        }
+
+        .badge-warning {
+            background: rgba(255, 149, 0, 0.15);
+            color: var(--warning);
+        }
+
+        .loading, .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-sub);
+        }
+    </style>
+</head>
+<body>
+    <header class="top-header">
+        <div class="header-left">
+            <a href="#" class="btn-back" id="back-link">←</a>
+            <h1 class="header-title" id="page-title">提交列表</h1>
+        </div>
+    </header>
+
+    <div class="main-layout">
+        <aside class="sidebar">
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item" id="overview-link">
+                    <div class="nav-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 6v6l4 2"/>
+                        </svg>
+                    </div>
+                    <span class="nav-text">概览</span>
+                </a>
+                <a href="#" class="nav-item" id="questions-link">
+                    <div class="nav-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                            <line x1="16" y1="13" x2="8" y2="13"/>
+                            <line x1="16" y1="17" x2="8" y2="17"/>
+                            <polyline points="10 9 9 9 8 9"/>
+                        </svg>
+                    </div>
+                    <span class="nav-text">题目<br>列表</span>
+                </a>
+                <a href="#" class="nav-item active" id="submissions-link">
+                    <div class="nav-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="8" y1="6" x2="21" y2="6"/>
+                            <line x1="8" y1="12" x2="21" y2="12"/>
+                            <line x1="8" y1="18" x2="21" y2="18"/>
+                            <line x1="3" y1="6" x2="3.01" y2="6"/>
+                            <line x1="3" y1="12" x2="3.01" y2="12"/>
+                            <line x1="3" y1="18" x2="3.01" y2="18"/>
+                        </svg>
+                    </div>
+                    <span class="nav-text">提交<br>列表</span>
+                </a>
+                <a href="#" class="nav-item" id="statistics-link">
+                    <div class="nav-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="20" x2="18" y2="10"/>
+                            <line x1="12" y1="20" x2="12" y2="4"/>
+                            <line x1="6" y1="20" x2="6" y2="14"/>
+                        </svg>
+                    </div>
+                    <span class="nav-text">排名</span>
+                </a>
+            </nav>
+        </aside>
+
+        <main class="content-area">
+            <div class="submissions-list" id="submissions-container">
+                <div class="loading">加载中...</div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const questionId = {{ question_id|default('null') }};
+        const subjectId = {{ subject_id|default('null') }};
+        let currentPage = 1;
+        const perPage = 20;
+
+        // 设置导航链接
+        function setupNavigation() {
+            const backLink = document.getElementById('back-link');
+            const overviewLink = document.getElementById('overview-link');
+            const questionsLink = document.getElementById('questions-link');
+            const statisticsLink = document.getElementById('statistics-link');
+
+            if (questionId) {
+                backLink.href = `/coding/${questionId}`;
+                overviewLink.href = `/coding/subject/${subjectId || ''}`;
+                questionsLink.href = `/coding/questions?subject=${subjectId || ''}`;
+                statisticsLink.href = `/coding/statistics?question=${questionId}`;
+            } else if (subjectId) {
+                backLink.href = `/coding/subject/${subjectId}`;
+                overviewLink.href = `/coding/subject/${subjectId}`;
+                questionsLink.href = `/coding/questions?subject=${subjectId}`;
+                statisticsLink.href = `/coding/statistics?subject=${subjectId}`;
+            } else {
+                backLink.href = '/coding';
+                overviewLink.href = '/coding/home';
+                questionsLink.href = '/coding';
+            }
+        }
+
+        // 加载提交历史
+        async function loadSubmissions() {
+            const container = document.getElementById('submissions-container');
+            container.innerHTML = '<div class="loading">加载中...</div>';
+
+            try {
+                const params = new URLSearchParams({
+                    page: currentPage,
+                    per_page: perPage
+                });
+                
+                if (questionId) {
+                    params.append('question_id', questionId);
+                }
+                
+                const res = await fetch(`/coding/api/submissions?${params}`);
+                const result = await res.json();
+
+                if (result.status === 'success') {
+                    renderSubmissions(result.data.submissions, result.data.total);
+                } else {
+                    container.innerHTML = '<div class="empty-state">加载失败</div>';
+                }
+            } catch (error) {
+                console.error('加载提交历史失败:', error);
+                container.innerHTML = '<div class="empty-state">加载失败，请刷新重试</div>';
+            }
+        }
+
+        // 渲染提交列表
+        function renderSubmissions(submissions, total) {
+            const container = document.getElementById('submissions-container');
+            
+            if (submissions.length === 0) {
+                container.innerHTML = '<div class="empty-state">暂无提交记录</div>';
+                return;
+            }
+
+            const list = document.createElement('div');
+            list.className = 'submissions-list';
+
+            submissions.forEach((sub) => {
+                const item = document.createElement('div');
+                item.className = 'submission-item';
+
+                const statusClass = sub.status === 'accepted' ? 'accepted' : 
+                                   sub.status === 'wrong_answer' ? 'wrong_answer' :
+                                   sub.status === 'time_limit_exceeded' ? 'time_limit_exceeded' : 'runtime_error';
+                
+                const statusText = {
+                    'accepted': '通过',
+                    'wrong_answer': '答案错误',
+                    'time_limit_exceeded': '超时',
+                    'runtime_error': '运行时错误',
+                    'compilation_error': '编译错误'
+                }[sub.status] || sub.status;
+
+                const badgeClass = sub.status === 'accepted' ? 'badge-accepted' :
+                                 sub.status === 'time_limit_exceeded' ? 'badge-warning' : 'badge-error';
+
+                item.innerHTML = `
+                    <div class="submission-status ${statusClass}"></div>
+                    <div class="submission-content">
+                        <div class="submission-title">
+                            ${sub.question_title || `题目 #${sub.question_id}`}
+                        </div>
+                        <div class="submission-meta">
+                            <span>提交时间: ${sub.submitted_at || '未知'}</span>
+                            <span>通过: ${sub.passed_cases || 0} / ${sub.total_cases || 0}</span>
+                            ${sub.score !== undefined ? `<span>得分: ${sub.score.toFixed(2)}分</span>` : ''}
+                            ${sub.execution_time ? `<span>执行时间: ${sub.execution_time.toFixed(3)}s</span>` : ''}
+                        </div>
+                    </div>
+                    <div class="submission-actions">
+                        <span class="status-badge ${badgeClass}">${statusText}</span>
+                        <a href="/coding/${sub.question_id}" class="btn-view" style="padding: 6px 16px; border: 0.5px solid var(--primary); border-radius: var(--radius-sm); background: var(--primary); color: white; font-size: 13px; text-decoration: none;">查看题目</a>
+                    </div>
+                `;
+
+                list.appendChild(item);
+            });
+
+            container.innerHTML = '';
+            container.appendChild(list);
+        }
+
+        // 初始化
+        setupNavigation();
+        loadSubmissions();
+    </script>
+</body>
+</html>
+

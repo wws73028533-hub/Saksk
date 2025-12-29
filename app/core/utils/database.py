@@ -73,7 +73,7 @@ def _create_tables(conn):
         )
     ''')
     
-    # 基础表：题目表
+    # 基础表：题目表（题库中心专用，不包含编程题字段）
     conn.execute('''
         CREATE TABLE IF NOT EXISTS questions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -85,13 +85,42 @@ def _create_tables(conn):
             explanation TEXT,
             difficulty INTEGER DEFAULT 1,
             image_path TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(subject_id) REFERENCES subjects(id) ON DELETE SET NULL
+        )
+    ''')
+    
+    # 编程题专用表：编程题集表
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS coding_subjects (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT UNIQUE NOT NULL,
+            description TEXT,
+            is_locked INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    # 编程题专用表：编程题目表
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS coding_questions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            coding_subject_id INTEGER NOT NULL,
+            title TEXT NOT NULL,
+            q_type TEXT NOT NULL CHECK(q_type IN ('函数题', '编程题')),
+            description TEXT NOT NULL,
+            difficulty TEXT NOT NULL CHECK(difficulty IN ('easy', 'medium', 'hard')),
             code_template TEXT,
             programming_language TEXT DEFAULT "python",
             time_limit INTEGER DEFAULT 5,
             memory_limit INTEGER DEFAULT 128,
-            test_cases_json TEXT,
+            test_cases_json TEXT NOT NULL,
+            examples TEXT,
+            constraints TEXT,
+            hints TEXT,
+            is_enabled INTEGER DEFAULT 1,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY(subject_id) REFERENCES subjects(id) ON DELETE SET NULL
+            FOREIGN KEY(coding_subject_id) REFERENCES coding_subjects(id) ON DELETE CASCADE
         )
     ''')
     
@@ -203,32 +232,26 @@ def _create_tables(conn):
                 cur.execute('ALTER TABLE users ADD COLUMN is_subject_admin INTEGER DEFAULT 0')
 
         # 添加 questions 表的字段（如果不存在）- 兼容旧数据库
+        # 注意：questions 表只用于题库中心，不包含编程题字段
         table_check = cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='questions'").fetchone()
         if table_check:
             question_cols = [r['name'] for r in cur.execute("PRAGMA table_info(questions)").fetchall()]
             if 'image_path' not in question_cols:
                 cur.execute('ALTER TABLE questions ADD COLUMN image_path TEXT')
             
-            # 添加编程题相关字段（如果不存在）
-            # 重新获取列信息，确保包含最新添加的字段
-            question_cols = [r['name'] for r in cur.execute("PRAGMA table_info(questions)").fetchall()]
-            if 'code_template' not in question_cols:
-                cur.execute('ALTER TABLE questions ADD COLUMN code_template TEXT')
-            if 'programming_language' not in question_cols:
-                cur.execute('ALTER TABLE questions ADD COLUMN programming_language TEXT DEFAULT "python"')
-            if 'time_limit' not in question_cols:
-                cur.execute('ALTER TABLE questions ADD COLUMN time_limit INTEGER DEFAULT 5')
-            if 'memory_limit' not in question_cols:
-                cur.execute('ALTER TABLE questions ADD COLUMN memory_limit INTEGER DEFAULT 128')
-            if 'test_cases_json' not in question_cols:
-                cur.execute('ALTER TABLE questions ADD COLUMN test_cases_json TEXT')
+            # 不再添加编程题相关字段到 questions 表
+            # 编程题应使用 coding_questions 表
         
-        # 添加 subjects 表的 is_locked 字段（如果不存在）- 兼容旧数据库
+        # 添加 subjects 表的字段（如果不存在）- 兼容旧数据库
         table_check = cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='subjects'").fetchone()
         if table_check:
             subject_cols = [r['name'] for r in cur.execute("PRAGMA table_info(subjects)").fetchall()]
+            if 'description' not in subject_cols:
+                cur.execute('ALTER TABLE subjects ADD COLUMN description TEXT')
             if 'is_locked' not in subject_cols:
                 cur.execute('ALTER TABLE subjects ADD COLUMN is_locked INTEGER DEFAULT 0')
+            if 'created_at' not in subject_cols:
+                cur.execute('ALTER TABLE subjects ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP')
     except Exception as e:
         print(f'[WARN] 添加字段失败: {e}')
         pass
@@ -343,6 +366,7 @@ def _create_tables(conn):
     ''')
 
     # 代码提交历史表（用于记录编程题的提交记录）
+    # 注意：question_id 引用 coding_questions 表，不是 questions 表
     conn.execute('''
         CREATE TABLE IF NOT EXISTS code_submissions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -355,9 +379,45 @@ def _create_tables(conn):
             total_cases INTEGER DEFAULT 0,
             execution_time REAL,
             error_message TEXT,
+            score REAL DEFAULT 0.0,
             submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
-            FOREIGN KEY(question_id) REFERENCES questions(id) ON DELETE CASCADE
+            FOREIGN KEY(question_id) REFERENCES coding_questions(id) ON DELETE CASCADE
+        )
+    ''')
+    
+    # 用户编程统计表（用于快速查询用户对每道题的统计信息）
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS coding_statistics (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            question_id INTEGER NOT NULL,
+            total_submissions INTEGER DEFAULT 0,
+            accepted_submissions INTEGER DEFAULT 0,
+            best_time REAL,
+            best_score REAL DEFAULT 0.0,
+            first_accepted_at DATETIME,
+            last_submitted_at DATETIME,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, question_id),
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY(question_id) REFERENCES coding_questions(id) ON DELETE CASCADE
+        )
+    ''')
+    
+    # 用户编程总统计表（用于快速查询用户整体统计）
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS user_coding_stats (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL UNIQUE,
+            total_submissions INTEGER DEFAULT 0,
+            accepted_submissions INTEGER DEFAULT 0,
+            solved_questions INTEGER DEFAULT 0,
+            total_score REAL DEFAULT 0.0,
+            average_score REAL DEFAULT 0.0,
+            acceptance_rate REAL DEFAULT 0.0,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
         )
     ''')
 

@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>题目集概述</title>
+    <style>
+        :root {
+            --bg-color: #f5f5f7;
+            --card-bg: rgba(255, 255, 255, 0.72);
+            --card-bg-solid: rgba(255, 255, 255, 0.92);
+            --text-color: #1d1d1f;
+            --text-sub: #6e6e73;
+            --border-color: rgba(0, 0, 0, 0.06);
+            --primary: #007AFF;
+            --primary-light: rgba(0, 122, 255, 0.12);
+            --shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+            --success: #34c759;
+            --warning: #ff9500;
+            --danger: #ff3b30;
+            --blur: blur(40px) saturate(180%);
+            --radius-lg: 18px;
+            --radius-sm: 12px;
+            --sidebar-width: 100px;
+        }
+
+        body.dark-mode {
+            --bg-color: #000000;
+            --card-bg: rgba(28, 28, 30, 0.6);
+            --card-bg-solid: rgba(28, 28, 30, 0.95);
+            --text-color: #f5f5f7;
+            --text-sub: #a1a1a6;
+            --border-color: rgba(255, 255, 255, 0.12);
+            --primary: #0a84ff;
+            --primary-light: rgba(10, 132, 255, 0.2);
+            --shadow: 0 2px 16px rgba(0, 0, 0, 0.5);
+        }
+
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: transparent transparent;
+        }
+        *:hover {
+            scrollbar-color: rgba(128, 128, 128, 0.3) transparent;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: transparent;
+            border-radius: 3px;
+            transition: background 0.3s ease;
+        }
+        *:hover::-webkit-scrollbar-thumb {
+            background: rgba(128, 128, 128, 0.3);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* 顶部Header */
+        .top-header {
+            background: var(--card-bg);
+            backdrop-filter: var(--blur);
+            -webkit-backdrop-filter: var(--blur);
+            border-bottom: 0.5px solid var(--border-color);
+            padding: 12px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .btn-back {
+            padding: 6px 12px;
+            border: none;
+            background: transparent;
+            color: var(--text-color);
+            font-size: 16px;
+            cursor: pointer;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: color 0.2s ease;
+        }
+
+        .btn-back:hover {
+            color: var(--primary);
+        }
+
+        .header-title {
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--text-color);
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+            background: var(--primary-light);
+            color: var(--primary);
+        }
+
+        .icon-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: none;
+            background: transparent;
+            color: var(--text-color);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s ease;
+        }
+
+        .icon-btn:hover {
+            background: var(--primary-light);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-color);
+            font-size: 14px;
+        }
+
+        /* 主布局 */
+        .main-layout {
+            display: flex;
+            min-height: calc(100vh - 60px);
+        }
+
+        /* 左侧导航栏 */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--card-bg);
+            backdrop-filter: var(--blur);
+            -webkit-backdrop-filter: var(--blur);
+            border-right: 0.5px solid var(--border-color);
+            padding: 24px 0;
+        }
+
+        .sidebar-nav {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 0 8px;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 12px 4px;
+            color: var(--text-sub);
+            text-decoration: none;
+            font-size: 11px;
+            transition: all 0.2s ease;
+            border-radius: var(--radius-sm);
+            text-align: center;
+        }
+
+        .nav-item:hover {
+            background: var(--primary-light);
+            color: var(--primary);
+        }
+
+        .nav-item.active {
+            background: var(--primary-light);
+            color: var(--primary);
+            font-weight: 500;
+        }
+
+        .nav-icon {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 6px;
+        }
+
+        .nav-icon svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .nav-text {
+            line-height: 1.4;
+            word-break: break-word;
+        }
+
+        /* 主内容区 */
+        .content-area {
+            flex: 1;
+            padding: 32px 40px;
+            background: var(--bg-color);
+            overflow-y: auto;
+        }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: var(--blur);
+            -webkit-backdrop-filter: var(--blur);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow);
+            border: 0.5px solid var(--border-color);
+            padding: 24px;
+        }
+
+        .card-large {
+            grid-column: 1 / -1;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-color);
+            margin-bottom: 20px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 0.5px solid var(--border-color);
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            font-size: 14px;
+            color: var(--text-sub);
+        }
+
+        .info-value {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-color);
+        }
+
+        .btn-primary {
+            padding: 12px 24px;
+            border: none;
+            border-radius: var(--radius-sm);
+            background: var(--primary);
+            color: white;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 100%;
+            margin-top: 16px;
+        }
+
+        .btn-primary:hover {
+            background: #0051d5;
+        }
+
+        .progress-section {
+            margin-top: 20px;
+        }
+
+        .progress-tabs {
+            display: flex;
+            gap: 0;
+            border-bottom: 2px solid var(--border-color);
+            margin-bottom: 16px;
+        }
+
+        .progress-tab {
+            padding: 10px 20px;
+            font-size: 14px;
+            color: var(--text-sub);
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: -2px;
+        }
+
+        .progress-tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+            font-weight: 500;
+        }
+
+        .progress-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .progress-table th,
+        .progress-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 0.5px solid var(--border-color);
+        }
+
+        .progress-table th {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-sub);
+        }
+
+        .progress-table td {
+            font-size: 14px;
+            color: var(--text-color);
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--card-bg-solid);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 8px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--success));
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+
+        .link-primary {
+            color: var(--primary);
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .link-primary:hover {
+            text-decoration: underline;
+        }
+
+        .countdown-card {
+            text-align: center;
+        }
+
+        .countdown-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .countdown-time {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 8px;
+        }
+
+        .countdown-label {
+            font-size: 14px;
+            color: var(--text-sub);
+        }
+
+        .timeline {
+            margin-top: 20px;
+        }
+
+        .timeline-item {
+            display: flex;
+            gap: 16px;
+            padding: 16px 0;
+            position: relative;
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: 11px;
+            top: 40px;
+            bottom: -16px;
+            width: 2px;
+            background: var(--border-color);
+        }
+
+        .timeline-item:last-child::before {
+            display: none;
+        }
+
+        .timeline-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--success);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            position: relative;
+            z-index: 1;
+        }
+
+        .timeline-icon.pending {
+            background: var(--warning);
+        }
+
+        .timeline-content {
+            flex: 1;
+        }
+
+        .timeline-date {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-color);
+            margin-bottom: 4px;
+        }
+
+        .timeline-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-color);
+            margin-bottom: 4px;
+        }
+
+        .timeline-desc {
+            font-size: 13px;
+            color: var(--text-sub);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-top: 16px;
+        }
+
+        .stat-box {
+            text-align: center;
+            padding: 16px;
+            background: var(--card-bg-solid);
+            border-radius: var(--radius-sm);
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-sub);
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 1024px) {
+            .cards-grid {
+                grid-template-columns: 1fr;
+            }
+            .main-layout {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100%;
+                border-right: none;
+                border-bottom: 0.5px solid var(--border-color);
+            }
+            .sidebar-nav {
+                flex-direction: row;
+                overflow-x: auto;
+            }
+            .nav-item {
+                white-space: nowrap;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .content-area {
+                padding: 20px;
+            }
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部Header -->
+    <header class="top-header">
+        <div class="header-left">
+            <a href="/coding/home" class="btn-back">←</a>
+            <h1 class="header-title" id="subject-title">加载中...</h1>
+        </div>
+        <div class="header-right">
+            <span class="status-badge" id="status-badge">答题中</span>
+            <span style="font-size: 13px; color: var(--text-sub);" id="time-remaining">剩余时间: -</span>
+            <button class="icon-btn" title="通知">🔔</button>
+            <button class="icon-btn" title="设置">⚙️</button>
+            <div class="user-info">
+                <span>{{ username|default('用户') }}</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主布局 -->
+    <div class="main-layout">
+        <!-- 左侧导航栏 -->
+        <aside class="sidebar">
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active" onclick="return false;">
+                    <div class="nav-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 6v6l4 2"/>
+                        </svg>
+                    </div>
+                    <span class="nav-text">概览</span>
+                </a>
+                <a href="/coding/questions?subject={{ subject_id }}" class="nav-item">
+                    <div class="nav-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                            <line x1="16" y1="13" x2="8" y2="13"/>
+                            <line x1="16" y1="17" x2="8" y2="17"/>
+                            <polyline points="10 9 9 9 8 9"/>
+                        </svg>
+                    </div>
+                    <span class="nav-text">题目<br>列表</span>
+                </a>
+                <a href="/coding/submissions?subject={{ subject_id }}" class="nav-item">
+                    <div class="nav-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="8" y1="6" x2="21" y2="6"/>
+                            <line x1="8" y1="12" x2="21" y2="12"/>
+                            <line x1="8" y1="18" x2="21" y2="18"/>
+                            <line x1="3" y1="6" x2="3.01" y2="6"/>
+                            <line x1="3" y1="12" x2="3.01" y2="12"/>
+                            <line x1="3" y1="18" x2="3.01" y2="18"/>
+                        </svg>
+                    </div>
+                    <span class="nav-text">提交<br>列表</span>
+                </a>
+                <a href="/coding/statistics?subject={{ subject_id }}" class="nav-item">
+                    <div class="nav-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="20" x2="18" y2="10"/>
+                            <line x1="12" y1="20" x2="12" y2="4"/>
+                            <line x1="6" y1="20" x2="6" y2="14"/>
+                        </svg>
+                    </div>
+                    <span class="nav-text">排名</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- 主内容区 -->
+        <main class="content-area">
+            <div class="cards-grid">
+                <!-- 答题信息卡片 -->
+                <div class="card">
+                    <h2 class="card-title">答题信息</h2>
+                    <div class="info-row">
+                        <span class="info-label">状态</span>
+                        <span class="status-badge" id="answer-status">答题中</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">答题开始时间</span>
+                        <span class="info-value" id="start-time">-</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">答题结束时间</span>
+                        <span class="info-value" id="end-time">-</span>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat-box">
+                            <div class="stat-value" id="user-score">0</div>
+                            <div class="stat-label">分数</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value" id="user-rank">-</div>
+                            <div class="stat-label">排名</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value" id="progress-rate">0%</div>
+                            <div class="stat-label">答题进度</div>
+                        </div>
+                    </div>
+                    <button class="btn-primary" onclick="window.location.href='/coding/questions?subject={{ subject_id }}'">继续答题</button>
+                </div>
+
+                <!-- 题目集信息卡片 -->
+                <div class="card">
+                    <h2 class="card-title">题目集信息</h2>
+                    <div class="info-row">
+                        <span class="info-label">题目集类型</span>
+                        <span class="info-value" id="set-type">普通</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">时间类型</span>
+                        <span class="info-value" id="time-type">固定时间</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">开放状态</span>
+                        <span class="status-badge badge-open" id="open-status">已开放</span>
+                    </div>
+                </div>
+
+                <!-- 倒计时卡片 -->
+                <div class="card countdown-card">
+                    <h2 class="card-title">距离答题结束还有</h2>
+                    <div class="countdown-icon">⏰</div>
+                    <div class="countdown-time" id="countdown">-</div>
+                    <div class="countdown-label">剩余时间</div>
+                </div>
+
+                <!-- 答题进度卡片 -->
+                <div class="card card-large">
+                    <div class="progress-tabs">
+                        <button class="progress-tab active" onclick="switchProgressTab('progress')">答题进度</button>
+                        <button class="progress-tab" onclick="switchProgressTab('score')">得分详情</button>
+                    </div>
+                    <div id="progress-content">
+                        <div style="margin-bottom: 16px; font-size: 13px; color: var(--text-sub);" id="time-spent">已作答 0 分钟</div>
+                        <table class="progress-table">
+                            <thead>
+                                <tr>
+                                    <th>题型</th>
+                                    <th>进度</th>
+                                    <th>已作答</th>
+                                    <th>总题数</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="progress-table-body">
+                                <!-- 动态生成 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 时间线卡片 -->
+                <div class="card card-large">
+                    <h2 class="card-title">时间线</h2>
+                    <div class="timeline" id="timeline">
+                        <!-- 动态生成 -->
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const subjectId = {{ subject_id }};
+        let overviewData = null;
+
+        // 加载概述数据
+        async function loadOverview() {
+            try {
+                const res = await fetch(`/coding/api/subjects/${subjectId}/overview`);
+                const result = await res.json();
+
+                if (result.status === 'success') {
+                    overviewData = result.data;
+                    renderOverview(overviewData);
+                } else {
+                    document.getElementById('subject-title').textContent = '加载失败';
+                    console.error('API返回错误:', result.message);
+                }
+            } catch (error) {
+                console.error('加载概述失败:', error);
+                document.getElementById('subject-title').textContent = '加载失败';
+                // 显示错误信息
+                const container = document.querySelector('.content-area');
+                if (container) {
+                    container.innerHTML = `
+                        <div style="text-align: center; padding: 60px 20px; color: var(--text-sub);">
+                            <p>加载失败，请刷新重试</p>
+                            <p style="font-size: 12px; margin-top: 8px;">${error.message || '未知错误'}</p>
+                        </div>
+                    `;
+                }
+            }
+        }
+
+        // 渲染概述
+        function renderOverview(data) {
+            // 更新标题
+            document.getElementById('subject-title').textContent = data.subject.name;
+
+            // 更新答题信息
+            const firstSubmitted = data.user_stats.first_submitted_at;
+            document.getElementById('start-time').textContent = 
+                firstSubmitted ? formatDateTime(firstSubmitted) : '-';
+            document.getElementById('end-time').textContent = '-';
+            document.getElementById('user-score').textContent = data.user_stats.score || 0;
+            
+            // 更新排名（如果没有排名，显示"-"）
+            const rank = data.user_stats.rank || 0;
+            const totalParticipants = data.user_stats.total_participants || 0;
+            if (rank > 0 && totalParticipants > 0) {
+                document.getElementById('user-rank').textContent = `${rank}/${totalParticipants}`;
+            } else {
+                document.getElementById('user-rank').textContent = '-';
+            }
+            
+            // 更新进度
+            const progressRate = data.user_stats.progress_rate || 0;
+            document.getElementById('progress-rate').textContent = `${progressRate.toFixed(1)}%`;
+            
+            // 更新状态（如果有提交记录，显示"答题中"，否则显示"未开始"）
+            const answerStatus = firstSubmitted ? '答题中' : '未开始';
+            document.getElementById('answer-status').textContent = answerStatus;
+
+            // 更新题目集信息
+            document.getElementById('set-type').textContent = 
+                data.status.set_type === 'random' ? '随机' : '普通';
+            document.getElementById('time-type').textContent = 
+                data.status.time_type === 'fixed' ? '固定时间' : '灵活时间';
+            
+            if (!data.status.is_open) {
+                document.getElementById('open-status').textContent = '未开放';
+                document.getElementById('open-status').className = 'status-badge badge-closed';
+            }
+
+            // 更新倒计时（暂时显示"-"，后续可以添加实际的时间计算）
+            document.getElementById('countdown').textContent = '-';
+
+            // 更新答题进度表格
+            renderProgressTable(data);
+
+            // 更新时间线
+            renderTimeline(data);
+        }
+
+        // 渲染进度表格
+        function renderProgressTable(data) {
+            const tbody = document.getElementById('progress-table-body');
+            tbody.innerHTML = '';
+
+            const difficultyMap = {
+                'easy': '简单题',
+                'medium': '中等题',
+                'hard': '困难题'
+            };
+
+            let totalSolved = 0;
+            let totalQuestions = 0;
+            const difficultyStats = data.question_stats.difficulty_stats || {};
+
+            // 如果没有难度统计，显示一条提示
+            if (Object.keys(difficultyStats).length === 0) {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td colspan="5" style="text-align: center; color: var(--text-sub); padding: 40px;">
+                        暂无题目数据
+                    </td>
+                `;
+                tbody.appendChild(row);
+                return;
+            }
+
+            Object.entries(difficultyStats).forEach(([difficulty, stats]) => {
+                const total = stats.total || 0;
+                const solved = stats.solved || 0;
+                const progress = total > 0 ? (solved / total * 100) : 0;
+                
+                totalQuestions += total;
+                totalSolved += solved;
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${difficultyMap[difficulty] || difficulty}</td>
+                    <td>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${progress}%"></div>
+                        </div>
+                    </td>
+                    <td>${solved}</td>
+                    <td>${total}</td>
+                    <td><a href="/coding/questions?subject=${subjectId}&difficulty=${difficulty}" class="link-primary">查看</a></td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            // 添加总计行
+            if (totalQuestions > 0) {
+                const totalProgress = (totalSolved / totalQuestions * 100);
+                const totalRow = document.createElement('tr');
+                totalRow.style.fontWeight = '500';
+                totalRow.style.backgroundColor = 'var(--primary-light)';
+                totalRow.innerHTML = `
+                    <td>总计</td>
+                    <td>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${totalProgress}%"></div>
+                        </div>
+                    </td>
+                    <td>${totalSolved}</td>
+                    <td>${totalQuestions}</td>
+                    <td><a href="/coding/questions?subject=${subjectId}" class="link-primary">查看全部</a></td>
+                `;
+                tbody.appendChild(totalRow);
+            }
+        }
+
+        // 渲染时间线
+        function renderTimeline(data) {
+            const timeline = document.getElementById('timeline');
+            timeline.innerHTML = '';
+
+            const events = [
+                {
+                    date: data.user_stats.first_submitted_at || new Date().toISOString(),
+                    title: '答题开始时间',
+                    desc: '考生实际开始答题的时间',
+                    status: 'completed'
+                },
+                {
+                    date: null,
+                    title: '答题结束时间',
+                    desc: '题目集关闭时，结束答题',
+                    status: 'pending'
+                },
+                {
+                    date: null,
+                    title: '题目集关闭时间',
+                    desc: '题目集关闭后，考生无法继续答题',
+                    status: 'pending'
+                }
+            ];
+
+            events.forEach(event => {
+                const item = document.createElement('div');
+                item.className = 'timeline-item';
+                item.innerHTML = `
+                    <div class="timeline-icon ${event.status === 'completed' ? '' : 'pending'}">
+                        ${event.status === 'completed' ? '✓' : '○'}
+                    </div>
+                    <div class="timeline-content">
+                        <div class="timeline-date">${event.date ? formatDate(event.date) : '待定'}</div>
+                        <div class="timeline-title">${event.title}</div>
+                        <div class="timeline-desc">${event.desc}</div>
+                    </div>
+                `;
+                timeline.appendChild(item);
+            });
+        }
+
+        // 切换进度标签页
+        function switchProgressTab(tab) {
+            const tabs = document.querySelectorAll('.progress-tab');
+            tabs.forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // 这里可以添加切换内容的逻辑
+            if (tab === 'score') {
+                // 显示得分详情
+            } else {
+                // 显示答题进度
+            }
+        }
+
+        function formatDateTime(dateString) {
+            if (!dateString) return '-';
+            const date = new Date(dateString);
+            return date.toLocaleString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return '-';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            });
+        }
+
+        // 页面加载时初始化
+        loadOverview();
+    </script>
+</body>
+</html>
