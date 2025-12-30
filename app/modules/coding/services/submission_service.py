@@ -259,9 +259,9 @@ class SubmissionService:
         # 获取分页数据
         offset = (page - 1) * per_page
         query = f'''
-            SELECT cs.*, cq.title as question_title
+            SELECT cs.*, q.content as question_title
             FROM code_submissions cs
-            LEFT JOIN coding_questions cq ON cs.question_id = cq.id
+            LEFT JOIN questions q ON cs.question_id = q.id
             WHERE {where_clause}
             ORDER BY cs.submitted_at DESC
             LIMIT ? OFFSET ?

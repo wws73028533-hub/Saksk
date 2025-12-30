@@ -31,6 +31,25 @@ def quiz_page():
     uid = session.get('user_id') or -1
     conn = get_db()
     
+    # 获取用户可访问的科目ID列表（用于权限过滤）
+    accessible_subject_ids = None
+    if uid and uid != -1:
+        from app.core.utils.subject_permissions import get_user_accessible_subjects
+        accessible_subject_ids = get_user_accessible_subjects(uid)
+        # 如果没有可访问的科目，直接返回空题目列表
+        if not accessible_subject_ids:
+            return render_template('quiz/quiz.html',
+                                 questions=[],
+                                 mode=mode,
+                                 source=source,
+                                 exam_id=exam_id,
+                                 user_answers_json='{}',
+                                 logged_in=bool(uid),
+                                 user_id=uid,
+                                 username=session.get('username'),
+                                 duration=0,
+                                 submitted=False)
+    
     # 根据不同模式获取题目
     target = source if source in ('favorites', 'mistakes') else mode
     if mode == 'exam' and exam_id:
@@ -49,7 +68,7 @@ def quiz_page():
         """
         rows = conn.execute(sql, (uid, uid, exam_id)).fetchall()
     elif target == 'favorites':
-        # 收藏模式（过滤掉锁定科目的题目）
+        # 收藏模式（过滤掉锁定科目和被限制科目的题目）
         sql = """
             SELECT q.*, s.name as subject,
                    1 as is_fav,
@@ -62,6 +81,12 @@ def quiz_page():
         """
         params = [uid, uid]
         
+        # 添加权限过滤
+        if accessible_subject_ids is not None:
+            placeholders = ','.join(['?'] * len(accessible_subject_ids))
+            sql += f" AND q.subject_id IN ({placeholders})"
+            params.extend(accessible_subject_ids)
+        
         if subject != 'all':
             sql += " AND s.name = ?"
             params.append(subject)
@@ -72,7 +97,7 @@ def quiz_page():
         
         rows = conn.execute(sql, params).fetchall()
     elif target == 'mistakes':
-        # 错题模式（过滤掉锁定科目的题目）
+        # 错题模式（过滤掉锁定科目和被限制科目的题目）
         sql = """
             SELECT q.*, s.name as subject,
                    CASE WHEN f.id IS NOT NULL THEN 1 ELSE 0 END as is_fav,
@@ -85,6 +110,12 @@ def quiz_page():
         """
         params = [uid, uid]
         
+        # 添加权限过滤
+        if accessible_subject_ids is not None:
+            placeholders = ','.join(['?'] * len(accessible_subject_ids))
+            sql += f" AND q.subject_id IN ({placeholders})"
+            params.extend(accessible_subject_ids)
+        
         if subject != 'all':
             sql += " AND s.name = ?"
             params.append(subject)
@@ -95,7 +126,7 @@ def quiz_page():
         
         rows = conn.execute(sql, params).fetchall()
     else:
-        # 普通刷题/背题模式（过滤掉锁定科目的题目）
+        # 普通刷题/背题模式（过滤掉锁定科目和被限制科目的题目）
         sql = """
             SELECT q.*, s.name as subject,
                    CASE WHEN f.id IS NOT NULL THEN 1 ELSE 0 END as is_fav,
@@ -107,6 +138,15 @@ def quiz_page():
             WHERE (s.is_locked=0 OR s.is_locked IS NULL)
         """
         params = [uid, uid]
+        
+        # 添加权限过滤
+        if accessible_subject_ids is not None:
+            placeholders = ','.join(['?'] * len(accessible_subject_ids))
+            sql += f" AND q.subject_id IN ({placeholders})"
+            params.extend(accessible_subject_ids)
+        elif uid == -1:
+            # 未登录用户：返回空结果
+            sql += " AND 1=0"
         
         if subject != 'all':
             sql += " AND s.name = ?"

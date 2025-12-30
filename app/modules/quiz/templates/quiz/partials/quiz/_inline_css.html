@@ -191,6 +191,19 @@
             color: var(--text-color);
         }
 
+        /* 布局切换按钮激活状态 */
+        .quiz-fab-item[data-action="toggleLayout"].active {
+            background: rgba(0, 122, 255, 0.85);
+            border-color: rgba(0, 122, 255, 0.9);
+        }
+        body.dark-mode .quiz-fab-item[data-action="toggleLayout"].active {
+            background: rgba(0, 122, 255, 0.75);
+            border-color: rgba(0, 122, 255, 0.85);
+        }
+        .quiz-fab-item[data-action="toggleLayout"].active .quiz-fab-icon {
+            color: #ffffff;
+        }
+
         .quiz-fab-menu.open .quiz-fab-item { opacity: 1; }
         .quiz-fab-menu.open .quiz-fab-item:nth-child(1) { transform: translate(-50%, -50%) translate(0, -78px); }
         .quiz-fab-menu.open .quiz-fab-item:nth-child(2) { transform: translate(-50%, -50%) translate(-58px, -58px); }
@@ -599,6 +612,7 @@
             color: var(--text-color); 
             padding-right: 40px;
             letter-spacing: -0.3px;
+            white-space: pre-wrap; /* 保留空格和换行，用于代码缩进显示 */
         }
 
         .options label { 
@@ -954,7 +968,11 @@
         #explainCard .analysis-title .dot{ background: rgba(10,132,255,0.55); box-shadow: 0 0 0 4px rgba(10,132,255,0.12); }
         .quiz-card .analysis-title .dot{ width:8px; height:8px; border-radius:999px; background: rgba(10,132,255,0.55); box-shadow: 0 0 0 4px rgba(10,132,255,0.12); }
         body.dark-mode .quiz-card .analysis-title .dot{ background: rgba(10,132,255,0.65); box-shadow: 0 0 0 4px rgba(10,132,255,0.18); }
-        .quiz-card .answer{ color: var(--text-color); font-weight: 650; }
+        .quiz-card .answer{ 
+            color: var(--text-color); 
+            font-weight: 650; 
+            white-space: pre-wrap; /* 保留空格和换行，用于代码缩进显示 */
+        }
         .quiz-card .answer.correct{ color: rgba(52, 199, 89, 0.95); }
 
         /* 填空题答案：结构化展示（明确一空多答案 / 多空多答案；符合 UI.txt 的克制与留白） */
@@ -1015,6 +1033,49 @@
             }
             /* 右侧 dock 内的两张卡片：更像信息栏，减少过高的最小高度 */
             .main-area.with-right-dock #answerExplainDock .card-container{
+                max-width: 100% !important;
+                padding: 18px;
+                min-height: auto !important;
+            }
+
+            /* =====================
+               左侧布局：答案/解析 dock 移到主卡左侧（桌面端）
+               ===================== */
+            .main-area.with-left-dock{
+                display: flex;
+                flex-direction: row;
+                align-items: flex-start;
+                justify-content: center;
+                gap: 30px;
+            }
+
+            /* 当 dock 为空（答案/解析尚未展示）时：隐藏左侧占位，让主卡片真正居中 */
+            .main-area.with-left-dock.dock-empty{
+                justify-content: center;
+            }
+            .main-area.with-left-dock.dock-empty #answerExplainDock{
+                display: none;
+            }
+            .main-area.with-left-dock.dock-empty #mainCard{
+                margin-left: auto;
+                margin-right: auto;
+            }
+            .main-area.with-left-dock #answerExplainDock{
+                flex: 0 0 460px;
+                width: 460px;
+                max-width: 460px;
+                margin: 20px 0;
+                position: sticky;
+                top: 20px;
+                align-self: flex-start;
+                order: -1; /* 让dock显示在主卡片之前（左侧） */
+            }
+            .main-area.with-left-dock #mainCard{
+                flex: 0 0 var(--main-card-max-width);
+                max-width: var(--main-card-max-width);
+            }
+            /* 左侧 dock 内的两张卡片：更像信息栏，减少过高的最小高度 */
+            .main-area.with-left-dock #answerExplainDock .card-container{
                 max-width: 100% !important;
                 padding: 18px;
                 min-height: auto !important;
@@ -1227,28 +1288,363 @@
             .overlay .card-container.score-modal { width: 90vw !important; }
         }
 
+        /* 快捷键提示横幅 */
         .shortcut-hint {
             position: fixed;
             bottom: 15px;
             left: 50%;
             transform: translateX(-50%);
-            background: var(--card-bg-solid);
-            color: var(--text-sub);
-            padding: 8px 16px;
-            border-radius: 16px;
+            background: linear-gradient(135deg, rgba(0, 122, 255, 0.1) 0%, var(--card-bg-solid) 100%);
+            color: var(--text-color);
+            padding: 14px 18px;
+            border-radius: 18px;
             font-size: 13px;
             z-index: 1000;
-            opacity: 0.8;
-            transition: opacity 0.3s;
-            pointer-events: none; /* So it doesn't block clicks */
-            box-shadow: var(--shadow);
-            border: 0.5px solid var(--border-color);
+            opacity: 0;
+            animation: shortcutHintSlideIn 0.5s ease-out forwards;
+            transition: opacity 0.3s, transform 0.3s;
+            box-shadow: 0 8px 24px rgba(0, 122, 255, 0.15), var(--shadow);
+            border: 1px solid rgba(0, 122, 255, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            max-width: min(600px, calc(100% - 32px));
+            pointer-events: auto;
+        }
+        @keyframes shortcutHintSlideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-50%) translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+        .shortcut-hint-icon {
+            font-size: 20px;
+            flex-shrink: 0;
+            animation: shortcutHintIconPulse 2s ease-in-out infinite;
+        }
+        @keyframes shortcutHintIconPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        .shortcut-hint-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .shortcut-hint-title {
+            font-weight: 650;
+            font-size: 14px;
+            color: var(--text-color);
+            line-height: 1.3;
+        }
+        .shortcut-hint-text {
+            font-size: 12px;
+            color: var(--text-sub);
+            line-height: 1.5;
+        }
+        .shortcut-hint-try {
+            background: rgba(0, 122, 255, 0.15);
+            border: 1px solid rgba(0, 122, 255, 0.3);
+            color: rgba(0, 122, 255, 0.9);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            padding: 6px 12px;
+            border-radius: 10px;
+            flex-shrink: 0;
+            transition: all 0.2s;
             white-space: nowrap;
+        }
+        .shortcut-hint-try:hover {
+            background: rgba(0, 122, 255, 0.25);
+            border-color: rgba(0, 122, 255, 0.5);
+            transform: scale(1.05);
+        }
+        .shortcut-hint-dismiss {
+            background: none;
+            border: none;
+            color: var(--text-sub);
+            font-size: 11px;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 8px;
+            flex-shrink: 0;
+            opacity: 0.6;
+            transition: opacity 0.2s, background-color 0.2s;
+            white-space: nowrap;
+        }
+        .shortcut-hint-dismiss:hover {
+            opacity: 1;
+            background: rgba(0, 0, 0, 0.05);
+        }
+        .shortcut-hint-close {
+            background: none;
+            border: none;
+            color: var(--text-sub);
+            font-size: 20px;
+            line-height: 1;
+            cursor: pointer;
+            padding: 0;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+        }
+        .shortcut-hint-close:hover {
+            opacity: 1;
+        }
+        body.dark-mode .shortcut-hint {
+            background: linear-gradient(135deg, rgba(88, 166, 255, 0.15) 0%, rgba(28, 28, 30, 0.85) 100%);
+            border-color: rgba(88, 166, 255, 0.3);
+        }
+        body.dark-mode .shortcut-hint-try {
+            background: rgba(88, 166, 255, 0.15);
+            border-color: rgba(88, 166, 255, 0.3);
+            color: rgba(88, 166, 255, 1);
+        }
+        body.dark-mode .shortcut-hint-try:hover {
+            background: rgba(88, 166, 255, 0.25);
+            border-color: rgba(88, 166, 255, 0.5);
+        }
+        body.dark-mode .shortcut-hint-dismiss:hover {
+            background: rgba(255, 255, 255, 0.1);
         }
 
         @media (max-width: 768px) {
             .shortcut-hint {
-                display: none; /* On mobile, hide the hint to save space */
+                font-size: 12px;
+                padding: 12px 14px;
+                max-width: calc(100% - 24px);
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+            .shortcut-hint-content {
+                width: 100%;
+                order: 1;
+            }
+            .shortcut-hint-title {
+                font-size: 13px;
+            }
+            .shortcut-hint-text {
+                font-size: 11px;
+            }
+            .shortcut-hint-try {
+                order: 2;
+                padding: 5px 10px;
+                font-size: 11px;
+            }
+            .shortcut-hint-dismiss {
+                order: 3;
+                font-size: 10px;
+                padding: 3px 6px;
+            }
+            .shortcut-hint-close {
+                order: 4;
+            }
+            .shortcut-hint-icon {
+                display: none;
+            }
+        }
+
+        /* 悬浮球功能提示横幅 */
+        .fab-hint {
+            position: fixed;
+            bottom: 60px; /* 位于快捷键提示上方，避免重叠 */
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, rgba(0, 122, 255, 0.1) 0%, var(--card-bg-solid) 100%);
+            color: var(--text-color);
+            padding: 14px 18px;
+            border-radius: 18px;
+            font-size: 13px;
+            z-index: 1000;
+            opacity: 0;
+            animation: fabHintSlideIn 0.5s ease-out forwards;
+            transition: opacity 0.3s, transform 0.3s;
+            box-shadow: 0 8px 24px rgba(0, 122, 255, 0.15), var(--shadow);
+            border: 1px solid rgba(0, 122, 255, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            max-width: min(600px, calc(100% - 32px));
+            pointer-events: auto;
+        }
+        @keyframes fabHintSlideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-50%) translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+        .fab-hint-icon {
+            font-size: 20px;
+            flex-shrink: 0;
+            animation: fabHintIconPulse 2s ease-in-out infinite;
+        }
+        @keyframes fabHintIconPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        .fab-hint-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .fab-hint-title {
+            font-weight: 650;
+            font-size: 14px;
+            color: var(--text-color);
+            line-height: 1.3;
+        }
+        .fab-hint-text {
+            font-size: 12px;
+            color: var(--text-sub);
+            line-height: 1.5;
+        }
+        .fab-hint-feature {
+            color: rgba(0, 122, 255, 0.9);
+            font-weight: 600;
+        }
+        body.dark-mode .fab-hint-feature {
+            color: rgba(88, 166, 255, 1);
+        }
+        .fab-hint-try {
+            background: rgba(0, 122, 255, 0.15);
+            border: 1px solid rgba(0, 122, 255, 0.3);
+            color: rgba(0, 122, 255, 0.9);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            padding: 6px 12px;
+            border-radius: 10px;
+            flex-shrink: 0;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .fab-hint-try:hover {
+            background: rgba(0, 122, 255, 0.25);
+            border-color: rgba(0, 122, 255, 0.5);
+            transform: scale(1.05);
+        }
+        body.dark-mode .fab-hint-try {
+            background: rgba(88, 166, 255, 0.15);
+            border-color: rgba(88, 166, 255, 0.3);
+            color: rgba(88, 166, 255, 1);
+        }
+        body.dark-mode .fab-hint-try:hover {
+            background: rgba(88, 166, 255, 0.25);
+            border-color: rgba(88, 166, 255, 0.5);
+        }
+        .fab-hint-dismiss {
+            background: none;
+            border: none;
+            color: var(--text-sub);
+            font-size: 11px;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 8px;
+            flex-shrink: 0;
+            opacity: 0.6;
+            transition: opacity 0.2s, background-color 0.2s;
+            white-space: nowrap;
+        }
+        .fab-hint-dismiss:hover {
+            opacity: 1;
+            background: rgba(0, 0, 0, 0.05);
+        }
+        body.dark-mode .fab-hint-dismiss:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .fab-hint-arrow {
+            position: absolute;
+            right: -30px;
+            bottom: 50%;
+            transform: translateY(50%);
+            font-size: 24px;
+            color: rgba(0, 122, 255, 0.6);
+            animation: fabHintArrowBounce 1.5s ease-in-out infinite;
+            pointer-events: none;
+        }
+        @keyframes fabHintArrowBounce {
+            0%, 100% { transform: translateY(50%) translateX(0); }
+            50% { transform: translateY(50%) translateX(8px); }
+        }
+        @media (max-width: 768px) {
+            .fab-hint-arrow {
+                display: none; /* 移动端隐藏箭头 */
+            }
+        }
+        .fab-hint-close {
+            background: none;
+            border: none;
+            color: var(--text-sub);
+            font-size: 20px;
+            line-height: 1;
+            cursor: pointer;
+            padding: 0;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+        }
+        .fab-hint-close:hover {
+            opacity: 1;
+        }
+        body.dark-mode .fab-hint {
+            background: linear-gradient(135deg, rgba(88, 166, 255, 0.15) 0%, rgba(28, 28, 30, 0.85) 100%);
+            border-color: rgba(88, 166, 255, 0.3);
+        }
+
+        @media (max-width: 768px) {
+            .fab-hint {
+                font-size: 12px;
+                padding: 12px 14px;
+                max-width: calc(100% - 24px);
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+            .fab-hint-content {
+                width: 100%;
+                order: 1;
+            }
+            .fab-hint-title {
+                font-size: 13px;
+            }
+            .fab-hint-text {
+                font-size: 11px;
+            }
+            .fab-hint-try {
+                order: 2;
+                padding: 5px 10px;
+                font-size: 11px;
+            }
+            .fab-hint-dismiss {
+                order: 3;
+                font-size: 10px;
+                padding: 3px 6px;
+            }
+            .fab-hint-close {
+                order: 4;
+            }
+            .fab-hint-icon {
+                display: none; /* 移动端隐藏图标节省空间 */
             }
         }
         

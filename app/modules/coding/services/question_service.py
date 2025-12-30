@@ -69,7 +69,21 @@ class QuestionService:
         
         # 获取总数（使用coding_questions表）
         count_query = f'SELECT COUNT(*) as total FROM coding_questions cq WHERE {where_clause}'
-        total = db.execute(count_query, params).fetchone()['total']
+        count_row = db.execute(count_query, params).fetchone()
+        # 安全地转换为字典
+        if count_row:
+            try:
+                if isinstance(count_row, dict):
+                    total = count_row.get('total', 0)
+                elif hasattr(count_row, 'keys'):
+                    total = dict(count_row).get('total', 0)
+                else:
+                    # 如果是元组或列表，尝试按索引访问
+                    total = count_row[0] if isinstance(count_row, (tuple, list)) else 0
+            except (TypeError, IndexError, AttributeError):
+                total = 0
+        else:
+            total = 0
         
         # 获取分页数据（使用coding_questions和coding_subjects表）
         offset = (page - 1) * per_page
@@ -87,8 +101,29 @@ class QuestionService:
         questions = []
         
         for row in rows:
-            # 将sqlite3.Row转换为字典
-            question = dict(row)
+            # 将sqlite3.Row转换为字典（安全处理）
+            try:
+                if isinstance(row, dict):
+                    question = row.copy()
+                elif hasattr(row, 'keys'):
+                    question = dict(row)
+                else:
+                    # 如果row不是预期的类型，跳过
+                    continue
+            except (TypeError, AttributeError) as e:
+                import traceback
+                from flask import current_app
+                if current_app:
+                    current_app.logger.warning(f"转换题目行数据失败: {e}\n{traceback.format_exc()}")
+                continue
+            
+            # 确保question是字典类型
+            if not isinstance(question, dict):
+                continue
+            
+            # 确保有id字段
+            if 'id' not in question:
+                continue
             
             # coding_questions表使用title字段，不需要转换
             if not question.get('title'):
@@ -97,10 +132,18 @@ class QuestionService:
             # 计算统计信息（添加错误处理）
             try:
                 stats = QuestionService.calculate_statistics(question['id'])
-                question['acceptance_rate'] = stats.get('acceptance_rate', 0)
-                question['total_submissions'] = stats.get('total_submissions', 0)
+                if isinstance(stats, dict):
+                    question['acceptance_rate'] = stats.get('acceptance_rate', 0)
+                    question['total_submissions'] = stats.get('total_submissions', 0)
+                else:
+                    question['acceptance_rate'] = 0
+                    question['total_submissions'] = 0
             except Exception as e:
-                # 如果统计计算失败，设置默认值
+                # 如果统计计算失败，设置默认值并记录错误
+                import traceback
+                from flask import current_app
+                if current_app:
+                    current_app.logger.warning(f"计算题目 {question.get('id', 'unknown')} 统计信息失败: {e}\n{traceback.format_exc()}")
                 question['acceptance_rate'] = 0
                 question['total_submissions'] = 0
             
@@ -144,8 +187,15 @@ class QuestionService:
             if question.get('test_cases_json'):
                 try:
                     test_cases = json.loads(question['test_cases_json'])
-                    question['examples'] = test_cases.get('test_cases', [])
-                except (json.JSONDecodeError, TypeError):
+                    # 检查test_cases是字典还是列表
+                    if isinstance(test_cases, dict):
+                        question['examples'] = test_cases.get('test_cases', [])
+                    elif isinstance(test_cases, list):
+                        # 如果直接是列表，使用它
+                        question['examples'] = test_cases
+                    else:
+                        question['examples'] = []
+                except (json.JSONDecodeError, TypeError, AttributeError):
                     question['examples'] = []
             else:
                 question['examples'] = []
@@ -197,11 +247,19 @@ class QuestionService:
         if question.get('test_cases_json'):
             try:
                 test_cases = json.loads(question['test_cases_json'])
-                question['examples'] = test_cases.get('test_cases', [])
-                # 尝试从test_cases中提取constraints（如果test_cases中有的话）
-                # 否则从其他地方获取，这里暂时为空列表
-                question['constraints'] = []  # 可以从test_cases中提取或单独存储
-            except (json.JSONDecodeError, TypeError):
+                # 检查test_cases是字典还是列表
+                if isinstance(test_cases, dict):
+                    question['examples'] = test_cases.get('test_cases', [])
+                    # 尝试从test_cases中提取constraints（如果test_cases中有的话）
+                    question['constraints'] = test_cases.get('constraints', [])
+                elif isinstance(test_cases, list):
+                    # 如果直接是列表，使用它
+                    question['examples'] = test_cases
+                    question['constraints'] = []
+                else:
+                    question['examples'] = []
+                    question['constraints'] = []
+            except (json.JSONDecodeError, TypeError, AttributeError):
                 question['examples'] = []
                 question['constraints'] = []
         else:
@@ -389,20 +447,48 @@ class QuestionService:
         db = get_db()
         
         # 总提交次数
-        total_submissions = db.execute(
+        total_row = db.execute(
             'SELECT COUNT(*) as total FROM code_submissions WHERE question_id = ?',
             (question_id,)
-        ).fetchone()['total']
+        ).fetchone()
+        # 安全地转换为字典
+        if total_row:
+            try:
+                if isinstance(total_row, dict):
+                    total_submissions = total_row.get('total', 0)
+                elif hasattr(total_row, 'keys'):
+                    total_submissions = dict(total_row).get('total', 0)
+                else:
+                    # 如果是元组或列表，尝试按索引访问
+                    total_submissions = total_row[0] if isinstance(total_row, (tuple, list)) else 0
+            except (TypeError, IndexError, AttributeError):
+                total_submissions = 0
+        else:
+            total_submissions = 0
         
         # 通过次数
-        accepted_submissions = db.execute(
+        accepted_row = db.execute(
             '''
             SELECT COUNT(*) as total 
             FROM code_submissions 
             WHERE question_id = ? AND status = 'accepted'
             ''',
             (question_id,)
-        ).fetchone()['total']
+        ).fetchone()
+        # 安全地转换为字典
+        if accepted_row:
+            try:
+                if isinstance(accepted_row, dict):
+                    accepted_submissions = accepted_row.get('total', 0)
+                elif hasattr(accepted_row, 'keys'):
+                    accepted_submissions = dict(accepted_row).get('total', 0)
+                else:
+                    # 如果是元组或列表，尝试按索引访问
+                    accepted_submissions = accepted_row[0] if isinstance(accepted_row, (tuple, list)) else 0
+            except (TypeError, IndexError, AttributeError):
+                accepted_submissions = 0
+        else:
+            accepted_submissions = 0
         
         # 计算通过率
         acceptance_rate = (

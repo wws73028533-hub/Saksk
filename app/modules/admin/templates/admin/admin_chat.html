@@ -485,6 +485,114 @@
         margin-bottom: 16px;
         opacity: 0.5;
     }
+    
+    /* 深色模式适配 */
+    [data-theme="dark"] .container {
+        background: rgba(28, 28, 30, 0.6);
+        backdrop-filter: blur(30px) saturate(180%);
+        -webkit-backdrop-filter: blur(30px) saturate(180%);
+        border-color: rgba(255, 255, 255, 0.12);
+    }
+    
+    [data-theme="dark"] .stat-card {
+        background: rgba(28, 28, 30, 0.6);
+        backdrop-filter: blur(30px) saturate(180%);
+        -webkit-backdrop-filter: blur(30px) saturate(180%);
+        border-color: rgba(255, 255, 255, 0.12);
+    }
+    
+    [data-theme="dark"] .stat-card:hover {
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    }
+    
+    [data-theme="dark"] .search-box input {
+        background: rgba(28, 28, 30, 0.8);
+        border-color: rgba(255, 255, 255, 0.12);
+        color: var(--text-color);
+    }
+    
+    [data-theme="dark"] .search-box input:focus {
+        background: rgba(28, 28, 30, 0.9);
+        border-color: var(--primary);
+    }
+    
+    [data-theme="dark"] .table-wrapper {
+        background: rgba(28, 28, 30, 0.6);
+        backdrop-filter: blur(30px) saturate(180%);
+        -webkit-backdrop-filter: blur(30px) saturate(180%);
+        border-color: rgba(255, 255, 255, 0.12);
+    }
+    
+    [data-theme="dark"] thead th {
+        background: rgba(255, 255, 255, 0.05);
+        border-bottom-color: rgba(255, 255, 255, 0.12);
+    }
+    
+    [data-theme="dark"] tbody tr:hover {
+        background-color: rgba(255, 255, 255, 0.05);
+    }
+    
+    [data-theme="dark"] .pagination button {
+        background: rgba(28, 28, 30, 0.8);
+        border-color: rgba(255, 255, 255, 0.12);
+        color: var(--text-color);
+    }
+    
+    [data-theme="dark"] .pagination button:hover:not(:disabled) {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: var(--primary);
+    }
+    
+    /* 消息抽屉深色模式 */
+    [data-theme="dark"] .message-drawer {
+        background: rgba(28, 28, 30, 0.95);
+        backdrop-filter: blur(40px) saturate(180%);
+        -webkit-backdrop-filter: blur(40px) saturate(180%);
+        box-shadow: -4px 0 20px rgba(0, 0, 0, 0.5);
+        border-left: 0.5px solid rgba(255, 255, 255, 0.12);
+    }
+    
+    [data-theme="dark"] .drawer-header {
+        border-bottom-color: rgba(255, 255, 255, 0.12);
+    }
+    
+    [data-theme="dark"] .drawer-close:hover {
+        background: rgba(255, 255, 255, 0.1);
+    }
+    
+    [data-theme="dark"] .drawer-body {
+        background: transparent;
+        color: var(--text-color);
+    }
+    
+    [data-theme="dark"] .message-item {
+        border-bottom-color: rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.02);
+    }
+    
+    [data-theme="dark"] .message-audio {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: rgba(255, 255, 255, 0.12);
+    }
+    
+    [data-theme="dark"] .audio-play-btn {
+        background: rgba(28, 28, 30, 0.8);
+        border-color: rgba(255, 255, 255, 0.12);
+        color: var(--text-color);
+    }
+    
+    [data-theme="dark"] .audio-play-btn:hover {
+        background: rgba(255, 255, 255, 0.1);
+    }
+    
+    [data-theme="dark"] .message-question {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: rgba(255, 255, 255, 0.12);
+    }
+    
+    [data-theme="dark"] .message-question:hover {
+        background: rgba(255, 255, 255, 0.08);
+    }
 </style>
 {% endblock %}
 

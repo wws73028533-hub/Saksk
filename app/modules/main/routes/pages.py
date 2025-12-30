@@ -44,26 +44,42 @@ def index():
             fav_count = 0
             mistake_count = 0
         
-        # 获取所有科目（过滤掉锁定的科目）
-        subjects = [row[0] for row in conn.execute("SELECT name FROM subjects WHERE is_locked=0 OR is_locked IS NULL ORDER BY id").fetchall()]
+        # 获取所有科目（添加权限过滤）
+        from app.core.utils.subject_permissions import get_user_accessible_subjects
+        accessible_subject_ids = []
+        if uid:
+            accessible_subject_ids = get_user_accessible_subjects(uid)
+            if accessible_subject_ids:
+                placeholders = ','.join(['?'] * len(accessible_subject_ids))
+                subjects = [row[0] for row in conn.execute(
+                    f"SELECT name FROM subjects WHERE id IN ({placeholders}) AND (is_locked=0 OR is_locked IS NULL) ORDER BY id",
+                    accessible_subject_ids
+                ).fetchall()]
+            else:
+                subjects = []
+        else:
+            subjects = []  # 未登录用户返回空列表
         
         # 获取所有题型（作为备用）
         q_types = [row[0] for row in conn.execute("SELECT DISTINCT q_type FROM questions").fetchall()]
-
-        # 获取每个科目下的题型
+        
+        # 获取每个科目下的题型（添加权限过滤）
         subject_q_types = {}
-        rows = conn.execute("""
-            SELECT s.name, GROUP_CONCAT(DISTINCT q.q_type)
-            FROM subjects s
-            LEFT JOIN questions q ON s.id = q.subject_id
-            GROUP BY s.name
-            ORDER BY s.id
-        """).fetchall()
-        for row in rows:
-            if row[0] and row[1]:
-                subject_q_types[row[0]] = sorted(list(set(row[1].split(','))))
-            elif row[0]:
-                subject_q_types[row[0]] = []
+        if uid and accessible_subject_ids:
+            placeholders = ','.join(['?'] * len(accessible_subject_ids))
+            rows = conn.execute(f"""
+                SELECT s.name, GROUP_CONCAT(DISTINCT q.q_type)
+                FROM subjects s
+                LEFT JOIN questions q ON s.id = q.subject_id
+                WHERE s.id IN ({placeholders})
+                GROUP BY s.name
+                ORDER BY s.id
+            """, accessible_subject_ids).fetchall()
+            for row in rows:
+                if row[0] and row[1]:
+                    subject_q_types[row[0]] = sorted(list(set(row[1].split(','))))
+                elif row[0]:
+                    subject_q_types[row[0]] = []
     except Exception as e:
         current_app.logger.error(f"Error fetching index page data: {e}")
         quiz_count = 0
@@ -99,9 +115,22 @@ def search_page():
     uid = session.get('user_id') or -1
     conn = get_db()
 
-    # 获取所有科目和题型用于筛选下拉框（过滤掉锁定的科目）
+    # 获取所有科目和题型用于筛选下拉框（添加权限过滤）
+    from app.core.utils.subject_permissions import get_user_accessible_subjects
     try:
-        subjects = [row[0] for row in conn.execute("SELECT name FROM subjects WHERE is_locked=0 OR is_locked IS NULL").fetchall()]
+        user_id = session.get('user_id')
+        if user_id:
+            accessible_subject_ids = get_user_accessible_subjects(user_id)
+            if accessible_subject_ids:
+                placeholders = ','.join(['?'] * len(accessible_subject_ids))
+                subjects = [row[0] for row in conn.execute(
+                    f"SELECT name FROM subjects WHERE id IN ({placeholders}) AND (is_locked=0 OR is_locked IS NULL)",
+                    accessible_subject_ids
+                ).fetchall()]
+            else:
+                subjects = []
+        else:
+            subjects = []  # 未登录用户返回空列表
         q_types = [row[0] for row in conn.execute("SELECT DISTINCT q_type FROM questions").fetchall()]
     except:
         subjects = []
@@ -137,6 +166,19 @@ def search_page():
 
     search_term = f'%{keyword}%'
     params = [uid, uid, search_term, search_term, search_term, search_term]
+    
+    # 添加权限过滤：只搜索用户可访问的科目
+    if user_id:
+        if accessible_subject_ids:
+            placeholders = ','.join(['?'] * len(accessible_subject_ids))
+            sql_base += f" AND q.subject_id IN ({placeholders})"
+            params.extend(accessible_subject_ids)
+        else:
+            # 如果没有可访问的科目，返回空结果
+            sql_base += " AND 1=0"
+    else:
+        # 未登录用户：返回空结果
+        sql_base += " AND 1=0"
 
     # 添加科目筛选
     if subject_filter:
@@ -164,10 +206,11 @@ def search_page():
     params.extend([per_page, (page - 1) * per_page])
 
     rows = conn.execute(sql, params).fetchall()
-
+    
     questions = []
     for row in rows:
         q = dict(row)
+        
         # 提前处理答案和选项
         correct_answer_key = str(q.get('answer', '')).strip()
         q['full_answer'] = correct_answer_key  # 默认答案为标识符

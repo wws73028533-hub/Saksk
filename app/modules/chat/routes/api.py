@@ -215,6 +215,60 @@ def chat_conversations():
     return jsonify({'status': 'success', 'data': data})
 
 
+@chat_api_bp.route('/chat/conversation_users')
+@limiter.exempt
+def chat_conversation_users():
+    """获取已有会话的用户列表（仅返回direct会话中的对方用户），用于题目转发等功能"""
+    if not session.get('user_id'):
+        return jsonify({'status': 'unauthorized', 'message': '请先登录'}), 401
+
+    uid = session.get('user_id')
+    q = (request.args.get('q') or '').strip()
+    conn = get_db()
+
+    # 查询已有direct会话的对方用户
+    sql = """
+        SELECT DISTINCT
+               pu.id,
+               pu.username,
+               pu.avatar,
+               ur.remark,
+               c.updated_at
+        FROM chat_conversations c
+        JOIN chat_members mb ON mb.conversation_id = c.id AND mb.user_id = ?
+        -- 取对方成员（direct会话：除自己外的那个人）
+        JOIN chat_members pmb ON pmb.conversation_id = c.id AND pmb.user_id != ?
+        JOIN users pu ON pu.id = pmb.user_id
+        -- 取当前用户对对方的备注
+        LEFT JOIN user_remarks ur ON ur.owner_user_id = ? AND ur.target_user_id = pu.id
+        WHERE c.c_type = 'direct'
+    """
+    params = [uid, uid, uid]
+
+    # 如果有关键词，搜索用户名或备注
+    if q:
+        sql += " AND (pu.username LIKE ? OR ur.remark LIKE ?)"
+        params.extend([f"%{q}%", f"%{q}%"])
+
+    # 按最后更新时间排序，最近聊天的用户排在前面
+    sql += " ORDER BY c.updated_at DESC, pu.username ASC LIMIT 50"
+
+    rows = conn.execute(sql, params).fetchall()
+    
+    # 转换为前端需要的格式
+    data = []
+    for r in rows:
+        user_data = {
+            'id': r['id'],
+            'username': r['username'],
+            'avatar': r['avatar'],
+            'remark': r['remark']  # 备注信息
+        }
+        data.append(user_data)
+
+    return jsonify({'status': 'success', 'data': data})
+
+
 @chat_api_bp.route('/chat/conversations/create', methods=['POST'])
 @limiter.exempt
 def chat_create_conversation():

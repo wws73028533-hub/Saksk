@@ -251,7 +251,8 @@ def _create_tables(conn):
             if 'is_locked' not in subject_cols:
                 cur.execute('ALTER TABLE subjects ADD COLUMN is_locked INTEGER DEFAULT 0')
             if 'created_at' not in subject_cols:
-                cur.execute('ALTER TABLE subjects ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP')
+                # SQLite不支持带非常量默认值的ALTER TABLE,所以不设置默认值
+                cur.execute('ALTER TABLE subjects ADD COLUMN created_at DATETIME')
     except Exception as e:
         print(f'[WARN] 添加字段失败: {e}')
         pass
@@ -420,6 +421,80 @@ def _create_tables(conn):
             FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
         )
     ''')
+    
+    # 代码草稿表（用于实时保存用户代码）
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS code_drafts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            question_id INTEGER NOT NULL,
+            code TEXT NOT NULL,
+            language TEXT DEFAULT 'python',
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, question_id),
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY(question_id) REFERENCES coding_questions(id) ON DELETE CASCADE
+        )
+    ''')
+    
+    # 用户-科目限制表（黑名单模式）
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS user_subjects (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            subject_id INTEGER NOT NULL,
+            restricted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            restricted_by INTEGER,
+            UNIQUE(user_id, subject_id),
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY(subject_id) REFERENCES subjects(id) ON DELETE CASCADE,
+            FOREIGN KEY(restricted_by) REFERENCES users(id) ON DELETE SET NULL
+        )
+    ''')
+    
+    # 系统配置表
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS system_config (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            config_key TEXT UNIQUE NOT NULL,
+            config_value TEXT NOT NULL,
+            description TEXT,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_by INTEGER,
+            FOREIGN KEY(updated_by) REFERENCES users(id) ON DELETE SET NULL
+        )
+    ''')
+    
+    # 用户刷题统计表
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS user_quiz_stats (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL UNIQUE,
+            total_answered INTEGER DEFAULT 0,
+            last_reset_at DATETIME,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    ''')
+    
+    # 初始化系统配置（如果不存在）
+    default_configs = [
+        ('quiz_limit_enabled', '0', '刷题数限制功能开关（0=关闭，1=开启）'),
+        ('quiz_limit_count', '100', '用户刷题数限制（达到此数量后提示付费）')
+    ]
+    
+    for config_key, config_value, description in default_configs:
+        existing = conn.execute(
+            'SELECT id FROM system_config WHERE config_key = ?',
+            (config_key,)
+        ).fetchone()
+        
+        if not existing:
+            conn.execute(
+                '''INSERT INTO system_config (config_key, config_value, description)
+                   VALUES (?, ?, ?)''',
+                (config_key, config_value, description)
+            )
 
 
 def _create_indexes(conn):
@@ -440,55 +515,74 @@ def _create_indexes(conn):
             'CREATE INDEX IF NOT EXISTS idx_user_answers_user ON user_answers(user_id, created_at)',
             'CREATE INDEX IF NOT EXISTS idx_user_answers_question ON user_answers(question_id)',
         ])
-        
-        # 题目相关索引（只对存在的表创建）
-        if 'questions' in existing_tables:
-            indexes.extend([
-                'CREATE INDEX IF NOT EXISTS idx_questions_subject ON questions(subject_id)',
-                'CREATE INDEX IF NOT EXISTS idx_questions_type ON questions(q_type)',
-                'CREATE INDEX IF NOT EXISTS idx_questions_subject_type ON questions(subject_id, q_type)',
-            ])
-        
-        # 考试相关索引（只对存在的表创建）
-        if 'exams' in existing_tables:
-            indexes.extend([
-                'CREATE INDEX IF NOT EXISTS idx_exams_user_status ON exams(user_id, status)',
-                'CREATE INDEX IF NOT EXISTS idx_exams_submitted ON exams(submitted_at)',
-            ])
-        if 'exam_questions' in existing_tables:
-            indexes.extend([
-                'CREATE INDEX IF NOT EXISTS idx_exam_questions_exam ON exam_questions(exam_id)',
-                'CREATE INDEX IF NOT EXISTS idx_exam_questions_question ON exam_questions(question_id)',
-            ])
-        
-        # 用户进度索引（只对存在的表创建）
-        if 'user_progress' in existing_tables:
-            indexes.append('CREATE INDEX IF NOT EXISTS idx_user_progress_key ON user_progress(user_id, p_key)')
+    
+    # 题目相关索引（只对存在的表创建）
+    if 'questions' in existing_tables:
+        indexes.extend([
+            'CREATE INDEX IF NOT EXISTS idx_questions_subject ON questions(subject_id)',
+            'CREATE INDEX IF NOT EXISTS idx_questions_type ON questions(q_type)',
+            'CREATE INDEX IF NOT EXISTS idx_questions_subject_type ON questions(subject_id, q_type)',
+        ])
+    
+    # 考试相关索引（只对存在的表创建）
+    if 'exams' in existing_tables:
+        indexes.extend([
+            'CREATE INDEX IF NOT EXISTS idx_exams_user_status ON exams(user_id, status)',
+            'CREATE INDEX IF NOT EXISTS idx_exams_submitted ON exams(submitted_at)',
+        ])
+    if 'exam_questions' in existing_tables:
+        indexes.extend([
+            'CREATE INDEX IF NOT EXISTS idx_exam_questions_exam ON exam_questions(exam_id)',
+            'CREATE INDEX IF NOT EXISTS idx_exam_questions_question ON exam_questions(question_id)',
+        ])
+    
+    # 用户进度索引（只对存在的表创建）
+    if 'user_progress' in existing_tables:
+        indexes.append('CREATE INDEX IF NOT EXISTS idx_user_progress_key ON user_progress(user_id, p_key)')
 
-        # 聊天相关索引（只对存在的表创建）
-        if 'chat_members' in existing_tables:
-            indexes.append('CREATE INDEX IF NOT EXISTS idx_chat_members_user ON chat_members(user_id, conversation_id)')
-        if 'chat_messages' in existing_tables:
-            indexes.append('CREATE INDEX IF NOT EXISTS idx_chat_messages_conversation ON chat_messages(conversation_id, id DESC)')
-        if 'chat_conversations' in existing_tables:
-            # direct 私聊唯一键：从根源杜绝重复会话（仅当 c_type='direct' 时生效）
-            indexes.append("CREATE UNIQUE INDEX IF NOT EXISTS ux_chat_direct_pair ON chat_conversations(direct_pair_key) WHERE c_type='direct' AND direct_pair_key IS NOT NULL")
-        if 'user_remarks' in existing_tables:
-            # 用户备注：便于查询
-            indexes.append('CREATE INDEX IF NOT EXISTS idx_user_remarks_owner ON user_remarks(owner_user_id, target_user_id)')
+    # 聊天相关索引（只对存在的表创建）
+    if 'chat_members' in existing_tables:
+        indexes.append('CREATE INDEX IF NOT EXISTS idx_chat_members_user ON chat_members(user_id, conversation_id)')
+    if 'chat_messages' in existing_tables:
+        indexes.append('CREATE INDEX IF NOT EXISTS idx_chat_messages_conversation ON chat_messages(conversation_id, id DESC)')
+    if 'chat_conversations' in existing_tables:
+        # direct 私聊唯一键：从根源杜绝重复会话（仅当 c_type='direct' 时生效）
+        indexes.append("CREATE UNIQUE INDEX IF NOT EXISTS ux_chat_direct_pair ON chat_conversations(direct_pair_key) WHERE c_type='direct' AND direct_pair_key IS NOT NULL")
+    if 'user_remarks' in existing_tables:
+        # 用户备注：便于查询
+        indexes.append('CREATE INDEX IF NOT EXISTS idx_user_remarks_owner ON user_remarks(owner_user_id, target_user_id)')
 
-        # 通知相关索引（只对存在的表创建）
-        if 'notifications' in existing_tables:
-            indexes.extend([
-                'CREATE INDEX IF NOT EXISTS idx_notifications_active ON notifications(is_active, priority DESC)',
-                'CREATE INDEX IF NOT EXISTS idx_notifications_time ON notifications(start_at, end_at)',
-            ])
-        if 'notification_dismissals' in existing_tables:
-            indexes.append('CREATE INDEX IF NOT EXISTS idx_notification_dismissals_user ON notification_dismissals(user_id, notification_id)')
-        
-        # 代码提交相关索引（只对存在的表创建）
-        if 'code_submissions' in existing_tables:
-            indexes.append('CREATE INDEX IF NOT EXISTS idx_code_submissions_user_question ON code_submissions(user_id, question_id, submitted_at DESC)')
+    # 通知相关索引（只对存在的表创建）
+    if 'notifications' in existing_tables:
+        indexes.extend([
+            'CREATE INDEX IF NOT EXISTS idx_notifications_active ON notifications(is_active, priority DESC)',
+            'CREATE INDEX IF NOT EXISTS idx_notifications_time ON notifications(start_at, end_at)',
+        ])
+    if 'notification_dismissals' in existing_tables:
+        indexes.append('CREATE INDEX IF NOT EXISTS idx_notification_dismissals_user ON notification_dismissals(user_id, notification_id)')
+    
+    # 代码提交相关索引（只对存在的表创建）
+    if 'code_submissions' in existing_tables:
+        indexes.append('CREATE INDEX IF NOT EXISTS idx_code_submissions_user_question ON code_submissions(user_id, question_id, submitted_at DESC)')
+    
+    # 代码草稿相关索引
+    if 'code_drafts' in existing_tables:
+        indexes.append('CREATE INDEX IF NOT EXISTS idx_code_drafts_user_question ON code_drafts(user_id, question_id)')
+    
+    # 用户-科目限制表索引
+    if 'user_subjects' in existing_tables:
+        indexes.extend([
+            'CREATE INDEX IF NOT EXISTS idx_user_subjects_user_id ON user_subjects(user_id)',
+            'CREATE INDEX IF NOT EXISTS idx_user_subjects_subject_id ON user_subjects(subject_id)'
+        ])
+    
+    # 系统配置表索引
+    if 'system_config' in existing_tables:
+        indexes.append('CREATE INDEX IF NOT EXISTS idx_system_config_key ON system_config(config_key)')
+    
+    # 用户刷题统计表索引
+    if 'user_quiz_stats' in existing_tables:
+        indexes.append('CREATE INDEX IF NOT EXISTS idx_user_quiz_stats_user_id ON user_quiz_stats(user_id)')
     
     for index_sql in indexes:
         conn.execute(index_sql)

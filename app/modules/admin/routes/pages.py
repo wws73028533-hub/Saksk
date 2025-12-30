@@ -55,8 +55,8 @@ def admin_questions_page(subject_id):
     """题集管理页面"""
     conn = get_db()
     
-    # 获取科目信息（使用coding_subjects表）
-    subject = conn.execute('SELECT id, name FROM coding_subjects WHERE id=?', (subject_id,)).fetchone()
+    # 获取科目信息（使用subjects表，题库中心模式）
+    subject = conn.execute('SELECT id, name FROM subjects WHERE id=?', (subject_id,)).fetchone()
     
     if not subject:
         return "科目不存在", 404
@@ -123,4 +123,10 @@ def admin_notifications_page():
 def admin_chat_page():
     """聊天管理页面"""
     return render_template('admin/admin_chat.html')
+
+
+@admin_pages_bp.route('/subject_permissions')
+def admin_subject_permissions_page():
+    """题库管理页面（批量操作）"""
+    return render_template('admin/admin_subject_permissions.html')
 

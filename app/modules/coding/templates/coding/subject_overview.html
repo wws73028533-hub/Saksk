@@ -633,6 +633,10 @@
                 <div class="card">
                     <h2 class="card-title">题目集信息</h2>
                     <div class="info-row">
+                        <span class="info-label">题目总数</span>
+                        <span class="info-value" id="total-questions">0</span>
+                    </div>
+                    <div class="info-row">
                         <span class="info-label">题目集类型</span>
                         <span class="info-value" id="set-type">普通</span>
                     </div>
@@ -753,6 +757,8 @@
             document.getElementById('answer-status').textContent = answerStatus;
 
             // 更新题目集信息
+            document.getElementById('total-questions').textContent = 
+                data.question_stats.total || 0;
             document.getElementById('set-type').textContent = 
                 data.status.set_type === 'random' ? '随机' : '普通';
             document.getElementById('time-type').textContent = 

@@ -6,36 +6,96 @@
     <title>编程题详情</title>
     <style>
         :root {
-            --bg-color: #f5f5f7;
-            --card-bg: rgba(255, 255, 255, 0.72);
-            --card-bg-solid: rgba(255, 255, 255, 0.92);
-            --text-color: #1d1d1f;
-            --text-sub: #6e6e73;
-            --border-color: rgba(0, 0, 0, 0.06);
+            /* 背景色 */
+            --bg-primary: #f5f5f7;
+            --bg-secondary: rgba(255, 255, 255, 0.72);
+            --bg-tertiary: rgba(255, 255, 255, 0.92);
+            
+            /* 文字颜色 */
+            --text-primary: #1d1d1f;
+            --text-secondary: #6e6e73;
+            --text-tertiary: #a1a1a6;
+            
+            /* 边框颜色 */
+            --border-primary: rgba(0, 0, 0, 0.06);
+            --border-secondary: rgba(0, 0, 0, 0.12);
+            
+            /* 状态颜色 */
+            --status-success: rgba(52, 199, 89, 0.15);
+            --status-error: rgba(255, 59, 48, 0.15);
+            --status-warning: rgba(255, 149, 0, 0.15);
+            
+            /* 阴影 */
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
+            --shadow-md: 0 8px 30px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 -8px 40px rgba(0, 0, 0, 0.12);
+            
+            /* 圆角 */
+            --radius-sm: 12px;
+            --radius-md: 18px;
+            --radius-lg: 24px;
+            
+            /* 毛玻璃效果 */
+            --blur: blur(40px) saturate(180%);
+            
+            /* 字体 */
+            --font-size-xs: 11px;
+            --font-size-sm: 13px;
+            --font-size-base: 15px;
+            --font-size-lg: 17px;
+            --font-size-xl: 20px;
+            --font-size-2xl: 28px;
+            --font-size-3xl: 34px;
+            
+            /* 字重 */
+            --font-weight-regular: 400;
+            --font-weight-medium: 500;
+            --font-weight-semibold: 600;
+            --font-weight-bold: 700;
+            
+            /* 布局 */
+            --sidebar-width: 50px;
+            --editor-width: 500px;
+            
+            /* 兼容旧变量 */
+            --bg-color: var(--bg-primary);
+            --card-bg: var(--bg-secondary);
+            --card-bg-solid: var(--bg-tertiary);
+            --text-color: var(--text-primary);
+            --text-sub: var(--text-secondary);
+            --border-color: var(--border-primary);
             --primary: #007AFF;
             --primary-light: rgba(0, 122, 255, 0.12);
-            --shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+            --shadow: var(--shadow-md);
             --success: #34c759;
             --warning: #ff9500;
             --danger: #ff3b30;
-            --blur: blur(40px) saturate(180%);
-            --radius-lg: 18px;
-            --radius-sm: 12px;
-            --sidebar-width: 260px;
-            --sidebar-width-collapsed: 60px;
-            --editor-width: 500px;
+            --radius-lg: var(--radius-md);
         }
 
         body.dark-mode {
-            --bg-color: #000000;
-            --card-bg: rgba(28, 28, 30, 0.6);
-            --card-bg-solid: rgba(28, 28, 30, 0.95);
-            --text-color: #f5f5f7;
-            --text-sub: #a1a1a6;
-            --border-color: rgba(255, 255, 255, 0.12);
+            --bg-primary: #000000;
+            --bg-secondary: rgba(28, 28, 30, 0.6);
+            --bg-tertiary: rgba(28, 28, 30, 0.95);
+            --text-primary: #f5f5f7;
+            --text-secondary: #a1a1a6;
+            --text-tertiary: #6e6e73;
+            --border-primary: rgba(255, 255, 255, 0.12);
+            --border-secondary: rgba(255, 255, 255, 0.2);
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+            --shadow-md: 0 8px 30px rgba(0, 0, 0, 0.5);
+            --shadow-lg: 0 -8px 40px rgba(0, 0, 0, 0.6);
+            
+            /* 兼容旧变量 */
+            --bg-color: var(--bg-primary);
+            --card-bg: var(--bg-secondary);
+            --card-bg-solid: var(--bg-tertiary);
+            --text-color: var(--text-primary);
+            --text-sub: var(--text-secondary);
+            --border-color: var(--border-primary);
             --primary: #0a84ff;
             --primary-light: rgba(10, 132, 255, 0.2);
-            --shadow: 0 2px 16px rgba(0, 0, 0, 0.5);
+            --shadow: var(--shadow-md);
         }
 
         * {
@@ -63,8 +123,8 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
             margin: 0;
             padding: 0;
             min-height: 100vh;
@@ -75,143 +135,68 @@
             display: flex;
             height: 100vh;
             overflow: hidden;
+            margin-left: var(--sidebar-width);
         }
 
-        /* 左侧边栏 */
+        /* 左侧功能栏（极宽侧边栏） */
         .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
             width: var(--sidebar-width);
-            background: var(--card-bg);
+            background: var(--bg-secondary);
             backdrop-filter: var(--blur);
             -webkit-backdrop-filter: var(--blur);
-            border-right: 0.5px solid var(--border-color);
+            border-right: 0.5px solid var(--border-primary);
+            box-shadow: var(--shadow-md);
             display: flex;
             flex-direction: column;
-            overflow: hidden;
-            transition: width 0.3s ease;
-            position: relative;
-            padding: 24px 0;
-        }
-
-        .sidebar.collapsed {
-            width: var(--sidebar-width-collapsed);
-        }
-
-        .sidebar-toggle {
-            position: absolute;
-            right: -16px;
-            top: 12px;
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            background: var(--card-bg-solid);
-            backdrop-filter: var(--blur);
-            -webkit-backdrop-filter: var(--blur);
-            border: 0.5px solid var(--border-color);
-            box-shadow: var(--shadow);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            z-index: 10;
-            transition: all 0.2s ease;
-            color: var(--text-color);
-        }
-
-        .sidebar-toggle:hover {
-            background: var(--primary-light);
-            color: var(--primary);
-            transform: scale(1.1);
-        }
-
-        .sidebar-toggle svg {
-            transition: transform 0.3s ease;
-        }
-
-        .sidebar.collapsed .sidebar-toggle {
-            right: -16px;
-        }
-
-        .sidebar.collapsed .sidebar-toggle svg {
-            transform: rotate(180deg);
-        }
-
-        .sidebar-header {
-            padding: 20px 16px;
-            border-bottom: 0.5px solid var(--border-color);
-            transition: padding 0.3s ease;
-            overflow: visible;
-            text-align: center;
-            position: relative;
-        }
-
-        .sidebar.collapsed .sidebar-header {
-            padding: 20px 8px;
-        }
-
-        .sidebar-title {
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--text-color);
-            margin: 0 0 8px 0;
-            white-space: nowrap;
-            transition: opacity 0.3s ease;
-        }
-
-        .sidebar.collapsed .sidebar-title {
-            opacity: 0;
-            height: 0;
-            margin: 0;
-            overflow: hidden;
-        }
-
-        .sidebar-subtitle {
-            font-size: 11px;
-            color: var(--text-sub);
-            margin: 0;
-            white-space: nowrap;
-            transition: opacity 0.3s ease;
-        }
-
-        .sidebar.collapsed .sidebar-subtitle {
-            opacity: 0;
-            height: 0;
-            margin: 0;
-            overflow: hidden;
+            padding: 16px 0;
+            z-index: 100;
         }
 
         .sidebar-nav {
             display: flex;
             flex-direction: column;
-            align-items: center;
-            gap: 4px;
-            padding: 0 12px;
+            gap: 8px;
+            padding: 0 8px;
+        }
+
+        #back-btn {
+            margin-left: -14px;
         }
 
         .nav-item {
+            width: 100%;
+            padding: 12px;
+            border-radius: var(--radius-sm);
+            background: transparent;
+            color: var(--text-primary);
+            text-decoration: none;
+            font-size: var(--font-size-base);
+            font-weight: var(--font-weight-medium);
+            text-align: center;
+            transition: all 0.2s ease;
+            border: none;
+            cursor: pointer;
             display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
-            width: 100%;
-            padding: 12px 8px;
-            color: var(--text-sub);
-            text-decoration: none;
-            font-size: 11px;
-            transition: all 0.2s ease;
-            border-radius: var(--radius-sm);
-            text-align: center;
-            min-height: 60px;
+            gap: 0;
         }
 
         .nav-item:hover {
-            background: var(--primary-light);
-            color: var(--primary);
+            background: var(--bg-tertiary);
         }
 
         .nav-item.active {
-            background: var(--primary-light);
-            color: var(--primary);
-            font-weight: 500;
+            background: var(--bg-tertiary);
+            border-left: 2px solid var(--text-primary);
+        }
+        
+        .nav-item {
+            position: relative;
         }
 
         .nav-icon {
@@ -220,106 +205,77 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-bottom: 6px;
             flex-shrink: 0;
         }
 
         .nav-icon svg {
-            width: 20px;
-            height: 20px;
+            width: 100%;
+            height: 100%;
         }
 
         .nav-text {
-            line-height: 1.4;
-            word-break: break-word;
-            transition: opacity 0.3s ease, height 0.3s ease;
+            display: none;
         }
-
-        .sidebar.collapsed .nav-text {
-            opacity: 0;
-            height: 0;
-            margin: 0;
-            overflow: hidden;
-        }
-
-        .sidebar.collapsed .nav-icon {
-            margin-bottom: 0;
-        }
-
-        .question-list-section {
-            flex: 1;
-            overflow-y: auto;
-            padding: 16px 12px;
-            transition: opacity 0.3s ease, padding 0.3s ease;
-        }
-
-        .sidebar.collapsed .question-list-section {
-            opacity: 0;
-            pointer-events: none;
-            overflow: hidden;
-            padding: 0;
-        }
-
-        .question-list-title {
-            font-size: 11px;
-            font-weight: 600;
-            color: var(--text-sub);
-            margin-bottom: 12px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            text-align: center;
-        }
-
-        .question-grid {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 8px;
-        }
-
-        .question-number-btn {
-            aspect-ratio: 1;
-            border: 0.5px solid var(--border-color);
+        
+        .nav-item:hover .nav-text {
+            display: block;
+            position: absolute;
+            left: 100%;
+            margin-left: 8px;
+            padding: 8px 12px;
+            background: var(--bg-tertiary);
             border-radius: var(--radius-sm);
-            background: var(--card-bg-solid);
-            color: var(--text-color);
-            font-size: 13px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s ease;
+            white-space: nowrap;
+            box-shadow: var(--shadow-md);
+            z-index: 1000;
+            pointer-events: none;
+        }
+
+        /* 主内容区域容器 */
+        .main-content {
             display: flex;
-            align-items: center;
-            justify-content: center;
+            flex: 1;
+            height: 100vh;
+            overflow: hidden;
         }
 
-        .question-number-btn:hover {
-            background: var(--primary-light);
-            border-color: var(--primary);
-            color: var(--primary);
-            transform: translateY(-1px);
-        }
-
-        .question-number-btn.active {
-            background: var(--primary);
-            border-color: var(--primary);
-            color: white;
-        }
-
-        .question-number-btn.solved {
-            background: rgba(52, 199, 89, 0.15);
-            border-color: var(--success);
-        }
-
-        .question-number-btn.solved.active {
-            background: var(--success);
-            color: white;
-        }
-
-        /* 中间面板 */
+        /* 中间面板：题目描述区域 */
         .content-panel {
             flex: 1;
+            min-width: 300px;
+            max-width: calc(100% - 300px);
             overflow-y: auto;
             padding: 32px 40px;
-            background: var(--bg-color);
+            background: var(--bg-primary);
+        }
+
+        /* 可拖拽分割线 */
+        .resizer {
+            width: 4px;
+            background: var(--border-primary);
+            cursor: col-resize;
+            transition: background 0.2s ease;
+            flex-shrink: 0;
+            position: relative;
+            user-select: none;
+        }
+
+        .resizer:hover {
+            background: var(--border-secondary);
+        }
+
+        .resizer::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -2px;
+            right: -2px;
+            bottom: 0;
+            cursor: col-resize;
+        }
+
+        .resizer.resizing {
+            background: var(--border-secondary);
         }
 
         .question-header {
@@ -414,13 +370,14 @@
             font-weight: bold;
         }
 
-        /* 右侧面板 */
+        /* 右侧面板：代码编辑器区域 */
         .editor-panel {
-            width: var(--editor-width);
-            background: var(--card-bg);
+            flex: 1;
+            min-width: 300px;
+            max-width: calc(100% - 300px);
+            background: var(--bg-secondary);
             backdrop-filter: var(--blur);
             -webkit-backdrop-filter: var(--blur);
-            border-left: 0.5px solid var(--border-color);
             display: flex;
             flex-direction: column;
             overflow: hidden;
@@ -433,6 +390,13 @@
             justify-content: space-between;
             align-items: center;
             gap: 12px;
+        }
+
+        .toolbar-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
         }
 
         .language-selector {
@@ -505,6 +469,7 @@
         .editor-toolbar {
             display: flex;
             gap: 10px;
+            justify-content: flex-end;
         }
 
         .btn {
@@ -518,6 +483,12 @@
             font-weight: 500;
             transition: all 0.2s ease;
             flex: 1;
+        }
+
+        .btn-submit {
+            flex: none;
+            padding: 8px 16px;
+            font-size: var(--font-size-sm);
         }
 
         .btn:hover {
@@ -580,75 +551,1199 @@
         @media (max-width: 1200px) {
             .main-layout {
                 flex-direction: column;
+                margin-left: 0;
             }
             .sidebar {
+                position: relative;
                 width: 100%;
-                height: 200px;
+                height: auto;
                 border-right: none;
-                border-bottom: 0.5px solid var(--border-color);
+                border-bottom: 0.5px solid var(--border-primary);
             }
-            .editor-panel {
-                width: 100%;
-                height: 400px;
-                border-left: none;
-                border-top: 0.5px solid var(--border-color);
+            .sidebar-nav {
+                flex-direction: row;
+                overflow-x: auto;
+            }
+            .nav-item {
+                flex-shrink: 0;
+                min-width: 120px;
+            }
+            .main-content {
+                flex-direction: column;
+                height: auto;
             }
             .content-panel {
                 flex: 1;
+                min-width: 100%;
+                max-width: 100%;
                 overflow-y: auto;
+            }
+            .resizer {
+                width: 100%;
+                height: 4px;
+                cursor: row-resize;
+            }
+            .resizer::before {
+                top: -2px;
+                left: 0;
+                right: 0;
+                bottom: -2px;
+                cursor: row-resize;
+            }
+            .editor-panel {
+                flex: 1;
+                min-width: 100%;
+                max-width: 100%;
+                height: 400px;
             }
         }
 
         @media (max-width: 768px) {
-            .question-grid {
-                grid-template-columns: repeat(4, 1fr);
+            :root {
+                --sidebar-width: 100%;
+            }
+            .main-layout {
+                margin-left: 0;
+            }
+            .sidebar {
+                position: relative;
             }
             .content-panel {
                 padding: 20px;
             }
+            .drawer {
+                width: 85vw;
+                max-width: 420px;
+            }
+        }
+
+        /* 抽屉组件样式 */
+        .drawer-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .drawer-backdrop.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .drawer {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 420px;
+            height: 100vh;
+            background: var(--bg-secondary);
+            backdrop-filter: var(--blur);
+            -webkit-backdrop-filter: var(--blur);
+            border-left: 0.5px solid var(--border-primary);
+            border-radius: var(--radius-md) 0 0 var(--radius-md);
+            box-shadow: var(--shadow-lg);
+            z-index: 1001;
+            transform: translateX(100%);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .drawer.active {
+            transform: translateX(0);
+        }
+
+        .drawer-header {
+            padding: 20px 24px;
+            border-bottom: 0.5px solid var(--border-primary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .drawer-title {
+            font-size: var(--font-size-xl);
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-primary);
+            margin: 0;
+        }
+
+        .drawer-close {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: transparent;
+            border: 0.5px solid var(--border-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: var(--text-secondary);
+        }
+
+        .drawer-close:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .drawer-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+        }
+
+        .drawer-loading {
+            text-align: center;
+            color: var(--text-secondary);
+            padding: 40px 0;
+            font-size: var(--font-size-sm);
+        }
+
+        /* 题目卡片样式 */
+        .question-card {
+            padding: 16px;
+            background: var(--bg-tertiary);
+            border: 0.5px solid var(--border-primary);
+            border-radius: var(--radius-sm);
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .question-card:hover {
+            background: var(--bg-secondary);
+            border-color: var(--border-secondary);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .question-card.active {
+            border-color: var(--text-primary);
+            background: var(--bg-secondary);
+        }
+
+        .question-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+
+        .question-card-title {
+            font-size: var(--font-size-base);
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-primary);
+            margin: 0;
+            flex: 1;
+        }
+
+        .question-card-status {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            font-size: var(--font-size-xs);
+            flex-shrink: 0;
+        }
+
+        /* 未作答：灰色虚线框 */
+        .question-card-status.unsolved {
+            border: 2px dashed var(--text-tertiary);
+            background: transparent;
+            color: var(--text-tertiary);
+        }
+
+        /* 待评测：蓝色实心框带横线 */
+        .question-card-status.pending {
+            background: rgba(10, 132, 255, 0.9);
+            border: none;
+            color: white;
+            position: relative;
+        }
+
+        .question-card-status.pending::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 12px;
+            height: 2px;
+            background: white;
+            border-radius: 1px;
+        }
+
+        /* 答案正确：红色实心框带对勾 */
+        .question-card-status.accepted {
+            background: rgba(255, 59, 48, 0.9);
+            border: none;
+            color: white;
+            position: relative;
+        }
+
+        .question-card-status.accepted::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 14px;
+            font-weight: bold;
+            color: white;
+        }
+
+        /* 答案错误：浅绿色实心框带X */
+        .question-card-status.wrong-answer {
+            background: rgba(52, 199, 89, 0.8);
+            border: none;
+            color: white;
+            position: relative;
+        }
+
+        .question-card-status.wrong-answer::after {
+            content: '✕';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 14px;
+            font-weight: bold;
+            color: white;
+        }
+
+        /* 题型分组标题 */
+        .question-type-group {
+            margin-bottom: 24px;
+        }
+
+        .question-type-title {
+            font-size: var(--font-size-base);
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-primary);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .question-type-icon {
+            font-size: var(--font-size-lg);
+        }
+
+        /* Debug按钮 */
+        .debug-toggle-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border: 0.5px solid var(--border-primary);
+            border-radius: var(--radius-sm);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            font-size: var(--font-size-sm);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .debug-toggle-btn:hover {
+            background: var(--bg-secondary);
+            border-color: var(--border-secondary);
+        }
+
+        .debug-toggle-btn.active {
+            background: var(--status-warning);
+            border-color: var(--status-warning);
+        }
+
+        /* Debug窗口 */
+        .debug-panel {
+            border-top: 0.5px solid var(--border-primary);
+            background: var(--bg-primary);
+            overflow: hidden;
+            flex-direction: column;
+            transition: max-height 0.3s ease;
+        }
+
+        .debug-panel.collapsed {
+            max-height: 48px;
+        }
+
+        .debug-panel.expanded {
+            max-height: 400px;
+        }
+
+        /* Debug窗口收起时的栏 */
+        .debug-header-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 16px;
+            height: 48px;
+            background: var(--bg-tertiary);
+            border-bottom: 0.5px solid var(--border-primary);
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.2s ease;
+        }
+
+        .debug-header-bar:hover {
+            background: var(--bg-secondary);
+        }
+
+        .debug-header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex: 1;
+        }
+
+        .debug-header-tabs {
+            display: flex;
+            gap: 0;
+        }
+
+        .debug-header-tab {
+            padding: 8px 0;
+            border: none;
+            border-bottom: 2px solid transparent;
+            background: transparent;
+            color: var(--text-tertiary);
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-medium);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-right: 24px;
+        }
+
+        .debug-header-tab:hover {
+            color: var(--text-primary);
+        }
+
+        .debug-header-tab.active {
+            color: var(--text-primary);
+            border-bottom-color: var(--text-primary);
+        }
+
+        .debug-header-center {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+        }
+
+        .debug-header-right {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 12px;
+            flex: 1;
+        }
+
+        .debug-toggle-icon {
+            width: 16px;
+            height: 16px;
+            transition: transform 0.3s ease;
+        }
+
+        .debug-panel.expanded .debug-toggle-icon {
+            transform: rotate(180deg);
+        }
+
+        .debug-panel-content {
+            display: none;
+            flex-direction: column;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .debug-panel.expanded .debug-panel-content {
+            display: flex;
+        }
+
+        /* Debug标签页 */
+        .debug-tabs {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 0.5px solid var(--border-primary);
+            background: var(--bg-tertiary);
+            gap: 8px;
+        }
+
+        .debug-tab {
+            padding: 8px 0;
+            border: none;
+            border-bottom: 2px solid transparent;
+            background: transparent;
+            color: var(--text-tertiary);
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-medium);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-right: 24px;
+        }
+
+        .debug-tab:hover {
+            color: var(--text-primary);
+        }
+
+        .debug-tab.active {
+            color: var(--text-primary);
+            border-bottom-color: var(--text-primary);
+        }
+
+        .debug-copy-btn {
+            margin-left: auto;
+            padding: 6px 12px;
+            border: 0.5px solid var(--border-primary);
+            border-radius: var(--radius-sm);
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: var(--font-size-xs);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .debug-copy-btn:hover {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        /* Debug内容区域 */
+        .debug-content {
+            flex: 1;
+            overflow-y: auto;
+            display: none;
+            flex-direction: column;
+        }
+
+        .debug-content.active {
+            display: flex;
+        }
+
+        /* 测试用例输入区域 */
+        .testcase-input {
+            display: flex;
+            flex: 1;
+            background: var(--bg-tertiary);
+            border-bottom: 0.5px solid var(--border-primary);
+            min-height: 120px;
+        }
+
+        #testcase-line-numbers {
+            width: 30px;
+            padding: 12px 4px;
+            background: var(--bg-primary);
+            border-right: 0.5px solid var(--border-primary);
+            color: var(--text-tertiary);
+            font-size: var(--font-size-xs);
+            font-family: 'Monaco', 'Courier New', monospace;
+            text-align: right;
+            user-select: none;
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            overflow-y: auto;
+            overflow-x: hidden;
+            flex-shrink: 0;
+            line-height: 1.6;
+        }
+
+        #testcase-line-numbers span {
+            display: block;
+            line-height: 1.6;
+            min-height: 1.6em;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+
+        .testcase-textarea {
+            flex: 1;
+            padding: 12px 16px;
+            border: none;
+            background: transparent;
+            color: var(--text-primary);
+            font-size: var(--font-size-sm);
+            font-family: 'Monaco', 'Courier New', monospace;
+            resize: none;
+            outline: none;
+            line-height: 1.6;
+        }
+
+        .testcase-textarea::placeholder {
+            color: var(--text-tertiary);
+        }
+
+        /* Debug操作按钮 */
+        .debug-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: var(--bg-tertiary);
+            border-bottom: 0.5px solid var(--border-primary);
+            gap: 12px;
+        }
+
+        .debug-reset-btn {
+            padding: 8px 16px;
+            border: 0.5px solid var(--border-primary);
+            border-radius: var(--radius-sm);
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: var(--font-size-sm);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .debug-reset-btn:hover {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        .debug-run-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 20px;
+            border: none;
+            border-radius: var(--radius-sm);
+            background: var(--status-success);
+            color: white;
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-medium);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .debug-run-btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        .debug-run-btn:active {
+            transform: translateY(0);
+        }
+
+        /* Debug状态栏 */
+        .debug-status {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 16px;
+            background: var(--bg-primary);
+            border-top: 0.5px solid var(--border-primary);
+            font-size: var(--font-size-xs);
+            color: var(--text-secondary);
+        }
+
+        .status-text {
+            flex: 1;
+        }
+
+        .view-last-case-btn {
+            padding: 4px 12px;
+            border: 0.5px solid var(--border-primary);
+            border-radius: var(--radius-sm);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            font-size: var(--font-size-xs);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .view-last-case-btn:hover {
+            background: var(--bg-secondary);
+        }
+
+        /* 编译器输出 */
+        .compiler-output {
+            display: flex;
+            flex: 1;
+            background: var(--bg-tertiary);
+            min-height: 200px;
+            overflow: hidden;
+        }
+
+        #compiler-line-numbers {
+            width: 30px;
+            padding: 12px 4px;
+            background: var(--bg-primary);
+            border-right: 0.5px solid var(--border-primary);
+            color: var(--text-tertiary);
+            font-size: var(--font-size-xs);
+            font-family: 'Monaco', 'Courier New', monospace;
+            text-align: right;
+            user-select: none;
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            overflow-y: auto;
+            overflow-x: hidden;
+            flex-shrink: 0;
+        }
+
+        #compiler-line-numbers span {
+            display: block;
+            line-height: 1.6;
+            min-height: 1.6em;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+
+        .compiler-text {
+            flex: 1;
+            padding: 12px 16px;
+            margin: 0;
+            color: var(--text-primary);
+            font-size: var(--font-size-sm);
+            font-family: 'Monaco', 'Courier New', monospace;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-x: auto;
+            overflow-y: auto;
+        }
+
+        /* 提交结果弹窗样式 */
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(8px);
+            z-index: 2000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-backdrop.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .submission-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.95);
+            width: 90%;
+            max-width: 800px;
+            max-height: 90vh;
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            z-index: 2001;
+            display: flex;
+            flex-direction: column;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow: hidden;
+        }
+
+        .submission-modal.active {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 24px;
+            border-bottom: 0.5px solid var(--border-primary);
+            flex-shrink: 0;
+        }
+
+        .modal-title {
+            font-size: var(--font-size-xl);
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-primary);
+            margin: 0;
+        }
+
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: transparent;
+            border: 0.5px solid var(--border-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: var(--text-secondary);
+        }
+
+        .modal-close:hover {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border-color: var(--border-secondary);
+        }
+
+        .submission-details-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            padding: 24px;
+            border-bottom: 0.5px solid var(--border-primary);
+            background: var(--bg-primary);
+            overflow-y: auto;
+        }
+
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .detail-label {
+            font-size: var(--font-size-xs);
+            color: var(--text-tertiary);
+            font-weight: var(--font-weight-medium);
+        }
+
+        .detail-value {
+            font-size: var(--font-size-sm);
+            color: var(--text-primary);
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 8px;
+            border-radius: var(--radius-sm);
+            font-size: var(--font-size-xs);
+            font-weight: var(--font-weight-medium);
+        }
+
+        .status-badge.compilation-error {
+            background: var(--status-error);
+            color: var(--text-primary);
+        }
+
+        .status-badge.accepted {
+            background: var(--status-success);
+            color: var(--text-primary);
+        }
+
+        .status-badge.wrong-answer {
+            background: rgba(255, 149, 0, 0.15);
+            color: var(--text-primary);
+        }
+
+        .submission-section {
+            padding: 24px;
+            border-bottom: 0.5px solid var(--border-primary);
+            flex-shrink: 0;
+            overflow-y: auto;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .section-title {
+            font-size: var(--font-size-base);
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-primary);
+            margin: 0;
+        }
+
+        .copy-btn {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 12px;
+            border: 0.5px solid var(--border-primary);
+            border-radius: var(--radius-sm);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: var(--font-size-xs);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .copy-btn:hover {
+            background: var(--bg-tertiary);
+            border-color: var(--border-secondary);
+        }
+
+        .code-display {
+            display: flex;
+            background: var(--bg-primary);
+            border: 0.5px solid var(--border-primary);
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .code-display .line-numbers {
+            width: 30px;
+            padding: 12px 4px;
+            background: var(--bg-secondary);
+            border-right: 0.5px solid var(--border-primary);
+            color: var(--text-tertiary);
+            font-size: var(--font-size-xs);
+            font-family: 'Monaco', 'Courier New', monospace;
+            text-align: right;
+            user-select: none;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            line-height: 1.6;
+        }
+
+        .code-display .line-numbers span {
+            display: block;
+            line-height: 1.6;
+            min-height: 1.6em;
+        }
+
+        .code-content {
+            flex: 1;
+            padding: 12px 16px;
+            margin: 0;
+            color: var(--text-primary);
+            font-size: var(--font-size-sm);
+            font-family: 'Monaco', 'Courier New', monospace;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-x: auto;
+        }
+
+        /* 评测详情表格 */
+        .test-results-table-container {
+            overflow-x: auto;
+            border: 0.5px solid var(--border-primary);
+            border-radius: var(--radius-sm);
+            background: var(--bg-primary);
+        }
+
+        .test-results-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: var(--font-size-sm);
+        }
+
+        .test-results-table thead {
+            background: var(--bg-tertiary);
+            border-bottom: 0.5px solid var(--border-primary);
+        }
+
+        .test-results-table th {
+            padding: 12px 16px;
+            text-align: left;
+            font-weight: var(--font-weight-medium);
+            color: var(--text-primary);
+            white-space: nowrap;
+        }
+
+        .test-results-table td {
+            padding: 12px 16px;
+            border-bottom: 0.5px solid var(--border-primary);
+            color: var(--text-secondary);
+        }
+
+        .test-results-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .test-results-table tbody tr:hover {
+            background: var(--bg-secondary);
+        }
+
+        .test-result-passed {
+            color: var(--status-success);
+            font-weight: var(--font-weight-medium);
+        }
+
+        .test-result-failed {
+            color: var(--status-error);
+            font-weight: var(--font-weight-medium);
+        }
+
+        .test-result-timeout {
+            color: var(--status-warning);
+            font-weight: var(--font-weight-medium);
+        }
+
+        .test-result-error {
+            color: var(--status-error);
+            font-weight: var(--font-weight-medium);
+        }
+
+        .test-result-partial {
+            color: var(--status-warning);
+            font-weight: var(--font-weight-medium);
+        }
+
+        .test-result-format {
+            color: var(--status-warning);
+            font-weight: var(--font-weight-medium);
+        }
+
+        .test-result-memory {
+            color: var(--status-error);
+            font-weight: var(--font-weight-medium);
+        }
+
+        .test-result-compilation {
+            color: var(--status-error);
+            font-weight: var(--font-weight-medium);
+        }
+
+        .compiler-output-display {
+            background: #1e1e1e;
+            border: 0.5px solid var(--border-primary);
+            border-radius: var(--radius-sm);
+            padding: 16px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .compiler-error {
+            margin: 0;
+            color: #d4d4d4;
+            font-size: var(--font-size-sm);
+            font-family: 'Monaco', 'Courier New', monospace;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .compiler-error .error-line {
+            color: #f48771;
+        }
+
+        .compiler-error .error-marker {
+            color: #f48771;
+        }
+
+        .modal-footer {
+            padding: 24px;
+            display: flex;
+            justify-content: flex-end;
+            flex-shrink: 0;
+        }
+
+        .modal-confirm-btn {
+            padding: 10px 24px;
+            border: none;
+            border-radius: var(--radius-sm);
+            background: var(--status-success);
+            color: white;
+            font-size: var(--font-size-base);
+            font-weight: var(--font-weight-medium);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .modal-confirm-btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        .modal-confirm-btn:active {
+            transform: translateY(0);
+        }
+
+        /* 提交记录卡片样式 */
+        .submission-card {
+            padding: 16px;
+            background: var(--bg-tertiary);
+            border: 0.5px solid var(--border-primary);
+            border-radius: var(--radius-sm);
+            margin-bottom: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .submission-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .submission-card-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            border-radius: var(--radius-sm);
+            font-size: var(--font-size-xs);
+            font-weight: var(--font-weight-medium);
+        }
+
+        .submission-card-status.accepted {
+            background: var(--status-success);
+            color: var(--text-primary);
+        }
+
+        .submission-card-status.failed {
+            background: var(--status-error);
+            color: var(--text-primary);
+        }
+
+        .submission-card-status.timeout {
+            background: var(--status-warning);
+            color: var(--text-primary);
+        }
+
+        .submission-card-meta {
+            display: flex;
+            gap: 16px;
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+            margin-top: 8px;
+        }
+
+        .submission-card-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .submission-card-btn {
+            padding: 6px 12px;
+            border: 0.5px solid var(--border-primary);
+            border-radius: var(--radius-sm);
+            background: transparent;
+            color: var(--text-primary);
+            font-size: var(--font-size-sm);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .submission-card-btn:hover {
+            background: var(--bg-secondary);
+            border-color: var(--border-secondary);
+        }
+
+        /* 排名卡片样式 */
+        .ranking-card {
+            padding: 16px;
+            background: var(--bg-tertiary);
+            border: 0.5px solid var(--border-primary);
+            border-radius: var(--radius-sm);
+            margin-bottom: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .ranking-card.current-user {
+            border-color: var(--text-primary);
+            background: var(--bg-secondary);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .ranking-card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .ranking-medal {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: var(--font-size-xl);
+        }
+
+        .ranking-number {
+            font-size: var(--font-size-lg);
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-primary);
+        }
+
+        .ranking-username {
+            font-size: var(--font-size-base);
+            font-weight: var(--font-weight-semibold);
+            color: var(--text-primary);
+            flex: 1;
+        }
+
+        .ranking-stats {
+            display: flex;
+            gap: 16px;
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+            margin-top: 8px;
+        }
+
+        /* 代码预览区域 */
+        .code-preview {
+            margin-top: 12px;
+            padding: 12px;
+            background: var(--bg-primary);
+            border: 0.5px solid var(--border-primary);
+            border-radius: var(--radius-sm);
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: var(--font-size-sm);
+            white-space: pre-wrap;
+            word-wrap: break-word;
         }
     </style>
     <!-- Monaco Editor -->
     <script src="https://cdn.jsdelivr.net/npm/monaco-editor@latest/min/vs/loader.js"></script>
 </head>
 <body>
-    <div class="main-layout">
-        <!-- 左侧边栏 -->
+    <!-- 左侧功能栏（极宽侧边栏） -->
         <div class="sidebar" id="sidebar">
-            <button class="sidebar-toggle" id="sidebar-toggle" title="收起/展开侧边栏">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M15 18l-6-6 6-6"/>
-                </svg>
-            </button>
-            <div class="sidebar-header">
-                <h2 class="sidebar-title">编程题练习</h2>
-                <p class="sidebar-subtitle" id="subject-name">加载中...</p>
-            </div>
             <nav class="sidebar-nav">
-                <a href="#" class="nav-item" id="overview-link">
+            <a href="/coding/" class="nav-item" id="back-btn" title="返回题目列表">
                     <div class="nav-icon">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"/>
-                            <path d="M12 6v6l4 2"/>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M19 12H5M12 19l-7-7 7-7"/>
                         </svg>
                     </div>
-                    <span class="nav-text">题目集<br>概述</span>
+                <span class="nav-text">返回</span>
                 </a>
-                <a href="/coding" class="nav-item active">
+            <button class="nav-item" id="question-select-btn">
                     <div class="nav-icon">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                             <polyline points="14 2 14 8 20 8"/>
                             <line x1="16" y1="13" x2="8" y2="13"/>
                             <line x1="16" y1="17" x2="8" y2="17"/>
-                            <polyline points="10 9 9 9 8 9"/>
                         </svg>
                     </div>
-                    <span class="nav-text">题目<br>列表</span>
-                </a>
-                <a href="#" class="nav-item" id="submissions-link">
+                <span class="nav-text">题目选择</span>
+            </button>
+            <button class="nav-item" id="submissions-btn">
                     <div class="nav-icon">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <line x1="8" y1="6" x2="21" y2="6"/>
                             <line x1="8" y1="12" x2="21" y2="12"/>
                             <line x1="8" y1="18" x2="21" y2="18"/>
@@ -657,29 +1752,35 @@
                             <line x1="3" y1="18" x2="3.01" y2="18"/>
                         </svg>
                     </div>
-                    <span class="nav-text">提交<br>列表</span>
-                </a>
-                <a href="#" class="nav-item" id="statistics-link">
+                <span class="nav-text">提交历史</span>
+            </button>
+            <button class="nav-item" id="ranking-btn">
                     <div class="nav-icon">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <line x1="18" y1="20" x2="18" y2="10"/>
                             <line x1="12" y1="20" x2="12" y2="4"/>
                             <line x1="6" y1="20" x2="6" y2="14"/>
                         </svg>
                     </div>
                     <span class="nav-text">排名</span>
-                </a>
-            </nav>
-            <div class="question-list-section">
-                <div class="question-list-title">题目列表</div>
-                <div class="question-grid" id="question-grid">
-                    <!-- 题目编号按钮将动态生成 -->
+            </button>
+            <button class="nav-item" id="settings-btn">
+                <div class="nav-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M12 1v6m0 6v6m9-9h-6m-6 0H3m15.364 6.364l-4.243-4.243m-4.242 0L5.636 18.364M18.364 5.636l-4.243 4.243m-4.242 0L5.636 5.636"/>
+                    </svg>
                 </div>
-            </div>
+                <span class="nav-text">设置</span>
+            </button>
+            </nav>
         </div>
 
+    <div class="main-layout">
+        <!-- 主内容区域 -->
+        <div class="main-content">
         <!-- 中间面板：题目描述 -->
-        <div class="content-panel">
+            <div class="content-panel" id="question-panel">
             <div class="question-header">
                 <h1 class="question-title" id="question-title">加载中...</h1>
                 <div class="question-meta">
@@ -702,9 +1803,13 @@
             </div>
         </div>
 
+            <!-- 可拖拽分割线 -->
+            <div class="resizer" id="resizer"></div>
+
         <!-- 右侧面板：代码编辑器 -->
-        <div class="editor-panel">
+            <div class="editor-panel" id="editor-panel">
             <div class="editor-header">
+                <div class="toolbar-left">
                 <select class="language-selector" id="language-selector">
                     <option value="python">Python (python3)</option>
                 </select>
@@ -716,21 +1821,214 @@
                         下一题 <span>›</span>
                     </a>
                 </div>
+                </div>
+                <button class="debug-toggle-btn" id="debug-toggle">
+                    <span>🐛</span> Debug
+                </button>
             </div>
             <div class="editor-container">
                 <div id="editor"></div>
             </div>
-            <div class="editor-footer">
-                <div class="editor-toolbar">
-                    <button class="btn" onclick="runCode()">测试用例</button>
-                    <button class="btn btn-primary" onclick="submitCode()">提交本题作答</button>
-                    <button class="btn" onclick="resetCode()">重置</button>
+            <!-- Debug窗口（可折叠） -->
+            <div class="debug-panel collapsed" id="debug-panel">
+                <!-- 收起时显示的栏 -->
+                <div class="debug-header-bar" id="debug-header-bar">
+                    <div class="debug-header-left">
+                        <div class="debug-header-tabs">
+                            <span class="debug-header-tab active" data-tab="testcase">测试用例</span>
+                            <span class="debug-header-tab" data-tab="compiler">编译器输出</span>
                 </div>
-                <div class="submission-info" id="submission-info" style="display: none;">
-                    <span id="submission-status"></span>
                 </div>
-                <div class="output-panel" id="output-panel"></div>
+                    <div class="debug-header-center">
+                        <button class="btn btn-primary btn-submit" onclick="event.stopPropagation(); submitCode();" style="padding: 6px 16px; font-size: var(--font-size-xs);">提交本题作答</button>
             </div>
+                    <div class="debug-header-right">
+                        <svg class="debug-toggle-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4 6l4 4 4-4"/>
+                        </svg>
+                    </div>
+                </div>
+                
+                <!-- 展开时显示的内容 -->
+                <div class="debug-panel-content">
+                    <!-- 测试用例标签页 -->
+                <div class="debug-content active" id="debug-testcase">
+                    <div class="testcase-input">
+                        <div class="line-numbers" id="testcase-line-numbers">
+                            <span>1</span>
+                        </div>
+                        <textarea 
+                            class="testcase-textarea" 
+                            id="testcase-input-textarea"
+                            placeholder="输入测试用例..."
+                        ></textarea>
+                    </div>
+                    <div class="debug-actions">
+                        <button class="debug-reset-btn" id="debug-reset-btn">重置测试用例</button>
+                        <button class="debug-run-btn" id="debug-run-btn">
+                            <span>▶</span> 运行测试
+                        </button>
+                    </div>
+                    <div class="debug-status">
+                        <span class="status-text" id="debug-status-text">等待测试...</span>
+                        <button class="view-last-case-btn" id="view-last-case-btn">查看上次用例</button>
+                    </div>
+                </div>
+                
+                <!-- 编译器输出标签页 -->
+                <div class="debug-content" id="debug-compiler" style="display: none;">
+                    <div class="compiler-output">
+                        <div id="compiler-line-numbers"></div>
+                        <pre class="compiler-text" id="compiler-text"></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 抽屉组件：遮罩层 -->
+    <div class="drawer-backdrop" id="drawer-backdrop"></div>
+
+    <!-- 题目选择抽屉 -->
+    <div class="drawer" id="question-drawer">
+        <div class="drawer-header">
+            <h2 class="drawer-title">题目选择</h2>
+            <button class="drawer-close" id="question-drawer-close">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 4L4 12M4 4l8 8"/>
+                </svg>
+            </button>
+        </div>
+        <div class="drawer-content" id="question-drawer-content">
+            <!-- 题目列表将动态加载 -->
+            <div class="drawer-loading">加载中...</div>
+        </div>
+    </div>
+
+    <!-- 提交历史抽屉 -->
+    <div class="drawer" id="submissions-drawer">
+        <div class="drawer-header">
+            <h2 class="drawer-title">提交历史</h2>
+            <button class="drawer-close" id="submissions-drawer-close">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 4L4 12M4 4l8 8"/>
+                </svg>
+            </button>
+        </div>
+        <div class="drawer-content" id="submissions-drawer-content">
+            <!-- 提交历史将动态加载 -->
+            <div class="drawer-loading">加载中...</div>
+        </div>
+    </div>
+
+    <!-- 排名抽屉 -->
+    <div class="drawer" id="ranking-drawer">
+        <div class="drawer-header">
+            <h2 class="drawer-title">排名</h2>
+            <button class="drawer-close" id="ranking-drawer-close">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 4L4 12M4 4l8 8"/>
+                </svg>
+            </button>
+        </div>
+        <div class="drawer-content" id="ranking-drawer-content">
+            <!-- 排名列表将动态加载 -->
+            <div class="drawer-loading">加载中...</div>
+        </div>
+    </div>
+
+    <!-- 提交结果弹窗遮罩层 -->
+    <div class="modal-backdrop" id="submission-modal-backdrop"></div>
+
+    <!-- 提交结果弹窗 -->
+    <div class="submission-modal" id="submission-modal">
+        <!-- 标题栏 -->
+        <div class="modal-header">
+            <h2 class="modal-title">提交结果</h2>
+            <button class="modal-close" id="submission-modal-close">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <path d="M12 4L4 12M4 4l8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+            </button>
+        </div>
+        
+        <!-- 提交详情网格 -->
+        <div class="submission-details-grid">
+            <div class="detail-item">
+                <span class="detail-label">题目</span>
+                <span class="detail-value" id="submission-problem">-</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">用户</span>
+                <span class="detail-value" id="submission-user">-</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">编译器</span>
+                <span class="detail-value" id="submission-compiler">Python</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">状态</span>
+                <span class="detail-value status-badge" id="submission-modal-status">-</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">分数</span>
+                <span class="detail-value" id="submission-score">-</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">提交时间</span>
+                <span class="detail-value" id="submission-time">-</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">内存</span>
+                <span class="detail-value" id="submission-memory">-</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">用时</span>
+                <span class="detail-value" id="submission-duration">-</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">评测时间</span>
+                <span class="detail-value" id="submission-eval-time">-</span>
+            </div>
+        </div>
+        
+        <!-- 评测详情区域 -->
+        <div class="submission-section">
+            <div class="section-header">
+                <h3 class="section-title">评测详情</h3>
+            </div>
+            <div class="test-results-table-container">
+                <table class="test-results-table">
+                    <thead>
+                        <tr>
+                            <th>测试点</th>
+                            <th>提示</th>
+                            <th>内存(KB)</th>
+                            <th>用时(ms)</th>
+                            <th>结果</th>
+                            <th>得分</th>
+                        </tr>
+                    </thead>
+                    <tbody id="test-results-tbody">
+                        <!-- 测试用例结果将动态加载 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- 编译器输出区域 -->
+        <div class="submission-section">
+            <div class="section-header">
+                <h3 class="section-title">编译器输出</h3>
+            </div>
+            <div class="compiler-output-display">
+                <pre class="compiler-error" id="compiler-output"></pre>
+            </div>
+        </div>
+        
+        <!-- 确认按钮 -->
+        <div class="modal-footer">
+            <button class="modal-confirm-btn" id="submission-modal-confirm">确认</button>
         </div>
     </div>
 
@@ -756,17 +2054,50 @@
                 wordWrap: 'on',
                 lineNumbers: 'on',
                 renderLineHighlight: 'all',
-                selectOnLineNumbers: true
+                selectOnLineNumbers: true,
+                // 光标相关配置
+                cursorBlinking: 'blink',
+                cursorSmoothCaretAnimation: 'on',
+                cursorStyle: 'line',
+                cursorWidth: 2,
+                // 撤销/重做功能（默认启用，但明确配置）
+                readOnly: false,
+                // 其他编辑器功能
+                quickSuggestions: true,
+                suggestOnTriggerCharacters: true,
+                acceptSuggestionOnEnter: 'on',
+                tabCompletion: 'on',
+                wordBasedSuggestions: 'matchingDocuments',
+                // 自动保存历史记录（用于撤销/重做）
+                undoRedoService: undefined // 使用默认的撤销/重做服务
             });
 
-            // 代码自动保存
+            // 代码自动保存（防抖，避免频繁请求）
+            let saveTimeout;
+            window.isSaving = false; // 使用全局变量，以便在 saveCodeToDatabase 中访问
+            
             editor.onDidChangeModelContent(() => {
                 const code = editor.getValue();
+                // 同时保存到 localStorage（作为备份）
                 localStorage.setItem(`coding_${questionId}`, code);
+                
+                // 防抖：1秒后保存到数据库
+                clearTimeout(saveTimeout);
+                saveTimeout = setTimeout(() => {
+                    saveCodeToDatabase(code);
+                }, 1000);
             });
+            
+            // 编辑器初始化完成后，如果题目数据已加载，则加载代码草稿
+            if (questionData && questionData.code_template !== undefined) {
+                loadCodeDraft(questionData.code_template);
+            } else {
+                // 如果题目数据还未加载，等待加载完成后再加载代码
+                // 这个逻辑在 loadQuestion 中已经处理
+            }
         });
 
-        // 加载所有题目列表
+        // 加载所有题目列表（用于导航功能）
         async function loadAllQuestions() {
             try {
                 const res = await fetch('/coding/api/questions?per_page=1000');
@@ -774,7 +2105,13 @@
                 
                 if (result.status === 'success') {
                     allQuestions = result.data.questions || [];
-                    renderQuestionGrid();
+                    
+                    // 找到当前题目在列表中的索引
+                    const index = allQuestions.findIndex(q => q.id === questionId);
+                    if (index !== -1) {
+                        currentQuestionIndex = index;
+                    }
+                    
                     updateNavigationButtons();
                 }
             } catch (error) {
@@ -782,35 +2119,13 @@
             }
         }
 
-        // 渲染题目编号网格
-        function renderQuestionGrid() {
-            const grid = document.getElementById('question-grid');
-            grid.innerHTML = '';
-            
-            allQuestions.forEach((q, index) => {
-                const btn = document.createElement('button');
-                btn.className = 'question-number-btn';
-                btn.textContent = q.id || (index + 1);
-                btn.onclick = () => navigateToQuestion(q.id);
-                
-                // 标记当前题目
-                if (q.id === questionId) {
-                    btn.classList.add('active');
-                    currentQuestionIndex = index;
-                }
-                
-                // 标记已通过的题目
-                if (q.status === 'solved') {
-                    btn.classList.add('solved');
-                }
-                
-                grid.appendChild(btn);
-            });
-        }
-
         // 导航到指定题目
         function navigateToQuestion(id) {
-            if (id === questionId) return;
+            if (id === questionId) {
+                closeDrawer();
+                return;
+            }
+            closeDrawer();
             window.location.href = `/coding/${id}`;
         }
 
@@ -854,36 +2169,21 @@
 
                 if (result.status === 'success') {
                     questionData = result.data;
-                    subjectId = questionData.subject_id;
+                    // 尝试获取subject_id，可能是subject_id或coding_subject_id
+                    subjectId = questionData.subject_id || questionData.coding_subject_id;
                     
-                    // 更新科目名称和概述链接
-                    if (questionData.subject_name) {
-                        document.getElementById('subject-name').textContent = questionData.subject_name;
-                    }
-                    if (subjectId) {
-                        const overviewLink = document.getElementById('overview-link');
-                        overviewLink.href = `/coding/subject/${subjectId}`;
-                    }
-                    
-                    // 更新提交列表和排名链接
-                    const submissionsLink = document.getElementById('submissions-link');
-                    const statisticsLink = document.getElementById('statistics-link');
-                    if (questionId) {
-                        submissionsLink.href = `/coding/submissions?question=${questionId}`;
-                        statisticsLink.href = `/coding/statistics?question=${questionId}`;
+                    // 更新返回按钮链接
+                    const backBtn = document.getElementById('back-btn');
+                    if (backBtn && subjectId) {
+                        backBtn.href = `/coding/subject/${subjectId}`;
+                        backBtn.title = `返回题目集`;
                     }
                     
                     renderQuestion(questionData);
                     
-                    // 设置代码模板
-                    if (questionData.code_template && editor) {
-                        const savedCode = localStorage.getItem(`coding_${questionId}`);
-                        if (!savedCode) {
-                            editor.setValue(questionData.code_template);
-                        } else {
-                            editor.setValue(savedCode);
-                        }
-                    }
+                    // 加载代码草稿（优先从数据库加载，其次从 localStorage）
+                    // 使用 await 确保编辑器初始化完成后再加载
+                    await loadCodeDraft(questionData.code_template);
                 } else {
                     document.getElementById('question-title').textContent = '题目不存在';
                 }
@@ -963,14 +2263,9 @@
             
             const code = editor.getValue();
             if (!code.trim()) {
-                showOutput('请输入代码', 'error');
+                alert('请输入代码');
                 return;
             }
-
-            const outputPanel = document.getElementById('output-panel');
-            outputPanel.classList.add('show');
-            outputPanel.className = 'output-panel show';
-            outputPanel.innerHTML = '<div class="output-success">执行中...</div>';
 
             try {
                 const res = await fetch('/coding/api/execute', {
@@ -986,16 +2281,13 @@
                 
                 if (result.status === 'success') {
                     const data = result.data;
-                    if (data.status === 'success') {
-                        showOutput(`输出:\n${data.output || '(无输出)'}\n\n执行时间: ${data.execution_time.toFixed(3)}s`, 'success');
+                        // 执行成功，结果已在Debug面板显示
+                        console.log('执行成功:', data);
                     } else {
-                        showOutput(`错误:\n${data.error || '未知错误'}\n\n执行时间: ${data.execution_time.toFixed(3)}s`, 'error');
-                    }
-                } else {
-                    showOutput(`错误: ${result.message}`, 'error');
+                        console.error('执行失败:', result.message);
                 }
             } catch (error) {
-                showOutput(`执行失败: ${error.message}`, 'error');
+                console.error('执行失败:', error.message);
             }
         }
 
@@ -1005,16 +2297,9 @@
             
             const code = editor.getValue();
             if (!code.trim()) {
-                showOutput('请输入代码', 'error');
+                alert('请输入代码');
                 return;
             }
-
-            const outputPanel = document.getElementById('output-panel');
-            const submissionInfo = document.getElementById('submission-info');
-            outputPanel.classList.add('show');
-            outputPanel.className = 'output-panel show';
-            outputPanel.innerHTML = '<div class="output-success">判题中...</div>';
-            submissionInfo.style.display = 'none';
 
             try {
                 const res = await fetch('/coding/api/submit', {
@@ -1031,53 +2316,147 @@
                 
                 if (result.status === 'success') {
                     const data = result.data;
-                    let message = `状态: ${getStatusText(data.status)}\n`;
-                    message += `通过测试用例: ${data.passed_cases}/${data.total_cases}\n`;
-                    message += `执行时间: ${data.execution_time.toFixed(3)}s\n`;
                     
-                    if (data.error_message) {
-                        message += `\n错误: ${data.error_message}`;
+                    // 显示提交结果弹窗
+                    showSubmissionModal({
+                        problem: questionData?.title || questionData?.content || 'N/A',
+                        user: '{{ current_user.username if current_user else "N/A" }}',
+                        compiler: 'Python',
+                        status: data.status || 'pending',
+                        score: Math.round(data.score || 0),
+                        total_score: data.total_score || 100,
+                        submitted_at: new Date().toISOString(),
+                        evaluated_at: new Date().toISOString(),
+                        memory_used: data.memory_used || 0,
+                        memory_limit: data.memory_limit || 131072,
+                        execution_time: data.execution_time || 0,
+                        time_limit: data.time_limit || 5000,
+                        code: code,
+                        compiler_output: data.error_message || data.compiler_output || '',
+                        passed_cases: data.passed_cases || 0,
+                        total_cases: data.total_cases || 0,
+                        test_results: data.test_results || []
+                    });
+                    
+                    // 刷新提交历史（如果抽屉是打开的）
+                    const submissionsDrawer = document.getElementById('submissions-drawer');
+                    if (submissionsDrawer && submissionsDrawer.classList.contains('active')) {
+                        loadSubmissionsDrawer();
                     }
-
-                    showOutput(message, data.status === 'accepted' ? 'success' : 'error');
-                    
-                    // 显示提交信息
-                    submissionInfo.style.display = 'block';
-                    const scoreText = data.score !== undefined ? ` | 得分: ${data.score.toFixed(2)}分` : '';
-                    document.getElementById('submission-status').textContent = 
-                        `提交ID: ${data.submission_id || 'N/A'} | ${getStatusText(data.status)}${scoreText}`;
                     
                     // 如果通过，更新题目状态
                     if (data.status === 'accepted') {
-                        setTimeout(() => {
-                            loadAllQuestions(); // 重新加载题目列表以更新状态
-                        }, 500);
+                        console.log('题目已通过');
                     }
                 } else {
-                    showOutput(`提交失败: ${result.message}`, 'error');
+                    alert(`提交失败: ${result.message}`);
                 }
             } catch (error) {
-                showOutput(`提交失败: ${error.message}`, 'error');
+                alert(`提交失败: ${error.message}`);
+            }
+        }
+
+        // 保存代码到数据库
+        async function saveCodeToDatabase(code) {
+            if (!questionId || window.isSaving) return;
+            
+            try {
+                window.isSaving = true;
+                const res = await fetch(`/coding/api/drafts/${questionId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        code: code,
+                        language: 'python'
+                    })
+                });
+                
+                if (res.ok) {
+                    const result = await res.json();
+                    if (result.status === 'success') {
+                        // 保存成功（静默保存，不显示提示）
+                        console.log('代码已自动保存');
+                    }
+                }
+            } catch (error) {
+                console.error('保存代码失败:', error);
+                // 保存失败不影响用户体验，静默处理
+            } finally {
+                window.isSaving = false;
+            }
+        }
+        
+        // 加载代码草稿
+        async function loadCodeDraft(defaultTemplate) {
+            // 等待编辑器初始化完成
+            if (!editor) {
+                // 如果编辑器还未初始化，等待一段时间后重试
+                setTimeout(() => loadCodeDraft(defaultTemplate), 100);
+                return;
+            }
+            
+            if (!questionId) return;
+            
+            try {
+                // 优先从数据库加载
+                const res = await fetch(`/coding/api/drafts/${questionId}`);
+                if (res.ok) {
+                    const result = await res.json();
+                    if (result.status === 'success' && result.data.code && result.data.code.trim()) {
+                        editor.setValue(result.data.code);
+                        // 设置焦点到编辑器
+                        editor.focus();
+                        return;
+                    }
+                }
+                
+                // 如果数据库没有，尝试从 localStorage 加载
+                const savedCode = localStorage.getItem(`coding_${questionId}`);
+                if (savedCode && savedCode.trim()) {
+                    editor.setValue(savedCode);
+                    // 设置焦点到编辑器
+                    editor.focus();
+                    return;
+                }
+                
+                // 如果都没有，使用默认模板
+                if (defaultTemplate) {
+                    editor.setValue(defaultTemplate);
+                    // 设置焦点到编辑器
+                    editor.focus();
+                }
+            } catch (error) {
+                console.error('加载代码草稿失败:', error);
+                // 失败时尝试从 localStorage 加载
+                const savedCode = localStorage.getItem(`coding_${questionId}`);
+                if (savedCode && savedCode.trim()) {
+                    editor.setValue(savedCode);
+                    editor.focus();
+                } else if (defaultTemplate) {
+                    editor.setValue(defaultTemplate);
+                    editor.focus();
+                }
             }
         }
 
         // 重置代码
-        function resetCode() {
+        async function resetCode() {
             if (!editor || !questionData) return;
             if (confirm('确定要重置代码吗？未保存的代码将丢失。')) {
                 editor.setValue(questionData.code_template || '');
                 localStorage.removeItem(`coding_${questionId}`);
-                const outputPanel = document.getElementById('output-panel');
-                outputPanel.classList.remove('show');
-                outputPanel.innerHTML = '';
+                
+                // 删除数据库中的草稿
+                try {
+                    await fetch(`/coding/api/drafts/${questionId}`, {
+                        method: 'DELETE'
+                    });
+                } catch (error) {
+                    console.error('删除草稿失败:', error);
+                }
             }
         }
 
-        function showOutput(text, type) {
-            const outputPanel = document.getElementById('output-panel');
-            outputPanel.className = `output-panel show output-${type}`;
-            outputPanel.textContent = text;
-        }
 
         function getStatusText(status) {
             const map = {
@@ -1085,9 +2464,217 @@
                 'wrong_answer': '答案错误',
                 'time_limit_exceeded': '超时',
                 'runtime_error': '运行时错误',
-                'compilation_error': '编译错误'
+                'compilation_error': '编译错误',
+                'memory_limit_exceeded': '内存超限',
+                'pending': '待评测'
             };
             return map[status] || status;
+        }
+
+        // 获取提交状态文本（用于弹窗）
+        function getSubmissionStatusText(status) {
+            const statusMap = {
+                'accepted': '答案正确',
+                'wrong_answer': '答案错误',
+                'compilation_error': '编译错误',
+                'runtime_error': '运行时错误',
+                'time_limit_exceeded': '超时',
+                'memory_limit_exceeded': '内存超限',
+                'pending': '待评测'
+            };
+            return statusMap[status] || status;
+        }
+
+        // 获取提交状态样式类
+        function getSubmissionStatusClass(status) {
+            const classMap = {
+                'accepted': 'accepted',
+                'wrong_answer': 'wrong-answer',
+                'compilation_error': 'compilation-error',
+                'runtime_error': 'compilation-error',
+                'time_limit_exceeded': 'wrong-answer',
+                'memory_limit_exceeded': 'wrong-answer',
+                'pending': 'wrong-answer'
+            };
+            return classMap[status] || 'wrong-answer';
+        }
+
+        // 格式化日期时间
+        function formatDateTime(dateString) {
+            if (!dateString) return 'N/A';
+            const date = new Date(dateString);
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            const seconds = String(date.getSeconds()).padStart(2, '0');
+            return `${year}/${month}/${day} ${hours}:${minutes}:${seconds}`;
+        }
+
+        // 显示提交结果弹窗
+        function showSubmissionModal(submissionData) {
+            const modal = document.getElementById('submission-modal');
+            const backdrop = document.getElementById('submission-modal-backdrop');
+            
+            if (!modal || !backdrop) {
+                console.error('提交结果弹窗元素不存在');
+                return;
+            }
+            
+            // 确保状态值存在
+            const status = submissionData.status || 'pending';
+            console.log('显示提交结果弹窗，状态:', status, '数据:', submissionData);
+            
+            // 填充数据
+            const problemElement = document.getElementById('submission-problem');
+            const userElement = document.getElementById('submission-user');
+            const compilerElement = document.getElementById('submission-compiler');
+            const statusElement = document.getElementById('submission-modal-status');
+            const scoreElement = document.getElementById('submission-score');
+            const timeElement = document.getElementById('submission-time');
+            const memoryElement = document.getElementById('submission-memory');
+            const durationElement = document.getElementById('submission-duration');
+            const evalTimeElement = document.getElementById('submission-eval-time');
+            const compilerOutputElement = document.getElementById('compiler-output');
+            
+            if (problemElement) problemElement.textContent = submissionData.problem || 'N/A';
+            if (userElement) userElement.textContent = submissionData.user || 'N/A';
+            if (compilerElement) compilerElement.textContent = submissionData.compiler || 'Python';
+            
+            if (statusElement) {
+                const statusText = getSubmissionStatusText(status);
+                statusElement.textContent = statusText || status;
+                statusElement.className = `detail-value status-badge ${getSubmissionStatusClass(status)}`;
+            }
+            
+            if (scoreElement) scoreElement.textContent = `${submissionData.score || 0}/${submissionData.total_score || 100}`;
+            if (timeElement) timeElement.textContent = formatDateTime(submissionData.submitted_at);
+            if (memoryElement) memoryElement.textContent = `${submissionData.memory_used || 0} / ${submissionData.memory_limit || 131072} KB`;
+            
+            const durationMs = submissionData.execution_time ? (submissionData.execution_time * 1000).toFixed(0) : 0;
+            if (durationElement) durationElement.textContent = `${durationMs} / ${submissionData.time_limit || 5000} ms`;
+            if (evalTimeElement) evalTimeElement.textContent = formatDateTime(submissionData.evaluated_at || submissionData.submitted_at);
+            
+            // 显示编译器输出
+            const compilerOutput = submissionData.compiler_output || submissionData.error_message || '';
+            if (compilerOutputElement) {
+                compilerOutputElement.textContent = compilerOutput || '无输出';
+            }
+            
+            // 显示评测详情表格
+            renderTestResultsTable(submissionData.test_results || [], submissionData.total_cases || 0);
+            
+            // 显示弹窗
+            modal.classList.add('active');
+            backdrop.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+        
+        // 渲染评测详情表格
+        function renderTestResultsTable(testResults, totalCases) {
+            const tbody = document.getElementById('test-results-tbody');
+            if (!tbody) return;
+            
+            if (!testResults || testResults.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-tertiary);">暂无测试用例结果</td></tr>';
+                return;
+            }
+            
+            // 计算每个测试用例的得分（假设每个测试用例得分相等）
+            const scorePerCase = totalCases > 0 ? (100 / totalCases) : 0;
+            
+            let html = '';
+            testResults.forEach((result, index) => {
+                const caseId = result.case_id !== undefined ? result.case_id : (index + 1);
+                const status = result.status || 'failed';
+                const executionTime = result.execution_time || 0;
+                const timeMs = Math.round(executionTime * 1000); // 转换为毫秒
+                const memoryKB = result.memory_used || 0; // 目前后端没有返回，设为0
+                
+                // 确定结果文本和样式（根据用户提供的状态说明）
+                let resultText = '';
+                let resultClass = '';
+                const errorMsg = result.error || '';
+                const errorLower = errorMsg.toLowerCase();
+                
+                if (status === 'passed') {
+                    resultText = '答案正确';
+                    resultClass = 'test-result-passed';
+                } else if (status === 'timeout' || result.timeout || errorMsg.includes('超时') || errorMsg.includes('timeout') || errorMsg.includes('Time limit exceeded')) {
+                    resultText = '运行超时';
+                    resultClass = 'test-result-timeout';
+                } else if (errorMsg.includes('内存') || errorMsg.includes('memory') || errorMsg.includes('Memory limit exceeded')) {
+                    resultText = '内存超限';
+                    resultClass = 'test-result-memory';
+                } else if (errorMsg.includes('编译') || errorMsg.includes('compile') || errorMsg.includes('SyntaxError') || errorMsg.includes('IndentationError')) {
+                    resultText = '编译错误';
+                    resultClass = 'test-result-compilation';
+                } else if (errorMsg.includes('非零返回') || errorMsg.includes('non-zero') || errorMsg.includes('exit code') || errorMsg.includes('return code')) {
+                    resultText = '非零返回';
+                    resultClass = 'test-result-error';
+                } else if (errorMsg.includes('段错误') || errorMsg.includes('segmentation fault') || errorMsg.includes('Segmentation fault')) {
+                    resultText = '段错误';
+                    resultClass = 'test-result-error';
+                } else if (errorMsg.includes('浮点') || errorMsg.includes('float') || errorMsg.includes('division by zero') || errorMsg.includes('ZeroDivisionError')) {
+                    resultText = '浮点错误';
+                    resultClass = 'test-result-error';
+                } else if (errorMsg.includes('输出超限') || errorMsg.includes('output limit') || errorMsg.includes('Output limit exceeded')) {
+                    resultText = '输出超限';
+                    resultClass = 'test-result-error';
+                } else if (errorMsg.includes('格式') || errorMsg.includes('format') || errorMsg.includes('格式错误')) {
+                    resultText = '格式错误';
+                    resultClass = 'test-result-format';
+                } else if (errorMsg.includes('Traceback') || errorMsg.includes('TypeError') || errorMsg.includes('ValueError') || 
+                          errorMsg.includes('KeyError') || errorMsg.includes('AttributeError') || errorMsg.includes('IndexError') ||
+                          errorMsg.includes('RuntimeError') || errorMsg.includes('NameError') || errorMsg.includes('运行时错误')) {
+                    resultText = '运行时错误';
+                    resultClass = 'test-result-error';
+                } else if (errorMsg.includes('内部错误') || errorMsg.includes('internal error')) {
+                    resultText = '内部错误';
+                    resultClass = 'test-result-error';
+                } else if (errorMsg.includes('多种错误') || errorMsg.includes('multiple errors')) {
+                    resultText = '多种错误';
+                    resultClass = 'test-result-error';
+                } else if (errorMsg) {
+                    // 如果有错误信息但无法识别具体类型，显示运行时错误
+                    resultText = '运行时错误';
+                    resultClass = 'test-result-error';
+                } else {
+                    // 没有错误信息，但测试未通过，可能是答案错误
+                    resultText = '答案错误';
+                    resultClass = 'test-result-failed';
+                }
+                
+                // 计算得分
+                const caseScore = status === 'passed' ? scorePerCase : 0;
+                const scoreText = `${Math.round(caseScore)}/${Math.round(scorePerCase)}`;
+                
+                // 为结果单元格添加title属性，显示完整错误信息（如果有）
+                const errorTitle = errorMsg ? escapeHtml(errorMsg) : '';
+                
+                html += `
+                    <tr>
+                        <td>${caseId - 1}</td>
+                        <td>-</td>
+                        <td>${memoryKB}</td>
+                        <td>${timeMs}</td>
+                        <td class="${resultClass}"${errorTitle ? ` title="${errorTitle}"` : ''}>${escapeHtml(resultText)}</td>
+                        <td>${scoreText}</td>
+                    </tr>
+                `;
+            });
+            
+            tbody.innerHTML = html;
+        }
+
+        // 关闭提交结果弹窗
+        function closeSubmissionModal() {
+            const modal = document.getElementById('submission-modal');
+            const backdrop = document.getElementById('submission-modal-backdrop');
+            if (modal) modal.classList.remove('active');
+            if (backdrop) backdrop.classList.remove('active');
+            document.body.style.overflow = '';
         }
 
         function escapeHtml(text) {
@@ -1096,27 +2683,840 @@
             return div.innerHTML;
         }
 
-        // 侧边栏收起/展开功能
-        function initSidebarToggle() {
-            const sidebar = document.getElementById('sidebar');
-            const toggle = document.getElementById('sidebar-toggle');
+        // 可拖拽分割线功能
+        function initResizer() {
+            let isResizing = false;
+            let startX = 0;
+            let startWidth = 0;
             
-            // 从localStorage读取状态
-            const isCollapsed = localStorage.getItem('coding-detail-sidebar-collapsed') === 'true';
-            if (isCollapsed) {
-                sidebar.classList.add('collapsed');
+            const resizer = document.getElementById('resizer');
+            const questionPanel = document.getElementById('question-panel');
+            const editorPanel = document.getElementById('editor-panel');
+            
+            if (!resizer || !questionPanel || !editorPanel) {
+                return;
             }
             
-            toggle.addEventListener('click', () => {
-                const isCollapsed = sidebar.classList.toggle('collapsed');
-                localStorage.setItem('coding-detail-sidebar-collapsed', isCollapsed);
+            // 恢复保存的宽度
+            const savedWidth = localStorage.getItem('coding-question-panel-width');
+            if (savedWidth) {
+                const width = parseInt(savedWidth);
+                if (width >= 300 && width <= window.innerWidth - 300) {
+                    questionPanel.style.width = `${width}px`;
+                    questionPanel.style.flex = 'none';
+                    editorPanel.style.flex = '1';
+                }
+            }
+            
+            // 鼠标按下事件
+            resizer.addEventListener('mousedown', (e) => {
+                isResizing = true;
+                startX = e.clientX;
+                startWidth = questionPanel.offsetWidth;
+                resizer.classList.add('resizing');
+                document.body.style.cursor = 'col-resize';
+                document.body.style.userSelect = 'none';
+                
+                // 添加全局事件监听
+                document.addEventListener('mousemove', handleMouseMove);
+                document.addEventListener('mouseup', handleMouseUp);
+                
+                e.preventDefault();
+            });
+            
+            // 鼠标移动事件
+            function handleMouseMove(e) {
+                if (!isResizing) return;
+                
+                const diff = e.clientX - startX;
+                const newWidth = startWidth + diff;
+                const containerWidth = questionPanel.parentElement.offsetWidth;
+                const minWidth = 300;
+                const maxWidth = containerWidth - 300;
+                
+                if (newWidth >= minWidth && newWidth <= maxWidth) {
+                    questionPanel.style.width = `${newWidth}px`;
+                    questionPanel.style.flex = 'none';
+                    editorPanel.style.flex = '1';
+                }
+            }
+            
+            // 鼠标释放事件
+            function handleMouseUp() {
+                if (!isResizing) return;
+                
+                isResizing = false;
+                resizer.classList.remove('resizing');
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+                
+                // 移除全局事件监听
+                document.removeEventListener('mousemove', handleMouseMove);
+                document.removeEventListener('mouseup', handleMouseUp);
+                
+                // 保存宽度到 localStorage
+                const currentWidth = questionPanel.offsetWidth;
+                localStorage.setItem('coding-question-panel-width', currentWidth.toString());
+            }
+        }
+
+        // 抽屉控制函数
+        function openDrawer(drawerId) {
+            const drawer = document.getElementById(drawerId);
+            const backdrop = document.getElementById('drawer-backdrop');
+            if (drawer && backdrop) {
+                drawer.classList.add('active');
+                backdrop.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            }
+        }
+
+        function closeDrawer() {
+            const drawers = document.querySelectorAll('.drawer');
+            const backdrop = document.getElementById('drawer-backdrop');
+            drawers.forEach(d => d.classList.remove('active'));
+            if (backdrop) {
+                backdrop.classList.remove('active');
+            }
+            document.body.style.overflow = '';
+        }
+
+        // ESC键关闭抽屉
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeDrawer();
+            }
+        });
+
+        // 点击遮罩层关闭抽屉
+        document.getElementById('drawer-backdrop')?.addEventListener('click', () => {
+            closeDrawer();
+        });
+
+        // 加载题目选择抽屉内容
+        async function loadQuestionDrawer() {
+            const content = document.getElementById('question-drawer-content');
+            if (!content) return;
+
+            content.innerHTML = '<div class="drawer-loading">加载中...</div>';
+
+            try {
+                // 如果有subjectId，只加载当前题目集的题目
+                let apiUrl = '/coding/api/questions?per_page=1000';
+                if (subjectId) {
+                    apiUrl += `&subject=${subjectId}`;
+                }
+                
+                const res = await fetch(apiUrl);
+                
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+                }
+                
+                const result = await res.json();
+
+                if (result.status === 'success') {
+                    const questions = result.data.questions || [];
+                    if (questions.length === 0) {
+                        content.innerHTML = '<div class="drawer-loading">当前题目集暂无题目</div>';
+                    } else {
+                        renderQuestionDrawer(questions);
+                    }
+                } else {
+                    const errorMsg = result.message || '加载失败';
+                    content.innerHTML = `<div class="drawer-loading">${errorMsg}</div>`;
+                    console.error('API返回错误:', result);
+                }
+            } catch (error) {
+                console.error('加载题目列表失败:', error);
+                content.innerHTML = `<div class="drawer-loading">加载失败: ${error.message || '网络错误'}</div>`;
+            }
+        }
+
+        // 渲染题目选择抽屉
+        function renderQuestionDrawer(questions) {
+            const content = document.getElementById('question-drawer-content');
+            if (!content) return;
+
+            // 按题型分组
+            const groupedQuestions = {};
+            questions.forEach(q => {
+                const type = q.q_type || '编程题';
+                if (!groupedQuestions[type]) {
+                    groupedQuestions[type] = [];
+                }
+                groupedQuestions[type].push(q);
+            });
+
+            let html = '';
+
+            // 渲染每个题型
+            Object.keys(groupedQuestions).forEach(type => {
+                const typeQuestions = groupedQuestions[type];
+                const typeIcon = type === '函数题' ? '📚' : '💻';
+                const typeLabel = type === '函数题' ? '函数题 (fn)' : '编程题 (</>)';
+
+                html += `
+                    <div class="question-type-group">
+                        <div class="question-type-title">
+                            <span class="question-type-icon">${typeIcon}</span>
+                            <span>${typeLabel}</span>
+                        </div>
+                `;
+
+                typeQuestions.forEach(q => {
+                    const status = getQuestionStatus(q);
+                    const statusClass = getQuestionStatusClass(status);
+                    const isActive = q.id === questionId;
+
+                    html += `
+                        <div class="question-card ${isActive ? 'active' : ''}" onclick="navigateToQuestion(${q.id})">
+                            <div class="question-card-header">
+                                <div class="question-card-title">📝 题目 #${q.id}: ${escapeHtml(q.title || q.content || '无标题')}</div>
+                                <div class="question-card-status ${statusClass}"></div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += '</div>';
+            });
+
+            content.innerHTML = html || '<div class="drawer-loading">暂无题目</div>';
+        }
+
+        // 获取题目状态
+        function getQuestionStatus(question) {
+            // 根据题目数据判断状态
+            // 这里需要根据实际的API返回数据结构来判断
+            if (question.status === 'solved' || question.status === 'accepted') {
+                return 'accepted';
+            } else if (question.status === 'wrong_answer' || question.status === 'failed') {
+                return 'wrong-answer';
+            } else if (question.status === 'pending') {
+                return 'pending';
+            } else {
+                return 'unsolved';
+            }
+        }
+
+        // 获取题目状态CSS类
+        function getQuestionStatusClass(status) {
+            const map = {
+                'accepted': 'accepted',
+                'wrong-answer': 'wrong-answer',
+                'pending': 'pending',
+                'unsolved': 'unsolved'
+            };
+            return map[status] || 'unsolved';
+        }
+
+        // 初始化左侧功能栏按钮事件
+        function initSidebarButtons() {
+            // 题目选择按钮
+            document.getElementById('question-select-btn').addEventListener('click', () => {
+                openDrawer('question-drawer');
+                loadQuestionDrawer();
+            });
+
+            // 题目选择抽屉关闭按钮
+            document.getElementById('question-drawer-close')?.addEventListener('click', () => {
+                closeDrawer();
+            });
+
+            // 提交历史按钮
+            document.getElementById('submissions-btn').addEventListener('click', () => {
+                openDrawer('submissions-drawer');
+                loadSubmissionsDrawer();
+            });
+
+            // 提交历史抽屉关闭按钮
+            document.getElementById('submissions-drawer-close')?.addEventListener('click', () => {
+                closeDrawer();
+            });
+
+            // 排名按钮
+            document.getElementById('ranking-btn').addEventListener('click', () => {
+                openDrawer('ranking-drawer');
+                loadRankingDrawer();
+            });
+
+            // 排名抽屉关闭按钮
+            document.getElementById('ranking-drawer-close')?.addEventListener('click', () => {
+                closeDrawer();
+            });
+
+            // 设置按钮（后续阶段实现抽屉）
+            document.getElementById('settings-btn').addEventListener('click', () => {
+                console.log('打开设置抽屉（后续阶段实现）');
+                // TODO: 后续阶段实现设置功能
+            });
+        }
+
+        // 加载提交历史抽屉内容
+        async function loadSubmissionsDrawer() {
+            const content = document.getElementById('submissions-drawer-content');
+            if (!content) return;
+
+            const currentQuestionId = {{ question_id|default(0) }};
+            if (!currentQuestionId) {
+                content.innerHTML = '<div class="drawer-loading">请先选择题目</div>';
+                return;
+            }
+
+            try {
+                const res = await fetch(`/coding/api/submissions?question_id=${currentQuestionId}&per_page=50`);
+                const result = await res.json();
+
+                if (result.status === 'success') {
+                    const submissions = result.data.submissions || [];
+                    renderSubmissionsDrawer(submissions);
+                } else {
+                    content.innerHTML = '<div class="drawer-loading">加载失败</div>';
+                }
+            } catch (error) {
+                console.error('加载提交历史失败:', error);
+                content.innerHTML = '<div class="drawer-loading">加载失败</div>';
+            }
+        }
+
+        // 渲染提交历史抽屉
+        function renderSubmissionsDrawer(submissions) {
+            const content = document.getElementById('submissions-drawer-content');
+            if (!content) return;
+
+            if (submissions.length === 0) {
+                content.innerHTML = '<div class="drawer-loading">暂无提交记录</div>';
+                return;
+            }
+
+            let html = '';
+            submissions.forEach(sub => {
+                const statusText = getStatusText(sub.status);
+                const statusClass = getSubmissionStatusClass(sub.status);
+                const date = formatDate(sub.submitted_at);
+
+                html += `
+                    <div class="submission-card">
+                        <div class="submission-card-header">
+                            <div class="submission-card-status ${statusClass}">${getStatusIcon(sub.status)} ${statusText} | ${sub.passed_cases || 0}/${sub.total_cases || 0} 测试用例</div>
+                        </div>
+                        <div class="submission-card-meta">
+                            <span>⏱️ ${(sub.execution_time || 0).toFixed(2)}s</span>
+                            <span>📅 ${date}</span>
+                        </div>
+                        <div class="submission-card-actions">
+                            <button class="submission-card-btn" onclick="viewSubmissionCode(${sub.id})">查看代码</button>
+                            <button class="submission-card-btn" onclick="resubmitCode(${sub.id})">重新提交</button>
+                        </div>
+                        <div class="code-preview" id="code-preview-${sub.id}" style="display: none;"></div>
+                    </div>
+                `;
+            });
+
+            content.innerHTML = html;
+        }
+
+        // 获取提交状态CSS类
+        function getSubmissionStatusClass(status) {
+            const map = {
+                'accepted': 'accepted',
+                'wrong_answer': 'failed',
+                'time_limit_exceeded': 'timeout',
+                'runtime_error': 'failed',
+                'compilation_error': 'failed'
+            };
+            return map[status] || 'failed';
+        }
+
+        // 获取状态图标
+        function getStatusIcon(status) {
+            const map = {
+                'accepted': '✅',
+                'wrong_answer': '❌',
+                'time_limit_exceeded': '⏱️',
+                'runtime_error': '❌',
+                'compilation_error': '❌'
+            };
+            return map[status] || '❓';
+        }
+
+        // 格式化日期
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            const date = new Date(dateString);
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        // 查看提交代码
+        async function viewSubmissionCode(submissionId) {
+            const preview = document.getElementById(`code-preview-${submissionId}`);
+            if (!preview) return;
+
+            if (preview.style.display === 'none' || preview.textContent === '') {
+                try {
+                    const res = await fetch(`/coding/api/submissions/${submissionId}`);
+                    const result = await res.json();
+
+                    if (result.status === 'success' && result.data.code) {
+                        preview.textContent = result.data.code;
+                        preview.style.display = 'block';
+                    } else {
+                        preview.textContent = '无法加载代码';
+                        preview.style.display = 'block';
+                    }
+                } catch (error) {
+                    console.error('加载代码失败:', error);
+                    preview.textContent = '加载失败';
+                    preview.style.display = 'block';
+                }
+            } else {
+                preview.style.display = preview.style.display === 'none' ? 'block' : 'none';
+            }
+        }
+
+        // 重新提交代码
+        async function resubmitCode(submissionId) {
+            try {
+                const res = await fetch(`/coding/api/submissions/${submissionId}`);
+                const result = await res.json();
+
+                if (result.status === 'success' && result.data.code && editor) {
+                    editor.setValue(result.data.code);
+                    closeDrawer();
+                    // 滚动到编辑器
+                    document.getElementById('editor-panel').scrollIntoView({ behavior: 'smooth' });
+                } else {
+                    alert('无法加载代码');
+                }
+            } catch (error) {
+                console.error('加载代码失败:', error);
+                alert('加载失败');
+            }
+        }
+
+        // 加载排名抽屉内容
+        async function loadRankingDrawer() {
+            const content = document.getElementById('ranking-drawer-content');
+            if (!content) return;
+
+            if (!questionId) {
+                content.innerHTML = '<div class="drawer-loading">请先选择题目</div>';
+                return;
+            }
+
+            content.innerHTML = '<div class="drawer-loading">加载中...</div>';
+
+            try {
+                const res = await fetch(`/coding/api/questions/${questionId}/rankings?per_page=50`);
+                
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+                }
+                
+                const result = await res.json();
+
+                if (result.status === 'success') {
+                    const rankings = result.data.rankings || [];
+                    const userRank = result.data.user_rank;
+                    const total = result.data.total || 0;
+                    
+                    if (rankings.length === 0) {
+                        content.innerHTML = '<div class="drawer-loading">暂无排名数据</div>';
+                    } else {
+                        renderRankingDrawer(rankings, userRank, total);
+                    }
+                } else {
+                    const errorMsg = result.message || '加载失败';
+                    content.innerHTML = `<div class="drawer-loading">${errorMsg}</div>`;
+                    console.error('API返回错误:', result);
+                }
+            } catch (error) {
+                console.error('加载排名失败:', error);
+                content.innerHTML = `<div class="drawer-loading">加载失败: ${error.message || '网络错误'}</div>`;
+            }
+        }
+
+        // 渲染排名抽屉
+        function renderRankingDrawer(rankings, userRank, total) {
+            const content = document.getElementById('ranking-drawer-content');
+            if (!content) return;
+
+            const currentUserId = {{ user_id|default(0) }};
+            
+            let html = '';
+            
+            rankings.forEach((ranking, index) => {
+                const isCurrentUser = ranking.user_id === currentUserId;
+                const medal = index === 0 ? '🥇' : (index === 1 ? '🥈' : (index === 2 ? '🥉' : ''));
+                const rankDisplay = medal || `#${ranking.rank}`;
+                
+                // 格式化时间
+                const bestTime = ranking.best_time ? `${(ranking.best_time * 1000).toFixed(0)}ms` : '-';
+                const firstAcceptedAt = ranking.first_accepted_at ? formatDateTime(ranking.first_accepted_at) : 
+                                       (ranking.last_submitted_at ? formatDateTime(ranking.last_submitted_at) : '-');
+                
+                html += `
+                    <div class="ranking-card ${isCurrentUser ? 'current-user' : ''}">
+                        <div class="ranking-card-header">
+                            ${medal ? `<span class="ranking-medal">${medal}</span>` : ''}
+                            <span class="ranking-number">${rankDisplay}</span>
+                            <span class="ranking-username">${escapeHtml(ranking.username)}</span>
+                            ${isCurrentUser ? '<span style="font-size: 11px; color: var(--text-tertiary);">(当前用户)</span>' : ''}
+                        </div>
+                        <div class="ranking-stats">
+                            <span>⏱️ ${bestTime}</span>
+                            <span>📅 ${firstAcceptedAt}</span>
+                            ${ranking.accepted_score > 0 ? '<span style="color: var(--status-success);">✅ 首次通过</span>' : ''}
+                        </div>
+                    </div>
+                `;
+            });
+
+            // 如果当前用户不在列表中，显示用户排名信息
+            if (userRank && !rankings.some(r => r.user_id === currentUserId)) {
+                html += `
+                    <div style="padding: 16px; text-align: center; color: var(--text-secondary); font-size: var(--font-size-sm); border-top: 0.5px solid var(--border-primary); margin-top: 12px;">
+                        您的排名: #${userRank} / ${total}
+                    </div>
+                `;
+            }
+
+            // 显示总数
+            if (total > rankings.length) {
+                html += `
+                    <div style="padding: 16px; text-align: center; color: var(--text-tertiary); font-size: var(--font-size-xs);">
+                        共 ${total} 人参与
+                    </div>
+                `;
+            }
+
+            content.innerHTML = html || '<div class="drawer-loading">暂无排名数据</div>';
+        }
+
+        // 格式化日期时间
+        function formatDateTime(dateString) {
+            if (!dateString) return '-';
+            try {
+                const date = new Date(dateString);
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            } catch (e) {
+                return '-';
+            }
+        }
+
+        // 初始化Debug窗口
+        function initDebugPanel() {
+            const debugHeaderBar = document.getElementById('debug-header-bar');
+            const debugPanel = document.getElementById('debug-panel');
+            const debugContents = document.querySelectorAll('.debug-content');
+            const debugHeaderTabs = document.querySelectorAll('.debug-header-tab');
+            const testcaseTextarea = document.getElementById('testcase-input-textarea');
+            const testcaseLineNumbers = document.getElementById('testcase-line-numbers');
+            let lastTestCase = '';
+
+            if (!debugHeaderBar || !debugPanel) return;
+
+            // Debug窗口展开/收起切换
+            debugHeaderBar.addEventListener('click', (e) => {
+                // 如果点击的是提交按钮或复制按钮，不切换
+                if (e.target.closest('.btn-submit') || e.target.closest('.debug-copy-btn')) {
+                    return;
+                }
+                debugPanel.classList.toggle('collapsed');
+                debugPanel.classList.toggle('expanded');
+                
+                // 调整编辑器高度
+                if (editor) {
+                    setTimeout(() => {
+                        editor.layout();
+                    }, 100);
+                }
+            });
+
+            // 收起栏中的标签点击（切换标签，如果窗口是收缩的则展开）
+            debugHeaderTabs.forEach(tab => {
+                tab.addEventListener('click', (e) => {
+                    e.stopPropagation(); // 阻止触发展开/收起
+                    const tabName = tab.getAttribute('data-tab');
+                    
+                    // 更新收起栏中的标签状态
+                    debugHeaderTabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    
+                    // 如果窗口是收缩的，先展开它
+                    if (debugPanel.classList.contains('collapsed')) {
+                        debugPanel.classList.remove('collapsed');
+                        debugPanel.classList.add('expanded');
+                        // 调整编辑器高度
+                        if (editor) {
+                            setTimeout(() => {
+                                editor.layout();
+                            }, 100);
+                        }
+                    }
+                    
+                    // 切换内容
+                    debugContents.forEach(content => {
+                        if (content.id === `debug-${tabName}`) {
+                            content.classList.add('active');
+                            content.style.display = 'flex';
+                        } else {
+                            content.classList.remove('active');
+                            content.style.display = 'none';
+                        }
+                    });
+                });
+            });
+
+            // 更新测试用例行号
+            function updateTestcaseLineNumbers() {
+                if (!testcaseTextarea || !testcaseLineNumbers) return;
+                const lines = testcaseTextarea.value.split('\n').length;
+                let lineNumbersHtml = '';
+                for (let i = 1; i <= lines; i++) {
+                    lineNumbersHtml += `<span>${i}</span>\n`;
+                }
+                testcaseLineNumbers.innerHTML = lineNumbersHtml;
+            }
+
+            // 监听测试用例输入变化
+            if (testcaseTextarea) {
+                testcaseTextarea.addEventListener('input', updateTestcaseLineNumbers);
+                testcaseTextarea.addEventListener('scroll', () => {
+                    if (testcaseLineNumbers) {
+                        testcaseLineNumbers.scrollTop = testcaseTextarea.scrollTop;
+                    }
+                });
+            }
+
+            // 标签页切换（只通过收起栏中的标签切换）
+            // 展开窗口内的标签已移除，只使用收起栏中的标签
+
+            // 运行测试
+            const debugRunBtn = document.getElementById('debug-run-btn');
+            if (debugRunBtn) {
+                debugRunBtn.addEventListener('click', async () => {
+                    if (!editor) return;
+                    
+                    const code = editor.getValue();
+                    const input = testcaseTextarea ? testcaseTextarea.value : '';
+                    
+                    if (!code.trim()) {
+                        alert('请输入代码');
+                        return;
+                    }
+
+                    // 如果Debug窗口是收起的，自动展开
+                    if (debugPanel.classList.contains('collapsed')) {
+                        debugPanel.classList.remove('collapsed');
+                        debugPanel.classList.add('expanded');
+                        // 切换到测试用例标签（通过收起栏中的标签）
+                        const testcaseHeaderTab = document.querySelector('.debug-header-tab[data-tab="testcase"]');
+                        if (testcaseHeaderTab) {
+                            testcaseHeaderTab.click();
+                        }
+                    }
+
+                    // 保存当前测试用例
+                    lastTestCase = input;
+
+                    // 显示加载状态
+                    const statusText = document.getElementById('debug-status-text');
+                    if (statusText) {
+                        statusText.textContent = '执行中...';
+                    }
+
+                    try {
+                        // 调用API执行代码
+                        const response = await fetch('/coding/api/execute', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ 
+                                code, 
+                                input, 
+                                language: 'python' 
+                            })
+                        });
+                        
+                        const result = await response.json();
+                        
+                        // 切换到编译器输出标签页（通过收起栏中的标签）
+                        const compilerHeaderTab = document.querySelector('.debug-header-tab[data-tab="compiler"]');
+                        if (compilerHeaderTab) {
+                            compilerHeaderTab.click();
+                        }
+                        
+                        // 显示输出结果
+                        const compilerText = document.getElementById('compiler-text');
+                        const compilerLineNumbers = document.getElementById('compiler-line-numbers');
+                        
+                        if (compilerText) {
+                            let outputText = '';
+                            
+                            if (result.status === 'success' && result.data) {
+                                if (result.data.error) {
+                                    outputText = result.data.error;
+                                    compilerText.style.color = '#ff3b30';
+                                } else {
+                                    outputText = result.data.output || '(无输出)';
+                                    compilerText.style.color = 'var(--text-primary)';
+                                }
+                            } else {
+                                outputText = result.message || '执行失败';
+                                compilerText.style.color = '#ff3b30';
+                            }
+                            
+                            compilerText.textContent = outputText;
+                            
+                            // 更新行号（清空后重新生成）
+                            if (compilerLineNumbers) {
+                                // 完全清空行号区域
+                                compilerLineNumbers.textContent = '';
+                                compilerLineNumbers.innerHTML = '';
+                                
+                                const outputLines = outputText.split('\n').length;
+                                // 确保至少显示一行
+                                const lines = Math.max(1, outputLines);
+                                
+                                for (let i = 1; i <= lines; i++) {
+                                    const span = document.createElement('span');
+                                    span.textContent = String(i); // 确保只显示数字
+                                    compilerLineNumbers.appendChild(span);
+                                }
+                                
+                                // 同步滚动
+                                const syncScroll = () => {
+                                    compilerLineNumbers.scrollTop = compilerText.scrollTop;
+                                };
+                                compilerText.removeEventListener('scroll', syncScroll);
+                                compilerText.addEventListener('scroll', syncScroll);
+                            }
+                        }
+                        
+                        // 更新状态栏
+                        if (statusText) {
+                            const now = new Date();
+                            const timeStr = now.toLocaleTimeString();
+                            const status = result.status === 'success' && result.data && !result.data.error ? '成功' : '非零返回';
+                            statusText.textContent = `上一次测试于 ${timeStr} ${status}`;
+                        }
+                    } catch (error) {
+                        console.error('执行代码失败:', error);
+                        if (statusText) {
+                            statusText.textContent = `执行失败: ${error.message}`;
+                        }
+                        const compilerText = document.getElementById('compiler-text');
+                        const compilerLineNumbers = document.getElementById('compiler-line-numbers');
+                        if (compilerText) {
+                            const errorText = `执行失败: ${error.message}`;
+                            compilerText.textContent = errorText;
+                            compilerText.style.color = '#ff3b30';
+                            
+                            // 更新行号（完全清空后重新生成）
+                            if (compilerLineNumbers) {
+                                compilerLineNumbers.textContent = '';
+                                compilerLineNumbers.innerHTML = '';
+                                const errorLines = errorText.split('\n').length;
+                                const lines = Math.max(1, errorLines);
+                                for (let i = 1; i <= lines; i++) {
+                                    const span = document.createElement('span');
+                                    span.textContent = String(i);
+                                    compilerLineNumbers.appendChild(span);
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // 重置测试用例
+            const debugResetBtn = document.getElementById('debug-reset-btn');
+            if (debugResetBtn && testcaseTextarea) {
+                debugResetBtn.addEventListener('click', () => {
+                    testcaseTextarea.value = '';
+                    updateTestcaseLineNumbers();
+                    testcaseTextarea.focus();
+                });
+            }
+
+            // 查看上次用例
+            const viewLastCaseBtn = document.getElementById('view-last-case-btn');
+            if (viewLastCaseBtn && testcaseTextarea) {
+                viewLastCaseBtn.addEventListener('click', () => {
+                    if (lastTestCase) {
+                        testcaseTextarea.value = lastTestCase;
+                        updateTestcaseLineNumbers();
+                        testcaseTextarea.focus();
+                    }
+                });
+            }
+
+            // 复制内容
+            const debugCopyBtn = document.getElementById('debug-copy-btn');
+            if (debugCopyBtn) {
+                debugCopyBtn.addEventListener('click', (e) => {
+                    e.stopPropagation(); // 阻止触发展开/收起
+                    const activeTab = document.querySelector('.debug-header-tab.active');
+                    if (!activeTab) return;
+                    
+                    const tabName = activeTab.getAttribute('data-tab');
+                    let textToCopy = '';
+                    
+                    if (tabName === 'testcase') {
+                        textToCopy = testcaseTextarea ? testcaseTextarea.value : '';
+                    } else if (tabName === 'compiler') {
+                        const compilerText = document.getElementById('compiler-text');
+                        textToCopy = compilerText ? compilerText.textContent : '';
+                    }
+                    
+                    if (textToCopy) {
+                        navigator.clipboard.writeText(textToCopy).then(() => {
+                            const originalText = debugCopyBtn.innerHTML;
+                            debugCopyBtn.innerHTML = '<span>✓</span> 已复制';
+                            setTimeout(() => {
+                                debugCopyBtn.innerHTML = originalText;
+                            }, 2000);
+                        }).catch(err => {
+                            console.error('复制失败:', err);
+                        });
+                    }
+                });
+            }
+        }
+
+        // 初始化提交结果弹窗事件
+        function initSubmissionModal() {
+            // 关闭按钮事件
+            document.getElementById('submission-modal-close')?.addEventListener('click', closeSubmissionModal);
+            document.getElementById('submission-modal-confirm')?.addEventListener('click', closeSubmissionModal);
+            document.getElementById('submission-modal-backdrop')?.addEventListener('click', closeSubmissionModal);
+            
+            
+            // ESC键关闭
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    const modal = document.getElementById('submission-modal');
+                    if (modal && modal.classList.contains('active')) {
+                        closeSubmissionModal();
+                    }
+                }
             });
         }
 
         // 页面加载时初始化
         Promise.all([loadAllQuestions(), loadQuestion()]).then(() => {
             updateNavigationButtons();
-            initSidebarToggle();
+            initSidebarButtons();
+            initResizer();
+            initDebugPanel();
+            initSubmissionModal();
         });
     </script>
 </body>

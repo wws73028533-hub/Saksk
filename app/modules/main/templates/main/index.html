@@ -325,6 +325,12 @@
         }
         .user-area a { color: var(--text-sub); text-decoration: none; font-weight: 500; }
         .user-area a:hover { color: var(--text-color); }
+        /* 减小 user-area 中按钮的宽度 */
+        .user-area .btn,
+        .user-area .btn-secondary {
+            padding: 12px 14px;
+            min-width: auto;
+        }
         .theme-toggle { 
             background: rgba(255, 255, 255, 0.7);
             backdrop-filter: var(--blur);
@@ -390,11 +396,11 @@
         /* 用户菜单 */
         .user-menu { position: relative; display:flex; align-items:center; gap:8px; flex-wrap: nowrap; }
         .user-menu .btn { display:inline-flex; white-space: nowrap; }
-        .menu-btn { 
+        .menu-btn {
             display:flex; 
             align-items:center; 
             gap:8px; 
-            padding:6px 12px; 
+            padding:6px 10px; 
             background: rgba(255, 255, 255, 0.7);
             backdrop-filter: blur(60px) saturate(200%);
             -webkit-backdrop-filter: blur(60px) saturate(200%);
@@ -1146,6 +1152,137 @@
             }
         }
 
+        /* 科目设置提示横幅 */
+        .subject-hint {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, rgba(0, 122, 255, 0.1) 0%, var(--card-bg-solid) 100%);
+            color: var(--text-color);
+            padding: 14px 18px;
+            border-radius: 18px;
+            font-size: 13px;
+            z-index: 1000;
+            opacity: 0;
+            animation: subjectHintSlideIn 0.5s ease-out forwards;
+            transition: opacity 0.3s, transform 0.3s;
+            box-shadow: 0 8px 24px rgba(0, 122, 255, 0.15), var(--shadow);
+            border: 1px solid rgba(0, 122, 255, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            max-width: min(600px, calc(100% - 32px));
+            pointer-events: auto;
+        }
+        @keyframes subjectHintSlideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-50%) translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+        .subject-hint-icon {
+            font-size: 20px;
+            flex-shrink: 0;
+            animation: subjectHintIconPulse 2s ease-in-out infinite;
+        }
+        @keyframes subjectHintIconPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        .subject-hint-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .subject-hint-title {
+            font-weight: 650;
+            font-size: 14px;
+            color: var(--text-color);
+            line-height: 1.3;
+        }
+        .subject-hint-text {
+            font-size: 12px;
+            color: var(--text-sub);
+            line-height: 1.5;
+        }
+        .subject-hint-try {
+            background: rgba(0, 122, 255, 0.15);
+            border: 1px solid rgba(0, 122, 255, 0.3);
+            color: rgba(0, 122, 255, 0.9);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            padding: 6px 12px;
+            border-radius: 10px;
+            flex-shrink: 0;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .subject-hint-try:hover {
+            background: rgba(0, 122, 255, 0.25);
+            border-color: rgba(0, 122, 255, 0.5);
+            transform: scale(1.05);
+        }
+        .subject-hint-dismiss {
+            background: none;
+            border: none;
+            color: var(--text-sub);
+            font-size: 11px;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 8px;
+            flex-shrink: 0;
+            opacity: 0.6;
+            transition: opacity 0.2s, background-color 0.2s;
+            white-space: nowrap;
+        }
+        .subject-hint-dismiss:hover {
+            opacity: 1;
+            background: rgba(0, 0, 0, 0.05);
+        }
+        .subject-hint-close {
+            background: none;
+            border: none;
+            color: var(--text-sub);
+            font-size: 20px;
+            line-height: 1;
+            cursor: pointer;
+            padding: 0;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+        }
+        .subject-hint-close:hover {
+            opacity: 1;
+        }
+        body.dark-mode .subject-hint {
+            background: linear-gradient(135deg, rgba(88, 166, 255, 0.15) 0%, rgba(28, 28, 30, 0.85) 100%);
+            border-color: rgba(88, 166, 255, 0.3);
+        }
+        body.dark-mode .subject-hint-try {
+            background: rgba(88, 166, 255, 0.15);
+            border-color: rgba(88, 166, 255, 0.3);
+            color: rgba(88, 166, 255, 1);
+        }
+        body.dark-mode .subject-hint-try:hover {
+            background: rgba(88, 166, 255, 0.25);
+            border-color: rgba(88, 166, 255, 0.5);
+        }
+        body.dark-mode .subject-hint-dismiss:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
         /* 移动端适配 */
         @media (max-width: 768px) {
             .menu-btn .uname { display: none; }
@@ -1164,6 +1301,39 @@
             }
             .stat-value {
                 font-size: 22px;
+            }
+            .subject-hint {
+                font-size: 12px;
+                padding: 12px 14px;
+                max-width: calc(100% - 24px);
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+            .subject-hint-content {
+                width: 100%;
+                order: 1;
+            }
+            .subject-hint-title {
+                font-size: 13px;
+            }
+            .subject-hint-text {
+                font-size: 11px;
+            }
+            .subject-hint-try {
+                order: 2;
+                padding: 5px 10px;
+                font-size: 11px;
+            }
+            .subject-hint-dismiss {
+                order: 3;
+                font-size: 10px;
+                padding: 3px 6px;
+            }
+            .subject-hint-close {
+                order: 4;
+            }
+            .subject-hint-icon {
+                display: none;
             }
         }
 
@@ -1549,9 +1719,9 @@
     <div class="noise-layer"></div>
     <div class="main-container">
         <header class="page-header">
-            <div class="header-title">题库中心</div>
+            <div class="header-title">SAK</div>
             <div class="user-area">
-                <a href="/coding" class="btn btn-secondary" style="text-decoration:none;">编程模式</a>
+                <a href="/coding" class="btn btn-secondary" style="text-decoration:none;">编程</a>
                 <div class="user-menu" id="userMenu">
                     {% if logged_in %}
                         <a class="btn btn-secondary" href="/chat" style="text-decoration:none; position:relative; overflow: visible;" id="chatEntry">聊天<span id="chatUnreadBadge" style="display:none; position:absolute; top:-10px; right:-10px; min-width:18px; height:18px; padding:0 6px; border-radius:999px; background: var(--danger); color:#fff; font-size:11px; font-weight:700; line-height:18px; text-align:center; box-shadow: 0 4px 10px rgba(0,0,0,0.15);">0</span></a>
@@ -1673,7 +1843,7 @@
         </div>
 
         <footer class="page-footer">
-            By: Saksk
+            By: Saksk | V3.0.0
         </footer>
     </div>
 
@@ -2459,7 +2629,77 @@
                 if (document.visibilityState === 'visible') updateChatUnreadBadge();
             });
         }
+
+        // ===== 科目设置提示横幅 =====
+        const SUBJECT_HINT_DISMISSED_KEY = 'subject_hint_dismissed';
+        
+        function showSubjectHint() {
+            // 检查用户是否选择了"不再提示"
+            const dismissed = localStorage.getItem(SUBJECT_HINT_DISMISSED_KEY);
+            if (dismissed === '1') {
+                return;
+            }
+            
+            const hint = document.getElementById('subjectHint');
+            if (!hint) return;
+            
+            // 延迟显示，避免与页面加载冲突
+            setTimeout(() => {
+                if (hint) {
+                    hint.style.display = 'flex';
+                    hint.style.opacity = '1';
+                    // 5秒后自动淡出（但不关闭，用户仍可手动关闭）
+                    setTimeout(() => {
+                        if (hint && hint.style.display !== 'none') {
+                            hint.style.opacity = '0.5';
+                        }
+                    }, 5000);
+                }
+            }, 1000);
+        }
+        
+        // 关闭本次提示（不保存状态，下次仍会显示）
+        function dismissSubjectHint() {
+            const hint = document.getElementById('subjectHint');
+            if (hint) {
+                hint.style.display = 'none';
+            }
+        }
+        
+        // 不再提示（保存状态，下次不再显示）
+        function dismissSubjectHintPermanently() {
+            const hint = document.getElementById('subjectHint');
+            if (hint) {
+                hint.style.display = 'none';
+                localStorage.setItem(SUBJECT_HINT_DISMISSED_KEY, '1');
+            }
+        }
+        
+        // 跳转到题库设置页
+        function goToQuizSettings() {
+            window.location.href = '/quiz_settings';
+            dismissSubjectHint();
+        }
+        
+        // 页面加载完成后显示提示
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', showSubjectHint);
+        } else {
+            setTimeout(showSubjectHint, 500);
+        }
     </script>
+    
+    {# 科目设置提示横幅 #}
+    <div id="subjectHint" class="subject-hint" style="display: none;">
+        <span class="subject-hint-icon">⚙️</span>
+        <div class="subject-hint-content">
+            <div class="subject-hint-title">自定义科目显示</div>
+            <div class="subject-hint-text">可在题库设置页选择要显示的科目，让界面更简洁</div>
+        </div>
+        <button class="subject-hint-try" aria-label="去设置" onclick="goToQuizSettings()" title="前往题库设置">去设置</button>
+        <button class="subject-hint-dismiss" aria-label="不再提示" onclick="dismissSubjectHintPermanently()" title="不再提示">不再提示</button>
+        <button class="subject-hint-close" aria-label="关闭" onclick="dismissSubjectHint()" title="关闭">×</button>
+    </div>
 </body>
 </html>
 

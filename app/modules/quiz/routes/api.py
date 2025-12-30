@@ -36,7 +36,14 @@ def toggle_favorite():
 @quiz_api_bp.route('/record_result', methods=['POST'])
 @limiter.exempt  # 答题记录接口不限流
 def record_result():
-    """记录做题结果"""
+    """记录做题结果（添加刷题限制检查）"""
+    from app.core.utils.subject_permissions import (
+        check_quiz_limit, 
+        increment_user_quiz_count,
+        get_user_quiz_count,
+        get_quiz_limit_count
+    )
+    
     if not session.get('user_id'):
         return jsonify({'status': 'unauthorized', 'message': '请先登录'}), 401
     
@@ -47,6 +54,20 @@ def record_result():
     
     if not q_id or is_correct is None:
         return jsonify({'status': 'error', 'message': '参数不完整'}), 400
+    
+    # 检查刷题限制
+    is_limited, limit_message = check_quiz_limit(uid)
+    if is_limited:
+        return jsonify({
+            'status': 'error',
+            'message': limit_message,
+            'code': 'QUIZ_LIMIT_REACHED',
+            'data': {
+                'current_count': get_user_quiz_count(uid),
+                'limit_count': get_quiz_limit_count(),
+                'contact_admin_url': '/contact_admin'
+            }
+        }), 403
     
     conn = get_db()
     try:
@@ -75,6 +96,9 @@ def record_result():
             (uid, q_id, 1 if is_correct else 0)
         )
         
+        # 增加刷题数（如果功能开启）
+        increment_user_quiz_count(uid)
+        
         conn.commit()
         return jsonify({"status": "success", "action": action})
     except Exception as e:
@@ -85,7 +109,9 @@ def record_result():
 @quiz_api_bp.route('/questions/count')
 @limiter.exempt  # 题目数量查询不限流
 def api_questions_count():
-    """获取题目数量"""
+    """获取题目数量（添加权限过滤）"""
+    from app.core.utils.subject_permissions import get_user_accessible_subjects
+    
     subject = request.args.get('subject', 'all')
     q_type = request.args.get('type', 'all')
     mode = request.args.get('mode', '').lower()
@@ -93,6 +119,13 @@ def api_questions_count():
     uid = session.get('user_id')
     
     conn = get_db()
+    
+    # 获取用户可访问的科目ID列表（用于权限过滤）
+    accessible_subject_ids = None
+    if uid:
+        accessible_subject_ids = get_user_accessible_subjects(uid)
+        if not accessible_subject_ids:
+            return jsonify({'status':'success','count': 0})
 
     # 兼容新的 source 参数，优先使用 source，其次 mode
     target = source if source in ('favorites', 'mistakes') else mode
@@ -110,6 +143,15 @@ def api_questions_count():
     else:
         base_sql = "FROM questions q LEFT JOIN subjects s ON q.subject_id = s.id WHERE (s.is_locked=0 OR s.is_locked IS NULL)"
         params = []
+    
+    # 添加权限过滤
+    if accessible_subject_ids is not None:
+        placeholders = ','.join(['?'] * len(accessible_subject_ids))
+        base_sql += f" AND q.subject_id IN ({placeholders})"
+        params.extend(accessible_subject_ids)
+    elif not uid:
+        # 未登录用户：返回0
+        return jsonify({'status':'success','count': 0})
     
     if subject != 'all':
         base_sql += " AND s.name = ?"
@@ -333,11 +375,32 @@ def dismiss_notification_legacy(nid):
 @quiz_api_bp.route('/subjects', methods=['GET'])
 @limiter.exempt
 def api_subjects():
-    """获取科目列表（给前端设置页使用，过滤掉锁定的科目）"""
-    conn = get_db()
+    """获取科目列表（添加权限过滤）"""
+    from app.core.utils.subject_permissions import get_user_accessible_subjects
+    
     try:
-        rows = conn.execute('SELECT name FROM subjects WHERE is_locked=0 OR is_locked IS NULL ORDER BY id').fetchall()
-        subjects = [r[0] for r in rows if r and r[0]]
+        user_id = session.get('user_id')
+        conn = get_db()
+        
+        if user_id:
+            # 获取用户可访问的科目
+            accessible_subject_ids = get_user_accessible_subjects(user_id)
+            if not accessible_subject_ids:
+                return jsonify({'status': 'success', 'subjects': []})
+            
+            placeholders = ','.join(['?'] * len(accessible_subject_ids))
+            rows = conn.execute(
+                f'''SELECT DISTINCT s.name 
+                    FROM subjects s 
+                    WHERE s.id IN ({placeholders}) AND (s.is_locked=0 OR s.is_locked IS NULL)
+                    ORDER BY s.id''',
+                accessible_subject_ids
+            ).fetchall()
+        else:
+            # 未登录用户：返回空列表
+            rows = []
+        
+        subjects = [row[0] for row in rows if row and row[0]]
         return jsonify({'status': 'success', 'subjects': subjects})
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e), 'subjects': []}), 500

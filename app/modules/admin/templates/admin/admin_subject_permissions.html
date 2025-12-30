@@ -1,0 +1,919 @@
+{% extends "admin/admin_base.html" %}
+
+{% block title %}题库管理{% endblock %}
+
+{% block head %}
+<style>
+    .container {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(30px) saturate(180%);
+        -webkit-backdrop-filter: blur(30px) saturate(180%);
+        padding: 40px;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-soft);
+        border: 0.5px solid var(--border-color);
+        max-width: 1600px;
+        margin: 0 auto;
+    }
+    
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 32px;
+        padding-bottom: 20px;
+        border-bottom: 0.5px solid var(--border-color);
+    }
+    
+    .page-title {
+        font-size: 28px;
+        font-weight: 600;
+        color: var(--text-color);
+        letter-spacing: -0.3px;
+        margin: 0;
+    }
+    
+    /* 统计卡片 */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 32px;
+    }
+    
+    .stat-card {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(30px) saturate(180%);
+        -webkit-backdrop-filter: blur(30px) saturate(180%);
+        border-radius: var(--radius-lg);
+        padding: 24px;
+        box-shadow: var(--shadow-soft);
+        border: 0.5px solid var(--border-color);
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow);
+    }
+    
+    .stat-card-label {
+        font-size: 13px;
+        color: var(--text-sub);
+        font-weight: 500;
+        margin-bottom: 8px;
+    }
+    
+    .stat-card-value {
+        font-size: 32px;
+        font-weight: 600;
+        color: var(--text-color);
+        letter-spacing: -0.5px;
+    }
+    
+    /* 批量操作工具栏 */
+    .toolbar {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(30px) saturate(180%);
+        -webkit-backdrop-filter: blur(30px) saturate(180%);
+        border-radius: var(--radius-lg);
+        padding: 20px;
+        margin-bottom: 24px;
+        box-shadow: var(--shadow-soft);
+        border: 0.5px solid var(--border-color);
+    }
+    
+    .toolbar-row {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-bottom: 12px;
+    }
+    
+    .toolbar-row:last-child {
+        margin-bottom: 0;
+    }
+    
+    .toolbar-label {
+        font-size: 14px;
+        color: var(--text-color);
+        font-weight: 500;
+        min-width: 80px;
+    }
+    
+    .toolbar-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    
+    /* 主内容区域 - 两列布局 */
+    .main-content-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+        margin-bottom: 32px;
+    }
+    
+    @media (max-width: 1200px) {
+        .main-content-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+    
+    /* 列表卡片 */
+    .list-card {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(30px) saturate(180%);
+        -webkit-backdrop-filter: blur(30px) saturate(180%);
+        border-radius: var(--radius-lg);
+        padding: 24px;
+        box-shadow: var(--shadow-soft);
+        border: 0.5px solid var(--border-color);
+    }
+    
+    .list-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 16px;
+        border-bottom: 0.5px solid var(--border-color);
+    }
+    
+    .list-card-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: var(--text-color);
+        margin: 0;
+    }
+    
+    .list-card-search {
+        width: 100%;
+        max-width: 505px;
+        padding: 10px 16px;
+        border: 0.5px solid var(--border-color);
+        border-radius: var(--radius-md);
+        font-size: 14px;
+        background: var(--card-bg-solid);
+        color: var(--text-color);
+        margin-bottom: 16px;
+    }
+    
+    .list-card-search:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px var(--primary-light);
+    }
+    
+    .list-container {
+        max-height: 600px;
+        overflow-y: auto;
+        border-radius: var(--radius-md);
+    }
+    
+    .list-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px;
+        border-radius: var(--radius-md);
+        margin-bottom: 8px;
+        background: rgba(142, 142, 147, 0.06);
+        border: 0.5px solid var(--border-color);
+        transition: all 0.2s;
+        cursor: pointer;
+    }
+    
+    .list-item:hover {
+        background: rgba(142, 142, 147, 0.1);
+        border-color: var(--primary);
+    }
+    
+    .list-item.selected {
+        background: var(--primary-light);
+        border-color: var(--primary);
+    }
+    
+    .list-item-checkbox {
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+    }
+    
+    .list-item-info {
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .list-item-name {
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text-color);
+        margin-bottom: 4px;
+    }
+    
+    .list-item-meta {
+        font-size: 12px;
+        color: var(--text-sub);
+    }
+    
+    /* 配置管理区域 */
+    .config-section {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(30px) saturate(180%);
+        -webkit-backdrop-filter: blur(30px) saturate(180%);
+        border-radius: var(--radius-lg);
+        padding: 24px;
+        margin-bottom: 24px;
+        box-shadow: var(--shadow-soft);
+        border: 0.5px solid var(--border-color);
+    }
+    
+    .config-section-header {
+        font-size: 18px;
+        font-weight: 600;
+        color: var(--text-color);
+        margin-bottom: 20px;
+        padding-bottom: 16px;
+        border-bottom: 0.5px solid var(--border-color);
+    }
+    
+    .config-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px;
+        border-radius: var(--radius-md);
+        background: rgba(142, 142, 147, 0.06);
+        margin-bottom: 12px;
+    }
+    
+    .config-item:last-child {
+        margin-bottom: 0;
+    }
+    
+    .config-item-label {
+        font-size: 14px;
+        color: var(--text-color);
+        font-weight: 500;
+    }
+    
+    .config-item-value {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    
+    .switch {
+        position: relative;
+        width: 44px;
+        height: 26px;
+        background: rgba(142, 142, 147, 0.3);
+        border-radius: 13px;
+        cursor: pointer;
+        transition: background 0.3s;
+    }
+    
+    .switch.active {
+        background: var(--primary);
+    }
+    
+    .switch::after {
+        content: '';
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 22px;
+        height: 22px;
+        background: white;
+        border-radius: 50%;
+        transition: transform 0.3s;
+    }
+    
+    .switch.active::after {
+        transform: translateX(18px);
+    }
+    
+    .config-input {
+        padding: 8px 12px;
+        border: 0.5px solid var(--border-color);
+        border-radius: var(--radius-md);
+        font-size: 14px;
+        width: 120px;
+        background: var(--card-bg-solid);
+        color: var(--text-color);
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: var(--text-sub);
+    }
+    
+    .loading {
+        text-align: center;
+        padding: 40px;
+        color: var(--text-sub);
+    }
+    
+    /* 深色模式适配 */
+    [data-theme="dark"] .container {
+        background: rgba(28, 28, 30, 0.6);
+        backdrop-filter: blur(30px) saturate(180%);
+        -webkit-backdrop-filter: blur(30px) saturate(180%);
+        border-color: rgba(255, 255, 255, 0.12);
+    }
+    
+    [data-theme="dark"] .stat-card {
+        background: rgba(28, 28, 30, 0.6);
+        backdrop-filter: blur(30px) saturate(180%);
+        -webkit-backdrop-filter: blur(30px) saturate(180%);
+        border-color: rgba(255, 255, 255, 0.12);
+    }
+    
+    [data-theme="dark"] .stat-card:hover {
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    }
+    
+    [data-theme="dark"] .toolbar {
+        background: rgba(28, 28, 30, 0.6);
+        backdrop-filter: blur(30px) saturate(180%);
+        -webkit-backdrop-filter: blur(30px) saturate(180%);
+        border-color: rgba(255, 255, 255, 0.12);
+    }
+    
+    [data-theme="dark"] .list-card {
+        background: rgba(28, 28, 30, 0.6);
+        backdrop-filter: blur(30px) saturate(180%);
+        -webkit-backdrop-filter: blur(30px) saturate(180%);
+        border-color: rgba(255, 255, 255, 0.12);
+    }
+    
+    [data-theme="dark"] .list-card-search {
+        background: rgba(28, 28, 30, 0.8);
+        border-color: rgba(255, 255, 255, 0.12);
+        color: var(--text-color);
+    }
+    
+    [data-theme="dark"] .list-card-search:focus {
+        background: rgba(28, 28, 30, 0.9);
+        border-color: var(--primary);
+    }
+    
+    [data-theme="dark"] .list-item {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: rgba(255, 255, 255, 0.12);
+    }
+    
+    [data-theme="dark"] .list-item:hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: var(--primary);
+    }
+    
+    [data-theme="dark"] .list-item.selected {
+        background: var(--primary-light);
+        border-color: var(--primary);
+    }
+    
+    [data-theme="dark"] .config-section {
+        background: rgba(28, 28, 30, 0.6);
+        backdrop-filter: blur(30px) saturate(180%);
+        -webkit-backdrop-filter: blur(30px) saturate(180%);
+        border-color: rgba(255, 255, 255, 0.12);
+    }
+    
+    [data-theme="dark"] .config-item {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: rgba(255, 255, 255, 0.08);
+    }
+    
+    [data-theme="dark"] .config-input {
+        background: rgba(28, 28, 30, 0.8);
+        border-color: rgba(255, 255, 255, 0.12);
+        color: var(--text-color);
+    }
+    
+    [data-theme="dark"] .switch {
+        background: rgba(142, 142, 147, 0.3);
+    }
+    
+    [data-theme="dark"] .switch.active {
+        background: var(--primary);
+    }
+    
+    [data-theme="dark"] .switch::after {
+        background: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1 class="page-title">题库管理</h1>
+    </div>
+    
+    <!-- 统计信息 -->
+    <div class="stats-grid" id="statsGrid">
+        <div class="stat-card">
+            <div class="stat-card-label">总用户数</div>
+            <div class="stat-card-value" id="statTotalUsers">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-label">总科目数</div>
+            <div class="stat-card-value" id="statTotalSubjects">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-label">总限制数</div>
+            <div class="stat-card-value" id="statTotalRestrictions">0</div>
+        </div>
+    </div>
+    
+    <!-- 批量操作工具栏 -->
+    <div class="toolbar">
+        <div class="toolbar-row">
+            <span class="toolbar-label">批量操作:</span>
+            <div class="toolbar-actions">
+                <button class="btn-primary" onclick="batchRestrict()">限制选中</button>
+                <button class="btn-secondary" onclick="batchUnrestrict()">取消限制</button>
+                <button class="btn-outline" onclick="selectAllUsers()">全选用户</button>
+                <button class="btn-outline" onclick="selectAllSubjects()">全选科目</button>
+                <button class="btn-outline" onclick="clearSelection()">清除选择</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 主内容区域 - 用户列表和科目列表 -->
+    <div class="main-content-grid">
+        <!-- 用户列表 -->
+        <div class="list-card">
+            <div class="list-card-header">
+                <h3 class="list-card-title">用户列表</h3>
+                <span class="muted" id="userListCount">0 个用户</span>
+            </div>
+            <input type="text" class="list-card-search" id="userSearch" placeholder="搜索用户名..." oninput="filterUsers()">
+            <div class="list-container" id="userListContainer">
+                <div class="loading">加载中...</div>
+            </div>
+        </div>
+        
+        <!-- 科目列表 -->
+        <div class="list-card">
+            <div class="list-card-header">
+                <h3 class="list-card-title">科目列表</h3>
+                <span class="muted" id="subjectListCount">0 个科目</span>
+            </div>
+            <input type="text" class="list-card-search" id="subjectSearch" placeholder="搜索科目名..." oninput="filterSubjects()">
+            <div class="list-container" id="subjectListContainer">
+                <div class="loading">加载中...</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 系统配置管理 -->
+    <div class="config-section">
+        <div class="config-section-header">系统配置</div>
+        <div class="config-item">
+            <div class="config-item-label">刷题限制功能开关</div>
+            <div class="config-item-value">
+                <div class="switch" id="quizLimitSwitch" onclick="toggleQuizLimit()"></div>
+                <span id="quizLimitStatus">关闭</span>
+            </div>
+        </div>
+        <div class="config-item">
+            <div class="config-item-label">刷题限制数量</div>
+            <div class="config-item-value">
+                <input type="number" class="config-input" id="quizLimitCount" value="100" min="1">
+                <button class="btn-primary" onclick="updateQuizLimitCount()">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let usersData = [];
+    let subjectsData = [];
+    let selectedUserIds = new Set();
+    let selectedSubjectIds = new Set();
+    let totalUsers = 0;
+    let totalSubjects = 0;
+    let currentPage = 1;
+    let pageSize = 20;
+    
+    // 加载数据
+    async function loadData() {
+        try {
+            const res = await fetch(`/admin/api/subject_permissions/overview?page=${currentPage}&per_page=${pageSize}`);
+            const result = await res.json();
+            
+            if (result.status === 'success') {
+                const data = result.data;
+                
+                // 更新统计
+                totalUsers = data.stats.total_users || 0;
+                totalSubjects = data.stats.total_subjects || 0;
+                document.getElementById('statTotalUsers').textContent = totalUsers;
+                document.getElementById('statTotalSubjects').textContent = totalSubjects;
+                document.getElementById('statTotalRestrictions').textContent = data.stats.total_restrictions || 0;
+                
+                // 保存数据
+                usersData = data.users || [];
+                subjectsData = data.subjects || [];
+                
+                // 更新列表计数（显示总数，不是当前页数量）
+                document.getElementById('userListCount').textContent = `共 ${totalUsers} 个用户（当前页 ${usersData.length}）`;
+                document.getElementById('subjectListCount').textContent = `共 ${totalSubjects} 个科目`;
+                
+                // 渲染列表
+                renderUserList();
+                renderSubjectList();
+                
+                // 加载配置
+                loadQuizLimitConfig();
+            }
+        } catch (error) {
+            console.error('加载数据失败:', error);
+            showError('加载数据失败');
+        }
+    }
+    
+    // 渲染用户列表
+    function renderUserList() {
+        const container = document.getElementById('userListContainer');
+        const search = document.getElementById('userSearch').value.toLowerCase();
+        
+        const filtered = usersData.filter(u => 
+            u.username.toLowerCase().includes(search)
+        );
+        
+        if (filtered.length === 0) {
+            container.innerHTML = '<div class="empty-state">暂无用户</div>';
+            return;
+        }
+        
+        container.innerHTML = filtered.map(user => `
+            <div class="list-item ${selectedUserIds.has(user.id) ? 'selected' : ''}" onclick="toggleUserSelection(${user.id})">
+                <input type="checkbox" class="list-item-checkbox" ${selectedUserIds.has(user.id) ? 'checked' : ''} onclick="event.stopPropagation(); toggleUserSelection(${user.id})">
+                <div class="list-item-info">
+                    <div class="list-item-name">${escapeHtml(user.username)}</div>
+                    <div class="list-item-meta">被限制: ${user.restricted_subjects_count}/${user.total_subjects_count} 个科目</div>
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    // 渲染科目列表
+    function renderSubjectList() {
+        const container = document.getElementById('subjectListContainer');
+        const search = document.getElementById('subjectSearch').value.toLowerCase();
+        
+        const filtered = subjectsData.filter(s => 
+            s.name.toLowerCase().includes(search)
+        );
+        
+        if (filtered.length === 0) {
+            container.innerHTML = '<div class="empty-state">暂无科目</div>';
+            return;
+        }
+        
+        container.innerHTML = filtered.map(subject => `
+            <div class="list-item ${selectedSubjectIds.has(subject.id) ? 'selected' : ''}" onclick="toggleSubjectSelection(${subject.id})">
+                <input type="checkbox" class="list-item-checkbox" ${selectedSubjectIds.has(subject.id) ? 'checked' : ''} onclick="event.stopPropagation(); toggleSubjectSelection(${subject.id})">
+                <div class="list-item-info">
+                    <div class="list-item-name">${escapeHtml(subject.name)}</div>
+                    <div class="list-item-meta">${subject.question_count} 题 | 被限制: ${subject.restricted_users_count} 个用户</div>
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    // 切换用户选择
+    async function toggleUserSelection(userId) {
+        const wasSelected = selectedUserIds.has(userId);
+        
+        if (wasSelected) {
+            selectedUserIds.delete(userId);
+            renderUserList();
+        } else {
+            selectedUserIds.add(userId);
+            renderUserList();
+            
+            // 加载该用户的受限科目列表，并自动勾选
+            try {
+                const res = await fetch(`/admin/api/users/${userId}/subjects`);
+                const result = await res.json();
+                
+                if (result.status === 'success' && result.data) {
+                    const restrictedSubjects = result.data.all_subjects || [];
+                    const restrictedSubjectIds = restrictedSubjects
+                        .filter(s => s.is_restricted)
+                        .map(s => s.id);
+                    
+                    // 将用户的受限科目添加到选中列表
+                    restrictedSubjectIds.forEach(subjectId => {
+                        selectedSubjectIds.add(subjectId);
+                    });
+                    
+                    renderSubjectList();
+                }
+            } catch (error) {
+                console.error('加载用户受限科目失败:', error);
+            }
+        }
+    }
+    
+    // 切换科目选择
+    async function toggleSubjectSelection(subjectId) {
+        const wasSelected = selectedSubjectIds.has(subjectId);
+        
+        if (wasSelected) {
+            selectedSubjectIds.delete(subjectId);
+            renderSubjectList();
+        } else {
+            selectedSubjectIds.add(subjectId);
+            renderSubjectList();
+            
+            // 加载该科目被限制的用户列表，并自动勾选
+            try {
+                const res = await fetch(`/admin/api/subjects/${subjectId}/restricted_users`);
+                const result = await res.json();
+                
+                if (result.status === 'success' && result.data) {
+                    const restrictedUserIds = result.data.user_ids || [];
+                    
+                    // 将被限制的用户添加到选中列表（只添加当前页面存在的用户）
+                    restrictedUserIds.forEach(userId => {
+                        // 只添加在当前用户列表中的用户
+                        if (usersData.some(u => u.id === userId)) {
+                            selectedUserIds.add(userId);
+                        }
+                    });
+                    
+                    renderUserList();
+                }
+            } catch (error) {
+                console.error('加载科目被限制用户失败:', error);
+            }
+        }
+    }
+    
+    // 全选用户
+    function selectAllUsers() {
+        usersData.forEach(u => selectedUserIds.add(u.id));
+        renderUserList();
+    }
+    
+    // 全选科目
+    function selectAllSubjects() {
+        subjectsData.forEach(s => selectedSubjectIds.add(s.id));
+        renderSubjectList();
+    }
+    
+    // 清除选择
+    function clearSelection() {
+        selectedUserIds.clear();
+        selectedSubjectIds.clear();
+        renderUserList();
+        renderSubjectList();
+    }
+    
+    // 过滤用户
+    function filterUsers() {
+        renderUserList();
+    }
+    
+    // 过滤科目
+    function filterSubjects() {
+        renderSubjectList();
+    }
+    
+    // 批量限制
+    async function batchRestrict() {
+        if (selectedUserIds.size === 0 || selectedSubjectIds.size === 0) {
+            showError('请选择至少一个用户和一个科目');
+            return;
+        }
+        
+        if (!confirm(`确定要限制 ${selectedUserIds.size} 个用户访问 ${selectedSubjectIds.size} 个科目吗？`)) {
+            return;
+        }
+        
+        try {
+            const res = await fetch('/admin/api/subject_permissions/batch', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'restrict',
+                    user_ids: Array.from(selectedUserIds),
+                    subject_ids: Array.from(selectedSubjectIds)
+                })
+            });
+            
+            const result = await res.json();
+            if (result.status === 'success') {
+                showSuccess(result.message || '操作成功');
+                clearSelection();
+                loadData();
+            } else {
+                showError(result.message || '操作失败');
+            }
+        } catch (error) {
+            console.error('批量限制失败:', error);
+            showError('操作失败');
+        }
+    }
+    
+    // 批量取消限制
+    async function batchUnrestrict() {
+        if (selectedUserIds.size === 0 || selectedSubjectIds.size === 0) {
+            showError('请选择至少一个用户和一个科目');
+            return;
+        }
+        
+        if (!confirm(`确定要取消 ${selectedUserIds.size} 个用户对 ${selectedSubjectIds.size} 个科目的限制吗？`)) {
+            return;
+        }
+        
+        try {
+            const res = await fetch('/admin/api/subject_permissions/batch', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'unrestrict',
+                    user_ids: Array.from(selectedUserIds),
+                    subject_ids: Array.from(selectedSubjectIds)
+                })
+            });
+            
+            const result = await res.json();
+            if (result.status === 'success') {
+                showSuccess(result.message || '操作成功');
+                clearSelection();
+                loadData();
+            } else {
+                showError(result.message || '操作失败');
+            }
+        } catch (error) {
+            console.error('批量取消限制失败:', error);
+            showError('操作失败');
+        }
+    }
+    
+    // 加载刷题限制配置
+    async function loadQuizLimitConfig() {
+        try {
+            const res = await fetch('/admin/api/system_config/quiz_limit');
+            const result = await res.json();
+            
+            if (result.status === 'success') {
+                const config = result.data;
+                const switchEl = document.getElementById('quizLimitSwitch');
+                const statusEl = document.getElementById('quizLimitStatus');
+                const countInput = document.getElementById('quizLimitCount');
+                
+                if (config.quiz_limit_enabled) {
+                    switchEl.classList.add('active');
+                    statusEl.textContent = '开启';
+                } else {
+                    switchEl.classList.remove('active');
+                    statusEl.textContent = '关闭';
+                }
+                
+                countInput.value = config.quiz_limit_count || 100;
+            }
+        } catch (error) {
+            console.error('加载配置失败:', error);
+        }
+    }
+    
+    // 切换刷题限制开关
+    async function toggleQuizLimit() {
+        const switchEl = document.getElementById('quizLimitSwitch');
+        const isActive = switchEl.classList.contains('active');
+        const newValue = isActive ? '0' : '1';
+        
+        try {
+            const res = await fetch('/admin/api/system_config/quiz_limit_enabled', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    config_value: newValue
+                })
+            });
+            
+            const result = await res.json();
+            if (result.status === 'success') {
+                if (newValue === '1') {
+                    switchEl.classList.add('active');
+                    document.getElementById('quizLimitStatus').textContent = '开启';
+                } else {
+                    switchEl.classList.remove('active');
+                    document.getElementById('quizLimitStatus').textContent = '关闭';
+                }
+                showSuccess('配置已更新');
+            } else {
+                showError(result.message || '更新失败');
+            }
+        } catch (error) {
+            console.error('更新配置失败:', error);
+            showError('更新失败');
+        }
+    }
+    
+    // 更新刷题限制数量
+    async function updateQuizLimitCount() {
+        const count = parseInt(document.getElementById('quizLimitCount').value);
+        
+        if (isNaN(count) || count < 1) {
+            showError('请输入有效的数量（大于0）');
+            return;
+        }
+        
+        try {
+            const res = await fetch('/admin/api/system_config/quiz_limit_count', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    config_value: count.toString()
+                })
+            });
+            
+            const result = await res.json();
+            if (result.status === 'success') {
+                showSuccess('配置已更新');
+            } else {
+                showError(result.message || '更新失败');
+            }
+        } catch (error) {
+            console.error('更新配置失败:', error);
+            showError('更新失败');
+        }
+    }
+    
+    // HTML转义
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    // 显示成功消息
+    function showSuccess(message) {
+        showNotification(message, 'success');
+    }
+    
+    // 显示错误消息
+    function showError(message) {
+        showNotification(message, 'error');
+    }
+    
+    // 显示通知
+    function showNotification(message, type = 'info') {
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 16px 24px;
+            background: ${type === 'success' ? 'rgba(52, 199, 89, 0.15)' : type === 'error' ? 'rgba(255, 59, 48, 0.15)' : 'var(--primary-light)'};
+            color: ${type === 'success' ? 'var(--success)' : type === 'error' ? 'var(--danger)' : 'var(--primary)'};
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 10000;
+            font-weight: 500;
+            animation: slideIn 0.3s ease;
+        `;
+        notification.textContent = message;
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            notification.style.animation = 'slideOut 0.3s ease';
+            setTimeout(() => notification.remove(), 300);
+        }, 3000);
+    }
+    
+    // 添加动画样式
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes slideIn {
+            from { transform: translateX(400px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(400px); opacity: 0; }
+        }
+    `;
+    document.head.appendChild(style);
+    
+    // 页面加载时加载数据
+    document.addEventListener('DOMContentLoaded', () => {
+        loadData();
+    });
+</script>
+{% endblock %}
+

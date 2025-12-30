@@ -513,14 +513,18 @@ def admin_api_users():
             except Exception:
                 has_subject_admin_field = False
         
-        # 根据字段是否存在构建查询
+        # 根据字段是否存在构建查询（使用子查询避免GROUP BY复杂性）
         if has_subject_admin_field:
-            select_fields = 'id, username, is_admin, is_subject_admin, is_locked, created_at, last_active'
+            select_with_count = '''u.id, u.username, u.is_admin, u.is_subject_admin, u.is_locked, u.created_at, u.last_active,
+                COALESCE((SELECT COUNT(DISTINCT subject_id) FROM user_subjects WHERE user_id = u.id), 0) as restricted_subjects_count'''
         else:
-            select_fields = 'id, username, is_admin, is_locked, created_at, last_active'
+            select_with_count = '''u.id, u.username, u.is_admin, u.is_locked, u.created_at, u.last_active,
+                COALESCE((SELECT COUNT(DISTINCT subject_id) FROM user_subjects WHERE user_id = u.id), 0) as restricted_subjects_count'''
         
+        # 处理where子句：将条件中的字段引用改为u.前缀
+        where_for_query = where.replace('username', 'u.username')
         rows = conn.execute(
-            f'SELECT {select_fields} FROM users {where} ORDER BY {sort_map[sort]} {order} LIMIT ? OFFSET ?',
+            f'SELECT {select_with_count} FROM users u {where_for_query} ORDER BY u.{sort_map[sort]} {order} LIMIT ? OFFSET ?',
             params + [size, offset]
         ).fetchall()
         
@@ -551,10 +555,57 @@ def admin_api_users():
                 'is_locked': bool(r['is_locked']) if 'is_locked' in r.keys() else False,
                 'created_at': r['created_at'] if 'created_at' in r.keys() else '',
                 'is_online': is_online,
-                'last_active': last_active_val
+                'last_active': last_active_val,
+                'restricted_subjects_count': r['restricted_subjects_count'] or 0
             })
         
-        return jsonify({'status':'success','data': data, 'total': total})
+        # 统计所有用户的全局数据（不受分页和搜索影响）
+        # 获取所有用户的字段用于统计，根据字段是否存在决定查询字段
+        if has_subject_admin_field:
+            all_users_stats_query = 'SELECT is_admin, is_subject_admin, is_locked, last_active FROM users'
+        else:
+            all_users_stats_query = 'SELECT is_admin, is_locked, last_active FROM users'
+        all_users_rows = conn.execute(all_users_stats_query).fetchall()
+        
+        # 统计全局数据
+        online_count = 0
+        admin_count = 0
+        subject_admin_count = 0
+        locked_count = 0
+        
+        for user_row in all_users_rows:
+            # 统计管理员
+            if user_row['is_admin']:
+                admin_count += 1
+            # 统计科目管理员（不包括管理员）
+            elif has_subject_admin_field and 'is_subject_admin' in user_row.keys() and user_row['is_subject_admin']:
+                subject_admin_count += 1
+            # 统计锁定用户
+            if user_row['is_locked']:
+                locked_count += 1
+            # 统计在线用户（5分钟内有活动）
+            last_active_val = user_row['last_active'] if 'last_active' in user_row.keys() else None
+            if last_active_val:
+                try:
+                    last_active_str = last_active_val.replace('T', ' ').split('.')[0]
+                    last_active = datetime.strptime(last_active_str, '%Y-%m-%d %H:%M:%S')
+                    if (datetime.utcnow() - last_active) < timedelta(minutes=5):
+                        online_count += 1
+                except Exception:
+                    pass
+        
+        # 返回数据，包含全局统计数据
+        return jsonify({
+            'status': 'success',
+            'data': data,
+            'total': total,
+            'stats': {
+                'online': online_count,
+                'admin': admin_count,
+                'subject_admin': subject_admin_count,
+                'locked': locked_count
+            }
+        })
     except Exception as e:
         current_app.logger.error(f'用户列表API错误: {e}', exc_info=True)
         return jsonify({'status': 'error', 'message': f'加载用户列表失败: {str(e)}'}), 500
@@ -1205,6 +1256,132 @@ def download_template():
     """提供题库导入模板文件的下载"""
     directory = os.path.join(current_app.root_path, '..', 'instance')
     return send_from_directory(directory, 'question_import_template.xlsx', as_attachment=True)
+
+
+@admin_api_bp.route('/questions/export/excel', methods=['GET'])
+def export_questions_to_excel():
+    """导出题目为Excel文件（使用与导入相同的模板格式）"""
+    subject_id = request.args.get('subject_id')
+    q_type = request.args.get('type', 'all')
+    
+    conn = get_db()
+    
+    # 构建查询SQL
+    sql = '''
+        SELECT q.*, s.name as subject_name
+        FROM questions q
+        LEFT JOIN subjects s ON q.subject_id = s.id
+        WHERE 1=1
+    '''
+    params = []
+    
+    if subject_id:
+        sql += ' AND q.subject_id = ?'
+        params.append(subject_id)
+    
+    if q_type and q_type != 'all':
+        sql += ' AND q.q_type = ?'
+        params.append(q_type)
+    
+    sql += ' ORDER BY q.id'
+    rows = conn.execute(sql, params).fetchall()
+    
+    if not rows:
+        return jsonify({'status': 'error', 'message': '没有可导出的题目'}), 400
+    
+    # 准备数据
+    export_data = []
+    max_options = 0
+    max_blanks = 0
+    
+    for row in rows:
+        question = dict(row)
+        q_type_val = question.get('q_type', '')
+        
+        # 解析选项
+        options = []
+        if question.get('options'):
+            try:
+                options = json.loads(question['options'])
+            except:
+                options = []
+        
+        # 解析填空题答案
+        blank_answers = []
+        if q_type_val == '填空题' and question.get('answer'):
+            blank_answers = question['answer'].split(';;')
+        
+        max_options = max(max_options, len(options))
+        max_blanks = max(max_blanks, len(blank_answers))
+        
+        # 构建基础数据行
+        row_data = {
+            'subject': question.get('subject_name', ''),
+            'q_type': q_type_val,
+            'content': question.get('content', ''),
+            'answer': question.get('answer', '') if q_type_val != '填空题' else '',
+            'explanation': question.get('explanation', '')
+        }
+        
+        # 添加选项列
+        for i, opt in enumerate(options):
+            # 移除选项前缀（如 "A. "）
+            opt_text = opt
+            if opt_text.startswith(chr(ord('A') + i) + '. '):
+                opt_text = opt_text[len(chr(ord('A') + i) + '. '):]
+            row_data[f'option_{i}'] = opt_text
+        
+        # 添加填空题答案列
+        for i, blank in enumerate(blank_answers):
+            row_data[f'blank_{i}'] = blank
+        
+        export_data.append(row_data)
+    
+    # 构建DataFrame
+    columns = ['subject', 'q_type', 'content', 'answer', 'explanation']
+    
+    # 添加选项列
+    for i in range(max_options):
+        columns.append(f'option_{i}')
+    
+    # 添加填空题答案列
+    for i in range(max_blanks):
+        columns.append(f'blank_{i}')
+    
+    # 创建DataFrame
+    df = pd.DataFrame(export_data)
+    
+    # 确保所有列都存在
+    for col in columns:
+        if col not in df.columns:
+            df[col] = ''
+    
+    # 按列顺序重新排列
+    df = df[columns]
+    
+    # 创建Excel文件
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, sheet_name='题目示例', index=False)
+    
+    output.seek(0)
+    
+    # 生成文件名
+    subject_name = "all_subjects"
+    if subject_id:
+        subject_row = conn.execute('SELECT name FROM subjects WHERE id = ?', (subject_id,)).fetchone()
+        if subject_row:
+            subject_name = subject_row['name']
+    
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"questions_export_{subject_name}_{timestamp}.xlsx"
+    
+    return send_file(
+        output,
+        as_attachment=True,
+        download_name=filename,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
 
 
 @admin_api_bp.route('/questions/upload_image', methods=['POST'])
@@ -1917,5 +2094,408 @@ def api_delete_coding_question(question_id):
         return jsonify({
             'status': 'error',
             'message': '删除编程题失败'
+        }), 500
+
+
+# ==================== 用户科目权限管理 API ====================
+
+from app.modules.admin.services.subject_permission_service import SubjectPermissionService
+from app.modules.admin.services.system_config_service import SystemConfigService
+from app.modules.admin.services.quiz_stats_service import QuizStatsService
+from app.modules.admin.schemas import (
+    SubjectIdsSchema,
+    BatchSubjectActionSchema,
+    BatchUserSubjectActionSchema,
+    SystemConfigUpdateSchema,
+    BatchResetQuizCountSchema
+)
+from app.core.utils.decorators import admin_required
+
+
+@admin_api_bp.route('/users/<int:user_id>/subjects', methods=['GET'])
+@admin_required
+def get_user_subjects(user_id: int):
+    """获取用户科目权限信息"""
+    try:
+        data = SubjectPermissionService.get_user_subjects(user_id)
+        return jsonify({
+            'status': 'success',
+            'data': data
+        })
+    except ValueError as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 404
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'获取用户科目权限失败: {str(e)}'
+        }), 500
+
+
+@admin_api_bp.route('/users/<int:user_id>/subjects', methods=['POST'])
+@admin_required
+def restrict_user_subjects(user_id: int):
+    """限制用户访问指定科目"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({
+                'status': 'error',
+                'message': '请求数据不能为空'
+            }), 400
+        
+        # 使用Pydantic验证请求数据
+        try:
+            schema = SubjectIdsSchema.model_validate(data)
+        except Exception as e:
+            return jsonify({
+                'status': 'error',
+                'message': f'数据验证失败: {str(e)}'
+            }), 400
+        
+        admin_id = session.get('user_id')
+        result = SubjectPermissionService.restrict_subjects(
+            user_id,
+            schema.subject_ids,
+            admin_id
+        )
+        
+        return jsonify({
+            'status': 'success',
+            'message': result['message'],
+            'data': {
+                'restricted_count': result['restricted_count']
+            }
+        })
+    except ValueError as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 400
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'限制科目失败: {str(e)}'
+        }), 500
+
+
+@admin_api_bp.route('/users/<int:user_id>/subjects/<int:subject_id>', methods=['DELETE'])
+@admin_required
+def unrestrict_user_subject(user_id: int, subject_id: int):
+    """取消用户对指定科目的限制"""
+    try:
+        SubjectPermissionService.unrestrict_subject(user_id, subject_id)
+        return jsonify({
+            'status': 'success',
+            'message': '已取消科目限制'
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'取消限制失败: {str(e)}'
+        }), 500
+
+
+@admin_api_bp.route('/subjects/<int:subject_id>/restricted_users', methods=['GET'])
+@admin_required
+def get_subject_restricted_users(subject_id: int):
+    """获取某个科目被限制的用户ID列表"""
+    try:
+        user_ids = SubjectPermissionService.get_subject_restricted_users(subject_id)
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'user_ids': user_ids
+            }
+        })
+    except ValueError as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 404
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'获取被限制用户列表失败: {str(e)}'
+        }), 500
+
+
+@admin_api_bp.route('/users/<int:user_id>/subjects/batch', methods=['POST'])
+@admin_required
+def batch_user_subjects(user_id: int):
+    """批量限制/取消限制科目"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({
+                'status': 'error',
+                'message': '请求数据不能为空'
+            }), 400
+        
+        try:
+            schema = BatchSubjectActionSchema.model_validate(data)
+        except Exception as e:
+            return jsonify({
+                'status': 'error',
+                'message': f'数据验证失败: {str(e)}'
+            }), 400
+        
+        admin_id = session.get('user_id')
+        result = SubjectPermissionService.batch_restrict_subjects(
+            user_id,
+            schema.subject_ids,
+            schema.action,
+            admin_id
+        )
+        
+        return jsonify({
+            'status': 'success',
+            'message': result['message'],
+            'data': result
+        })
+    except ValueError as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 400
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'批量操作失败: {str(e)}'
+        }), 500
+
+
+# ==================== 批量管理 API ====================
+
+@admin_api_bp.route('/subject_permissions/overview', methods=['GET'])
+@admin_required
+def get_subject_permissions_overview():
+    """获取批量管理页面数据"""
+    try:
+        page = parse_int(request.args.get('page'), 1, 1)
+        per_page = parse_int(request.args.get('per_page'), 20, 1, 100)
+        search = request.args.get('search', '').strip() or None
+        
+        data = SubjectPermissionService.get_overview_data(page, per_page, search)
+        
+        return jsonify({
+            'status': 'success',
+            'data': data
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'获取数据失败: {str(e)}'
+        }), 500
+
+
+@admin_api_bp.route('/subject_permissions/batch', methods=['POST'])
+@admin_required
+def batch_subject_permissions():
+    """批量操作用户科目权限"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({
+                'status': 'error',
+                'message': '请求数据不能为空'
+            }), 400
+        
+        try:
+            schema = BatchUserSubjectActionSchema.model_validate(data)
+        except Exception as e:
+            return jsonify({
+                'status': 'error',
+                'message': f'数据验证失败: {str(e)}'
+            }), 400
+        
+        admin_id = session.get('user_id')
+        result = SubjectPermissionService.batch_restrict_users_subjects(
+            schema.user_ids,
+            schema.subject_ids,
+            schema.action,
+            admin_id
+        )
+        
+        return jsonify({
+            'status': 'success',
+            'message': result['message'],
+            'data': {
+                'affected_users': result['affected_users'],
+                'affected_subjects': result['affected_subjects']
+            }
+        })
+    except ValueError as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 400
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'批量操作失败: {str(e)}'
+        }), 500
+
+
+# ==================== 系统配置管理 API ====================
+
+@admin_api_bp.route('/system_config', methods=['GET'])
+@admin_required
+def get_system_configs():
+    """获取所有系统配置"""
+    try:
+        configs = SystemConfigService.get_all_configs()
+        return jsonify({
+            'status': 'success',
+            'data': configs
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'获取配置失败: {str(e)}'
+        }), 500
+
+
+@admin_api_bp.route('/system_config/<config_key>', methods=['PUT'])
+@admin_required
+def update_system_config(config_key: str):
+    """更新系统配置"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({
+                'status': 'error',
+                'message': '请求数据不能为空'
+            }), 400
+        
+        try:
+            schema = SystemConfigUpdateSchema.model_validate(data)
+        except Exception as e:
+            return jsonify({
+                'status': 'error',
+                'message': f'数据验证失败: {str(e)}'
+            }), 400
+        
+        admin_id = session.get('user_id')
+        config = SystemConfigService.update_config(
+            config_key,
+            schema.config_value,
+            schema.description,
+            admin_id
+        )
+        
+        return jsonify({
+            'status': 'success',
+            'message': '配置更新成功',
+            'data': config
+        })
+    except ValueError as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 400
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'更新配置失败: {str(e)}'
+        }), 500
+
+
+@admin_api_bp.route('/system_config/quiz_limit', methods=['GET'])
+@admin_required
+def get_quiz_limit_config():
+    """获取刷题限制配置"""
+    try:
+        config = SystemConfigService.get_quiz_limit_config()
+        return jsonify({
+            'status': 'success',
+            'data': config
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'获取配置失败: {str(e)}'
+        }), 500
+
+
+# ==================== 用户刷题数管理 API ====================
+
+@admin_api_bp.route('/users/<int:user_id>/quiz_stats', methods=['GET'])
+@admin_required
+def get_user_quiz_stats(user_id: int):
+    """获取用户刷题统计"""
+    try:
+        data = QuizStatsService.get_user_quiz_stats(user_id)
+        return jsonify({
+            'status': 'success',
+            'data': data
+        })
+    except ValueError as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 404
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'获取统计失败: {str(e)}'
+        }), 500
+
+
+@admin_api_bp.route('/users/<int:user_id>/reset_quiz_count', methods=['POST'])
+@admin_required
+def reset_user_quiz_count(user_id: int):
+    """重置用户刷题数"""
+    try:
+        QuizStatsService.reset_user_quiz_count(user_id)
+        return jsonify({
+            'status': 'success',
+            'message': '刷题数重置成功'
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'重置失败: {str(e)}'
+        }), 500
+
+
+@admin_api_bp.route('/users/batch_reset_quiz_count', methods=['POST'])
+@admin_required
+def batch_reset_quiz_count():
+    """批量重置用户刷题数"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({
+                'status': 'error',
+                'message': '请求数据不能为空'
+            }), 400
+        
+        try:
+            schema = BatchResetQuizCountSchema.model_validate(data)
+        except Exception as e:
+            return jsonify({
+                'status': 'error',
+                'message': f'数据验证失败: {str(e)}'
+            }), 400
+        
+        result = QuizStatsService.batch_reset_quiz_count(schema.user_ids)
+        
+        return jsonify({
+            'status': 'success',
+            'message': result['message'],
+            'data': result
+        })
+    except ValueError as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 400
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': f'批量重置失败: {str(e)}'
         }), 500
 

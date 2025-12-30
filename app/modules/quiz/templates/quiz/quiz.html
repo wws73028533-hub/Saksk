@@ -15,6 +15,19 @@
   {% include 'quiz/partials/quiz/_modals_forward.html' %}
   {% include 'quiz/partials/quiz/_modals_score.html' %}
 
+  {# 悬浮球功能提示横幅 - 放在 script 之前确保 DOM 已存在 #}
+  <div id="fabHint" class="fab-hint" style="display: none;">
+    <span class="fab-hint-icon">✨</span>
+    <div class="fab-hint-content">
+      <div class="fab-hint-title">发现快捷功能</div>
+      <div class="fab-hint-text">点击右下角悬浮球，体验：<span class="fab-hint-feature">自动切题</span>、<span class="fab-hint-feature">AI解析</span>、<span class="fab-hint-feature">布局切换</span>等功能</div>
+    </div>
+    <button class="fab-hint-try" aria-label="试试看" onclick="tryFabHint()" title="打开悬浮球菜单">试试看</button>
+    <button class="fab-hint-dismiss" aria-label="不再提示" onclick="dismissFabHintPermanently()" title="不再提示">不再提示</button>
+    <button class="fab-hint-close" aria-label="关闭" onclick="dismissFabHint()" title="关闭">×</button>
+    <div class="fab-hint-arrow">→</div>
+  </div>
+
   {% include 'quiz/partials/quiz/_scripts_main.html' %}
 </body>
 </html>

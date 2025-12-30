@@ -9,7 +9,9 @@ exam_api_bp = Blueprint('exam_api', __name__)
 
 @exam_api_bp.route('/exams/create', methods=['POST'])
 def api_exams_create():
-    """创建考试API"""
+    """创建考试API（添加科目权限检查）"""
+    from app.core.utils.subject_permissions import can_user_access_subject
+    
     uid = session.get('user_id')
     if not uid:
         return jsonify({'status': 'unauthorized', 'message': '请先登录'}), 401
@@ -19,6 +21,22 @@ def api_exams_create():
     duration = data.get('duration') or 60
     types_cfg = data.get('types') or {}
     scores_cfg = data.get('scores') or {}
+    
+    # 如果指定了科目，检查用户是否有权限访问该科目
+    if subject != 'all':
+        conn = get_db()
+        subject_row = conn.execute(
+            'SELECT id FROM subjects WHERE name = ?',
+            (subject,)
+        ).fetchone()
+        
+        if subject_row:
+            subject_id = subject_row['id']
+            if not can_user_access_subject(uid, subject_id):
+                return jsonify({
+                    'status': 'error',
+                    'message': '您没有权限访问该科目'
+                }), 403
 
     exam_id = Exam.create(uid, subject, duration, types_cfg, scores_cfg)
     return jsonify({'status': 'success', 'exam_id': exam_id})

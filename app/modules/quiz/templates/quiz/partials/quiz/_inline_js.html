@@ -101,10 +101,11 @@ function escapeHtml(s){
 async function fetchForwardUsers(){
     const inp = document.getElementById('forwardUserSearch');
     const kw = (inp && inp.value) ? inp.value.trim() : '';
-    const res = await fetch(`/api/chat/users?q=${encodeURIComponent(kw)}`);
+    // 只获取已有会话的用户列表
+    const res = await fetch(`/api/chat/conversation_users?q=${encodeURIComponent(kw)}`);
     const js = await res.json();
     if (!res.ok || js.status !== 'success') {
-        showToast(js.message || '搜索用户失败');
+        showToast(js.message || '获取用户列表失败');
         return;
     }
     renderForwardUserList(js.data || []);
@@ -114,14 +115,15 @@ function renderForwardUserList(users){
     const list = document.getElementById('forwardUserList');
     if (!list) return;
     if (!users.length) {
-        list.innerHTML = `<div style="padding:10px 6px; color:var(--text-sub);">没有匹配的用户</div>`;
+        list.innerHTML = `<div style="padding:10px 6px; color:var(--text-sub);">暂无聊天会话，请先在聊天中与用户建立会话</div>`;
         return;
     }
 
     list.innerHTML = users.slice(0, 50).map(u=>{
-        const name = u.username || '用户';
+        // 优先显示备注，没有备注则显示用户名
+        const displayName = (u.remark && u.remark.trim()) ? u.remark.trim() : (u.username || '用户');
         const avatar = u.avatar || '';
-        const initial = (name || 'U').slice(0,1).toUpperCase();
+        const initial = (displayName || 'U').slice(0,1).toUpperCase();
         const avHtml = avatar
           ? (()=>{
                 const safeUrl = String(avatar||'')
@@ -131,11 +133,16 @@ function renderForwardUserList(users){
             })()
           : `<div style="width:38px;height:38px;border-radius:999px;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;">${escapeHtml(initial)}</div>`;
 
+        // 如果有备注，显示备注和用户名；否则只显示用户名
+        const nameHtml = u.remark && u.remark.trim()
+            ? `<div style="font-weight:700;">${escapeHtml(displayName)}</div><div style="font-size:11px; color:var(--text-sub);">${escapeHtml(u.username || '')}</div>`
+            : `<div style="font-weight:700;">${escapeHtml(displayName)}</div>`;
+
         return `
           <div style="display:flex; align-items:center; gap:10px; padding:10px 10px; border-radius:14px; border:1px solid var(--border-color); cursor:pointer;" onclick="forwardToUser(${Number(u.id||0)})">
             ${avHtml}
             <div style="flex:1; min-width:0;">
-              <div style="font-weight:700;">${escapeHtml(name)}</div>
+              ${nameHtml}
               <div style="font-size:12px; color:var(--text-sub);">ID: ${escapeHtml(String(u.id||''))}</div>
             </div>
             <div style="color:var(--primary); font-weight:700;">发送</div>
@@ -190,11 +197,24 @@ let cachedOrder = null; // 缓存题目顺序，保存进度时需要保留
 const FAB_ENABLED_KEY = 'quiz_fab_enabled_v1';
 const FAB_AUTO_NEXT_KEY = 'quiz_fab_auto_next';
 const FAB_POS_KEY = 'quiz_fab_pos_v1';
+const FAB_DOCK_LAYOUT_KEY = 'quiz_fab_dock_layout'; // 'default' | 'right' | 'left'
+const FAB_HINT_DISMISSED_KEY = 'quiz_fab_hint_dismissed';
 let fabOpen = false;
 
 function isFabEnabled(){
     // 默认开启；用户在题库设置页关闭后写入 '0'
     return localStorage.getItem(FAB_ENABLED_KEY) !== '0';
+}
+
+function getDockLayout(){
+    // 默认返回 'default'；用户设置后返回 'right' 或 'left'
+    const layout = localStorage.getItem(FAB_DOCK_LAYOUT_KEY);
+    return layout === 'right' || layout === 'left' ? layout : 'default';
+}
+
+function setDockLayout(layout){
+    // layout: 'default' | 'right' | 'left'
+    localStorage.setItem(FAB_DOCK_LAYOUT_KEY, layout);
 }
 
 function clamp(v, min, max){ return Math.max(min, Math.min(max, v)); }
@@ -273,6 +293,29 @@ function updateFabUI(){
 
     const btnAuto = menu.querySelector('.quiz-fab-item[data-action="autoNext"] .quiz-fab-icon');
     if (btnAuto) btnAuto.textContent = isFabAutoNextEnabled() ? '✓✓' : '✓';
+
+    // 更新布局切换按钮状态
+    const btnLayout = menu.querySelector('.quiz-fab-item[data-action="toggleLayout"]');
+    if (btnLayout) {
+        const layout = getDockLayout();
+        const iconEl = btnLayout.querySelector('.quiz-fab-icon');
+        btnLayout.classList.toggle('active', layout !== 'default');
+        
+        // 根据布局状态显示不同的图标和提示
+        if (layout === 'right') {
+            if (iconEl) iconEl.textContent = '→';
+            btnLayout.title = '切换为左侧布局';
+            btnLayout.setAttribute('aria-label', '切换为左侧布局');
+        } else if (layout === 'left') {
+            if (iconEl) iconEl.textContent = '←';
+            btnLayout.title = '恢复默认布局';
+            btnLayout.setAttribute('aria-label', '恢复默认布局');
+        } else {
+            if (iconEl) iconEl.textContent = '⇄';
+            btnLayout.title = '切换布局';
+            btnLayout.setAttribute('aria-label', '切换布局');
+        }
+    }
 
     // 根据贴边方向调整菜单展开方向（贴左→向右展开；贴右→向左展开）
     try {
@@ -517,9 +560,26 @@ function bindFab(){
                 return;
             }
 
-            if (action === 'focus') {
-                document.body.classList.toggle('quiz-focus-mode');
-                showToast(document.body.classList.contains('quiz-focus-mode') ? '已开启专注模式' : '已退出专注模式');
+            if (action === 'toggleLayout') {
+                const currentLayout = getDockLayout();
+                let nextLayout;
+                if (currentLayout === 'default') {
+                    nextLayout = 'right';
+                } else if (currentLayout === 'right') {
+                    nextLayout = 'left';
+                } else {
+                    nextLayout = 'default';
+                }
+                setDockLayout(nextLayout);
+                updateFabUI();
+                // 重新应用布局到当前题目
+                showQuestion(currentIndex);
+                const messages = {
+                    'default': '已恢复默认布局',
+                    'right': '已切换为右侧布局',
+                    'left': '已切换为左侧布局'
+                };
+                showToast(messages[nextLayout]);
                 toggleFab(false);
                 return;
             }
@@ -650,6 +710,9 @@ async function init() {
     const shouldShowFab = isFabEnabled() && (mode !== 'exam' || (mode === 'exam' && EXAM_SUBMITTED));
     if (shouldShowFab) {
         bindFab();
+        // 显示悬浮球功能提示（如果用户未关闭）
+        // 延迟一点确保页面渲染完成
+        setTimeout(showFabHint, 500);
     } else {
         try {
             const fab = document.getElementById('quizFab');
@@ -886,12 +949,28 @@ function showQuestion(index) {
     const type = currentQ.getAttribute('data-type');
     const answer = currentQ.getAttribute('data-answer');
 
-    // 仅问答题/计算题：把答案/解析 dock 放到主卡右侧（桌面端）。
-    // 其它题型保持原布局（dock 在主卡下方）。
+    // 布局控制：根据题型或用户设置决定dock位置
+    // 1. 如果用户设置了布局（right/left），所有题型都使用该布局
+    // 2. 否则，仅问答题/计算题使用右侧布局
     const mainArea = document.querySelector('.main-area');
     if (mainArea) {
+        const userLayout = getDockLayout();
         const isRightDockTypes = (type === '问答题' || type === '计算题');
-        mainArea.classList.toggle('with-right-dock', isRightDockTypes);
+        
+        // 移除所有布局类
+        mainArea.classList.remove('with-right-dock', 'with-left-dock');
+        
+        if (userLayout === 'right') {
+            // 用户强制右侧布局
+            mainArea.classList.add('with-right-dock');
+        } else if (userLayout === 'left') {
+            // 用户强制左侧布局
+            mainArea.classList.add('with-left-dock');
+        } else if (isRightDockTypes) {
+            // 默认：问答题/计算题使用右侧布局
+            mainArea.classList.add('with-right-dock');
+        }
+        
         // 初始布局：在答案/解析还没展示前，让主卡片居中
         updateDockEmptyState();
     }
@@ -1270,7 +1349,7 @@ function hideAnswerExplainDock() {
     updateDockEmptyState();
 }
 
-function checkAnswer(isManualClick) {
+async function checkAnswer(isManualClick) {
     if (mode === 'exam') return;
 
     const currentQ = questions[currentIndex];
@@ -1283,13 +1362,47 @@ function checkAnswer(isManualClick) {
         return;
     }
 
-    // 渲染“答案/解析”到 mainCard 外部的独立卡片
+    // 先判断答案正确性（用于发送到服务器）
+    let isCorrect = judgeQuestion(currentQ, type, answer);
+    
+    // 登录用户：在显示答案前先检查刷题限制
+    if (LOGGED_IN) {
+        try {
+            const res = await fetch('/api/record_result', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ question_id: qId, is_correct: isCorrect })
+            });
+            const data = await res.json();
+            
+            if (data.status === 'error') {
+                // 处理刷题限制错误
+                if (data.code === 'QUIZ_LIMIT_REACHED') {
+                    showToast(data.message || '已达到刷题限制');
+                    // 达到限制，不显示答案，直接返回
+                    return;
+                } else {
+                    showToast(data.message || '保存失败');
+                    // 其他错误也阻止显示答案
+                    return;
+                }
+            }
+            // 成功：继续显示答案
+        } catch (error) {
+            console.error('保存答题记录失败:', error);
+            showToast('网络错误，请重试');
+            // 网络错误也阻止显示答案
+            return;
+        }
+    }
+
+    // 渲染"答案/解析"到 mainCard 外部的独立卡片
     renderAnswerExplainFromQuestion(currentQ);
     
     document.getElementById('btn-check').style.display = 'none';
     document.getElementById('btn-next').style.display = 'block';
     
-    let isCorrect = judgeQuestion(currentQ, type, answer);
+    // 显示反馈
     styleFeedback(currentQ, type, answer, isCorrect);
     setAnswerResultBadge(isCorrect);
     
@@ -1304,13 +1417,7 @@ function checkAnswer(isManualClick) {
         listItem.classList.remove('done-correct');
     }
 
-    if (LOGGED_IN) {
-    fetch('/api/record_result', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ question_id: qId, is_correct: isCorrect })
-    });
-    } else {
+    if (!LOGGED_IN) {
         // 未登录不写入错题本，只在本地保留效果
         showToast('未登录：错题不会保存到服务器');
     }
@@ -2382,4 +2489,155 @@ function changeSize(sz){
     url.searchParams.set('size', sz);
     url.searchParams.set('page', 1);
     window.location.href = url.toString();
+}
+
+// ===== 悬浮球功能提示横幅 =====
+function showFabHint() {
+    // 检查用户是否选择了"不再提示"
+    const dismissed = localStorage.getItem(FAB_HINT_DISMISSED_KEY);
+    if (dismissed === '1') {
+        console.log('[悬浮球提示] 用户已选择不再提示');
+        return;
+    }
+    
+    console.log('[悬浮球提示] 开始显示提示');
+    
+    // 确保 DOM 已加载，重试机制
+    function tryShowHint(retries) {
+        retries = retries || 0;
+        const hint = document.getElementById('fabHint');
+        if (!hint) {
+            // 如果元素还不存在，最多重试10次（1秒）
+            if (retries < 10) {
+                setTimeout(() => tryShowHint(retries + 1), 100);
+            } else {
+                console.warn('[悬浮球提示] 元素未找到，可能已被移除');
+            }
+            return;
+        }
+        
+        console.log('[悬浮球提示] 找到元素，准备显示');
+        
+        // 延迟显示，避免与页面加载冲突
+        setTimeout(() => {
+            if (hint) {
+                hint.style.display = 'flex';
+                hint.style.opacity = '0.9'; // 确保初始透明度正确
+                console.log('[悬浮球提示] 已显示');
+                // 5秒后自动淡出（但不关闭，用户仍可手动关闭）
+                setTimeout(() => {
+                    if (hint && hint.style.display !== 'none') {
+                        hint.style.opacity = '0.5';
+                        console.log('[悬浮球提示] 已淡出');
+                    }
+                }, 5000);
+            }
+        }, 1000);
+    }
+    
+    tryShowHint();
+}
+
+// 关闭本次提示（不保存状态，下次仍会显示）
+function dismissFabHint() {
+    const hint = document.getElementById('fabHint');
+    if (hint) {
+        hint.style.display = 'none';
+        // 不保存到localStorage，下次进入仍会显示
+    }
+}
+
+// 不再提示（保存状态，下次不再显示）
+function dismissFabHintPermanently() {
+    const hint = document.getElementById('fabHint');
+    if (hint) {
+        hint.style.display = 'none';
+        localStorage.setItem(FAB_HINT_DISMISSED_KEY, '1');
+    }
+}
+
+// 试试看：打开悬浮球菜单
+function tryFabHint() {
+    const fab = document.getElementById('quizFab');
+    if (fab) {
+        // 触发悬浮球点击，打开菜单
+        fab.click();
+        // 关闭提示横幅
+        dismissFabHint();
+    }
+}
+
+// 全局函数，供HTML onclick调用
+window.dismissFabHint = dismissFabHint;
+window.dismissFabHintPermanently = dismissFabHintPermanently;
+window.tryFabHint = tryFabHint;
+
+// ===== 快捷键提示横幅 =====
+const SHORTCUT_HINT_DISMISSED_KEY = 'shortcut_hint_dismissed';
+
+function showShortcutHint() {
+    // 检查用户是否选择了"不再提示"
+    const dismissed = localStorage.getItem(SHORTCUT_HINT_DISMISSED_KEY);
+    if (dismissed === '1') {
+        return;
+    }
+    
+    const hint = document.getElementById('shortcutHint');
+    if (!hint) return;
+    
+    // 延迟显示，避免与页面加载冲突
+    setTimeout(() => {
+        if (hint) {
+            hint.style.display = 'flex';
+            hint.style.opacity = '1';
+            // 5秒后自动淡出（但不关闭，用户仍可手动关闭）
+            setTimeout(() => {
+                if (hint && hint.style.display !== 'none') {
+                    hint.style.opacity = '0.5';
+                }
+            }, 5000);
+        }
+    }, 1500); // 比悬浮球提示稍晚显示，避免重叠
+}
+
+// 关闭本次提示（不保存状态，下次仍会显示）
+function dismissShortcutHint() {
+    const hint = document.getElementById('shortcutHint');
+    if (hint) {
+        hint.style.display = 'none';
+    }
+}
+
+// 不再提示（保存状态，下次不再显示）
+function dismissShortcutHintPermanently() {
+    const hint = document.getElementById('shortcutHint');
+    if (hint) {
+        hint.style.display = 'none';
+        localStorage.setItem(SHORTCUT_HINT_DISMISSED_KEY, '1');
+    }
+}
+
+// 跳转到题库设置页
+function goToShortcutSettings() {
+    window.location.href = '/quiz_settings';
+    dismissShortcutHint();
+}
+
+// 全局函数，供HTML onclick调用
+window.dismissShortcutHint = dismissShortcutHint;
+window.dismissShortcutHintPermanently = dismissShortcutHintPermanently;
+window.goToShortcutSettings = goToShortcutSettings;
+
+// 调试用：手动测试显示提示（可在控制台调用 testFabHint()）
+window.testFabHint = function() {
+    console.log('[测试] 清除关闭状态并显示提示');
+    localStorage.removeItem(FAB_HINT_DISMISSED_KEY);
+    showFabHint();
+};
+
+// 页面加载完成后显示快捷键提示（延迟显示，避免与悬浮球提示重叠）
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', showShortcutHint);
+} else {
+    setTimeout(showShortcutHint, 1500);
 }

@@ -6,6 +6,7 @@
   <title>历史通知 - 全能刷题库</title>
   <style>
     :root{--bg:#f5f5f7;--card:#fff;--text:#1d1d1f;--sub:#6e6e73;--primary:#007aff;--border:rgba(0,0,0,.08)}
+    body.dark-mode{--bg:#000;--card:rgba(28,28,30,.9);--text:#f5f5f7;--sub:#a1a1a6;--primary:#0a84ff;--border:rgba(255,255,255,.16)}
 
     /* 全局滚动条样式 - 极简风格 */
     * { scrollbar-width: thin; scrollbar-color: transparent transparent; }
@@ -42,14 +43,19 @@
 
     /* modal */
     .overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;padding:16px;z-index:999}
-    .modal{width:min(760px, 100%);max-height:min(80vh, 760px);overflow:auto;background:#fff;border-radius:16px;box-shadow:0 20px 50px rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.08)}
-    .modal-hd{padding:14px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;position:sticky;top:0;background:#fff}
-    .modal-hd .mh{font-weight:800}
-    .btn{border:none;background:rgba(0,0,0,.06);padding:8px 10px;border-radius:10px;cursor:pointer}
+    .modal{width:min(760px, 100%);max-height:min(80vh, 760px);overflow:auto;background:var(--card);border-radius:16px;box-shadow:0 20px 50px rgba(0,0,0,.25);border:1px solid var(--border)}
+    .modal-hd{padding:14px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;position:sticky;top:0;background:var(--card)}
+    .modal-hd .mh{font-weight:800;color:var(--text)}
+    .btn{border:none;background:rgba(0,0,0,.06);padding:8px 10px;border-radius:10px;cursor:pointer;color:var(--text)}
+    body.dark-mode .btn{background:rgba(255,255,255,.1);color:var(--text)}
+    body.dark-mode .btn:hover{background:rgba(255,255,255,.15)}
     .modal-bd{padding:14px 14px}
-    .modal-bd .mc{white-space:pre-wrap;line-height:1.75;color:#1d1d1f;font-size:14px}
+    .modal-bd .mc{white-space:pre-wrap;line-height:1.75;color:var(--text);font-size:14px}
     .modal-ft{padding:14px 14px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px}
     .btn-primary{background:var(--primary);color:#fff}
+
+    body.dark-mode ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15)}
+    body.dark-mode *:hover::-webkit-scrollbar-thumb{background:rgba(255,255,255,.25)}
 
     @media (max-width: 520px){
       .t{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
@@ -89,6 +95,10 @@
   </div>
 
   <script>
+    // 主题同步（与首页保持一致的方式，最先执行）
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark') document.body.classList.add('dark-mode');
+
     const TYPE_LABEL = {info:'信息',announcement:'公告',reminder:'提醒',warning:'警告'};
 
     let listData = [];

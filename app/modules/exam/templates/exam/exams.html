@@ -20,6 +20,36 @@
       --blur: blur(20px) saturate(180%);
     }
 
+    /* 深色模式变量覆盖，与首页保持一致的 iOS 18 风格 */
+    body.dark-mode {
+      --bg-color: #000000;
+      --card-bg: rgba(28, 28, 30, 0.6);
+      --card-bg-solid: rgba(28, 28, 30, 0.95);
+      --text-color: #f5f5f7;
+      --text-sub: #a1a1a6;
+      --border-color: rgba(255, 255, 255, 0.12);
+      --primary: #0a84ff;
+      --primary-light: rgba(10, 132, 255, 0.18);
+      --shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
+      --danger: #ff453a;
+    }
+    /* 深色模式滚动条 */
+    body.dark-mode ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+    }
+    body.dark-mode *:hover::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.25);
+    }
+    body.dark-mode .btn:hover {
+      background:rgba(255, 255, 255, 0.15);
+    }
+    body.dark-mode .btn-primary {
+      box-shadow: 0 2px 8px rgba(10, 132, 255, 0.4);
+    }
+    body.dark-mode .btn-primary:hover {
+      box-shadow: 0 4px 16px rgba(10, 132, 255, 0.5);
+    }
+
     /* 全局滚动条样式 - 极简风格 */
     * { scrollbar-width: thin; scrollbar-color: transparent transparent; }
     *:hover { scrollbar-color: rgba(128, 128, 128, 0.3) transparent; }
@@ -91,7 +121,7 @@
       letter-spacing:0.5px;
       color:var(--text-sub);
     }
-    .actions { display:flex; gap:8px; flex-wrap:wrap; }
+    .actions { position:relative; display:flex; gap:8px; flex-wrap:wrap; }
     .btn { 
       padding:8px 16px; 
       border-radius:10px; 
@@ -103,19 +133,148 @@
       font-size:15px;
       font-weight:500;
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
     }
     .btn:hover {
       background:rgba(142, 142, 147, 0.18);
       transform: translateY(-1px);
     }
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
     .btn-primary { 
-      background:var(--primary); 
-      color:#fff; 
-      border-color:var(--primary);
-      box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+      background: rgba(0, 122, 255, 0.08);
+      backdrop-filter: blur(40px) saturate(180%);
+      -webkit-backdrop-filter: blur(40px) saturate(180%);
+      color: var(--primary);
+      border: 0.5px solid rgba(0, 122, 255, 0.25);
+      box-shadow: 
+        0 1px 2px rgba(0, 122, 255, 0.08),
+        0 0 0 0.5px rgba(255, 255, 255, 0.9) inset;
+      position: relative;
+      overflow: hidden;
+      font-weight: 500;
     }
     .btn-primary:hover {
-      box-shadow: 0 4px 16px rgba(0, 122, 255, 0.4);
+      background: rgba(0, 122, 255, 0.12);
+      border-color: rgba(0, 122, 255, 0.35);
+      box-shadow: 
+        0 2px 4px rgba(0, 122, 255, 0.12),
+        0 0 0 0.5px rgba(255, 255, 255, 1) inset;
+      transform: translateY(-1px);
+    }
+    .btn-primary:active {
+      transform: translateY(0) scale(0.98);
+      box-shadow: 
+        0 1px 2px rgba(0, 122, 255, 0.08);
+    }
+    body.dark-mode .btn-primary {
+      background: rgba(10, 132, 255, 0.15);
+      backdrop-filter: blur(40px) saturate(180%);
+      -webkit-backdrop-filter: blur(40px) saturate(180%);
+      color: var(--primary);
+      border-color: rgba(10, 132, 255, 0.3);
+      box-shadow: 
+        0 1px 2px rgba(10, 132, 255, 0.15),
+        0 0 0 0.5px rgba(255, 255, 255, 0.08) inset;
+    }
+    body.dark-mode .btn-primary:hover {
+      background: rgba(10, 132, 255, 0.2);
+      border-color: rgba(10, 132, 255, 0.4);
+      box-shadow: 
+        0 2px 4px rgba(10, 132, 255, 0.2),
+        0 0 0 0.5px rgba(255, 255, 255, 0.1) inset;
+    }
+    /* 下拉菜单样式 */
+    .dropdown {
+      position:relative;
+      display:inline-block;
+    }
+    .dropdown-toggle {
+      padding:8px 16px;
+      border-radius:10px;
+      border:0.5px solid var(--border-color);
+      background:rgba(142, 142, 147, 0.12);
+      color:var(--text-color);
+      cursor:pointer;
+      font-size:15px;
+      font-weight:500;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      min-width:80px;
+      justify-content:center;
+    }
+    .dropdown-toggle:hover {
+      background:rgba(142, 142, 147, 0.18);
+    }
+    .dropdown-toggle::after {
+      content:'';
+      width:0;
+      height:0;
+      border-left:4px solid transparent;
+      border-right:4px solid transparent;
+      border-top:5px solid currentColor;
+      margin-left:4px;
+      transition:transform 0.2s;
+    }
+    .dropdown-toggle.active::after {
+      transform:rotate(180deg);
+    }
+    .dropdown-menu {
+      position:absolute;
+      top:100%;
+      right:0;
+      margin-top:4px;
+      background:var(--card-bg-solid);
+      border:0.5px solid var(--border-color);
+      border-radius:12px;
+      box-shadow:0 8px 24px rgba(0,0,0,0.15);
+      min-width:120px;
+      z-index:100;
+      opacity:0;
+      visibility:hidden;
+      transform:translateY(-8px);
+      transition:all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow:hidden;
+    }
+    body.dark-mode .dropdown-menu {
+      box-shadow:0 8px 24px rgba(0,0,0,0.5);
+    }
+    .dropdown-menu.show {
+      opacity:1;
+      visibility:visible;
+      transform:translateY(0);
+    }
+    .dropdown-item {
+      display:block;
+      padding:10px 16px;
+      color:var(--text-color);
+      text-decoration:none;
+      font-size:14px;
+      transition:background 0.15s;
+      cursor:pointer;
+      border:none;
+      width:100%;
+      text-align:left;
+      background:none;
+    }
+    .dropdown-item:hover {
+      background:rgba(142, 142, 147, 0.12);
+    }
+    body.dark-mode .dropdown-item:hover {
+      background:rgba(255, 255, 255, 0.1);
+    }
+    .dropdown-item.danger {
+      color:var(--danger);
+    }
+    .dropdown-item.danger:hover {
+      background:rgba(255, 59, 48, 0.1);
     }
     .tag { 
       display:inline-block; 
@@ -222,10 +381,15 @@
               <td>{{ e.started_at }}</td>
               <td>{{ e.submitted_at }}</td>
               <td class="actions">
-                <a class="btn" href="/exams/{{ e.id }}">成绩</a>
-                <a class="btn" href="/quiz?mode=exam&exam_id={{ e.id }}">回顾</a>
-                <button class="btn" onclick="toMistakes({{ e.id }})">错题</button>
-                <button class="btn" onclick="delExam({{ e.id }})">删除</button>
+                <div class="dropdown">
+                  <button class="dropdown-toggle" onclick="toggleDropdown(this)" type="button">操作</button>
+                  <div class="dropdown-menu">
+                    <a class="dropdown-item" href="/exams/{{ e.id }}">成绩</a>
+                    <a class="dropdown-item" href="/quiz?mode=exam&exam_id={{ e.id }}">回顾</a>
+                    <button class="dropdown-item" onclick="toMistakes({{ e.id }})">错题</button>
+                    <button class="dropdown-item danger" onclick="delExam({{ e.id }})">删除</button>
+                  </div>
+                </div>
               </td>
             </tr>
             {% else %}
@@ -253,6 +417,39 @@
     </div>
   </div>
   <script>
+    // 主题同步（与首页保持一致的方式，最先执行）
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark') document.body.classList.add('dark-mode');
+
+    // 下拉菜单控制
+    function toggleDropdown(button) {
+      const dropdown = button.closest('.dropdown');
+      const menu = dropdown.querySelector('.dropdown-menu');
+      const isOpen = menu.classList.contains('show');
+      
+      // 关闭所有其他下拉菜单
+      document.querySelectorAll('.dropdown-menu.show').forEach(m => {
+        m.classList.remove('show');
+        m.previousElementSibling.classList.remove('active');
+      });
+      
+      // 切换当前下拉菜单
+      if (!isOpen) {
+        menu.classList.add('show');
+        button.classList.add('active');
+      }
+    }
+    
+    // 点击外部关闭下拉菜单
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('.dropdown')) {
+        document.querySelectorAll('.dropdown-menu.show').forEach(m => {
+          m.classList.remove('show');
+          m.previousElementSibling.classList.remove('active');
+        });
+      }
+    });
+
     function buildUrl(params){
       const url = new URL(window.location.href);
       Object.entries(params).forEach(([k,v])=>{ if(v===undefined||v===null||v==='') url.searchParams.delete(k); else url.searchParams.set(k, v); });
@@ -290,4 +487,3 @@
   </script>
 </body>
 </html>
-

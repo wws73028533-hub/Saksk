@@ -79,7 +79,7 @@ def api_get_subjects_stats():
                 cs.id,
                 cs.name,
                 COUNT(DISTINCT cq.id) as total_questions,
-                COUNT(DISTINCT CASE WHEN sub.status = 'accepted' THEN sub.id END) as solved_questions,
+                COUNT(DISTINCT CASE WHEN sub.status = 'accepted' THEN cq.id END) as solved_questions,
                 COUNT(DISTINCT sub.id) as total_submissions
             FROM coding_subjects cs
             LEFT JOIN coding_questions cq ON cs.id = cq.coding_subject_id
@@ -139,8 +139,8 @@ def api_get_subject_overview(subject_id: int):
         # 获取题目统计（使用coding_questions表）
         question_stats = db.execute('''
             SELECT 
-                COUNT(*) as total_questions,
-                COUNT(DISTINCT CASE WHEN cs.status = 'accepted' THEN cs.question_id END) as solved_questions,
+                COUNT(DISTINCT cq.id) as total_questions,
+                COUNT(DISTINCT CASE WHEN cs.status = 'accepted' THEN cq.id END) as solved_questions,
                 COUNT(DISTINCT cs.id) as total_submissions
             FROM coding_questions cq
             LEFT JOIN code_submissions cs ON cq.id = cs.question_id AND cs.user_id = ?
@@ -289,10 +289,16 @@ def api_get_questions():
             'data': result
         }), 200
     except Exception as e:
-        current_app.logger.error(f"获取题目列表失败: {e}", exc_info=True)
+        import traceback
+        error_detail = traceback.format_exc()
+        current_app.logger.error(f"获取题目列表失败: {e}\n{error_detail}", exc_info=True)
+        # 在开发环境下返回详细错误信息
+        error_message = '获取题目列表失败'
+        if current_app.config.get('DEBUG', False):
+            error_message = f'获取题目列表失败: {str(e)}\n{error_detail}'
         return jsonify({
             'status': 'error',
-            'message': '获取题目列表失败'
+            'message': error_message
         }), 500
 
 
@@ -421,11 +427,30 @@ def api_submit():
             judge_result=judge_result
         )
         
+        # 获取题目信息以返回完整数据
+        from app.modules.coding.models.coding_question import CodingQuestion
+        question = CodingQuestion.get_by_id(schema.question_id)
+        
+        # 计算得分
+        passed_cases = judge_result.get('passed_cases', 0)
+        total_cases = judge_result.get('total_cases', 1)
+        score = (passed_cases / total_cases * 100.0) if total_cases > 0 else 0.0
+        
         return jsonify({
             'status': 'success',
             'data': {
                 'submission_id': submission['id'],
-                **judge_result
+                'status': judge_result['status'],
+                'passed_cases': passed_cases,
+                'total_cases': total_cases,
+                'execution_time': judge_result.get('execution_time', 0),
+                'error_message': judge_result.get('error_message', ''),
+                'score': score,
+                'total_score': 100.0,  # 总分固定为100
+                'time_limit': question.get('time_limit', 5) * 1000 if question else 5000,  # 转换为毫秒
+                'memory_limit': question.get('memory_limit', 128) * 1024 if question else 131072,  # 转换为KB
+                'memory_used': 0,  # 当前不支持内存统计
+                'test_results': judge_result.get('test_results', [])  # 测试用例详细结果
             }
         }), 200
     
@@ -436,9 +461,137 @@ def api_submit():
         }), 400
     except Exception as e:
         current_app.logger.error(f"提交代码失败: {e}", exc_info=True)
+        # 返回更详细的错误信息（开发环境）
+        error_message = '提交代码失败'
+        if current_app.config.get('DEBUG', False):
+            error_message = f'提交代码失败: {str(e)}'
         return jsonify({
             'status': 'error',
-            'message': '提交代码失败'
+            'message': error_message
+        }), 500
+
+
+# ==================== 代码草稿API ====================
+
+@coding_api_bp.route('/drafts/<int:question_id>', methods=['GET'])
+@login_required
+def api_get_draft(question_id: int):
+    """获取代码草稿"""
+    try:
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({
+                'status': 'error',
+                'message': '请先登录'
+            }), 401
+        
+        from app.core.utils.database import get_db
+        db = get_db()
+        
+        row = db.execute(
+            'SELECT code, language FROM code_drafts WHERE user_id = ? AND question_id = ?',
+            (user_id, question_id)
+        ).fetchone()
+        
+        if row:
+            return jsonify({
+                'status': 'success',
+                'data': {
+                    'code': row['code'],
+                    'language': row['language'] or 'python'
+                }
+            }), 200
+        else:
+            return jsonify({
+                'status': 'success',
+                'data': {
+                    'code': '',
+                    'language': 'python'
+                }
+            }), 200
+    except Exception as e:
+        current_app.logger.error(f"获取代码草稿失败: {e}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': '获取代码草稿失败'
+        }), 500
+
+
+@coding_api_bp.route('/drafts/<int:question_id>', methods=['POST'])
+@login_required
+@limiter.limit("30 per minute")
+def api_save_draft(question_id: int):
+    """保存代码草稿"""
+    try:
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({
+                'status': 'error',
+                'message': '请先登录'
+            }), 401
+        
+        data = request.get_json()
+        if not data:
+            return jsonify({
+                'status': 'error',
+                'message': '请求数据不能为空'
+            }), 400
+        
+        code = data.get('code', '')
+        language = data.get('language', 'python')
+        
+        from app.core.utils.database import get_db
+        db = get_db()
+        
+        # 使用 INSERT OR REPLACE 来更新或插入草稿
+        db.execute('''
+            INSERT OR REPLACE INTO code_drafts (user_id, question_id, code, language, updated_at)
+            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+        ''', (user_id, question_id, code, language))
+        db.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': '代码已保存'
+        }), 200
+    except Exception as e:
+        current_app.logger.error(f"保存代码草稿失败: {e}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': '保存代码草稿失败'
+        }), 500
+
+
+@coding_api_bp.route('/drafts/<int:question_id>', methods=['DELETE'])
+@login_required
+def api_delete_draft(question_id: int):
+    """删除代码草稿"""
+    try:
+        user_id = session.get('user_id')
+        if not user_id:
+            return jsonify({
+                'status': 'error',
+                'message': '请先登录'
+            }), 401
+        
+        from app.core.utils.database import get_db
+        db = get_db()
+        
+        db.execute(
+            'DELETE FROM code_drafts WHERE user_id = ? AND question_id = ?',
+            (user_id, question_id)
+        )
+        db.commit()
+        
+        return jsonify({
+            'status': 'success',
+            'message': '草稿已删除'
+        }), 200
+    except Exception as e:
+        current_app.logger.error(f"删除代码草稿失败: {e}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': '删除代码草稿失败'
         }), 500
 
 
@@ -542,6 +695,7 @@ def api_get_question_rankings(question_id: int):
         offset = (page - 1) * per_page
         
         # 获取每个用户的最佳提交（按得分排序，使用score字段）
+        # 按首次通过时间排序（最快通过的在前）
         rankings = db.execute('''
             SELECT 
                 cs.user_id,
@@ -549,6 +703,7 @@ def api_get_question_rankings(question_id: int):
                 MAX(cs.score) as best_score,
                 MAX(CASE WHEN cs.status = 'accepted' THEN cs.score ELSE 0 END) as accepted_score,
                 MIN(CASE WHEN cs.status = 'accepted' THEN cs.execution_time ELSE NULL END) as best_time,
+                MIN(CASE WHEN cs.status = 'accepted' THEN cs.submitted_at ELSE NULL END) as first_accepted_at,
                 COUNT(*) as total_submissions,
                 MAX(cs.submitted_at) as last_submitted_at
             FROM code_submissions cs
@@ -559,7 +714,7 @@ def api_get_question_rankings(question_id: int):
                 accepted_score DESC,
                 best_score DESC,
                 best_time ASC,
-                last_submitted_at ASC
+                first_accepted_at ASC
             LIMIT ? OFFSET ?
         ''', (question_id, per_page, offset)).fetchall()
         
@@ -608,6 +763,7 @@ def api_get_question_rankings(question_id: int):
                 'best_score': round(row['best_score'], 2) if row['best_score'] else 0,
                 'accepted_score': round(row['accepted_score'], 2) if row['accepted_score'] else 0,
                 'best_time': round(row['best_time'], 3) if row['best_time'] else None,
+                'first_accepted_at': row['first_accepted_at'],
                 'total_submissions': row['total_submissions'],
                 'last_submitted_at': row['last_submitted_at']
             })

@@ -476,6 +476,48 @@ def download_template():
     return send_from_directory(directory, 'question_import_template.xlsx', as_attachment=True)
 
 
+@admin_api_legacy_bp.route('/questions/export', methods=['GET'])
+def export_questions_api():
+    """导出题目（向后兼容路径：/admin/questions/export）"""
+    subject_id = request.args.get('subject_id')
+    
+    conn = get_db()
+    sql = '''
+        SELECT q.id, s.name as subject, q.q_type, q.content, q.options, q.answer, q.explanation
+        FROM questions q
+        LEFT JOIN subjects s ON q.subject_id = s.id
+        WHERE 1=1
+    '''
+    params = []
+    
+    if subject_id:
+        sql += ' AND q.subject_id = ?'
+        params.append(subject_id)
+    
+    sql += ' ORDER BY q.id'
+    rows = conn.execute(sql, params).fetchall()
+    
+    items = []
+    for r in rows:
+        opts = []
+        if r['options']:
+            try:
+                opts = json.loads(r['options'])
+            except:
+                opts = []
+        
+        items.append({
+            '科目': r['subject'] or '默认科目',
+            '题型': r['q_type'],
+            '题干': r['content'],
+            '选项': opts,
+            '答案': r['answer'],
+            '解析': r['explanation'] or ''
+        })
+    
+    return jsonify({'status':'success','count': len(items), 'questions': items})
+
+
 @admin_api_legacy_bp.route('/questions/export_package', methods=['GET'])
 def export_questions_package():
     """导出题目包（向后兼容路径：/admin/questions/export_package）"""

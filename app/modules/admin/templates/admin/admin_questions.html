@@ -993,6 +993,7 @@
         </div>
         <div class="toolbar-right">
             <button class="btn-outline" onclick="exportSubject()">导出本科目</button>
+            <button class="btn-outline" onclick="exportToExcel()">导出Excel</button>
             <button class="btn-primary" onclick="exportPackage()">导出题目包</button>
             <input type="file" id="importPackageFile" style="display: none;" accept=".zip" onchange="uploadPackage()">
             <select id="typeFilter" onchange="loadQuestions()">
@@ -1716,6 +1717,14 @@
     }
     function exportSubject(){ window.open(`/admin/questions/export?subject_id=${subjectId}`, '_blank'); }
     function exportAll(){ window.open('/admin/questions/export', '_blank'); }
+    function exportToExcel() {
+        const type = document.getElementById('typeFilter').value;
+        let url = `/admin/api/questions/export/excel?subject_id=${subjectId}`;
+        if (type && type !== 'all') {
+            url += `&type=${type}`;
+        }
+        window.open(url, '_blank');
+    }
 
     function exportPackage() {
         const type = document.getElementById('typeFilter').value;

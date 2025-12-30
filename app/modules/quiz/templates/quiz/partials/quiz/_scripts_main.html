@@ -1,4 +1,14 @@
 <script>
 {% include 'quiz/partials/quiz/_inline_js.html' %}
 </script>
-<div class="shortcut-hint">⌨️ 快捷键支持自定义：请到「题库设置 → 答题界面键盘快捷键」设置（支持组合键）</div>
+{# 快捷键提示横幅 #}
+<div id="shortcutHint" class="shortcut-hint" style="display: none;">
+    <span class="shortcut-hint-icon">⌨️</span>
+    <div class="shortcut-hint-content">
+        <div class="shortcut-hint-title">快捷键支持自定义</div>
+        <div class="shortcut-hint-text">可在题库设置页自定义答题界面快捷键，支持组合键</div>
+    </div>
+    <button class="shortcut-hint-try" aria-label="去设置" onclick="goToShortcutSettings()" title="前往题库设置">去设置</button>
+    <button class="shortcut-hint-dismiss" aria-label="不再提示" onclick="dismissShortcutHintPermanently()" title="不再提示">不再提示</button>
+    <button class="shortcut-hint-close" aria-label="关闭" onclick="dismissShortcutHint()" title="关闭">×</button>
+</div>

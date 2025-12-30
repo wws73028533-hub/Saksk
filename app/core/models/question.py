@@ -28,7 +28,9 @@ class Question:
     
     @staticmethod
     def get_list(subject='all', q_type='all', mode='quiz', user_id=None):
-        """获取题目列表"""
+        """获取题目列表（添加权限过滤）"""
+        from app.core.utils.subject_permissions import can_user_access_subject
+        
         conn = get_db()
         uid = user_id or -1
         
@@ -67,6 +69,12 @@ class Question:
         questions = []
         for row in rows:
             q = dict(row)
+            
+            # 权限检查：如果用户被限制访问该科目，跳过
+            if user_id and q.get('subject_id'):
+                if not can_user_access_subject(user_id, q['subject_id']):
+                    continue
+            
             if q.get('options'):
                 try:
                     q['options'] = json.loads(q['options'])
@@ -78,15 +86,31 @@ class Question:
     
     @staticmethod
     def get_count(subject='all', q_type='all', mode='quiz', user_id=None):
-        """获取题目数量"""
+        """获取题目数量（添加权限过滤）"""
+        from app.core.utils.subject_permissions import get_user_accessible_subjects
+        
         conn = get_db()
         uid = user_id or -1
         
+        # 获取用户可访问的科目ID
+        if user_id:
+            accessible_subject_ids = get_user_accessible_subjects(user_id)
+            if not accessible_subject_ids:
+                return 0
+        else:
+            accessible_subject_ids = None
+        
         if mode == 'favorites':
-            base_sql = "FROM questions q LEFT JOIN subjects s ON q.subject_id = s.id JOIN favorites f ON f.question_id = q.id AND f.user_id = ? WHERE 1=1"
+            base_sql = """FROM questions q 
+                      LEFT JOIN subjects s ON q.subject_id = s.id 
+                      JOIN favorites f ON f.question_id = q.id AND f.user_id = ? 
+                      WHERE 1=1"""
             params = [uid]
         elif mode == 'mistakes':
-            base_sql = "FROM questions q LEFT JOIN subjects s ON q.subject_id = s.id JOIN mistakes m ON m.question_id = q.id AND m.user_id = ? WHERE 1=1"
+            base_sql = """FROM questions q 
+                      LEFT JOIN subjects s ON q.subject_id = s.id 
+                      JOIN mistakes m ON m.question_id = q.id AND m.user_id = ? 
+                      WHERE 1=1"""
             params = [uid]
         else:
             base_sql = "FROM questions q LEFT JOIN subjects s ON q.subject_id = s.id WHERE 1=1"
@@ -100,14 +124,37 @@ class Question:
             base_sql += " AND q.q_type = ?"
             params.append(q_type)
         
+        # 权限过滤：只统计可访问科目的题目
+        if accessible_subject_ids is not None:
+            placeholders = ','.join(['?'] * len(accessible_subject_ids))
+            base_sql += f" AND q.subject_id IN ({placeholders})"
+            params.extend(accessible_subject_ids)
+        
         sql = "SELECT COUNT(1) " + base_sql
         return conn.execute(sql, params).fetchone()[0]
     
     @staticmethod
-    def get_subjects():
-        """获取所有科目"""
+    def get_subjects(user_id=None):
+        """获取所有科目（添加权限过滤）"""
+        from app.core.utils.subject_permissions import get_user_accessible_subjects
+        
         conn = get_db()
-        rows = conn.execute('SELECT name FROM subjects').fetchall()
+        
+        if user_id:
+            # 返回用户可访问的科目
+            accessible_subject_ids = get_user_accessible_subjects(user_id)
+            if not accessible_subject_ids:
+                return []
+            
+            placeholders = ','.join(['?'] * len(accessible_subject_ids))
+            rows = conn.execute(
+                f'SELECT name FROM subjects WHERE id IN ({placeholders})',
+                accessible_subject_ids
+            ).fetchall()
+        else:
+            # 未登录用户：返回空列表
+            rows = []
+        
         return [row[0] for row in rows]
     
     @staticmethod

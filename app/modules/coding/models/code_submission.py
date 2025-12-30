@@ -76,9 +76,9 @@ class CodeSubmission:
         db = get_db()
         row = db.execute(
             '''
-            SELECT cs.*, cq.title as question_title
+            SELECT cs.*, q.content as question_title
             FROM code_submissions cs
-            LEFT JOIN coding_questions cq ON cs.question_id = cq.id
+            LEFT JOIN questions q ON cs.question_id = q.id
             WHERE cs.id = ?
             ''',
             (submission_id,)

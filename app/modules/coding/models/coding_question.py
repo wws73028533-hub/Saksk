@@ -24,9 +24,9 @@ class CodingQuestion:
         row = db.execute(
             '''
             SELECT q.*, s.name as subject_name
-            FROM questions q
-            LEFT JOIN subjects s ON q.subject_id = s.id
-            WHERE q.id = ? AND q.q_type = '编程题'
+            FROM coding_questions q
+            LEFT JOIN coding_subjects s ON q.coding_subject_id = s.id
+            WHERE q.id = ?
             ''',
             (question_id,)
         ).fetchone()
@@ -49,8 +49,8 @@ class CodingQuestion:
         """
         db = get_db()
         row = db.execute(
-            'SELECT test_cases_json FROM questions WHERE id = ? AND q_type = ?',
-            (question_id, '编程题')
+            'SELECT test_cases_json FROM coding_questions WHERE id = ?',
+            (question_id,)
         ).fetchone()
         
         if not row or not row['test_cases_json']:

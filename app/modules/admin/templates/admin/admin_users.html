@@ -473,13 +473,14 @@
           <th style="width:150px;">在线状态</th>
           <th style="width:100px;">身份</th>
           <th style="width:90px;">状态</th>
+          <th style="width:120px;">被限制科目数</th>
           <th style="width:160px;">创建时间</th>
           <th style="width:100px;">操作</th>
         </tr>
       </thead>
       <tbody id="tbody">
         <tr>
-          <td colspan="7" class="loading">加载中</td>
+          <td colspan="8" class="loading">加载中</td>
         </tr>
       </tbody>
     </table>
@@ -574,13 +575,15 @@
       const rows = js.data || []; 
       const total = js.total || 0;
       
-      // 统计数据
-      const onlineCount = rows.filter(u => u.is_online).length;
-      const adminCount = rows.filter(u => u.is_admin).length;
-      const subjectAdminCount = rows.filter(u => u.is_subject_admin && !u.is_admin).length; // 科目管理员（不包括管理员）
-      const lockedCount = rows.filter(u => u.is_locked).length;
-      
-      allStats = { total, online: onlineCount, admin: adminCount, subjectAdmin: subjectAdminCount, locked: lockedCount };
+      // 使用后端返回的全局统计数据（针对所有用户，不受分页和搜索影响）
+      const stats = js.stats || {};
+      allStats = { 
+        total, 
+        online: stats.online || 0, 
+        admin: stats.admin || 0, 
+        subjectAdmin: stats.subject_admin || 0, 
+        locked: stats.locked || 0 
+      };
       
       updateStats();
       renderTable(rows);
@@ -605,7 +608,7 @@
     if (rows.length === 0) {
       tb.innerHTML = `
         <tr>
-          <td colspan="7" class="empty-state">
+          <td colspan="8" class="empty-state">
             <div>暂无用户数据</div>
           </td>
         </tr>
@@ -669,12 +672,18 @@
         `;
       }
       
+      const restrictedCount = u.restricted_subjects_count || 0;
+      const restrictedCountHtml = restrictedCount > 0 
+        ? `<span style="color: var(--danger); font-weight: 500;">${restrictedCount}</span>`
+        : '<span style="color: var(--text-sub);">0</span>';
+      
       return `<tr>
         <td style="text-align:center;">${(curPage-1)*pageSize + i + 1}</td>
         <td><a href="/admin/users/${u.id}" class="link" style="font-weight:500;">${escapeHtml(u.username)}</a></td>
         <td>${onlineHtml}</td>
         <td>${adminTag}</td>
         <td>${lockTag}</td>
+        <td style="text-align:center;">${restrictedCountHtml}</td>
         <td style="font-size:12px; color:#666;">${formatDateTime(u.created_at)}</td>
         <td class="actions">${actionsHtml}</td>
       </tr>`;
