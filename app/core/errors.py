@@ -98,17 +98,62 @@ def register_error_handlers(app: Flask) -> None:
     @app.errorhandler(HTTPException)
     def handle_http_exception(e: HTTPException):
         """处理HTTP异常"""
-        return APIError(message=e.description, code=e.code).get_response()
+        # 判断是否为 API 请求（以 /api 开头或 Accept 头包含 application/json）
+        is_api_request = (
+            request.path.startswith('/api') or
+            request.headers.get('Accept', '').startswith('application/json')
+        )
+        
+        if is_api_request:
+            # API 请求返回 JSON 格式错误
+            return APIError(message=e.description, code=e.code).get_response()
+        else:
+            # 页面请求返回 Flask 默认的 HTML 错误页面
+            from werkzeug.exceptions import NotFound
+            if e.code == 404:
+                # 404 错误：返回 Flask 默认的 404 页面
+                return app.response_class(
+                    response=f'<h1>404 - 页面未找到</h1><p>{e.description}</p>',
+                    status=404,
+                    mimetype='text/html'
+                )
+            # 其他 HTTP 错误
+            return app.response_class(
+                response=f'<h1>{e.code} - {e.name}</h1><p>{e.description}</p>',
+                status=e.code,
+                mimetype='text/html'
+            )
     
     @app.errorhandler(ValueError)
     def handle_value_error(e: ValueError):
         """处理值错误"""
         app.logger.warning(f'ValueError: {str(e)}, IP: {request.remote_addr}')
-        return BadRequestError(message=f'Invalid value: {str(e)}').get_response()
+        is_api_request = (
+            request.path.startswith('/api') or
+            request.headers.get('Accept', '').startswith('application/json')
+        )
+        if is_api_request:
+            return BadRequestError(message=f'Invalid value: {str(e)}').get_response()
+        # 页面请求返回简单错误页面
+        from flask import render_template_string
+        return render_template_string(
+            '<h1>400 - 请求错误</h1><p>无效的值: {{ error }}</p>',
+            error=str(e)
+        ), 400
     
     @app.errorhandler(Exception)
     def handle_generic_exception(e: Exception):
         """处理通用异常"""
         app.logger.error(f"Unhandled exception: {e}", exc_info=True)
-        return InternalServerError(message="An unexpected server error occurred.").get_response()
+        is_api_request = (
+            request.path.startswith('/api') or
+            request.headers.get('Accept', '').startswith('application/json')
+        )
+        if is_api_request:
+            return InternalServerError(message="An unexpected server error occurred.").get_response()
+        # 页面请求返回简单错误页面
+        from flask import render_template_string
+        return render_template_string(
+            '<h1>500 - 服务器错误</h1><p>发生了一个意外错误，请稍后再试。</p>',
+        ), 500
 

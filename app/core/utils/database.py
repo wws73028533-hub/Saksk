@@ -399,6 +399,49 @@ def _create_tables(conn):
             FOREIGN KEY(notification_id) REFERENCES notifications(id) ON DELETE CASCADE
         )
     ''')
+    
+    # 弹窗配置表
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS popups (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            content TEXT NOT NULL,
+            popup_type TEXT NOT NULL DEFAULT 'info' CHECK(popup_type IN ('info', 'warning', 'success', 'error')),
+            is_active INTEGER DEFAULT 1,
+            priority INTEGER DEFAULT 0,
+            start_at DATETIME,
+            end_at DATETIME,
+            created_by INTEGER,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE SET NULL
+        )
+    ''')
+    
+    # 用户关闭弹窗记录表
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS popup_dismissals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            popup_id INTEGER NOT NULL,
+            dismissed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, popup_id),
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY(popup_id) REFERENCES popups(id) ON DELETE CASCADE
+        )
+    ''')
+    
+    # 弹窗显示统计表
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS popup_views (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            popup_id INTEGER NOT NULL,
+            user_id INTEGER,
+            viewed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(popup_id) REFERENCES popups(id) ON DELETE CASCADE,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE SET NULL
+        )
+    ''')
 
     # 代码提交历史表（用于记录编程题的提交记录）
     # 注意：question_id 引用 coding_questions 表，不是 questions 表
@@ -594,6 +637,79 @@ def _create_indexes(conn):
         ])
     if 'notification_dismissals' in existing_tables:
         indexes.append('CREATE INDEX IF NOT EXISTS idx_notification_dismissals_user ON notification_dismissals(user_id, notification_id)')
+    
+    # 弹窗相关索引（只对存在的表创建）
+    if 'popups' in existing_tables:
+        indexes.extend([
+            'CREATE INDEX IF NOT EXISTS idx_popups_active ON popups(is_active, priority DESC)',
+            'CREATE INDEX IF NOT EXISTS idx_popups_time ON popups(start_at, end_at)',
+            'CREATE INDEX IF NOT EXISTS idx_popups_type ON popups(popup_type)',
+        ])
+    if 'popup_dismissals' in existing_tables:
+        indexes.append('CREATE INDEX IF NOT EXISTS idx_popup_dismissals_user ON popup_dismissals(user_id, popup_id)')
+    if 'popup_views' in existing_tables:
+        indexes.extend([
+            'CREATE INDEX IF NOT EXISTS idx_popup_views_popup ON popup_views(popup_id, viewed_at)',
+            'CREATE INDEX IF NOT EXISTS idx_popup_views_user ON popup_views(user_id, viewed_at)',
+        ])
+    
+    # 代码提交相关索引（只对存在的表创建）
+    if 'code_submissions' in existing_tables:
+        indexes.append('CREATE INDEX IF NOT EXISTS idx_code_submissions_user_question ON code_submissions(user_id, question_id, submitted_at DESC)')
+    
+    # 代码草稿相关索引
+    if 'code_drafts' in existing_tables:
+        indexes.append('CREATE INDEX IF NOT EXISTS idx_code_drafts_user_question ON code_drafts(user_id, question_id)')
+    
+    # 用户-科目限制表索引
+    if 'user_subjects' in existing_tables:
+        indexes.extend([
+            'CREATE INDEX IF NOT EXISTS idx_user_subjects_user_id ON user_subjects(user_id)',
+            'CREATE INDEX IF NOT EXISTS idx_user_subjects_subject_id ON user_subjects(subject_id)'
+        ])
+    
+    # 系统配置表索引
+    if 'system_config' in existing_tables:
+        indexes.append('CREATE INDEX IF NOT EXISTS idx_system_config_key ON system_config(config_key)')
+    
+    # 用户刷题统计表索引
+    if 'user_quiz_stats' in existing_tables:
+        indexes.append('CREATE INDEX IF NOT EXISTS idx_user_quiz_stats_user_id ON user_quiz_stats(user_id)')
+    
+    # 邮箱验证码表索引
+    if 'email_verification_codes' in existing_tables:
+        indexes.extend([
+            'CREATE INDEX IF NOT EXISTS idx_email_codes_email ON email_verification_codes(email, code_type, is_used)',
+            'CREATE INDEX IF NOT EXISTS idx_email_codes_expires ON email_verification_codes(expires_at)',
+            'CREATE INDEX IF NOT EXISTS idx_email_codes_user ON email_verification_codes(user_id)',
+        ])
+    
+    for index_sql in indexes:
+        conn.execute(index_sql)
+
+
+    if 'notifications' in existing_tables:
+        indexes.extend([
+            'CREATE INDEX IF NOT EXISTS idx_notifications_active ON notifications(is_active, priority DESC)',
+            'CREATE INDEX IF NOT EXISTS idx_notifications_time ON notifications(start_at, end_at)',
+        ])
+    if 'notification_dismissals' in existing_tables:
+        indexes.append('CREATE INDEX IF NOT EXISTS idx_notification_dismissals_user ON notification_dismissals(user_id, notification_id)')
+    
+    # 弹窗相关索引（只对存在的表创建）
+    if 'popups' in existing_tables:
+        indexes.extend([
+            'CREATE INDEX IF NOT EXISTS idx_popups_active ON popups(is_active, priority DESC)',
+            'CREATE INDEX IF NOT EXISTS idx_popups_time ON popups(start_at, end_at)',
+            'CREATE INDEX IF NOT EXISTS idx_popups_type ON popups(popup_type)',
+        ])
+    if 'popup_dismissals' in existing_tables:
+        indexes.append('CREATE INDEX IF NOT EXISTS idx_popup_dismissals_user ON popup_dismissals(user_id, popup_id)')
+    if 'popup_views' in existing_tables:
+        indexes.extend([
+            'CREATE INDEX IF NOT EXISTS idx_popup_views_popup ON popup_views(popup_id, viewed_at)',
+            'CREATE INDEX IF NOT EXISTS idx_popup_views_user ON popup_views(user_id, viewed_at)',
+        ])
     
     # 代码提交相关索引（只对存在的表创建）
     if 'code_submissions' in existing_tables:

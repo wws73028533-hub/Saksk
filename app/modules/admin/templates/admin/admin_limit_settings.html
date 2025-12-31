@@ -1,0 +1,401 @@
+{% extends "admin/admin_base.html" %}
+
+{% block title %}限制设置 - 系统设置{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <div class="page-header">
+        <a href="/admin/settings" class="back-link">← 返回系统设置</a>
+        <h1>限制设置</h1>
+        <p class="page-description">配置系统各种限制功能</p>
+    </div>
+
+    <div class="config-section">
+        <div class="config-section-header">刷题限制</div>
+        <div class="config-item">
+            <div class="config-item-label">刷题限制功能开关</div>
+            <div class="config-item-value">
+                <div class="switch" id="quizLimitSwitch" onclick="toggleQuizLimit()"></div>
+                <span id="quizLimitStatus">关闭</span>
+            </div>
+        </div>
+        <div class="config-item">
+            <div class="config-item-label">刷题限制数量</div>
+            <div class="config-item-value">
+                <input type="number" class="config-input" id="quizLimitCount" value="100" min="1">
+                <button class="btn-primary" onclick="updateQuizLimitCount()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="config-section">
+        <div class="config-section-header">邮箱绑定限制</div>
+        <div class="config-item">
+            <div class="config-item-label">
+                <div>邮箱绑定弹窗开关</div>
+                <div class="config-item-hint">开启后，未绑定邮箱的用户将看到绑定弹窗并被限制使用功能；关闭后，取消对用户的限制</div>
+            </div>
+            <div class="config-item-value">
+                <div class="switch" id="emailBindRequiredSwitch" onclick="toggleEmailBindRequired()"></div>
+                <span id="emailBindRequiredStatus">关闭</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.page-container {
+    padding: 40px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.back-link {
+    display: inline-block;
+    margin-bottom: 16px;
+    color: var(--primary);
+    text-decoration: none;
+    font-size: 14px;
+    transition: opacity 0.2s;
+}
+
+.back-link:hover {
+    opacity: 0.7;
+}
+
+.page-header {
+    margin-bottom: 40px;
+}
+
+.page-header h1 {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    letter-spacing: -0.5px;
+}
+
+.page-description {
+    color: var(--text-sub);
+    font-size: 15px;
+}
+
+.config-section {
+    background: var(--card-bg);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: var(--shadow-soft);
+    border: 0.5px solid var(--border-color);
+}
+
+.config-section-header {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-color);
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 0.5px solid var(--border-color);
+}
+
+.config-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    border-radius: var(--radius-md);
+    background: rgba(142, 142, 147, 0.06);
+    margin-bottom: 12px;
+}
+
+.config-item:last-child {
+    margin-bottom: 0;
+}
+
+.config-item-label {
+    font-size: 14px;
+    color: var(--text-color);
+    font-weight: 500;
+}
+
+.config-item-hint {
+    font-size: 12px;
+    color: var(--text-sub);
+    font-weight: 400;
+    margin-top: 4px;
+    line-height: 1.4;
+}
+
+.config-item-value {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.switch {
+    position: relative;
+    width: 44px;
+    height: 26px;
+    background: rgba(142, 142, 147, 0.3);
+    border-radius: 13px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.switch.active {
+    background: var(--primary);
+}
+
+.switch::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 22px;
+    height: 22px;
+    background: white;
+    border-radius: 50%;
+    transition: transform 0.3s;
+}
+
+.switch.active::after {
+    transform: translateX(18px);
+}
+
+.config-input {
+    padding: 8px 12px;
+    border: 0.5px solid var(--border-color);
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    width: 120px;
+    background: var(--card-bg-solid);
+    color: var(--text-color);
+}
+
+.btn-primary {
+    padding: 8px 16px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-primary:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+</style>
+
+<script>
+    // 加载刷题限制配置
+    async function loadQuizLimitConfig() {
+        try {
+            const res = await fetch('/admin/api/system_config/quiz_limit');
+            const result = await res.json();
+            
+            if (result.status === 'success') {
+                const config = result.data;
+                const switchEl = document.getElementById('quizLimitSwitch');
+                const statusEl = document.getElementById('quizLimitStatus');
+                const countInput = document.getElementById('quizLimitCount');
+                
+                if (config.quiz_limit_enabled) {
+                    switchEl.classList.add('active');
+                    statusEl.textContent = '开启';
+                } else {
+                    switchEl.classList.remove('active');
+                    statusEl.textContent = '关闭';
+                }
+                
+                countInput.value = config.quiz_limit_count || 100;
+            }
+        } catch (error) {
+            console.error('加载配置失败:', error);
+        }
+    }
+    
+    // 加载邮箱绑定配置
+    async function loadEmailBindRequiredConfig() {
+        try {
+            const res = await fetch('/admin/api/system_config/email_bind_required');
+            const result = await res.json();
+            
+            if (result.status === 'success') {
+                const config = result.data;
+                const switchEl = document.getElementById('emailBindRequiredSwitch');
+                const statusEl = document.getElementById('emailBindRequiredStatus');
+                
+                if (config.config_value === '1') {
+                    switchEl.classList.add('active');
+                    statusEl.textContent = '开启';
+                } else {
+                    switchEl.classList.remove('active');
+                    statusEl.textContent = '关闭';
+                }
+            }
+        } catch (error) {
+            console.error('加载邮箱绑定配置失败:', error);
+        }
+    }
+    
+    // 切换邮箱绑定必需开关
+    async function toggleEmailBindRequired() {
+        const switchEl = document.getElementById('emailBindRequiredSwitch');
+        const isActive = switchEl.classList.contains('active');
+        const newValue = isActive ? '0' : '1';
+        
+        try {
+            const res = await fetch('/admin/api/system_config/email_bind_required', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    config_value: newValue,
+                    description: '邮箱绑定弹窗开关：开启后，未绑定邮箱的用户将看到绑定弹窗并被限制使用功能；关闭后，取消对用户的限制'
+                })
+            });
+            
+            const result = await res.json();
+            if (result.status === 'success') {
+                if (newValue === '1') {
+                    switchEl.classList.add('active');
+                    document.getElementById('emailBindRequiredStatus').textContent = '开启';
+                } else {
+                    switchEl.classList.remove('active');
+                    document.getElementById('emailBindRequiredStatus').textContent = '关闭';
+                }
+                showSuccess('配置已更新');
+            } else {
+                showError(result.message || '更新失败');
+            }
+        } catch (error) {
+            console.error('更新配置失败:', error);
+            showError('更新失败');
+        }
+    }
+    
+    // 切换刷题限制开关
+    async function toggleQuizLimit() {
+        const switchEl = document.getElementById('quizLimitSwitch');
+        const isActive = switchEl.classList.contains('active');
+        const newValue = isActive ? '0' : '1';
+        
+        try {
+            const res = await fetch('/admin/api/system_config/quiz_limit_enabled', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    config_value: newValue
+                })
+            });
+            
+            const result = await res.json();
+            if (result.status === 'success') {
+                if (newValue === '1') {
+                    switchEl.classList.add('active');
+                    document.getElementById('quizLimitStatus').textContent = '开启';
+                } else {
+                    switchEl.classList.remove('active');
+                    document.getElementById('quizLimitStatus').textContent = '关闭';
+                }
+                showSuccess('配置已更新');
+            } else {
+                showError(result.message || '更新失败');
+            }
+        } catch (error) {
+            console.error('更新配置失败:', error);
+            showError('更新失败');
+        }
+    }
+    
+    // 更新刷题限制数量
+    async function updateQuizLimitCount() {
+        const count = parseInt(document.getElementById('quizLimitCount').value);
+        
+        if (isNaN(count) || count < 1) {
+            showError('请输入有效的数量（大于0）');
+            return;
+        }
+        
+        try {
+            const res = await fetch('/admin/api/system_config/quiz_limit_count', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    config_value: count.toString()
+                })
+            });
+            
+            const result = await res.json();
+            if (result.status === 'success') {
+                showSuccess('配置已更新');
+            } else {
+                showError(result.message || '更新失败');
+            }
+        } catch (error) {
+            console.error('更新配置失败:', error);
+            showError('更新失败');
+        }
+    }
+    
+    // 显示成功消息
+    function showSuccess(message) {
+        showNotification(message, 'success');
+    }
+    
+    // 显示错误消息
+    function showError(message) {
+        showNotification(message, 'error');
+    }
+    
+    // 显示通知
+    function showNotification(message, type = 'info') {
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 16px 24px;
+            background: ${type === 'success' ? 'rgba(52, 199, 89, 0.15)' : type === 'error' ? 'rgba(255, 59, 48, 0.15)' : 'var(--primary-light)'};
+            color: ${type === 'success' ? 'var(--success)' : type === 'error' ? 'var(--danger)' : 'var(--primary)'};
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 10000;
+            font-weight: 500;
+            animation: slideIn 0.3s ease;
+        `;
+        notification.textContent = message;
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            notification.style.animation = 'slideOut 0.3s ease';
+            setTimeout(() => notification.remove(), 300);
+        }, 3000);
+    }
+    
+    // 添加动画样式
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes slideIn {
+            from { transform: translateX(400px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(400px); opacity: 0; }
+        }
+    `;
+    document.head.appendChild(style);
+    
+    // 页面加载时加载配置
+    document.addEventListener('DOMContentLoaded', () => {
+        loadQuizLimitConfig();
+        loadEmailBindRequiredConfig();
+    });
+</script>
+{% endblock %}
+

@@ -2,7 +2,7 @@
 {% for q in questions %}
 <div class="question-box" id="q-{{ loop.index0 }}" 
      data-type="{{ q.q_type }}" 
-     data-answer="{{ q.answer }}"
+     data-answer="{{ q.answer|e }}"
      data-id="{{ q.id }}"
      data-score="{{ q.score_val if q.score_val else 0 }}"
      data-index="{{ loop.index0 }}">
@@ -21,7 +21,7 @@
     <span class="q-type-label">{{ q.q_type }}</span>
     {% if mode == 'exam' %}<span style="font-size:12px; color:#666;">({{ q.score_val }}分)</span>{% endif %}
 
-    <div class="q-content">{{ q.content|replace('\n', '<br>')|safe }}</div>
+    <div class="q-content">{{ q.content|e }}</div>
 
     <div class="question-image-gallery" data-images='{{ q.image_path_json }}' style="display: none; margin-bottom: 24px;">
       <div class="gallery-main-image-wrapper" style="position: relative; text-align: center;">
@@ -100,7 +100,7 @@
       <strong>答案</strong>
     </div>
     <p>
-      <span class="answer correct">{{ q.answer|replace('\n', '<br>')|safe }}</span>
+      <span class="answer correct">{{ q.answer|e }}</span>
     </p>
   </div>
 
@@ -111,7 +111,7 @@
         <strong>解析</strong>
       </div>
       <p>
-        <span class="answer">{{ q.explanation|replace('\n', '<br>')|safe }}</span>
+        <span class="answer">{{ q.explanation|e }}</span>
       </p>
     </div>
   {% endif %}

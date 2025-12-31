@@ -114,6 +114,20 @@ class SystemConfigService:
             'quiz_limit_enabled': enabled_config['config_value'] == '1' if enabled_config else False,
             'quiz_limit_count': int(count_config['config_value']) if count_config else 100
         }
+    
+    @staticmethod
+    def get_email_bind_required_config() -> bool:
+        """
+        获取邮箱绑定是否必需的配置
+        
+        Returns:
+            如果邮箱绑定必需返回True，否则返回False（默认True，保持向后兼容）
+        """
+        config = SystemConfigService.get_config('email_bind_required')
+        if config:
+            return config['config_value'] == '1'
+        # 默认返回True，保持向后兼容（原有行为）
+        return True
 
 
 

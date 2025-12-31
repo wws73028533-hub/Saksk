@@ -514,14 +514,36 @@
             try {
                 const js = JSON.parse(localStorage.getItem(QUIZ_HOTKEYS_KEY) || 'null');
                 if (!js || typeof js !== 'object') return { ...DEFAULT_QUIZ_HOTKEYS };
-                return { ...DEFAULT_QUIZ_HOTKEYS, ...js };
+                
+                // 合并用户设置，但保留空字符串（表示用户清空了该快捷键，应该禁用）
+                const result = { ...DEFAULT_QUIZ_HOTKEYS };
+                for (const key in js) {
+                    if (key in DEFAULT_QUIZ_HOTKEYS) {
+                        // 如果用户设置的值是空字符串，保留空字符串（禁用该快捷键）
+                        // 如果用户设置了有效值，使用用户的值
+                        // 如果用户没有设置（undefined），使用默认值
+                        if (js[key] !== undefined) {
+                            result[key] = js[key];
+                        }
+                    }
+                }
+                return result;
             } catch(e) {
                 return { ...DEFAULT_QUIZ_HOTKEYS };
             }
         }
 
         function setHotkeys(obj){
-            const merged = { ...DEFAULT_QUIZ_HOTKEYS, ...(obj || {}) };
+            // 合并用户设置，保留空字符串（表示用户清空了该快捷键，应该禁用）
+            const merged = { ...DEFAULT_QUIZ_HOTKEYS };
+            if (obj && typeof obj === 'object') {
+                for (const key in obj) {
+                    if (key in DEFAULT_QUIZ_HOTKEYS) {
+                        // 保留用户设置的值（包括空字符串），这样可以在答题页面区分"未设置"和"已清空"
+                        merged[key] = obj[key];
+                    }
+                }
+            }
             localStorage.setItem(QUIZ_HOTKEYS_KEY, JSON.stringify(merged));
         }
 

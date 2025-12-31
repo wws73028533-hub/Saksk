@@ -83,7 +83,7 @@
         -webkit-backdrop-filter: blur(30px) saturate(180%);
     }
     table { width:100%; border-collapse:collapse; }
-    th, td { padding: 16px; border-bottom:0.5px solid var(--border-color); text-align:left; }
+    th, td { padding: 10px 12px; border-bottom:0.5px solid var(--border-color); text-align:left; }
     thead th { 
         background: rgba(142, 142, 147, 0.06);
         font-weight:600;
@@ -96,9 +96,13 @@
     }
     tbody tr {
         transition: background-color 0.2s;
+        height: 50px; /* 统一行高 */
     }
     tbody tr:hover {
         background-color: rgba(142, 142, 147, 0.08);
+    }
+    tbody td {
+        vertical-align: middle;
     }
     /* 统一操作列样式 */
     td.actions {
@@ -164,9 +168,22 @@
         50% { opacity: 0.6; transform: scale(0.95); }
     }
     .last-active {
-        font-size: 11px;
+        font-size: 10px;
         color: var(--text-sub);
-        margin-top: 2px;
+        margin-top: 0;
+        line-height: 1.2;
+        display: block;
+        opacity: 0.8;
+    }
+    
+    /* 状态列优化，确保内容紧凑 */
+    tbody td:nth-child(3) {
+        line-height: 1.2;
+    }
+    
+    /* 在线状态样式调整，使其更紧凑 */
+    .online-status {
+        line-height: 1.2;
     }
     
     /* 按钮优化 */
@@ -642,11 +659,13 @@
       } else {
         const lastActiveText = u.last_active ? formatLastActive(u.last_active) : '';
         onlineHtml = `
-          <div class="online-status offline">
-            <span class="status-dot offline"></span>
-            <span>离线</span>
+          <div style="display: flex; flex-direction: column; gap: 2px; align-items: flex-start; line-height: 1.2;">
+            <div class="online-status offline">
+              <span class="status-dot offline"></span>
+              <span>离线</span>
+            </div>
+            ${lastActiveText ? `<span class="last-active">${lastActiveText}</span>` : ''}
           </div>
-          ${lastActiveText ? `<div class="last-active">${lastActiveText}</div>` : ''}
         `;
       }
       

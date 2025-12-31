@@ -58,6 +58,61 @@ def get_filtered_questions():
     return jsonify(questions)
 
 
+@admin_api_legacy_bp.route('/questions', methods=['POST'])
+def add_question_legacy():
+    """添加题目（向后兼容路径：/admin/questions）"""
+    from flask import request, session
+    from app.core.utils.options_parser import parse_options
+    
+    data = request.json
+    if not data:
+        return jsonify({'status': 'error', 'message': '请求数据不能为空'}), 400
+    
+    try:
+        q_type = data.get('q_type')
+        answer = (data.get('answer') or '').strip()
+        options_str = data.get('options', '[]')
+        
+        # 多选题验证：确保答案至少有两个选项
+        if q_type == '多选题':
+            if len(answer) < 2:
+                return jsonify({'status':'error','message':'多选题答案至少需要两个选项，例如：AB 或 ABC'}), 400
+            # 验证答案中的所有字母是否在选项范围内
+            try:
+                options_list = json.loads(options_str) if isinstance(options_str, str) else options_str
+                if isinstance(options_list, list) and len(options_list) > 0:
+                    parsed_options = parse_options(options_list)
+                    valid_keys = {opt['key'] for opt in parsed_options if opt.get('key')}
+                    answer_keys = set(answer.upper())
+                    invalid_keys = answer_keys - valid_keys
+                    if invalid_keys:
+                        return jsonify({'status':'error','message':f'多选题答案中包含无效选项：{", ".join(sorted(invalid_keys))}。有效选项为：{", ".join(sorted(valid_keys))}'}), 400
+            except Exception:
+                pass  # 如果解析选项失败，跳过验证
+        
+        conn = get_db()
+        conn.execute('''
+            INSERT INTO questions (subject_id, q_type, content, options, answer, explanation, difficulty, tags, image_path, created_by, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        ''', (
+            data.get('subject_id'),
+            q_type,
+            data.get('content'),
+            options_str,
+            answer,
+            data.get('explanation',''),
+            data.get('difficulty', 1),
+            data.get('tags'),
+            data.get('image_path'),
+            session.get('user_id')
+        ))
+        conn.commit()
+        
+        return jsonify({'status':'success','message':'题目添加成功'})
+    except Exception as e:
+        return jsonify({'status':'error','message':str(e)}), 500
+
+
 @admin_api_legacy_bp.route('/questions/<int:question_id>', methods=['GET'])
 def get_single_question(question_id):
     """获取单个题目（向后兼容路径：/admin/questions/<id>）"""
@@ -75,6 +130,75 @@ def get_single_question(question_id):
              question_dict['image_path'] = '[]'
         return jsonify(question_dict)
     return jsonify({'error': 'not found'}), 404
+
+
+@admin_api_legacy_bp.route('/questions/<int:question_id>', methods=['PUT'])
+def edit_question_legacy(question_id):
+    """编辑题目（向后兼容路径：/admin/questions/<id>）"""
+    from flask import request
+    from app.core.utils.options_parser import parse_options
+    
+    data = request.json
+    if not data:
+        return jsonify({'status': 'error', 'message': '请求数据不能为空'}), 400
+    
+    try:
+        q_type = data.get('q_type')
+        answer = (data.get('answer') or '').strip()
+        options_str = data.get('options', '[]')
+        
+        # 多选题验证：确保答案至少有两个选项
+        if q_type == '多选题':
+            if len(answer) < 2:
+                return jsonify({'status':'error','message':'多选题答案至少需要两个选项，例如：AB 或 ABC'}), 400
+            # 验证答案中的所有字母是否在选项范围内
+            try:
+                options_list = json.loads(options_str) if isinstance(options_str, str) else options_str
+                if isinstance(options_list, list) and len(options_list) > 0:
+                    parsed_options = parse_options(options_list)
+                    valid_keys = {opt['key'] for opt in parsed_options if opt.get('key')}
+                    answer_keys = set(answer.upper())
+                    invalid_keys = answer_keys - valid_keys
+                    if invalid_keys:
+                        return jsonify({'status':'error','message':f'多选题答案中包含无效选项：{", ".join(sorted(invalid_keys))}。有效选项为：{", ".join(sorted(valid_keys))}'}), 400
+            except Exception:
+                pass  # 如果解析选项失败，跳过验证
+        
+        conn = get_db()
+        conn.execute('''
+            UPDATE questions SET
+                subject_id=?, q_type=?, content=?, options=?, answer=?, explanation=?,
+                difficulty=?, tags=?, image_path=?, updated_at=CURRENT_TIMESTAMP
+            WHERE id=?
+        ''', (
+            data.get('subject_id'),
+            q_type,
+            data.get('content'),
+            options_str,
+            answer,
+            data.get('explanation',''),
+            data.get('difficulty', 1),
+            data.get('tags'),
+            data.get('image_path'),
+            question_id
+        ))
+        conn.commit()
+        
+        return jsonify({'status':'success','message':'题目修改成功'})
+    except Exception as e:
+        return jsonify({'status':'error','message':str(e)}), 500
+
+
+@admin_api_legacy_bp.route('/questions/<int:question_id>', methods=['DELETE'])
+def delete_question_legacy(question_id):
+    """删除题目（向后兼容路径：/admin/questions/<id>）"""
+    conn = get_db()
+    try:
+        conn.execute('DELETE FROM questions WHERE id = ?', (question_id,))
+        conn.commit()
+        return jsonify({'status': 'success', 'message': '题目删除成功'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
 @admin_api_legacy_bp.route('/questions/import', methods=['POST'])

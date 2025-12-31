@@ -2267,7 +2267,20 @@ function getQuizHotkeys(){
     try {
         const js = JSON.parse(localStorage.getItem('quiz_hotkeys_v1') || 'null');
         if (!js || typeof js !== 'object') return { ...DEFAULT_QUIZ_HOTKEYS };
-        return { ...DEFAULT_QUIZ_HOTKEYS, ...js };
+        
+        // 合并用户设置，但保留空字符串（表示用户清空了该快捷键，应该禁用）
+        const result = { ...DEFAULT_QUIZ_HOTKEYS };
+        for (const key in js) {
+            if (key in DEFAULT_QUIZ_HOTKEYS) {
+                // 如果用户设置的值是空字符串，保留空字符串（禁用该快捷键）
+                // 如果用户设置了有效值，使用用户的值
+                // 如果用户没有设置（undefined），使用默认值
+                if (js[key] !== undefined) {
+                    result[key] = js[key];
+                }
+            }
+        }
+        return result;
     } catch(e) {
         return { ...DEFAULT_QUIZ_HOTKEYS };
     }
@@ -2302,7 +2315,9 @@ document.addEventListener('keydown', function(e) {
     const token = normalizeEventToken(e);
 
     // 提交/查看结果/下一题（可自定义，默认 Enter）
-    if ((HK.submit_or_next && token === HK.submit_or_next) || (!HK.submit_or_next && e.key === 'Enter')) {
+    // 空字符串表示用户清空了该快捷键，应该禁用
+    const hasCustomSubmit = HK.submit_or_next && HK.submit_or_next.trim() !== '';
+    if ((hasCustomSubmit && token === HK.submit_or_next) || (!hasCustomSubmit && e.key === 'Enter')) {
         // 当焦点在问答题的文本域时，允许默认的换行行为
         if (isTextareaFocused) {
             return;
@@ -2332,25 +2347,45 @@ document.addEventListener('keydown', function(e) {
     }
 
     // 填空题中，使用自定义快捷键切换输入框（当 input 聚焦时）
-    if (isInputFocused && ((HK.blank_prev && token === HK.blank_prev) || (HK.blank_next && token === HK.blank_next) || e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
-        const isPrev = (HK.blank_prev && token === HK.blank_prev) || (!HK.blank_prev && e.key === 'ArrowUp') || e.key === 'ArrowUp';
-        const isNext = (HK.blank_next && token === HK.blank_next) || (!HK.blank_next && e.key === 'ArrowDown') || e.key === 'ArrowDown';
-        const arrowKey = isNext ? 'ArrowDown' : 'ArrowUp';
-        const currentQ = questions[currentIndex];
-        if (currentQ && currentQ.dataset.type === '填空题') {
-            const inputs = Array.from(currentQ.querySelectorAll('.main-input'));
-            if (inputs.length > 1) {
-                const focusedIndex = inputs.indexOf(document.activeElement);
-                if (focusedIndex !== -1) {
-                    e.preventDefault(); // 阻止光标移动到行首/行尾
-                    let nextIndex;
-                    if (arrowKey === 'ArrowDown') {
-                        nextIndex = (focusedIndex + 1) % inputs.length;
-                    } else { // ArrowUp
-                        nextIndex = (focusedIndex - 1 + inputs.length) % inputs.length;
+    // 只检查自定义快捷键，如果设置了自定义快捷键就不再检查默认值
+    // 空字符串表示用户清空了该快捷键，应该禁用
+    if (isInputFocused) {
+        let isPrev = false;
+        let isNext = false;
+        
+        const hasCustomBlankPrev = HK.blank_prev && HK.blank_prev.trim() !== '';
+        const hasCustomBlankNext = HK.blank_next && HK.blank_next.trim() !== '';
+        
+        if (hasCustomBlankPrev && token === HK.blank_prev) {
+            isPrev = true;
+        } else if (!hasCustomBlankPrev && e.key === 'ArrowUp') {
+            isPrev = true;
+        }
+        
+        if (hasCustomBlankNext && token === HK.blank_next) {
+            isNext = true;
+        } else if (!hasCustomBlankNext && e.key === 'ArrowDown') {
+            isNext = true;
+        }
+        
+        if (isPrev || isNext) {
+            const arrowKey = isNext ? 'ArrowDown' : 'ArrowUp';
+            const currentQ = questions[currentIndex];
+            if (currentQ && currentQ.dataset.type === '填空题') {
+                const inputs = Array.from(currentQ.querySelectorAll('.main-input'));
+                if (inputs.length > 1) {
+                    const focusedIndex = inputs.indexOf(document.activeElement);
+                    if (focusedIndex !== -1) {
+                        e.preventDefault(); // 阻止光标移动到行首/行尾
+                        let nextIndex;
+                        if (arrowKey === 'ArrowDown') {
+                            nextIndex = (focusedIndex + 1) % inputs.length;
+                        } else { // ArrowUp
+                            nextIndex = (focusedIndex - 1 + inputs.length) % inputs.length;
+                        }
+                        inputs[nextIndex].focus();
+                        return; // 功能已处理，退出
                     }
-                    inputs[nextIndex].focus();
-                    return; // 功能已处理，退出
                 }
             }
         }
@@ -2366,17 +2401,27 @@ document.addEventListener('keydown', function(e) {
     const options = currentQ.querySelectorAll('.options label');
 
     // 选项选择（选择题/判断题）
-    const chooseMap = {
-        [HK.choose_option_1 || 'Digit1']: 0,
-        [HK.choose_option_2 || 'Digit2']: 1,
-        [HK.choose_option_3 || 'Digit3']: 2,
-        [HK.choose_option_4 || 'Digit4']: 3,
-        // 兼容原先的 e.key 数字输入
-        'Digit1': 0,
-        'Digit2': 1,
-        'Digit3': 2,
-        'Digit4': 3
-    };
+    // 只使用自定义快捷键，如果设置了自定义快捷键就不再使用默认值
+    // 空字符串表示用户清空了该快捷键，应该禁用
+    const chooseMap = {};
+    const hasCustomOption1 = HK.choose_option_1 && HK.choose_option_1.trim() !== '';
+    const hasCustomOption2 = HK.choose_option_2 && HK.choose_option_2.trim() !== '';
+    const hasCustomOption3 = HK.choose_option_3 && HK.choose_option_3.trim() !== '';
+    const hasCustomOption4 = HK.choose_option_4 && HK.choose_option_4.trim() !== '';
+    
+    if (hasCustomOption1) chooseMap[HK.choose_option_1] = 0;
+    if (hasCustomOption2) chooseMap[HK.choose_option_2] = 1;
+    if (hasCustomOption3) chooseMap[HK.choose_option_3] = 2;
+    if (hasCustomOption4) chooseMap[HK.choose_option_4] = 3;
+    
+    // 如果用户没有自定义任何选项快捷键，则使用默认值
+    if (Object.keys(chooseMap).length === 0) {
+        chooseMap['Digit1'] = 0;
+        chooseMap['Digit2'] = 1;
+        chooseMap['Digit3'] = 2;
+        chooseMap['Digit4'] = 3;
+    }
+    
     if (token in chooseMap) {
         e.preventDefault();
         const optionIndex = chooseMap[token];
@@ -2388,19 +2433,45 @@ document.addEventListener('keydown', function(e) {
     }
 
     // 上/下一题
-    if ((HK.prev_question && token === HK.prev_question) || e.key === 'ArrowLeft') {
+    // 只检查自定义快捷键，如果设置了自定义快捷键就不再检查默认值
+    // 空字符串表示用户清空了该快捷键，应该禁用
+    const hasCustomPrev = HK.prev_question && HK.prev_question.trim() !== '';
+    const hasCustomNext = HK.next_question && HK.next_question.trim() !== '';
+    
+    if (hasCustomPrev && token === HK.prev_question) {
         e.preventDefault();
         prevQuestion();
         return;
     }
-    if ((HK.next_question && token === HK.next_question) || e.key === 'ArrowRight') {
+    if (!hasCustomPrev && e.key === 'ArrowLeft') {
+        e.preventDefault();
+        prevQuestion();
+        return;
+    }
+    
+    if (hasCustomNext && token === HK.next_question) {
+        e.preventDefault();
+        nextQuestion();
+        return;
+    }
+    if (!hasCustomNext && e.key === 'ArrowRight') {
         e.preventDefault();
         nextQuestion();
         return;
     }
 
     // 收藏
-    if ((HK.toggle_favorite && token === HK.toggle_favorite) || e.key === 'f' || e.key === 'F') {
+    // 只检查自定义快捷键，如果设置了自定义快捷键就不再检查默认值
+    // 空字符串表示用户清空了该快捷键，应该禁用
+    const hasCustomFavorite = HK.toggle_favorite && HK.toggle_favorite.trim() !== '';
+    
+    if (hasCustomFavorite && token === HK.toggle_favorite) {
+        e.preventDefault();
+        const favBtn = currentQ.querySelector('.fav-btn');
+        if (favBtn) favBtn.click();
+        return;
+    }
+    if (!hasCustomFavorite && (e.key === 'f' || e.key === 'F')) {
         e.preventDefault();
         const favBtn = currentQ.querySelector('.fav-btn');
         if (favBtn) favBtn.click();

@@ -1,6 +1,6 @@
 {% extends "admin/admin_base.html" %}
 
-{% block title %}通知管理{% endblock %}
+{% block title %}弹窗管理{% endblock %}
 
 {% block head %}
 <style>
@@ -495,9 +495,9 @@
     }
 
     .tag-info { background:#dbeafe; color:#1e40af; }
-    .tag-announcement { background:#cffafe; color:#0e7490; }
-    .tag-reminder { background:#fef3c7; color:#92400e; }
-    .tag-warning { background:#fee2e2; color:#991b1b; }
+    .tag-success { background:#d1fae5; color:#065f46; }
+    .tag-warning { background:#fef3c7; color:#92400e; }
+    .tag-error { background:#fee2e2; color:#991b1b; }
     .tag-active { background:#d1fae5; color:#065f46; }
     .tag-inactive { background:#f3f4f6; color:#4b5563; }
 
@@ -653,9 +653,9 @@
     }
 
     .type-dot.info { background: #3b82f6; }
-    .type-dot.announcement { background: #06b6d4; }
-    .type-dot.reminder { background: #f59e0b; }
-    .type-dot.warning { background: #ef4444; }
+    .type-dot.success { background: #22c55e; }
+    .type-dot.warning { background: #f59e0b; }
+    .type-dot.error { background: #ef4444; }
 
     .type-label {
         font-weight: 600;
@@ -831,81 +831,20 @@
     .char-counter.danger {
         color: var(--danger);
     }
-    
-    /* 标签页样式 */
-    .tab-container {
-        display: flex;
-        gap: 8px;
-        margin-bottom: 24px;
-        border-bottom: 1px solid var(--border-color);
-        padding-bottom: 0;
-    }
-    
-    .tab-btn {
-        padding: 12px 24px;
-        background: none;
-        border: none;
-        border-bottom: 2px solid transparent;
-        color: var(--text-sub);
-        font-size: 15px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.2s;
-        position: relative;
-        bottom: -1px;
-    }
-    
-    .tab-btn:hover {
-        color: var(--text-color);
-    }
-    
-    .tab-btn.active {
-        color: var(--primary);
-        border-bottom-color: var(--primary);
-        font-weight: 600;
-    }
-    
-    .tab-content {
-        display: block;
-    }
-    
-    .tab-content.active {
-        display: block;
-    }
-    
-    [data-theme="dark"] .tab-btn {
-        color: var(--text-sub);
-    }
-    
-    [data-theme="dark"] .tab-btn:hover {
-        color: var(--text-color);
-    }
-    
-    [data-theme="dark"] .tab-btn.active {
-        color: var(--primary);
-    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container">
-    <!-- 标签页切换 -->
-    <div class="tab-container">
-        <button class="tab-btn active" data-tab="notifications" onclick="switchTab('notifications')">通知栏管理</button>
-        <button class="tab-btn" data-tab="popups" onclick="switchTab('popups')">弹窗管理</button>
-    </div>
-    
-    <!-- 通知栏管理区域 -->
-    <div id="notificationsTab" class="tab-content active">
-        <div class="toolbar">
-            <div class="toolbar-left">
-                <h1>通知管理</h1>
-            </div>
-            <div class="toolbar-right">
-                <button class="btn-outline" onclick="refreshData()">刷新</button>
-                <button class="btn-primary" onclick="openCreate()">新建通知</button>
-            </div>
+    <div class="toolbar">
+        <div class="toolbar-left">
+            <h1>弹窗管理</h1>
         </div>
+        <div class="toolbar-right">
+            <button class="btn-outline" onclick="refreshData()">刷新</button>
+            <button class="btn-primary" onclick="openCreate()">新建弹窗</button>
+        </div>
+    </div>
 
     <!-- 统计卡片 -->
     <div class="stats-row" id="statsRow"></div>
@@ -925,9 +864,9 @@
             <div class="filter-chips">
                 <button class="filter-chip active" data-type="all" onclick="filterByType('all')">全部</button>
                 <button class="filter-chip" data-type="info" onclick="filterByType('info')">信息</button>
-                <button class="filter-chip" data-type="announcement" onclick="filterByType('announcement')">公告</button>
-                <button class="filter-chip" data-type="reminder" onclick="filterByType('reminder')">提醒</button>
+                <button class="filter-chip" data-type="success" onclick="filterByType('success')">成功</button>
                 <button class="filter-chip" data-type="warning" onclick="filterByType('warning')">警告</button>
+                <button class="filter-chip" data-type="error" onclick="filterByType('error')">错误</button>
             </div>
         </div>
 
@@ -952,13 +891,16 @@
                     <th>内容预览</th>
                     <th style="width:80px;">优先级</th>
                     <th style="width:90px;">状态</th>
+                    <th style="width:100px;">显示次数</th>
+                    <th style="width:100px;">关闭次数</th>
+                    <th style="width:100px;">关闭率</th>
                     <th style="width:160px;">创建时间</th>
                     <th style="width:100px;">操作</th>
                 </tr>
             </thead>
             <tbody id="tbody">
                 <tr>
-                    <td colspan="8" class="loading">
+                    <td colspan="11" class="loading">
                         <div class="loading-spinner"></div>
                         <div style="margin-top: 12px;">加载中...</div>
                     </td>
@@ -980,45 +922,45 @@
 <!-- 新建/编辑弹窗 -->
 <div id="dlgEdit" class="modal-overlay">
     <div class="modal">
-        <h3 id="dlgTitle">新建通知</h3>
+        <h3 id="dlgTitle">新建弹窗</h3>
         <input type="hidden" id="editId">
 
         <div class="form-group">
-            <label>通知类型 <span class="required">*</span></label>
+            <label>弹窗类型 <span class="required">*</span></label>
             <div class="type-selector" id="typeSelector">
                 <label class="type-option selected" onclick="selectType('info')">
-                    <input type="radio" name="n_type" value="info" checked>
+                    <input type="radio" name="popup_type" value="info" checked>
                     <span class="type-dot info"></span>
                     <span class="type-label">信息</span>
                 </label>
-                <label class="type-option" onclick="selectType('announcement')">
-                    <input type="radio" name="n_type" value="announcement">
-                    <span class="type-dot announcement"></span>
-                    <span class="type-label">公告</span>
-                </label>
-                <label class="type-option" onclick="selectType('reminder')">
-                    <input type="radio" name="n_type" value="reminder">
-                    <span class="type-dot reminder"></span>
-                    <span class="type-label">提醒</span>
+                <label class="type-option" onclick="selectType('success')">
+                    <input type="radio" name="popup_type" value="success">
+                    <span class="type-dot success"></span>
+                    <span class="type-label">成功</span>
                 </label>
                 <label class="type-option" onclick="selectType('warning')">
-                    <input type="radio" name="n_type" value="warning">
+                    <input type="radio" name="popup_type" value="warning">
                     <span class="type-dot warning"></span>
                     <span class="type-label">警告</span>
+                </label>
+                <label class="type-option" onclick="selectType('error')">
+                    <input type="radio" name="popup_type" value="error">
+                    <span class="type-dot error"></span>
+                    <span class="type-label">错误</span>
                 </label>
             </div>
         </div>
 
         <div class="form-group">
             <label>标题 <span class="required">*</span></label>
-            <input type="text" id="editTitle" placeholder="请输入通知标题" maxlength="100" oninput="updateCharCount('editTitle', 'titleCount', 100)">
-            <div class="char-counter" id="titleCount">0 / 100</div>
+            <input type="text" id="editTitle" placeholder="请输入弹窗标题" maxlength="200" oninput="updateCharCount('editTitle', 'titleCount', 200)">
+            <div class="char-counter" id="titleCount">0 / 200</div>
         </div>
 
         <div class="form-group">
             <label>内容 <span class="required">*</span></label>
-            <textarea id="editContent" placeholder="请输入通知内容" maxlength="500" oninput="updateCharCount('editContent', 'contentCount', 500)"></textarea>
-            <div class="char-counter" id="contentCount">0 / 500</div>
+            <textarea id="editContent" placeholder="请输入弹窗内容（纯文本）" maxlength="1000" oninput="updateCharCount('editContent', 'contentCount', 1000)"></textarea>
+            <div class="char-counter" id="contentCount">0 / 1000</div>
         </div>
 
         <div class="form-row">
@@ -1051,86 +993,7 @@
 
         <div class="modal-actions">
             <button class="btn-outline" onclick="closeEdit()">取消</button>
-            <button class="btn-primary" onclick="saveNotification()" id="btnSave">保存</button>
-        </div>
-    </div>
-</div>
-
-<!-- 新建/编辑弹窗（弹窗管理） -->
-<div id="popupDlgEdit" class="modal-overlay">
-    <div class="modal">
-        <h3 id="popupDlgTitle">新建弹窗</h3>
-        <input type="hidden" id="popupEditId">
-
-        <div class="form-group">
-            <label>弹窗类型 <span class="required">*</span></label>
-            <div class="type-selector" id="popupTypeSelector">
-                <label class="type-option popup-type-option selected" onclick="selectPopupType('info')">
-                    <input type="radio" name="popup_type" value="info" checked>
-                    <span class="type-dot info"></span>
-                    <span class="type-label">信息</span>
-                </label>
-                <label class="type-option popup-type-option" onclick="selectPopupType('success')">
-                    <input type="radio" name="popup_type" value="success">
-                    <span class="type-dot success"></span>
-                    <span class="type-label">成功</span>
-                </label>
-                <label class="type-option popup-type-option" onclick="selectPopupType('warning')">
-                    <input type="radio" name="popup_type" value="warning">
-                    <span class="type-dot warning"></span>
-                    <span class="type-label">警告</span>
-                </label>
-                <label class="type-option popup-type-option" onclick="selectPopupType('error')">
-                    <input type="radio" name="popup_type" value="error">
-                    <span class="type-dot error"></span>
-                    <span class="type-label">错误</span>
-                </label>
-            </div>
-        </div>
-
-        <div class="form-group">
-            <label>标题 <span class="required">*</span></label>
-            <input type="text" id="popupEditTitle" placeholder="请输入弹窗标题" maxlength="200" oninput="updateCharCount('popupEditTitle', 'popupTitleCount', 200)">
-            <div class="char-counter" id="popupTitleCount">0 / 200</div>
-        </div>
-
-        <div class="form-group">
-            <label>内容 <span class="required">*</span></label>
-            <textarea id="popupEditContent" placeholder="请输入弹窗内容（纯文本）" maxlength="1000" oninput="updateCharCount('popupEditContent', 'popupContentCount', 1000)"></textarea>
-            <div class="char-counter" id="popupContentCount">0 / 1000</div>
-        </div>
-
-        <div class="form-row">
-            <div class="form-group">
-                <label>优先级</label>
-                <input type="number" id="popupEditPriority" value="0" min="0" max="100" placeholder="0-100">
-                <div class="muted" style="margin-top: 4px;">数字越大优先级越高</div>
-            </div>
-            <div class="form-group">
-                <label>状态</label>
-                <select id="popupEditActive">
-                    <option value="1">✅ 启用</option>
-                    <option value="0">❌ 禁用</option>
-                </select>
-            </div>
-        </div>
-
-        <div class="form-row">
-            <div class="form-group">
-                <label>开始时间</label>
-                <input type="datetime-local" id="popupEditStartAt">
-                <div class="muted" style="margin-top: 4px;">可选,留空表示立即生效</div>
-            </div>
-            <div class="form-group">
-                <label>结束时间</label>
-                <input type="datetime-local" id="popupEditEndAt">
-                <div class="muted" style="margin-top: 4px;">可选,留空表示永久有效</div>
-            </div>
-        </div>
-
-        <div class="modal-actions">
-            <button class="btn-outline" onclick="closePopupEdit()">取消</button>
-            <button class="btn-primary" onclick="savePopup()" id="popupBtnSave">保存</button>
+            <button class="btn-primary" onclick="savePopup()" id="btnSave">保存</button>
         </div>
     </div>
 </div>
@@ -1141,21 +1004,22 @@
 <script>
     const TYPE_LABELS = {
         info: '信息',
-        announcement: '公告',
-        reminder: '提醒',
-        warning: '警告'
+        success: '成功',
+        warning: '警告',
+        error: '错误'
     };
 
     const TYPE_ICONS = {
         info: '',
-        announcement: '',
-        reminder: '',
-        warning: ''
+        success: '',
+        warning: '',
+        error: ''
     };
 
     // 全局状态
-    let allNotifications = [];
-    let filteredNotifications = [];
+    let allPopups = [];
+    let filteredPopups = [];
+    let popupStats = {};
     let currentPage = 1;
     const pageSize = 10;
     let currentTypeFilter = 'all';
@@ -1165,31 +1029,44 @@
     function qs(sel) { return document.querySelector(sel); }
     function getVal(id) { return document.getElementById(id).value.trim(); }
 
-    async function loadNotifications() {
+    async function loadPopups() {
         try {
-            const res = await fetch('/admin/api/notifications');
-            const js = await res.json();
-            if (!res.ok || js.status !== 'success') {
-                showError(js.message || '加载失败');
+            const [popupsRes, statsRes] = await Promise.all([
+                fetch('/admin/api/popups'),
+                fetch('/admin/api/popups/stats')
+            ]);
+            
+            const popupsJs = await popupsRes.json();
+            if (!popupsRes.ok || popupsJs.status !== 'success') {
+                showError(popupsJs.message || '加载失败');
                 return;
             }
-            allNotifications = js.notifications || [];
+            allPopups = popupsJs.popups || [];
+            
+            const statsJs = await statsRes.json();
+            if (statsRes.ok && statsJs.status === 'success') {
+                popupStats = {};
+                (statsJs.stats || []).forEach(s => {
+                    popupStats[s.popup_id] = s;
+                });
+            }
+            
             applyFilters();
             renderStats();
         } catch (e) {
-            console.error('加载通知失败:', e);
-            showError('加载通知失败');
+            console.error('加载弹窗失败:', e);
+            showError('加载弹窗失败');
         }
     }
 
     function refreshData() {
         showLoading();
-        loadNotifications();
+        loadPopups();
     }
 
     function showLoading() {
         const tb = document.getElementById('tbody');
-        tb.innerHTML = `<tr><td colspan="8" class="loading">
+        tb.innerHTML = `<tr><td colspan="11" class="loading">
             <div class="loading-spinner"></div>
             <div style="margin-top: 12px;">加载中...</div>
         </td></tr>`;
@@ -1197,7 +1074,7 @@
 
     function showError(msg) {
         const tb = document.getElementById('tbody');
-            tb.innerHTML = `<tr><td colspan="8" class="empty-state">
+            tb.innerHTML = `<tr><td colspan="11" class="empty-state">
                 <div class="empty-state-text">加载失败</div>
                 <div class="empty-state-hint">${escapeHtml(msg)}</div>
             </td></tr>`;
@@ -1205,14 +1082,16 @@
 
     // 渲染统计卡片
     function renderStats() {
-        const total = allNotifications.length;
-        const active = allNotifications.filter(n => n.is_active).length;
+        const total = allPopups.length;
+        const active = allPopups.filter(p => p.is_active).length;
         const inactive = total - active;
-        const highPriority = allNotifications.filter(n => n.priority >= 50).length;
+        const totalViews = Object.values(popupStats).reduce((sum, s) => sum + (s.total_views || 0), 0);
+        const totalDismissals = Object.values(popupStats).reduce((sum, s) => sum + (s.total_dismissals || 0), 0);
+        const avgDismissalRate = totalViews > 0 ? ((totalDismissals / totalViews) * 100).toFixed(1) : 0;
 
         const statsHtml = `
             <div class="stat-card info">
-                <div class="stat-label">总通知数</div>
+                <div class="stat-label">总弹窗数</div>
                 <div class="stat-value">${total}</div>
             </div>
             <div class="stat-card success">
@@ -1220,12 +1099,12 @@
                 <div class="stat-value">${active}</div>
             </div>
             <div class="stat-card warning">
-                <div class="stat-label">已禁用</div>
-                <div class="stat-value">${inactive}</div>
+                <div class="stat-label">总显示次数</div>
+                <div class="stat-value">${totalViews}</div>
             </div>
             <div class="stat-card danger">
-                <div class="stat-label">高优先级 (≥50)</div>
-                <div class="stat-value">${highPriority}</div>
+                <div class="stat-label">平均关闭率</div>
+                <div class="stat-value">${avgDismissalRate}%</div>
             </div>
         `;
         
@@ -1234,25 +1113,25 @@
 
     // 应用筛选
     function applyFilters() {
-        filteredNotifications = allNotifications.filter(n => {
+        filteredPopups = allPopups.filter(p => {
             // 类型筛选
-            if (currentTypeFilter !== 'all' && n.n_type !== currentTypeFilter) {
+            if (currentTypeFilter !== 'all' && p.popup_type !== currentTypeFilter) {
                 return false;
             }
             
             // 状态筛选
-            if (currentStatusFilter === 'active' && !n.is_active) {
+            if (currentStatusFilter === 'active' && !p.is_active) {
                 return false;
             }
-            if (currentStatusFilter === 'inactive' && n.is_active) {
+            if (currentStatusFilter === 'inactive' && p.is_active) {
                 return false;
             }
             
             // 搜索关键词
             if (searchKeyword) {
                 const keyword = searchKeyword.toLowerCase();
-                const title = (n.title || '').toLowerCase();
-                const content = (n.content || '').toLowerCase();
+                const title = (p.title || '').toLowerCase();
+                const content = (p.content || '').toLowerCase();
                 if (!title.includes(keyword) && !content.includes(keyword)) {
                     return false;
                 }
@@ -1301,7 +1180,7 @@
 
     // 分页处理
     function changePage(action) {
-        const totalPages = Math.ceil(filteredNotifications.length / pageSize);
+        const totalPages = Math.ceil(filteredPopups.length / pageSize);
         
         switch(action) {
             case 'first':
@@ -1323,12 +1202,12 @@
 
     function renderTable() {
         const tb = document.getElementById('tbody');
-        const totalPages = Math.ceil(filteredNotifications.length / pageSize);
+        const totalPages = Math.ceil(filteredPopups.length / pageSize);
         
-        if (filteredNotifications.length === 0) {
-            tb.innerHTML = `<tr><td colspan="8" class="empty-state">
-                <div class="empty-state-text">暂无通知</div>
-                <div class="empty-state-hint">点击"新建通知"按钮创建第一条通知</div>
+        if (filteredPopups.length === 0) {
+            tb.innerHTML = `<tr><td colspan="11" class="empty-state">
+                <div class="empty-state-text">暂无弹窗</div>
+                <div class="empty-state-hint">点击"新建弹窗"按钮创建第一条弹窗</div>
             </td></tr>`;
             qs('#pagination').style.display = 'none';
             return;
@@ -1337,35 +1216,39 @@
         // 分页数据
         const start = (currentPage - 1) * pageSize;
         const end = start + pageSize;
-        const pageData = filteredNotifications.slice(start, end);
+        const pageData = filteredPopups.slice(start, end);
 
-        tb.innerHTML = pageData.map(n => {
-            const typeClass = `tag-${n.n_type || 'info'}`;
-            const statusClass = n.is_active ? 'tag-active' : 'tag-inactive';
-            const statusText = n.is_active ? '启用' : '禁用';
-            const icon = TYPE_ICONS[n.n_type] || 'ℹ️';
+        tb.innerHTML = pageData.map(p => {
+            const typeClass = `tag-${p.popup_type || 'info'}`;
+            const statusClass = p.is_active ? 'tag-active' : 'tag-inactive';
+            const statusText = p.is_active ? '启用' : '禁用';
+            const stats = popupStats[p.id] || { total_views: 0, total_dismissals: 0, dismissal_rate: 0 };
+            const dismissalRate = stats.total_views > 0 ? ((stats.dismissal_rate * 100).toFixed(1)) : 0;
             
             // 优先级徽章
             let priorityClass = 'priority-low';
-            if (n.priority >= 70) priorityClass = 'priority-high';
-            else if (n.priority >= 30) priorityClass = 'priority-medium';
+            if (p.priority >= 70) priorityClass = 'priority-high';
+            else if (p.priority >= 30) priorityClass = 'priority-medium';
 
             return `<tr>
-                <td>${n.id}</td>
-                <td><span class="tag ${typeClass}">${TYPE_LABELS[n.n_type] || n.n_type}</span></td>
-                <td><strong>${escapeHtml(n.title)}</strong></td>
-                <td class="content-preview" title="${escapeHtml(n.content)}">${escapeHtml(n.content)}</td>
-                <td><span class="priority-badge ${priorityClass}">${n.priority || 0}</span></td>
+                <td>${p.id}</td>
+                <td><span class="tag ${typeClass}">${TYPE_LABELS[p.popup_type] || p.popup_type}</span></td>
+                <td><strong>${escapeHtml(p.title)}</strong></td>
+                <td class="content-preview" title="${escapeHtml(p.content)}">${escapeHtml(p.content)}</td>
+                <td><span class="priority-badge ${priorityClass}">${p.priority || 0}</span></td>
                 <td><span class="tag ${statusClass}">${statusText}</span></td>
-                <td class="muted">${formatDate(n.created_at)}</td>
+                <td class="muted">${stats.total_views || 0}</td>
+                <td class="muted">${stats.total_dismissals || 0}</td>
+                <td class="muted">${dismissalRate}%</td>
+                <td class="muted">${formatDate(p.created_at)}</td>
                 <td class="actions">
                     <div class="action-menu-wrapper">
-                        <button class="btn-sm btn-action" onclick="toggleActionMenu(${n.id}, event)" title="操作">操作</button>
-                        <div class="action-menu" id="actionMenu_${n.id}">
-                            <button class="action-menu-item" onclick="openEdit(${n.id}); closeActionMenu(${n.id})">编辑</button>
-                            <button class="action-menu-item" onclick="toggleActive(${n.id}); closeActionMenu(${n.id})">${n.is_active ? '禁用' : '启用'}</button>
+                        <button class="btn-sm btn-action" onclick="toggleActionMenu(${p.id}, event)" title="操作">操作</button>
+                        <div class="action-menu" id="actionMenu_${p.id}">
+                            <button class="action-menu-item" onclick="openEdit(${p.id}); closeActionMenu(${p.id})">编辑</button>
+                            <button class="action-menu-item" onclick="toggleActive(${p.id}); closeActionMenu(${p.id})">${p.is_active ? '禁用' : '启用'}</button>
                             <div class="action-menu-divider"></div>
-                            <button class="action-menu-item danger" onclick="deleteNotification(${n.id}); closeActionMenu(${n.id})">删除</button>
+                            <button class="action-menu-item danger" onclick="deletePopup(${p.id}); closeActionMenu(${p.id})">删除</button>
                         </div>
                     </div>
                 </td>
@@ -1375,7 +1258,7 @@
         // 更新分页控件
         if (totalPages > 1) {
             qs('#pagination').style.display = 'flex';
-            qs('#pageInfo').innerText = `第 ${currentPage} 页 / 共 ${totalPages} 页 (共 ${filteredNotifications.length} 条)`;
+            qs('#pageInfo').innerText = `第 ${currentPage} 页 / 共 ${totalPages} 页 (共 ${filteredPopups.length} 条)`;
             qs('#btnFirst').disabled = currentPage === 1;
             qs('#btnPrev').disabled = currentPage === 1;
             qs('#btnNext').disabled = currentPage === totalPages;
@@ -1430,7 +1313,7 @@
     }
 
     function openCreate() {
-        qs('#dlgTitle').innerText = '新建通知';
+        qs('#dlgTitle').innerText = '新建弹窗';
         qs('#editId').value = '';
         qs('#editTitle').value = '';
         qs('#editContent').value = '';
@@ -1439,36 +1322,36 @@
         qs('#editStartAt').value = '';
         qs('#editEndAt').value = '';
         selectType('info');
-        updateCharCount('editTitle', 'titleCount', 100);
-        updateCharCount('editContent', 'contentCount', 500);
+        updateCharCount('editTitle', 'titleCount', 200);
+        updateCharCount('editContent', 'contentCount', 1000);
         qs('#dlgEdit').style.display = 'flex';
     }
 
     async function openEdit(id) {
         try {
-            const res = await fetch(`/admin/api/notifications/${id}`);
+            const res = await fetch(`/admin/api/popups/${id}`);
             const js = await res.json();
             if (!res.ok || js.status !== 'success') {
-                alert(js.message || '获取通知失败');
+                alert(js.message || '获取弹窗失败');
                 return;
             }
 
-            const n = js.notification;
-            qs('#dlgTitle').innerText = '编辑通知';
-            qs('#editId').value = n.id;
-            qs('#editTitle').value = n.title || '';
-            qs('#editContent').value = n.content || '';
-            qs('#editPriority').value = n.priority || 0;
-            qs('#editActive').value = n.is_active ? '1' : '0';
-            qs('#editStartAt').value = formatDateTimeLocal(n.start_at);
-            qs('#editEndAt').value = formatDateTimeLocal(n.end_at);
-            selectType(n.n_type || 'info');
-            updateCharCount('editTitle', 'titleCount', 100);
-            updateCharCount('editContent', 'contentCount', 500);
+            const p = js.popup;
+            qs('#dlgTitle').innerText = '编辑弹窗';
+            qs('#editId').value = p.id;
+            qs('#editTitle').value = p.title || '';
+            qs('#editContent').value = p.content || '';
+            qs('#editPriority').value = p.priority || 0;
+            qs('#editActive').value = p.is_active ? '1' : '0';
+            qs('#editStartAt').value = formatDateTimeLocal(p.start_at);
+            qs('#editEndAt').value = formatDateTimeLocal(p.end_at);
+            selectType(p.popup_type || 'info');
+            updateCharCount('editTitle', 'titleCount', 200);
+            updateCharCount('editContent', 'contentCount', 1000);
             qs('#dlgEdit').style.display = 'flex';
         } catch (e) {
-            console.error('获取通知失败:', e);
-            alert('获取通知失败');
+            console.error('获取弹窗失败:', e);
+            alert('获取弹窗失败');
         }
     }
 
@@ -1486,11 +1369,11 @@
         qs('#dlgEdit').style.display = 'none';
     }
 
-    async function saveNotification() {
+    async function savePopup() {
         const id = qs('#editId').value;
         const title = getVal('editTitle');
         const content = getVal('editContent');
-        const n_type = qs('input[name="n_type"]:checked').value;
+        const popup_type = qs('input[name="popup_type"]:checked').value;
         const priority = parseInt(qs('#editPriority').value) || 0;
         const is_active = qs('#editActive').value === '1';
         const start_at = qs('#editStartAt').value || null;
@@ -1514,14 +1397,14 @@
             return;
         }
 
-        const data = { title, content, n_type, priority, is_active, start_at, end_at };
+        const data = { title, content, popup_type, priority, is_active, start_at, end_at };
         const btnSave = qs('#btnSave');
         const originalText = btnSave.textContent;
         btnSave.disabled = true;
         btnSave.textContent = '保存中...';
 
         try {
-            const url = id ? `/admin/api/notifications/${id}` : '/admin/api/notifications';
+            const url = id ? `/admin/api/popups/${id}` : '/admin/api/popups';
             const method = id ? 'PUT' : 'POST';
 
             const res = await fetch(url, {
@@ -1538,10 +1421,10 @@
 
             alert('✅ ' + (js.message || '保存成功'));
             closeEdit();
-            loadNotifications();
+            loadPopups();
         } catch (e) {
-            console.error('保存通知失败:', e);
-            alert('❌ 保存通知失败');
+            console.error('保存弹窗失败:', e);
+            alert('❌ 保存弹窗失败');
         } finally {
             btnSave.disabled = false;
             btnSave.textContent = originalText;
@@ -1549,14 +1432,24 @@
     }
 
     async function toggleActive(id) {
+        const popup = allPopups.find(p => p.id === id);
+        if (!popup) return;
+        
+        const newActive = !popup.is_active;
+        const data = { is_active: newActive };
+        
         try {
-            const res = await fetch(`/admin/api/notifications/${id}/toggle`, { method: 'POST' });
+            const res = await fetch(`/admin/api/popups/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
             const js = await res.json();
             if (!res.ok || js.status !== 'success') {
                 alert('❌ ' + (js.message || '操作失败'));
                 return;
             }
-            loadNotifications();
+            loadPopups();
         } catch (e) {
             console.error('切换状态失败:', e);
             alert('❌ 切换状态失败');
@@ -1564,9 +1457,9 @@
     }
 
     // 操作菜单控制
-    function toggleActionMenu(notificationId, event) {
+    function toggleActionMenu(popupId, event) {
         event.stopPropagation();
-        const menuId = `actionMenu_${notificationId}`;
+        const menuId = `actionMenu_${popupId}`;
         const menu = document.getElementById(menuId);
         const allMenus = document.querySelectorAll('.action-menu.show');
         
@@ -1583,8 +1476,8 @@
         }
     }
     
-    function closeActionMenu(notificationId) {
-        const menu = document.getElementById(`actionMenu_${notificationId}`);
+    function closeActionMenu(popupId) {
+        const menu = document.getElementById(`actionMenu_${popupId}`);
         if (menu) {
             menu.classList.remove('show');
         }
@@ -1608,21 +1501,21 @@
         }
     });
 
-    async function deleteNotification(id) {
-        if (!confirm('⚠️ 确定要删除这条通知吗?\n\n删除后将无法恢复!')) return;
+    async function deletePopup(id) {
+        if (!confirm('⚠️ 确定要删除这条弹窗吗?\n\n删除后将无法恢复!')) return;
 
         try {
-            const res = await fetch(`/admin/api/notifications/${id}`, { method: 'DELETE' });
+            const res = await fetch(`/admin/api/popups/${id}`, { method: 'DELETE' });
             const js = await res.json();
             if (!res.ok || js.status !== 'success') {
                 alert('❌ ' + (js.message || '删除失败'));
                 return;
             }
             alert('✅ ' + (js.message || '删除成功'));
-            loadNotifications();
+            loadPopups();
         } catch (e) {
-            console.error('删除通知失败:', e);
-            alert('❌ 删除通知失败');
+            console.error('删除弹窗失败:', e);
+            alert('❌ 删除弹窗失败');
         }
     }
 
@@ -1630,13 +1523,41 @@
     qs('#dlgEdit').addEventListener('click', function(e) {
         if (e.target === this) closeEdit();
     });
-    
-    // 点击弹窗外部关闭（弹窗管理）
-    document.getElementById('popupDlgEdit').addEventListener('click', function(e) {
-        if (e.target === this) closePopupEdit();
+
+    // 初始化
+    loadPopups();
+</script>
+{% endblock %}
+
+                menu.classList.remove('show');
+            });
+        }
+    });
+
+    async function deletePopup(id) {
+        if (!confirm('⚠️ 确定要删除这条弹窗吗?\n\n删除后将无法恢复!')) return;
+
+        try {
+            const res = await fetch(`/admin/api/popups/${id}`, { method: 'DELETE' });
+            const js = await res.json();
+            if (!res.ok || js.status !== 'success') {
+                alert('❌ ' + (js.message || '删除失败'));
+                return;
+            }
+            alert('✅ ' + (js.message || '删除成功'));
+            loadPopups();
+        } catch (e) {
+            console.error('删除弹窗失败:', e);
+            alert('❌ 删除弹窗失败');
+        }
+    }
+
+    // 点击弹窗外部关闭
+    qs('#dlgEdit').addEventListener('click', function(e) {
+        if (e.target === this) closeEdit();
     });
 
     // 初始化
-    loadNotifications();
+    loadPopups();
 </script>
 {% endblock %}

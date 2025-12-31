@@ -151,7 +151,7 @@
     
     .list-card-search {
         width: 100%;
-        max-width: 505px;
+        max-width: 450px;
         padding: 10px 16px;
         border: 0.5px solid var(--border-color);
         border-radius: var(--radius-md);
@@ -472,24 +472,6 @@
         </div>
     </div>
     
-    <!-- 系统配置管理 -->
-    <div class="config-section">
-        <div class="config-section-header">系统配置</div>
-        <div class="config-item">
-            <div class="config-item-label">刷题限制功能开关</div>
-            <div class="config-item-value">
-                <div class="switch" id="quizLimitSwitch" onclick="toggleQuizLimit()"></div>
-                <span id="quizLimitStatus">关闭</span>
-            </div>
-        </div>
-        <div class="config-item">
-            <div class="config-item-label">刷题限制数量</div>
-            <div class="config-item-value">
-                <input type="number" class="config-input" id="quizLimitCount" value="100" min="1">
-                <button class="btn-primary" onclick="updateQuizLimitCount()">保存</button>
-            </div>
-        </div>
-    </div>
 </div>
 {% endblock %}
 
@@ -502,12 +484,20 @@
     let totalUsers = 0;
     let totalSubjects = 0;
     let currentPage = 1;
-    let pageSize = 20;
+    let pageSize = 10000; // 使用大值以加载所有用户
+    let searchTimeout = null;
     
     // 加载数据
     async function loadData() {
         try {
-            const res = await fetch(`/admin/api/subject_permissions/overview?page=${currentPage}&per_page=${pageSize}`);
+            const search = document.getElementById('userSearch').value.trim();
+            // 使用大值per_page以加载所有用户（或匹配搜索的用户）
+            let url = `/admin/api/subject_permissions/overview?page=1&per_page=${pageSize}`;
+            if (search) {
+                url += `&search=${encodeURIComponent(search)}`;
+            }
+            
+            const res = await fetch(url);
             const result = await res.json();
             
             if (result.status === 'success') {
@@ -525,15 +515,13 @@
                 subjectsData = data.subjects || [];
                 
                 // 更新列表计数（显示总数，不是当前页数量）
-                document.getElementById('userListCount').textContent = `共 ${totalUsers} 个用户（当前页 ${usersData.length}）`;
+                const searchText = search ? `（搜索: "${search}"）` : '';
+                document.getElementById('userListCount').textContent = `共 ${totalUsers} 个用户${searchText}`;
                 document.getElementById('subjectListCount').textContent = `共 ${totalSubjects} 个科目`;
                 
                 // 渲染列表
                 renderUserList();
                 renderSubjectList();
-                
-                // 加载配置
-                loadQuizLimitConfig();
             }
         } catch (error) {
             console.error('加载数据失败:', error);
@@ -544,23 +532,32 @@
     // 渲染用户列表
     function renderUserList() {
         const container = document.getElementById('userListContainer');
-        const search = document.getElementById('userSearch').value.toLowerCase();
         
-        const filtered = usersData.filter(u => 
-            u.username.toLowerCase().includes(search)
-        );
-        
-        if (filtered.length === 0) {
+        if (usersData.length === 0) {
             container.innerHTML = '<div class="empty-state">暂无用户</div>';
             return;
         }
         
-        container.innerHTML = filtered.map(user => `
+        // 如果有选中的科目，将被限制的用户排在前面
+        let sortedUsers = [...usersData];
+        if (selectedSubjectIds.size > 0) {
+            sortedUsers.sort((a, b) => {
+                const aSelected = selectedUserIds.has(a.id);
+                const bSelected = selectedUserIds.has(b.id);
+                // 被选中的用户排在前面
+                if (aSelected && !bSelected) return -1;
+                if (!aSelected && bSelected) return 1;
+                // 如果都是选中或都未选中，按ID排序
+                return a.id - b.id;
+            });
+        }
+        
+        container.innerHTML = sortedUsers.map(user => `
             <div class="list-item ${selectedUserIds.has(user.id) ? 'selected' : ''}" onclick="toggleUserSelection(${user.id})">
                 <input type="checkbox" class="list-item-checkbox" ${selectedUserIds.has(user.id) ? 'checked' : ''} onclick="event.stopPropagation(); toggleUserSelection(${user.id})">
                 <div class="list-item-info">
                     <div class="list-item-name">${escapeHtml(user.username)}</div>
-                    <div class="list-item-meta">被限制: ${user.restricted_subjects_count}/${user.total_subjects_count} 个科目</div>
+                    <div class="list-item-meta">被限制: ${user.restricted_subjects_count || 0}/${user.total_subjects_count || 0} 个科目</div>
                 </div>
             </div>
         `).join('');
@@ -681,9 +678,17 @@
         renderSubjectList();
     }
     
-    // 过滤用户
+    // 过滤用户（带防抖）
     function filterUsers() {
-        renderUserList();
+        // 清除之前的定时器
+        if (searchTimeout) {
+            clearTimeout(searchTimeout);
+        }
+        
+        // 设置新的定时器，500ms后执行搜索
+        searchTimeout = setTimeout(() => {
+            loadData();
+        }, 500);
     }
     
     // 过滤科目
@@ -760,97 +765,6 @@
         } catch (error) {
             console.error('批量取消限制失败:', error);
             showError('操作失败');
-        }
-    }
-    
-    // 加载刷题限制配置
-    async function loadQuizLimitConfig() {
-        try {
-            const res = await fetch('/admin/api/system_config/quiz_limit');
-            const result = await res.json();
-            
-            if (result.status === 'success') {
-                const config = result.data;
-                const switchEl = document.getElementById('quizLimitSwitch');
-                const statusEl = document.getElementById('quizLimitStatus');
-                const countInput = document.getElementById('quizLimitCount');
-                
-                if (config.quiz_limit_enabled) {
-                    switchEl.classList.add('active');
-                    statusEl.textContent = '开启';
-                } else {
-                    switchEl.classList.remove('active');
-                    statusEl.textContent = '关闭';
-                }
-                
-                countInput.value = config.quiz_limit_count || 100;
-            }
-        } catch (error) {
-            console.error('加载配置失败:', error);
-        }
-    }
-    
-    // 切换刷题限制开关
-    async function toggleQuizLimit() {
-        const switchEl = document.getElementById('quizLimitSwitch');
-        const isActive = switchEl.classList.contains('active');
-        const newValue = isActive ? '0' : '1';
-        
-        try {
-            const res = await fetch('/admin/api/system_config/quiz_limit_enabled', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    config_value: newValue
-                })
-            });
-            
-            const result = await res.json();
-            if (result.status === 'success') {
-                if (newValue === '1') {
-                    switchEl.classList.add('active');
-                    document.getElementById('quizLimitStatus').textContent = '开启';
-                } else {
-                    switchEl.classList.remove('active');
-                    document.getElementById('quizLimitStatus').textContent = '关闭';
-                }
-                showSuccess('配置已更新');
-            } else {
-                showError(result.message || '更新失败');
-            }
-        } catch (error) {
-            console.error('更新配置失败:', error);
-            showError('更新失败');
-        }
-    }
-    
-    // 更新刷题限制数量
-    async function updateQuizLimitCount() {
-        const count = parseInt(document.getElementById('quizLimitCount').value);
-        
-        if (isNaN(count) || count < 1) {
-            showError('请输入有效的数量（大于0）');
-            return;
-        }
-        
-        try {
-            const res = await fetch('/admin/api/system_config/quiz_limit_count', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    config_value: count.toString()
-                })
-            });
-            
-            const result = await res.json();
-            if (result.status === 'success') {
-                showSuccess('配置已更新');
-            } else {
-                showError(result.message || '更新失败');
-            }
-        } catch (error) {
-            console.error('更新配置失败:', error);
-            showError('更新失败');
         }
     }
     

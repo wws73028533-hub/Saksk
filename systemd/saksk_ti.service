@@ -1,0 +1,58 @@
+[Unit]
+Description=Quiz App Gunicorn Application Server
+After=network.target
+
+[Service]
+Type=notify
+User=www-data
+Group=www-data
+WorkingDirectory=/path/to/quiz-app
+Environment="PATH=/path/to/venv/bin"
+# 关键环境变量设置
+Environment="FLASK_ENV=production"
+Environment="ENVIRONMENT=production"
+# 生产环境必须设置 SECRET_KEY
+Environment="SECRET_KEY=your-secret-key-here"
+# 邮件配置（根据实际情况修改）
+# Environment="MAIL_SERVER=smtp.example.com"
+# Environment="MAIL_PORT=587"
+# Environment="MAIL_USE_TLS=true"
+# Environment="MAIL_USERNAME=your-email@example.com"
+# Environment="MAIL_PASSWORD=your-password"
+# Environment="MAIL_DEFAULT_SENDER=noreply@example.com"
+# HTTPS 环境设置
+# Environment="SESSION_COOKIE_SECURE=true"
+
+# Gunicorn 启动命令
+# 使用配置文件
+ExecStart=/path/to/venv/bin/gunicorn -c gunicorn_config.py run:app
+
+# 或者直接指定参数（不使用配置文件）
+# ExecStart=/path/to/venv/bin/gunicorn \
+#     --bind 127.0.0.1:8000 \
+#     --workers 4 \
+#     --worker-class sync \
+#     --timeout 30 \
+#     --access-logfile /path/to/quiz-app/logs/gunicorn_access.log \
+#     --error-logfile /path/to/quiz-app/logs/gunicorn_error.log \
+#     --log-level info \
+#     --pid /path/to/quiz-app/logs/gunicorn.pid \
+#     run:app
+
+# 重启命令
+ExecReload=/bin/kill -s HUP $MAINPID
+
+# 优雅停止
+KillMode=mixed
+TimeoutStopSec=5
+PrivateTmp=true
+
+# 资源限制
+LimitNOFILE=65535
+
+# 自动重启配置
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

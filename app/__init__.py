@@ -99,12 +99,25 @@ def _setup_logging(app):
             maxBytes=app.config['LOG_MAX_BYTES'],
             backupCount=app.config['LOG_BACKUP_COUNT']
         )
+        # 根据环境设置日志级别
+        log_level = getattr(app.config, 'LOG_LEVEL', logging.INFO)
+        if app.config.get('DEBUG'):
+            log_level = logging.DEBUG
+        
         file_handler.setFormatter(logging.Formatter(
             '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
         ))
-        file_handler.setLevel(logging.INFO)
+        file_handler.setLevel(log_level)
         app.logger.addHandler(file_handler)
-        app.logger.setLevel(logging.INFO)
+        app.logger.setLevel(log_level)
+        
+        # 生产环境日志提示
+        if not app.config.get('DEBUG'):
+            app.logger.info(f'生产环境已启动，日志级别: {logging.getLevelName(log_level)}')
+        
+        # 生产环境不显示详细错误信息
+        if not app.config.get('DEBUG'):
+            app.logger.info(f'生产环境已启动，日志级别: {logging.getLevelName(log_level)}')
 
 
 def _register_blueprints(app):
@@ -176,47 +189,53 @@ def _register_before_request(app):
                 
                 # 检查用户是否绑定邮箱（排除管理员和绑定邮箱相关的API）
                 if not session.get('is_admin'):
-                    # 检查邮箱字段是否存在
-                    try:
-                        user_cols = [r['name'] for r in conn.execute("PRAGMA table_info(users)").fetchall()]
-                        has_email_field = 'email' in user_cols
-                    except Exception:
-                        has_email_field = False
+                    # 检查邮箱绑定是否必需（从系统配置读取）
+                    from app.modules.admin.services.system_config_service import SystemConfigService
+                    email_bind_required = SystemConfigService.get_email_bind_required_config()
                     
-                    if has_email_field:
-                        user_email = conn.execute('SELECT email FROM users WHERE id = ?', (uid,)).fetchone()
-                        email_bound = user_email and user_email[0] and user_email[0].strip()
+                    # 如果配置为不需要绑定邮箱，则跳过限制检查
+                    if email_bind_required:
+                        # 检查邮箱字段是否存在
+                        try:
+                            user_cols = [r['name'] for r in conn.execute("PRAGMA table_info(users)").fetchall()]
+                            has_email_field = 'email' in user_cols
+                        except Exception:
+                            has_email_field = False
                         
-                        # 如果未绑定邮箱，限制功能访问（允许的路径）
-                        if not email_bound:
-                            # 允许访问的路径（绑定邮箱相关）
-                            allowed_paths = {
-                                '/',  # 首页（用于显示弹窗）
-                                '/terms',  # 服务协议页面
-                                '/privacy',  # 隐私保护协议页面
-                                '/api/email/send-bind-code',  # 发送绑定验证码
-                                '/api/email/bind',  # 绑定邮箱
-                                '/api/logout',  # 登出
-                                '/logout',  # 登出页面
-                                '/static',  # 静态资源
-                            }
+                        if has_email_field:
+                            user_email = conn.execute('SELECT email FROM users WHERE id = ?', (uid,)).fetchone()
+                            email_bound = user_email and user_email[0] and user_email[0].strip()
                             
-                            # 检查是否是允许的路径
-                            is_allowed = False
-                            for allowed_path in allowed_paths:
-                                if path == allowed_path or path.startswith(allowed_path):
-                                    is_allowed = True
-                                    break
-                            
-                            if not is_allowed:
-                                if path.startswith('/api'):
-                                    return jsonify({
-                                        'status': 'error',
-                                        'message': '请先绑定邮箱后才能使用此功能',
-                                        'code': 'EMAIL_NOT_BOUND'
-                                    }), 403
-                                # 页面请求：重定向到首页（会显示绑定弹窗）
-                                return redirect('/')
+                            # 如果未绑定邮箱，限制功能访问（允许的路径）
+                            if not email_bound:
+                                # 允许访问的路径（绑定邮箱相关）
+                                allowed_paths = {
+                                    '/',  # 首页（用于显示弹窗）
+                                    '/terms',  # 服务协议页面
+                                    '/privacy',  # 隐私保护协议页面
+                                    '/api/email/send-bind-code',  # 发送绑定验证码
+                                    '/api/email/bind',  # 绑定邮箱
+                                    '/api/logout',  # 登出
+                                    '/logout',  # 登出页面
+                                    '/static',  # 静态资源
+                                }
+                                
+                                # 检查是否是允许的路径
+                                is_allowed = False
+                                for allowed_path in allowed_paths:
+                                    if path == allowed_path or path.startswith(allowed_path):
+                                        is_allowed = True
+                                        break
+                                
+                                if not is_allowed:
+                                    if path.startswith('/api'):
+                                        return jsonify({
+                                            'status': 'error',
+                                            'message': '请先绑定邮箱后才能使用此功能',
+                                            'code': 'EMAIL_NOT_BOUND'
+                                        }), 403
+                                    # 页面请求：重定向到首页（会显示绑定弹窗）
+                                    return redirect('/')
                 
                 # 更新用户最后活动时间（排除静态资源请求）
                 if not path.startswith('/static') and not path.endswith('.ico'):

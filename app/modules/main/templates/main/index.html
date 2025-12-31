@@ -1266,6 +1266,11 @@
         .subject-hint-close:hover {
             opacity: 1;
         }
+        .subject-hint-actions {
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+        }
         body.dark-mode .subject-hint {
             background: linear-gradient(135deg, rgba(88, 166, 255, 0.15) 0%, rgba(28, 28, 30, 0.85) 100%);
             border-color: rgba(88, 166, 255, 0.3);
@@ -1289,6 +1294,27 @@
             .user-area { gap: 8px; }
             .chips-scroll { gap: 6px; }
             .chip { padding: 10px 14px; }
+            
+            /* 平板端优化 */
+            .subject-hint {
+                bottom: 16px;
+                left: 16px;
+                right: 16px;
+                transform: none;
+                max-width: none;
+                padding: 14px 16px;
+                gap: 10px;
+            }
+            @keyframes subjectHintSlideIn {
+                from {
+                    opacity: 0;
+                    transform: translateY(20px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
         }
         @media (max-width: 480px) {
             .header-title { font-size: 22px; }
@@ -1302,38 +1328,133 @@
             .stat-value {
                 font-size: 22px;
             }
+            /* 移动端科目提示优化 */
             .subject-hint {
-                font-size: 12px;
-                padding: 12px 14px;
-                max-width: calc(100% - 24px);
-                flex-wrap: wrap;
-                gap: 8px;
+                bottom: 12px;
+                left: 12px;
+                right: 12px;
+                transform: none;
+                max-width: none;
+                padding: 14px 16px 14px 16px;
+                padding-top: 44px; /* 为关闭按钮留出空间 */
+                border-radius: 16px;
+                font-size: 13px;
+                flex-direction: column;
+                align-items: stretch;
+                gap: 12px;
+                box-shadow: 0 4px 16px rgba(0, 122, 255, 0.2), var(--shadow);
+            }
+            @keyframes subjectHintSlideIn {
+                from {
+                    opacity: 0;
+                    transform: translateY(30px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+            .subject-hint-icon {
+                display: none;
             }
             .subject-hint-content {
                 width: 100%;
                 order: 1;
+                gap: 6px;
             }
             .subject-hint-title {
+                font-size: 15px;
+                font-weight: 600;
+                line-height: 1.4;
+            }
+            .subject-hint-text {
+                font-size: 12px;
+                line-height: 1.5;
+                color: var(--text-sub);
+            }
+            /* 按钮容器优化 */
+            .subject-hint-actions {
+                order: 2;
+                width: 100%;
+                display: flex;
+                gap: 8px;
+                flex-direction: row;
+                align-items: stretch;
+            }
+            .subject-hint-try {
+                flex: 1;
+                min-width: 0;
+                padding: 10px 16px;
                 font-size: 13px;
+                font-weight: 600;
+                border-radius: 12px;
+                white-space: nowrap;
+                text-align: center;
+                -webkit-tap-highlight-color: rgba(0, 122, 255, 0.2);
+                min-height: 44px; /* 确保触摸目标足够大 */
+            }
+            .subject-hint-try:hover,
+            .subject-hint-try:active {
+                transform: scale(1.02);
+            }
+            .subject-hint-dismiss {
+                flex: 0 0 auto;
+                padding: 10px 14px;
+                font-size: 12px;
+                border-radius: 10px;
+                white-space: nowrap;
+                min-height: 44px; /* 确保触摸目标足够大 */
+                -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+            }
+            .subject-hint-dismiss:active {
+                opacity: 1;
+                background: rgba(0, 0, 0, 0.1);
+            }
+            body.dark-mode .subject-hint-dismiss:active {
+                background: rgba(255, 255, 255, 0.1);
+            }
+            .subject-hint-close {
+                position: absolute;
+                top: 12px;
+                right: 12px;
+                order: 0;
+                width: 32px;
+                height: 32px;
+                font-size: 20px;
+                opacity: 0.7;
+                border-radius: 50%;
+                -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+            }
+            .subject-hint-close:hover,
+            .subject-hint-close:active {
+                opacity: 1;
+                background: rgba(0, 0, 0, 0.05);
+                border-radius: 50%;
+            }
+            body.dark-mode .subject-hint-close:hover,
+            body.dark-mode .subject-hint-close:active {
+                background: rgba(255, 255, 255, 0.1);
+            }
+        }
+        /* 超小屏幕优化 */
+        @media (max-width: 360px) {
+            .subject-hint {
+                padding: 12px 14px;
+                gap: 10px;
+            }
+            .subject-hint-title {
+                font-size: 14px;
             }
             .subject-hint-text {
                 font-size: 11px;
             }
             .subject-hint-try {
-                order: 2;
-                padding: 5px 10px;
-                font-size: 11px;
+                padding: 9px 14px;
+                font-size: 12px;
             }
             .subject-hint-dismiss {
-                order: 3;
-                font-size: 10px;
-                padding: 3px 6px;
-            }
-            .subject-hint-close {
-                order: 4;
-            }
-            .subject-hint-icon {
-                display: none;
+                padding: 9px 12px;
+                font-size: 11px;
             }
         }
 
@@ -1708,6 +1829,173 @@
             }
 
         }
+        
+        /* 弹窗样式 */
+        .popup-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            animation: fadeInOverlay 0.3s ease-out;
+        }
+        
+        @keyframes fadeInOverlay {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .popup-modal {
+            background: var(--card-bg-solid);
+            backdrop-filter: var(--blur);
+            -webkit-backdrop-filter: var(--blur);
+            border-radius: var(--radius-xl);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+            border: 0.5px solid var(--border-color);
+            width: 90%;
+            max-width: 480px;
+            max-height: 80vh;
+            overflow: hidden;
+            animation: slideUp 0.3s ease-out;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        
+        .popup-header {
+            padding: 24px 24px 16px;
+            border-bottom: 0.5px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        
+        .popup-header h3 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-color);
+            flex: 1;
+        }
+        
+        .popup-close {
+            background: none;
+            border: none;
+            font-size: 28px;
+            color: var(--text-sub);
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--radius-sm);
+            transition: all 0.2s;
+            line-height: 1;
+        }
+        
+        .popup-close:hover {
+            background: rgba(142, 142, 147, 0.1);
+            color: var(--text-color);
+        }
+        
+        .popup-body {
+            padding: 24px;
+            flex: 1;
+            overflow-y: auto;
+        }
+        
+        .popup-body p {
+            margin: 0;
+            font-size: 15px;
+            line-height: 1.6;
+            color: var(--text-color);
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        .popup-footer {
+            padding: 16px 24px 24px;
+            border-top: 0.5px solid var(--border-color);
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+        
+        .popup-btn-primary,
+        .popup-btn-secondary {
+            padding: 10px 20px;
+            border-radius: var(--radius-md);
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+        
+        .popup-btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .popup-btn-primary:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
+        }
+        
+        .popup-btn-secondary {
+            background: rgba(142, 142, 147, 0.1);
+            color: var(--text-color);
+        }
+        
+        .popup-btn-secondary:hover {
+            background: rgba(142, 142, 147, 0.2);
+        }
+        
+        /* 弹窗类型样式 */
+        .popup-modal.type-info .popup-header h3 {
+            color: var(--primary);
+        }
+        
+        .popup-modal.type-success .popup-header h3 {
+            color: var(--success);
+        }
+        
+        .popup-modal.type-warning .popup-header h3 {
+            color: var(--warning);
+        }
+        
+        .popup-modal.type-error .popup-header h3 {
+            color: var(--danger);
+        }
+        
+        .popup-modal.type-success .popup-btn-primary {
+            background: var(--success);
+        }
+        
+        .popup-modal.type-warning .popup-btn-primary {
+            background: var(--warning);
+        }
+        
+        .popup-modal.type-error .popup-btn-primary {
+            background: var(--danger);
+        }
     </style>
 </head>
 <body>
@@ -1749,6 +2037,23 @@
 
         <!-- 通知横幅区域 -->
         <div class="notification-container" id="notificationContainer"></div>
+        
+        <!-- 弹窗组件 -->
+        <div id="popupOverlay" class="popup-overlay" style="display: none;">
+            <div id="popupModal" class="popup-modal">
+                <div class="popup-header">
+                    <h3 id="popupTitle"></h3>
+                    <button class="popup-close" onclick="closePopup()" aria-label="关闭">×</button>
+                </div>
+                <div class="popup-body">
+                    <p id="popupContent"></p>
+                </div>
+                <div class="popup-footer">
+                    <button class="popup-btn-secondary" onclick="dismissPopupForever()">不再提示</button>
+                    <button class="popup-btn-primary" onclick="closePopup()">关闭</button>
+                </div>
+            </div>
+        </div>
 
         <!-- 全局搜索栏 -->
         <div class="card" id="search-card-container" style="margin-bottom: 24px; padding: 20px;">
@@ -2695,13 +3000,15 @@
             <div class="subject-hint-title">自定义科目显示</div>
             <div class="subject-hint-text">可在题库设置页选择要显示的科目，让界面更简洁</div>
         </div>
-        <button class="subject-hint-try" aria-label="去设置" onclick="goToQuizSettings()" title="前往题库设置">去设置</button>
-        <button class="subject-hint-dismiss" aria-label="不再提示" onclick="dismissSubjectHintPermanently()" title="不再提示">不再提示</button>
+        <div class="subject-hint-actions">
+            <button class="subject-hint-try" aria-label="去设置" onclick="goToQuizSettings()" title="前往题库设置">去设置</button>
+            <button class="subject-hint-dismiss" aria-label="不再提示" onclick="dismissSubjectHintPermanently()" title="不再提示">不再提示</button>
+        </div>
         <button class="subject-hint-close" aria-label="关闭" onclick="dismissSubjectHint()" title="关闭">×</button>
     </div>
 
     {# 邮箱绑定弹窗 #}
-    {% if logged_in and not email_bound and not is_admin %}
+    {% if logged_in and not email_bound and not is_admin and email_bind_required %}
     <div id="emailBindModal" class="email-bind-modal">
         <div class="email-bind-modal-overlay"></div>
         <div class="email-bind-modal-content">
@@ -3077,6 +3384,523 @@
                 });
             }
         });
+        
+        // 弹窗显示逻辑
+        let popupQueue = [];
+        let currentPopupIndex = 0;
+        let currentPopupId = null;
+        
+        async function loadPopups() {
+            {% if logged_in %}
+            try {
+                const res = await fetch('/api/popups/active?limit=10');
+                const data = await res.json();
+                
+                if (data.status === 'success' && data.data && data.data.length > 0) {
+                    popupQueue = data.data;
+                    currentPopupIndex = 0;
+                    showNextPopup();
+                }
+            } catch (e) {
+                console.error('加载弹窗失败:', e);
+            }
+            {% endif %}
+        }
+        
+        function showNextPopup() {
+            if (currentPopupIndex >= popupQueue.length) {
+                return;
+            }
+            
+            const popup = popupQueue[currentPopupIndex];
+            currentPopupId = popup.id;
+            
+            // 记录显示
+            fetch(`/api/popups/${popup.id}/view`, { method: 'POST' }).catch(() => {});
+            
+            // 显示弹窗
+            const overlay = document.getElementById('popupOverlay');
+            const modal = document.getElementById('popupModal');
+            const title = document.getElementById('popupTitle');
+            const content = document.getElementById('popupContent');
+            
+            title.textContent = popup.title || '';
+            content.textContent = popup.content || '';
+            
+            // 设置类型样式
+            modal.className = 'popup-modal';
+            if (popup.popup_type) {
+                modal.classList.add(`type-${popup.popup_type}`);
+            }
+            
+            overlay.style.display = 'flex';
+        }
+        
+        function closePopup() {
+            const overlay = document.getElementById('popupOverlay');
+            overlay.style.display = 'none';
+            
+            // 显示下一个弹窗（轮播）
+            currentPopupIndex++;
+            if (currentPopupIndex < popupQueue.length) {
+                setTimeout(() => {
+                    showNextPopup();
+                }, 300);
+            }
+        }
+        
+        async function dismissPopupForever() {
+            if (!currentPopupId) return;
+            
+            try {
+                await fetch(`/api/popups/${currentPopupId}/dismiss`, {
+                    method: 'POST'
+                });
+            } catch (e) {
+                console.error('关闭弹窗失败:', e);
+            }
+            
+            closePopup();
+        }
+        
+        // ESC键关闭弹窗
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const overlay = document.getElementById('popupOverlay');
+                if (overlay && overlay.style.display !== 'none') {
+                    closePopup();
+                }
+            }
+        });
+        
+        // 点击遮罩层关闭弹窗
+        document.getElementById('popupOverlay').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closePopup();
+            }
+        });
+        
+        // 页面加载完成后加载弹窗
+        {% if logged_in %}
+        document.addEventListener('DOMContentLoaded', function() {
+            // 延迟显示，避免影响页面加载
+            setTimeout(() => {
+                loadPopups();
+            }, 1000);
+        });
+        {% endif %}
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+            }
+        }
+        .email-bind-modal-header {
+            padding: 32px 32px 24px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .email-bind-modal-header h2 {
+            margin: 0 0 8px;
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--text-color);
+        }
+        .email-bind-modal-subtitle {
+            margin: 0;
+            font-size: 14px;
+            color: var(--text-sub);
+            line-height: 1.5;
+        }
+        .email-bind-modal-body {
+            padding: 24px 32px;
+        }
+        .email-bind-field {
+            margin-bottom: 20px;
+        }
+        .email-bind-field label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .email-bind-field input {
+            width: 100%;
+            padding: 14px 18px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            font-size: 16px;
+            background: var(--card-bg-solid);
+            color: var(--text-color);
+            box-sizing: border-box;
+            transition: all 0.3s ease;
+        }
+        .email-bind-field input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px var(--primary-light);
+        }
+        .email-bind-code-field {
+            display: flex;
+            gap: 8px;
+        }
+        .email-bind-code-field input {
+            flex: 1;
+        }
+        .email-bind-send-btn {
+            padding: 14px 20px;
+            background: var(--primary-light);
+            color: var(--primary);
+            border: 1px solid var(--primary);
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.3s ease;
+        }
+        .email-bind-send-btn:hover:not(:disabled) {
+            background: var(--primary);
+            color: #fff;
+        }
+        .email-bind-send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .email-bind-hint {
+            margin-top: 6px;
+            font-size: 12px;
+            color: var(--text-sub);
+            line-height: 1.4;
+        }
+        .email-bind-error {
+            margin-top: 12px;
+            padding: 10px 14px;
+            background: rgba(255, 59, 48, 0.1);
+            border: 1px solid rgba(255, 59, 48, 0.3);
+            border-radius: var(--radius-sm);
+            color: var(--danger);
+            font-size: 13px;
+            display: none;
+        }
+        .email-bind-error.show {
+            display: block;
+        }
+        .email-bind-modal-footer {
+            padding: 24px 32px 32px;
+            border-top: 1px solid var(--border-color);
+        }
+        .email-bind-btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .email-bind-btn-primary {
+            background: var(--primary);
+            color: #fff;
+            box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+        }
+        .email-bind-btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 16px rgba(0, 122, 255, 0.4);
+        }
+        .email-bind-btn-primary:active {
+            transform: scale(0.98);
+        }
+        .email-bind-btn-primary[disabled] {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+    </style>
+
+    <script>
+        // 邮箱绑定相关功能
+        let bindCodeCountdown = 0;
+        let bindCodeTimer = null;
+
+        // 发送绑定验证码
+        async function sendBindCode() {
+            const email = document.getElementById('bindEmailInput').value.trim();
+            if (!email) {
+                showBindError('请输入邮箱地址');
+                return;
+            }
+            
+            // 简单的邮箱格式验证
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                showBindError('请输入有效的邮箱地址');
+                return;
+            }
+            
+            const btn = document.getElementById('bindSendCodeBtn');
+            if (bindCodeCountdown > 0) return;
+            
+            btn.disabled = true;
+            btn.textContent = '发送中...';
+            hideBindError();
+            
+            try {
+                const res = await fetch('/api/email/send-bind-code', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    credentials: 'include',
+                    body: JSON.stringify({ email: email })
+                });
+                const data = await res.json();
+                
+                if (data.status === 'success') {
+                    // 开始倒计时
+                    bindCodeCountdown = 60;
+                    startBindCodeCountdown();
+                    showBindError('验证码已发送，请查收邮件', 'success');
+                    document.getElementById('bindCodeHint').textContent = '验证码已发送，请查收邮件（60秒后可重新发送）';
+                } else {
+                    showBindError(data.message || '发送验证码失败');
+                }
+            } catch (error) {
+                showBindError('网络错误，请稍后重试');
+            } finally {
+                btn.disabled = false;
+                if (bindCodeCountdown === 0) {
+                    btn.textContent = '发送验证码';
+                }
+            }
+        }
+        
+        // 验证码倒计时
+        function startBindCodeCountdown() {
+            const btn = document.getElementById('bindSendCodeBtn');
+            const hint = document.getElementById('bindCodeHint');
+            
+            if (bindCodeTimer) clearInterval(bindCodeTimer);
+            
+            bindCodeTimer = setInterval(() => {
+                bindCodeCountdown--;
+                if (bindCodeCountdown > 0) {
+                    btn.disabled = true;
+                    btn.textContent = `${bindCodeCountdown}秒后重发`;
+                    hint.textContent = `验证码已发送，${bindCodeCountdown}秒后可重新发送`;
+                } else {
+                    btn.disabled = false;
+                    btn.textContent = '发送验证码';
+                    hint.textContent = '验证码有效期为10分钟';
+                    clearInterval(bindCodeTimer);
+                    bindCodeTimer = null;
+                }
+            }, 1000);
+        }
+
+        // 绑定邮箱
+        async function bindEmail() {
+            const email = document.getElementById('bindEmailInput').value.trim();
+            const code = document.getElementById('bindCodeInput').value.trim();
+            
+            if (!email) {
+                showBindError('请输入邮箱地址');
+                return;
+            }
+            if (!code) {
+                showBindError('请输入验证码');
+                return;
+            }
+            if (code.length !== 6 || !/^\d{6}$/.test(code)) {
+                showBindError('验证码为6位数字');
+                return;
+            }
+            
+            const btn = document.querySelector('.email-bind-btn-primary');
+            btn.disabled = true;
+            btn.textContent = '绑定中...';
+            hideBindError();
+            
+            try {
+                const res = await fetch('/api/email/bind', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    credentials: 'include',
+                    body: JSON.stringify({ email: email, code: code })
+                });
+                const data = await res.json();
+                
+                if (data.status === 'success') {
+                    // 绑定成功，关闭弹窗并刷新页面
+                    showBindError('绑定成功！', 'success');
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1000);
+                } else {
+                    showBindError(data.message || '绑定失败');
+                    btn.disabled = false;
+                    btn.textContent = '确认绑定';
+                }
+            } catch (error) {
+                showBindError('网络错误，请稍后重试');
+                btn.disabled = false;
+                btn.textContent = '确认绑定';
+            }
+        }
+
+        // 显示/隐藏错误信息
+        function showBindError(message, type = 'error') {
+            const errorEl = document.getElementById('bindError');
+            errorEl.textContent = message;
+            errorEl.className = 'email-bind-error show';
+            if (type === 'success') {
+                errorEl.style.background = 'rgba(52, 199, 89, 0.1)';
+                errorEl.style.borderColor = 'rgba(52, 199, 89, 0.3)';
+                errorEl.style.color = 'var(--success)';
+            } else {
+                errorEl.style.background = 'rgba(255, 59, 48, 0.1)';
+                errorEl.style.borderColor = 'rgba(255, 59, 48, 0.3)';
+                errorEl.style.color = 'var(--danger)';
+            }
+        }
+        
+        function hideBindError() {
+            const errorEl = document.getElementById('bindError');
+            errorEl.className = 'email-bind-error';
+        }
+
+        // 回车键快捷操作
+        document.addEventListener('DOMContentLoaded', function() {
+            const bindEmailInput = document.getElementById('bindEmailInput');
+            const bindCodeInput = document.getElementById('bindCodeInput');
+            
+            if (bindEmailInput) {
+                bindEmailInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        document.getElementById('bindSendCodeBtn').click();
+                    }
+                });
+            }
+            
+            if (bindCodeInput) {
+                bindCodeInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        document.querySelector('.email-bind-btn-primary').click();
+                    }
+                });
+            }
+        });
+        
+        // 弹窗显示逻辑
+        let popupQueue = [];
+        let currentPopupIndex = 0;
+        let currentPopupId = null;
+        
+        async function loadPopups() {
+            {% if logged_in %}
+            try {
+                const res = await fetch('/api/popups/active?limit=10');
+                const data = await res.json();
+                
+                if (data.status === 'success' && data.data && data.data.length > 0) {
+                    popupQueue = data.data;
+                    currentPopupIndex = 0;
+                    showNextPopup();
+                }
+            } catch (e) {
+                console.error('加载弹窗失败:', e);
+            }
+            {% endif %}
+        }
+        
+        function showNextPopup() {
+            if (currentPopupIndex >= popupQueue.length) {
+                return;
+            }
+            
+            const popup = popupQueue[currentPopupIndex];
+            currentPopupId = popup.id;
+            
+            // 记录显示
+            fetch(`/api/popups/${popup.id}/view`, { method: 'POST' }).catch(() => {});
+            
+            // 显示弹窗
+            const overlay = document.getElementById('popupOverlay');
+            const modal = document.getElementById('popupModal');
+            const title = document.getElementById('popupTitle');
+            const content = document.getElementById('popupContent');
+            
+            title.textContent = popup.title || '';
+            content.textContent = popup.content || '';
+            
+            // 设置类型样式
+            modal.className = 'popup-modal';
+            if (popup.popup_type) {
+                modal.classList.add(`type-${popup.popup_type}`);
+            }
+            
+            overlay.style.display = 'flex';
+        }
+        
+        function closePopup() {
+            const overlay = document.getElementById('popupOverlay');
+            overlay.style.display = 'none';
+            
+            // 显示下一个弹窗（轮播）
+            currentPopupIndex++;
+            if (currentPopupIndex < popupQueue.length) {
+                setTimeout(() => {
+                    showNextPopup();
+                }, 300);
+            }
+        }
+        
+        async function dismissPopupForever() {
+            if (!currentPopupId) return;
+            
+            try {
+                await fetch(`/api/popups/${currentPopupId}/dismiss`, {
+                    method: 'POST'
+                });
+            } catch (e) {
+                console.error('关闭弹窗失败:', e);
+            }
+            
+            closePopup();
+        }
+        
+        // ESC键关闭弹窗
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const overlay = document.getElementById('popupOverlay');
+                if (overlay && overlay.style.display !== 'none') {
+                    closePopup();
+                }
+            }
+        });
+        
+        // 点击遮罩层关闭弹窗
+        document.getElementById('popupOverlay').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closePopup();
+            }
+        });
+        
+        // 页面加载完成后加载弹窗
+        {% if logged_in %}
+        document.addEventListener('DOMContentLoaded', function() {
+            // 延迟显示，避免影响页面加载
+            setTimeout(() => {
+                loadPopups();
+            }, 1000);
+        });
+        {% endif %}
     </script>
 </body>
 </html>

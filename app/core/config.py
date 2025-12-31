@@ -3,6 +3,7 @@
 应用配置模块
 """
 import os
+import logging
 
 
 class Config:
@@ -85,6 +86,18 @@ class ProductionConfig(Config):
     
     # 生产环境禁用控制台输出验证码
     MAIL_CONSOLE_OUTPUT = False
+    
+    # 生产环境安全配置
+    # 会话Cookie安全设置（HTTPS环境下启用）
+    SESSION_COOKIE_SECURE = os.environ.get('SESSION_COOKIE_SECURE', 'false').lower() in ['true', 'on', '1']
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    
+    # 防止XSS攻击
+    JSONIFY_PRETTYPRINT_REGULAR = False
+    
+    # 生产环境日志级别
+    LOG_LEVEL = logging.INFO
 
 
 class TestingConfig(Config):

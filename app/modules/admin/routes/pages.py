@@ -113,6 +113,12 @@ def admin_user_detail_page(user_id):
     )
 
 
+@admin_pages_bp.route('/popups')
+def admin_popups_page():
+    """弹窗管理页面"""
+    return render_template('admin/admin_popups.html')
+
+
 @admin_pages_bp.route('/notifications')
 def admin_notifications_page():
     """通知管理页面"""
@@ -157,4 +163,10 @@ def admin_mail_settings_page():
             mail_config[key] = value
     
     return render_template('admin/admin_mail_settings.html', mail_config=mail_config)
+
+
+@admin_pages_bp.route('/settings/limits')
+def admin_limit_settings_page():
+    """限制设置页面"""
+    return render_template('admin/admin_limit_settings.html')
 

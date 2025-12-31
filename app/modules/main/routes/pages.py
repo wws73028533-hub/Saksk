@@ -98,6 +98,15 @@ def index():
         except Exception:
             email_bound = False
     
+    # 获取邮箱绑定是否必需的配置
+    email_bind_required = True  # 默认值
+    try:
+        from app.modules.admin.services.system_config_service import SystemConfigService
+        email_bind_required = SystemConfigService.get_email_bind_required_config()
+    except Exception:
+        # 如果获取配置失败，使用默认值True（保持向后兼容）
+        pass
+    
     return render_template('main/index.html',
                          quiz_count=quiz_count,
                          fav_count=fav_count,
@@ -110,7 +119,8 @@ def index():
                          is_admin=session.get('is_admin', False),
                          is_subject_admin=session.get('is_subject_admin', False),
                          user_id=uid or 0,
-                         email_bound=email_bound)
+                         email_bound=email_bound,
+                         email_bind_required=email_bind_required)
 
 
 @main_pages_bp.route('/search')

@@ -59,6 +59,13 @@ def register_all_modules(app: Flask):
         app.logger.warning(f'✗ notifications模块注册失败: {e}')
     
     try:
+        from .popups import init_popups_module
+        init_popups_module(app)
+        app.logger.info('✓ popups模块已注册')
+    except ImportError as e:
+        app.logger.warning(f'✗ popups模块注册失败: {e}')
+    
+    try:
         from .coding import init_coding_module
         init_coding_module(app)
         app.logger.info('✓ coding模块已注册')
