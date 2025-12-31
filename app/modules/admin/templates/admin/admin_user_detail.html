@@ -233,6 +233,16 @@
     color: var(--success);
   }
   
+  .tag-success {
+    background: rgba(52, 199, 89, 0.15);
+    color: var(--success);
+  }
+  
+  .tag-warning {
+    background: rgba(255, 149, 0, 0.15);
+    color: #ff9500;
+  }
+  
   /* 表格样式 - iOS 18风格 */
   .section-card {
     background: rgba(255, 255, 255, 0.7);
@@ -454,6 +464,27 @@
           <span class="info-label">用户ID</span>
           <span class="info-value">#{{ user.id }}</span>
         </div>
+        <div class="info-row">
+          <span class="info-label">邮箱</span>
+          <span class="info-value">
+            {% if user.email %}
+              {{ user.email }}
+              {% if user.email_verified %}
+                <span class="tag tag-success" style="margin-left: 8px; font-size: 11px;">已验证</span>
+              {% else %}
+                <span class="tag tag-warning" style="margin-left: 8px; font-size: 11px;">未验证</span>
+              {% endif %}
+            {% else %}
+              <span style="color: var(--text-sub);">未绑定</span>
+            {% endif %}
+          </span>
+        </div>
+        {% if user.email and user.email_verified_at %}
+        <div class="info-row">
+          <span class="info-label">邮箱验证时间</span>
+          <span class="info-value">{{ user.email_verified_at }}</span>
+        </div>
+        {% endif %}
         <div class="info-row">
           <span class="info-label">联系方式</span>
           <span class="info-value">{{ user.contact or '未设置' }}</span>

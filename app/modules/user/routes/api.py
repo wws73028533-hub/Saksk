@@ -191,13 +191,16 @@ def api_profile():
     
     try:
         # 获取用户基本信息
-        user = conn.execute(
-            'SELECT id, username, created_at, is_admin, avatar, contact, college FROM users WHERE id = ?',
+        user_row = conn.execute(
+            'SELECT id, username, created_at, is_admin, avatar, contact, college, email, email_verified FROM users WHERE id = ?',
             (uid,)
         ).fetchone()
         
-        if not user:
+        if not user_row:
             return jsonify({'status': 'error', 'message': '用户不存在'}), 404
+        
+        # 将Row对象转换为字典
+        user = dict(user_row)
         
         # 统计数据
         favorites_count = conn.execute(
@@ -233,6 +236,8 @@ def api_profile():
                 'avatar': user['avatar'],
                 'contact': user['contact'],
                 'college': user['college'],
+                'email': user.get('email'),
+                'email_verified': bool(user.get('email_verified', 0)),
                 'created_at': user['created_at'][:10] if user['created_at'] else '-',
                 'is_admin': bool(user['is_admin']),
                 'streak_days': streak_days,

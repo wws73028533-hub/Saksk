@@ -1,0 +1,110 @@
+{% extends "admin/admin_base.html" %}
+
+{% block title %}系统设置 - 管理后台{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <div class="page-header">
+        <h1>系统设置</h1>
+        <p class="page-description">管理系统配置和参数</p>
+    </div>
+
+    <div class="settings-grid">
+        <a href="/admin/settings/mail" class="settings-card">
+            <div class="settings-icon">📧</div>
+            <div class="settings-content">
+                <h3>邮件配置</h3>
+                <p>配置系统发送验证码和通知的邮箱服务</p>
+            </div>
+            <div class="settings-arrow">→</div>
+        </a>
+    </div>
+</div>
+
+<style>
+.page-container {
+    padding: 40px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.page-header {
+    margin-bottom: 40px;
+}
+
+.page-header h1 {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    letter-spacing: -0.5px;
+}
+
+.page-description {
+    color: var(--text-sub);
+    font-size: 15px;
+}
+
+.settings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.settings-card {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 24px;
+    background: var(--card-bg);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    border: 0.5px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    text-decoration: none;
+    color: var(--text-color);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: var(--shadow-soft);
+}
+
+.settings-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-hover);
+    border-color: var(--primary);
+}
+
+.settings-icon {
+    font-size: 40px;
+    flex-shrink: 0;
+}
+
+.settings-content {
+    flex: 1;
+}
+
+.settings-content h3 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.settings-content p {
+    font-size: 14px;
+    color: var(--text-sub);
+    margin: 0;
+    line-height: 1.5;
+}
+
+.settings-arrow {
+    font-size: 20px;
+    color: var(--text-sub);
+    flex-shrink: 0;
+    transition: transform 0.3s;
+}
+
+.settings-card:hover .settings-arrow {
+    transform: translateX(4px);
+    color: var(--primary);
+}
+</style>
+{% endblock %}
+

@@ -36,15 +36,34 @@ class Config:
     PERMANENT_SESSION_LIFETIME = 60 * 60 * 24 * 7  # 7 天（秒）
     
     # 限流配置
-    RATELIMIT_STORAGE_URL = 'memory://'
+    # 生产环境建议使用 Redis: 'redis://localhost:6379/0'
+    RATELIMIT_STORAGE_URL = os.environ.get('RATELIMIT_STORAGE_URL', 'memory://')
     RATELIMIT_DEFAULT = "10000 per day;1000 per hour"
     RATELIMIT_HEADERS_ENABLED = True
+
+    # 邮件服务配置
+    MAIL_SERVER = os.environ.get('MAIL_SERVER') or 'smtp.example.com'
+    MAIL_PORT = int(os.environ.get('MAIL_PORT') or 587)
+    MAIL_USE_TLS = os.environ.get('MAIL_USE_TLS', 'true').lower() in ['true', 'on', '1']
+    MAIL_USE_SSL = os.environ.get('MAIL_USE_SSL', 'false').lower() in ['true', 'on', '1']
+    MAIL_USERNAME = os.environ.get('MAIL_USERNAME')
+    MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')
+    MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER') or 'noreply@example.com'
+    MAIL_DEFAULT_SENDER_NAME = os.environ.get('MAIL_DEFAULT_SENDER_NAME') or '系统通知'
+    
+    # 邮件服务开关（开发环境可以关闭真实邮件发送）
+    MAIL_ENABLED = os.environ.get('MAIL_ENABLED', 'true').lower() in ['true', 'on', '1']
+    # 开发环境控制台输出验证码（不发送真实邮件）
+    MAIL_CONSOLE_OUTPUT = os.environ.get('MAIL_CONSOLE_OUTPUT', 'false').lower() in ['true', 'on', '1']
 
 
 class DevelopmentConfig(Config):
     """开发环境配置"""
     DEBUG = True
     TESTING = False
+    
+    # 开发环境默认使用控制台输出
+    MAIL_CONSOLE_OUTPUT = os.environ.get('MAIL_CONSOLE_OUTPUT', 'true').lower() in ['true', 'on', '1']
 
 
 class ProductionConfig(Config):
@@ -52,8 +71,20 @@ class ProductionConfig(Config):
     DEBUG = False
     TESTING = False
     
-    # 生产环境应该使用更强的密钥
-    SECRET_KEY = os.environ.get('SECRET_KEY') or os.urandom(24).hex()
+    # 生产环境必须设置密钥（不允许使用默认值）
+    SECRET_KEY = os.environ.get('SECRET_KEY')
+    if not SECRET_KEY:
+        import warnings
+        warnings.warn(
+            'SECRET_KEY 未设置！生产环境必须设置 SECRET_KEY 环境变量。'
+            '生成方式: python -c "import secrets; print(secrets.token_urlsafe(32))"',
+            UserWarning
+        )
+        # 临时生成，但会显示警告
+        SECRET_KEY = os.urandom(24).hex()
+    
+    # 生产环境禁用控制台输出验证码
+    MAIL_CONSOLE_OUTPUT = False
 
 
 class TestingConfig(Config):

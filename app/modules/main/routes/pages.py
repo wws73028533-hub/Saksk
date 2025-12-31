@@ -89,6 +89,15 @@ def index():
         q_types = []
         subject_q_types = {}
     
+    # 检查用户邮箱绑定状态
+    email_bound = False
+    if uid:
+        try:
+            user_email = conn.execute('SELECT email FROM users WHERE id = ?', (uid,)).fetchone()
+            email_bound = user_email and user_email[0] and user_email[0].strip()
+        except Exception:
+            email_bound = False
+    
     return render_template('main/index.html',
                          quiz_count=quiz_count,
                          fav_count=fav_count,
@@ -100,7 +109,8 @@ def index():
                          username=session.get('username'),
                          is_admin=session.get('is_admin', False),
                          is_subject_admin=session.get('is_subject_admin', False),
-                         user_id=uid or 0)
+                         user_id=uid or 0,
+                         email_bound=email_bound)
 
 
 @main_pages_bp.route('/search')

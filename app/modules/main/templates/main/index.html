@@ -1735,8 +1735,7 @@
                             <span class="uname">{{ username }}</span>
                         </a>
                     {% else %}
-                        <a class="btn btn-secondary" href="/login">登录</a>
-                        <a class="btn btn-primary" href="/register">注册</a>
+                        <a class="btn btn-primary" href="/login">登录</a>
                     {% endif %}
                 </div>
                 <button class="theme-toggle" onclick="toggleTheme()" aria-label="切换深色模式">
@@ -2700,6 +2699,385 @@
         <button class="subject-hint-dismiss" aria-label="不再提示" onclick="dismissSubjectHintPermanently()" title="不再提示">不再提示</button>
         <button class="subject-hint-close" aria-label="关闭" onclick="dismissSubjectHint()" title="关闭">×</button>
     </div>
+
+    {# 邮箱绑定弹窗 #}
+    {% if logged_in and not email_bound and not is_admin %}
+    <div id="emailBindModal" class="email-bind-modal">
+        <div class="email-bind-modal-overlay"></div>
+        <div class="email-bind-modal-content">
+            <div class="email-bind-modal-header">
+                <h2>📧 绑定邮箱</h2>
+                <p class="email-bind-modal-subtitle">为了您的账户安全，请先绑定邮箱后才能使用网站功能</p>
+            </div>
+            <div class="email-bind-modal-body">
+                <div class="email-bind-field">
+                    <label>邮箱地址</label>
+                    <input type="email" id="bindEmailInput" placeholder="请输入您的邮箱地址" autocomplete="email" />
+                    <div class="email-bind-hint">验证码将发送到此邮箱</div>
+                </div>
+                <div class="email-bind-field">
+                    <label>验证码</label>
+                    <div class="email-bind-code-field">
+                        <input type="text" id="bindCodeInput" placeholder="6位数字验证码" maxlength="6" autocomplete="one-time-code" />
+                        <button class="email-bind-send-btn" id="bindSendCodeBtn" onclick="sendBindCode()">发送验证码</button>
+                    </div>
+                    <div class="email-bind-hint" id="bindCodeHint">验证码有效期为10分钟</div>
+                </div>
+                <div class="email-bind-error" id="bindError"></div>
+            </div>
+            <div class="email-bind-modal-footer">
+                <button class="email-bind-btn email-bind-btn-primary" onclick="bindEmail()">确认绑定</button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <style>
+        /* 邮箱绑定弹窗样式 */
+        .email-bind-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+        .email-bind-modal-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+        .email-bind-modal-content {
+            position: relative;
+            background: var(--card-bg-solid);
+            border-radius: var(--radius-xl);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            width: 90%;
+            max-width: 480px;
+            max-height: 90vh;
+            overflow-y: auto;
+            animation: slideUp 0.3s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .email-bind-modal-header {
+            padding: 32px 32px 24px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .email-bind-modal-header h2 {
+            margin: 0 0 8px;
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--text-color);
+        }
+        .email-bind-modal-subtitle {
+            margin: 0;
+            font-size: 14px;
+            color: var(--text-sub);
+            line-height: 1.5;
+        }
+        .email-bind-modal-body {
+            padding: 24px 32px;
+        }
+        .email-bind-field {
+            margin-bottom: 20px;
+        }
+        .email-bind-field label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .email-bind-field input {
+            width: 100%;
+            padding: 14px 18px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            font-size: 16px;
+            background: var(--card-bg-solid);
+            color: var(--text-color);
+            box-sizing: border-box;
+            transition: all 0.3s ease;
+        }
+        .email-bind-field input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px var(--primary-light);
+        }
+        .email-bind-code-field {
+            display: flex;
+            gap: 8px;
+        }
+        .email-bind-code-field input {
+            flex: 1;
+        }
+        .email-bind-send-btn {
+            padding: 14px 20px;
+            background: var(--primary-light);
+            color: var(--primary);
+            border: 1px solid var(--primary);
+            border-radius: var(--radius-md);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.3s ease;
+        }
+        .email-bind-send-btn:hover:not(:disabled) {
+            background: var(--primary);
+            color: #fff;
+        }
+        .email-bind-send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .email-bind-hint {
+            margin-top: 6px;
+            font-size: 12px;
+            color: var(--text-sub);
+            line-height: 1.4;
+        }
+        .email-bind-error {
+            margin-top: 12px;
+            padding: 10px 14px;
+            background: rgba(255, 59, 48, 0.1);
+            border: 1px solid rgba(255, 59, 48, 0.3);
+            border-radius: var(--radius-sm);
+            color: var(--danger);
+            font-size: 13px;
+            display: none;
+        }
+        .email-bind-error.show {
+            display: block;
+        }
+        .email-bind-modal-footer {
+            padding: 24px 32px 32px;
+            border-top: 1px solid var(--border-color);
+        }
+        .email-bind-btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .email-bind-btn-primary {
+            background: var(--primary);
+            color: #fff;
+            box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+        }
+        .email-bind-btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 16px rgba(0, 122, 255, 0.4);
+        }
+        .email-bind-btn-primary:active {
+            transform: scale(0.98);
+        }
+        .email-bind-btn-primary[disabled] {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+    </style>
+
+    <script>
+        // 邮箱绑定相关功能
+        let bindCodeCountdown = 0;
+        let bindCodeTimer = null;
+
+        // 发送绑定验证码
+        async function sendBindCode() {
+            const email = document.getElementById('bindEmailInput').value.trim();
+            if (!email) {
+                showBindError('请输入邮箱地址');
+                return;
+            }
+            
+            // 简单的邮箱格式验证
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                showBindError('请输入有效的邮箱地址');
+                return;
+            }
+            
+            const btn = document.getElementById('bindSendCodeBtn');
+            if (bindCodeCountdown > 0) return;
+            
+            btn.disabled = true;
+            btn.textContent = '发送中...';
+            hideBindError();
+            
+            try {
+                const res = await fetch('/api/email/send-bind-code', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    credentials: 'include',
+                    body: JSON.stringify({ email: email })
+                });
+                const data = await res.json();
+                
+                if (data.status === 'success') {
+                    // 开始倒计时
+                    bindCodeCountdown = 60;
+                    startBindCodeCountdown();
+                    showBindError('验证码已发送，请查收邮件', 'success');
+                    document.getElementById('bindCodeHint').textContent = '验证码已发送，请查收邮件（60秒后可重新发送）';
+                } else {
+                    showBindError(data.message || '发送验证码失败');
+                }
+            } catch (error) {
+                showBindError('网络错误，请稍后重试');
+            } finally {
+                btn.disabled = false;
+                if (bindCodeCountdown === 0) {
+                    btn.textContent = '发送验证码';
+                }
+            }
+        }
+        
+        // 验证码倒计时
+        function startBindCodeCountdown() {
+            const btn = document.getElementById('bindSendCodeBtn');
+            const hint = document.getElementById('bindCodeHint');
+            
+            if (bindCodeTimer) clearInterval(bindCodeTimer);
+            
+            bindCodeTimer = setInterval(() => {
+                bindCodeCountdown--;
+                if (bindCodeCountdown > 0) {
+                    btn.disabled = true;
+                    btn.textContent = `${bindCodeCountdown}秒后重发`;
+                    hint.textContent = `验证码已发送，${bindCodeCountdown}秒后可重新发送`;
+                } else {
+                    btn.disabled = false;
+                    btn.textContent = '发送验证码';
+                    hint.textContent = '验证码有效期为10分钟';
+                    clearInterval(bindCodeTimer);
+                    bindCodeTimer = null;
+                }
+            }, 1000);
+        }
+
+        // 绑定邮箱
+        async function bindEmail() {
+            const email = document.getElementById('bindEmailInput').value.trim();
+            const code = document.getElementById('bindCodeInput').value.trim();
+            
+            if (!email) {
+                showBindError('请输入邮箱地址');
+                return;
+            }
+            if (!code) {
+                showBindError('请输入验证码');
+                return;
+            }
+            if (code.length !== 6 || !/^\d{6}$/.test(code)) {
+                showBindError('验证码为6位数字');
+                return;
+            }
+            
+            const btn = document.querySelector('.email-bind-btn-primary');
+            btn.disabled = true;
+            btn.textContent = '绑定中...';
+            hideBindError();
+            
+            try {
+                const res = await fetch('/api/email/bind', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    credentials: 'include',
+                    body: JSON.stringify({ email: email, code: code })
+                });
+                const data = await res.json();
+                
+                if (data.status === 'success') {
+                    // 绑定成功，关闭弹窗并刷新页面
+                    showBindError('绑定成功！', 'success');
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1000);
+                } else {
+                    showBindError(data.message || '绑定失败');
+                    btn.disabled = false;
+                    btn.textContent = '确认绑定';
+                }
+            } catch (error) {
+                showBindError('网络错误，请稍后重试');
+                btn.disabled = false;
+                btn.textContent = '确认绑定';
+            }
+        }
+
+        // 显示/隐藏错误信息
+        function showBindError(message, type = 'error') {
+            const errorEl = document.getElementById('bindError');
+            errorEl.textContent = message;
+            errorEl.className = 'email-bind-error show';
+            if (type === 'success') {
+                errorEl.style.background = 'rgba(52, 199, 89, 0.1)';
+                errorEl.style.borderColor = 'rgba(52, 199, 89, 0.3)';
+                errorEl.style.color = 'var(--success)';
+            } else {
+                errorEl.style.background = 'rgba(255, 59, 48, 0.1)';
+                errorEl.style.borderColor = 'rgba(255, 59, 48, 0.3)';
+                errorEl.style.color = 'var(--danger)';
+            }
+        }
+        
+        function hideBindError() {
+            const errorEl = document.getElementById('bindError');
+            errorEl.className = 'email-bind-error';
+        }
+
+        // 回车键快捷操作
+        document.addEventListener('DOMContentLoaded', function() {
+            const bindEmailInput = document.getElementById('bindEmailInput');
+            const bindCodeInput = document.getElementById('bindCodeInput');
+            
+            if (bindEmailInput) {
+                bindEmailInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        document.getElementById('bindSendCodeBtn').click();
+                    }
+                });
+            }
+            
+            if (bindCodeInput) {
+                bindCodeInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        document.querySelector('.email-bind-btn-primary').click();
+                    }
+                });
+            }
+        });
+    </script>
 </body>
 </html>
 

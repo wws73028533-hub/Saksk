@@ -62,6 +62,22 @@ def _create_tables(conn):
         )
     ''')
     
+    # 邮箱验证码表
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS email_verification_codes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT NOT NULL,
+            code TEXT NOT NULL,
+            code_type TEXT NOT NULL CHECK(code_type IN ('bind', 'login', 'reset_password')),
+            user_id INTEGER,
+            is_used INTEGER DEFAULT 0,
+            expires_at DATETIME NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            used_at DATETIME,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    ''')
+    
     # 基础表：科目表
     conn.execute('''
         CREATE TABLE IF NOT EXISTS subjects (
@@ -230,6 +246,24 @@ def _create_tables(conn):
                 cur.execute('ALTER TABLE users ADD COLUMN last_active DATETIME')
             if 'is_subject_admin' not in cols:
                 cur.execute('ALTER TABLE users ADD COLUMN is_subject_admin INTEGER DEFAULT 0')
+            if 'email' not in cols:
+                cur.execute('ALTER TABLE users ADD COLUMN email TEXT')
+            if 'email_verified' not in cols:
+                cur.execute('ALTER TABLE users ADD COLUMN email_verified INTEGER DEFAULT 0')
+            if 'email_verified_at' not in cols:
+                cur.execute('ALTER TABLE users ADD COLUMN email_verified_at DATETIME')
+            
+            # 创建邮箱唯一索引（如果不存在）
+            try:
+                index_rows = cur.execute(
+                    "SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='users'"
+                ).fetchall()
+                indexes = [row[0] for row in index_rows]
+                if 'idx_users_email_unique' not in indexes:
+                    # SQLite中，UNIQUE约束通过唯一索引实现
+                    cur.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users(email) WHERE email IS NOT NULL')
+            except Exception as e:
+                print(f'[WARN] 创建邮箱唯一索引失败: {e}')
 
         # 添加 questions 表的字段（如果不存在）- 兼容旧数据库
         # 注意：questions 表只用于题库中心，不包含编程题字段
@@ -583,6 +617,14 @@ def _create_indexes(conn):
     # 用户刷题统计表索引
     if 'user_quiz_stats' in existing_tables:
         indexes.append('CREATE INDEX IF NOT EXISTS idx_user_quiz_stats_user_id ON user_quiz_stats(user_id)')
+    
+    # 邮箱验证码表索引
+    if 'email_verification_codes' in existing_tables:
+        indexes.extend([
+            'CREATE INDEX IF NOT EXISTS idx_email_codes_email ON email_verification_codes(email, code_type, is_used)',
+            'CREATE INDEX IF NOT EXISTS idx_email_codes_expires ON email_verification_codes(expires_at)',
+            'CREATE INDEX IF NOT EXISTS idx_email_codes_user ON email_verification_codes(user_id)',
+        ])
     
     for index_sql in indexes:
         conn.execute(index_sql)

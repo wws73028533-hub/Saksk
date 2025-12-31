@@ -7,6 +7,13 @@ import logging
 from logging.handlers import RotatingFileHandler
 from flask import Flask
 
+# 加载.env文件（如果存在）
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # python-dotenv未安装时忽略
+
 from .core.config import config
 from .core.extensions import init_extensions
 from .core.utils.database import close_db, init_db
@@ -54,9 +61,15 @@ def create_app(config_name=None):
     # 注册请求钩子
     _register_before_request(app)
     
+    # 注册错误处理器
+    _register_error_handlers(app)
+    
     # 初始化数据库
     with app.app_context():
         init_db()
+    
+    # 启动后台任务
+    _start_background_tasks(app)
     
     app.logger.info('应用启动完成')
     
@@ -161,6 +174,50 @@ def _register_before_request(app):
                 session['is_admin'] = bool(row['is_admin'])
                 session['is_subject_admin'] = bool(row['is_subject_admin']) if has_subject_admin_field and 'is_subject_admin' in row.keys() else False
                 
+                # 检查用户是否绑定邮箱（排除管理员和绑定邮箱相关的API）
+                if not session.get('is_admin'):
+                    # 检查邮箱字段是否存在
+                    try:
+                        user_cols = [r['name'] for r in conn.execute("PRAGMA table_info(users)").fetchall()]
+                        has_email_field = 'email' in user_cols
+                    except Exception:
+                        has_email_field = False
+                    
+                    if has_email_field:
+                        user_email = conn.execute('SELECT email FROM users WHERE id = ?', (uid,)).fetchone()
+                        email_bound = user_email and user_email[0] and user_email[0].strip()
+                        
+                        # 如果未绑定邮箱，限制功能访问（允许的路径）
+                        if not email_bound:
+                            # 允许访问的路径（绑定邮箱相关）
+                            allowed_paths = {
+                                '/',  # 首页（用于显示弹窗）
+                                '/terms',  # 服务协议页面
+                                '/privacy',  # 隐私保护协议页面
+                                '/api/email/send-bind-code',  # 发送绑定验证码
+                                '/api/email/bind',  # 绑定邮箱
+                                '/api/logout',  # 登出
+                                '/logout',  # 登出页面
+                                '/static',  # 静态资源
+                            }
+                            
+                            # 检查是否是允许的路径
+                            is_allowed = False
+                            for allowed_path in allowed_paths:
+                                if path == allowed_path or path.startswith(allowed_path):
+                                    is_allowed = True
+                                    break
+                            
+                            if not is_allowed:
+                                if path.startswith('/api'):
+                                    return jsonify({
+                                        'status': 'error',
+                                        'message': '请先绑定邮箱后才能使用此功能',
+                                        'code': 'EMAIL_NOT_BOUND'
+                                    }), 403
+                                # 页面请求：重定向到首页（会显示绑定弹窗）
+                                return redirect('/')
+                
                 # 更新用户最后活动时间（排除静态资源请求）
                 if not path.startswith('/static') and not path.endswith('.ico'):
                     conn.execute(
@@ -208,8 +265,15 @@ def _register_before_request(app):
                     return redirect('/')
             return
 
-        # 未登录白名单（只允许首页和登录注册）
-        allow_paths = {'/', '/login', '/register', '/api/login', '/api/register', '/favicon.ico'}
+        # 未登录白名单（只允许首页和登录）
+        allow_paths = {
+            '/', '/login', '/favicon.ico',
+            '/terms',  # 服务协议页面
+            '/privacy',  # 隐私保护协议页面
+            '/api/login',
+            '/api/email/send-login-code',  # 发送登录验证码（无需登录，支持自动注册）
+            '/api/email/login'  # 验证码登录（无需登录，支持自动注册）
+        }
         if path in allow_paths or path.startswith('/static'):
             return
 
@@ -284,3 +348,15 @@ def _register_before_request(app):
         if path.startswith('/api'):
             return jsonify({'status': 'unauthorized', 'message': '请先登录'}), 401
         return redirect('/login')
+
+
+def _register_error_handlers(app):
+    """注册错误处理器"""
+    from .core.errors import register_error_handlers
+    register_error_handlers(app)
+
+
+def _start_background_tasks(app):
+    """启动后台任务"""
+    from .core.tasks import start_background_tasks
+    start_background_tasks(app)

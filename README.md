@@ -27,7 +27,8 @@
 
 | 分类 | 功能 | 说明 |
 | ---- | ---- | ---- |
-| **用户认证** | 账号注册/登录/退出 | 首次注册的用户自动成为管理员；支持"记住密码"（保持登录状态） |
+| **用户认证** | 密码登录/验证码登录/退出 | 支持用户名或邮箱+密码登录；支持邮箱验证码免密登录；验证码登录时自动注册新用户 |
+| **邮箱功能** | 邮箱绑定/验证码登录 | 绑定邮箱后可使用邮箱登录；验证码登录支持自动注册；未绑定邮箱用户需先绑定才能使用全部功能 |
 | **首页** | 数据统计 | 题目总数、收藏/错题统计、最近活动等 |
 | **题库搜索** | 多条件过滤 | 关键字 + 科目/题型筛选，支持分页展示 |
 | **刷题模式** | 多种模式 | 普通刷题/背题模式；支持题目顺序、选项顺序随机打乱与进度保存 |
@@ -60,6 +61,9 @@
 - 速率限制（Flask-Limiter）
 - 用户锁定/解锁机制
 - 强制下线功能
+- 邮箱验证码登录（免密登录）
+- 邮箱绑定验证（保障账户安全）
+- 服务协议和隐私保护协议（用户同意机制）
 
 ---
 
@@ -70,9 +74,12 @@
 - **Python 3.11+**
 - **Flask 3.1.x**：Web 框架
 - **Flask-Limiter**：API 速率限制
+- **Pydantic 2.5.0**：数据验证和序列化
 - **SQLite**：默认数据库（可替换为 MySQL/PostgreSQL）
 - **Pandas / OpenPyXL**：Excel 导入导出
 - **Werkzeug**：密码哈希、安全工具
+- **SMTP 邮件服务**：验证码发送、邮件通知
+- **Gunicorn**：生产环境 WSGI 服务器
 
 ### 前端
 
@@ -267,19 +274,29 @@ def register_all_modules(app: Flask):
 ### 1. 认证模块 (`auth`)
 
 **功能**：
-- 用户注册/登录/退出
+- 密码登录/验证码登录/退出
+- 邮箱绑定与验证
 - 会话管理（临时会话/永久会话）
 - 密码哈希与验证
 - 会话版本控制（强制下线）
+- 服务协议和隐私保护协议
 
 **路由**：
-- `GET /login`：登录页面
-- `POST /api/login`：登录接口
-- `POST /api/register`：注册接口
+- `GET /login`：登录页面（支持密码登录和验证码登录）
+- `POST /api/login`：密码登录接口（支持用户名或邮箱）
+- `POST /api/email/send-login-code`：发送登录验证码
+- `POST /api/email/login`：验证码登录接口（自动注册）
+- `POST /api/email/send-bind-code`：发送绑定验证码
+- `POST /api/email/bind`：绑定邮箱接口
 - `GET /api/logout`：退出登录
+- `GET /terms`：服务协议页面
+- `GET /privacy`：隐私保护协议页面
 
 **特性**：
-- 首次注册的用户自动成为管理员
+- **验证码登录自动注册**：使用验证码登录时，如果邮箱未注册，系统会自动创建账户
+- **邮箱绑定强制**：未绑定邮箱的用户登录后需先绑定邮箱才能使用全部功能
+- **双登录方式**：支持密码登录和验证码登录两种方式
+- **协议同意机制**：登录前需同意服务协议和隐私保护协议
 - 支持"记住密码"（保持登录状态 7 天）
 - 会话失效检测与自动重定向
 
@@ -571,10 +588,19 @@ def register_all_modules(app: Flask):
 
 | 变量名 | 说明 | 默认值 |
 | ------ | ---- | ------ |
-| `FLASK_ENV` | 运行环境（development/production/testing） | `development` |
-| `SECRET_KEY` | Flask 会话密钥 | `dev-secret-key-change-in-production` |
+| `FLASK_ENV` | 运行环境（development/production/testing） | `production` |
+| `SECRET_KEY` | Flask 会话密钥（生产环境必须设置） | `dev-secret-key-change-in-production` |
 | `HOST` | 监听地址 | `0.0.0.0` |
 | `PORT` | 监听端口 | `5000` |
+| `MAIL_SERVER` | SMTP 服务器地址 | `smtp.example.com` |
+| `MAIL_PORT` | SMTP 端口 | `587` |
+| `MAIL_USE_TLS` | 是否使用 TLS | `true` |
+| `MAIL_USERNAME` | 邮箱用户名 | - |
+| `MAIL_PASSWORD` | 邮箱授权码 | - |
+| `MAIL_DEFAULT_SENDER` | 默认发件人 | - |
+| `MAIL_DEFAULT_SENDER_NAME` | 默认发件人名称 | `系统通知` |
+| `MAIL_ENABLED` | 是否启用邮件服务 | `true` |
+| `RATELIMIT_STORAGE_URL` | 限流存储（生产环境建议使用 Redis） | `memory://` |
 
 ### 配置文件
 
@@ -600,8 +626,11 @@ class Config:
 
 将 `FLASK_ENV` 设为 `production` 后，应用将使用 `ProductionConfig`：
 - 关闭 Debug 模式
-- 使用更强的密钥（需设置 `SECRET_KEY` 环境变量）
+- 使用更强的密钥（**必须**设置 `SECRET_KEY` 环境变量）
 - 启用日志记录
+- 禁用控制台输出验证码（仅发送真实邮件）
+
+**详细部署说明**：请参考 `生产环境部署指南.md` 和 `快速部署说明.md`
 
 ---
 
@@ -618,6 +647,9 @@ class Config:
 | `id` | INTEGER | 主键 |
 | `username` | TEXT | 用户名（唯一） |
 | `password_hash` | TEXT | 密码哈希 |
+| `email` | TEXT | 邮箱地址（唯一，可为空） |
+| `email_verified` | INTEGER | 邮箱是否已验证（0/1） |
+| `email_verified_at` | DATETIME | 邮箱验证时间 |
 | `is_admin` | INTEGER | 是否管理员（0/1） |
 | `is_subject_admin` | INTEGER | 是否科目管理员（0/1） |
 | `is_locked` | INTEGER | 是否锁定（0/1） |
@@ -759,13 +791,13 @@ init_db()
 
 ### 认证 API
 
-#### 登录
+#### 密码登录
 ```
 POST /api/login
 Content-Type: application/json
 
 {
-  "username": "user123",
+  "username": "user123",  // 支持用户名或邮箱
   "password": "password123",
   "remember_me": true
 }
@@ -777,20 +809,56 @@ Response: 200 OK
 }
 ```
 
-#### 注册
+#### 发送登录验证码
 ```
-POST /api/register
+POST /api/email/send-login-code
 Content-Type: application/json
 
 {
-  "username": "newuser",
-  "password": "password123"
+  "email": "user@example.com"
 }
 
 Response: 200 OK
 {
   "status": "success",
-  "message": "注册成功"
+  "message": "验证码已发送，请查收邮件"
+}
+```
+
+#### 验证码登录（自动注册）
+```
+POST /api/email/login
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "code": "123456"
+}
+
+Response: 200 OK
+{
+  "status": "success",
+  "message": "登录成功",
+  "data": {
+    "auto_registered": true  // 如果是新用户自动注册
+  }
+}
+```
+
+#### 绑定邮箱
+```
+POST /api/email/bind
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "code": "123456"
+}
+
+Response: 200 OK
+{
+  "status": "success",
+  "message": "邮箱绑定成功"
 }
 ```
 
@@ -1059,43 +1127,67 @@ url_for('main.main_api.some_api')
 
 ### 生产环境部署
 
+**快速部署**：请参考 `快速部署说明.md`
+
+**详细部署指南**：请参考 `生产环境部署指南.md`
+
+#### 基本步骤
+
 1. **设置环境变量**：
    ```bash
    export FLASK_ENV=production
    export SECRET_KEY="your-strong-secret-key-here"
+   # 生成密钥: python -c "import secrets; print(secrets.token_urlsafe(32))"
    ```
 
-2. **使用生产级 WSGI 服务器**（推荐 Gunicorn）：
+2. **配置邮件服务**（必需）：
    ```bash
-   pip install gunicorn
-   gunicorn -w 4 -b 0.0.0.0:5000 "app:create_app()"
+   export MAIL_SERVER=smtp.qq.com
+   export MAIL_PORT=587
+   export MAIL_USE_TLS=true
+   export MAIL_USERNAME=your_email@qq.com
+   export MAIL_PASSWORD=your_authorization_code
+   export MAIL_DEFAULT_SENDER=your_email@qq.com
+   export MAIL_DEFAULT_SENDER_NAME=系统通知
    ```
 
-3. **使用 Nginx 作为反向代理**：
-   ```nginx
-   server {
-       listen 80;
-       server_name your-domain.com;
-       
-       location / {
-           proxy_pass http://127.0.0.1:5000;
-           proxy_set_header Host $host;
-           proxy_set_header X-Real-IP $remote_addr;
-       }
-       
-       location /static {
-           alias /path/to/Saksk_1_Ti/static;
-       }
-   }
+3. **安装依赖**：
+   ```bash
+   pip install -r requirements.txt
    ```
 
-4. **配置数据库**（可选）：
-   - 将 SQLite 替换为 MySQL 或 PostgreSQL
-   - 修改 `app/core/config.py` 中的 `DATABASE_PATH`
+4. **使用 Gunicorn 启动**（推荐）：
+   ```bash
+   # 使用配置文件
+   gunicorn -c gunicorn_config.py run:app
+   
+   # 或直接启动
+   gunicorn -w 4 -b 0.0.0.0:5000 run:app
+   ```
 
-5. **配置日志**：
-   - 日志文件位于 `logs/app.log`
-   - 支持滚动日志（最大 10MB，保留 10 个备份）
+5. **使用启动脚本**：
+   ```bash
+   # Linux/Mac
+   chmod +x start_production.sh
+   ./start_production.sh
+   
+   # Windows
+   start_production.bat
+   ```
+
+6. **使用 Nginx 作为反向代理**（可选）：
+   参考 `生产环境部署指南.md` 中的 Nginx 配置示例
+
+7. **配置 HTTPS**（推荐）：
+   使用 Let's Encrypt 配置 SSL 证书
+
+#### 重要提示
+
+- ⚠️ **必须设置 SECRET_KEY**：生产环境必须设置强随机密钥
+- ⚠️ **必须配置邮件服务**：邮箱功能需要正确的 SMTP 配置
+- ✅ **使用 Gunicorn**：生产环境建议使用 Gunicorn 而不是 Flask 内置服务器
+- ✅ **定期备份**：定期备份 `instance/submissions.db` 数据库文件
+- ✅ **监控日志**：检查 `logs/app.log` 和 `logs/error.log`
 
 ### Docker 部署（待实现）
 
@@ -1108,9 +1200,13 @@ url_for('main.main_api.some_api')
 
 ## ❓ 常见问题
 
+### Q: 如何注册新账户？
+
+A: 系统已移除传统注册功能。新用户可以通过**验证码登录**自动注册：使用邮箱验证码登录时，如果该邮箱未绑定任何账户，系统会自动创建新账户并绑定该邮箱。
+
 ### Q: 首次注册后如何成为管理员？
 
-A: 系统会自动检测：如果数据库中没有任何用户，第一个注册的用户会自动获得管理员权限。
+A: 系统会自动检测：如果数据库中没有任何用户，第一个通过验证码登录自动注册的用户会自动获得管理员权限。
 
 ### Q: 如何重置数据库？
 
@@ -1131,6 +1227,25 @@ A: 目前仅支持 Python。未来版本将支持 Java、C++ 等。
 ### Q: 聊天消息的时间显示不正确？
 
 A: 数据库使用 UTC 时间，前端会自动转换为本地时间。如果仍有问题，请检查浏览器时区设置。
+
+### Q: 如何配置邮件服务？
+
+A: 设置以下环境变量：
+- `MAIL_SERVER`：SMTP 服务器地址（如 smtp.qq.com）
+- `MAIL_PORT`：SMTP 端口（通常为 587）
+- `MAIL_USERNAME`：邮箱地址
+- `MAIL_PASSWORD`：邮箱授权码（不是登录密码）
+- `MAIL_DEFAULT_SENDER`：默认发件人地址
+
+详细配置请参考 `邮箱配置示例.env` 文件。
+
+### Q: 未绑定邮箱的用户可以使用哪些功能？
+
+A: 未绑定邮箱的用户登录后，系统会弹出绑定提示，并限制访问大部分功能。用户必须先绑定邮箱才能正常使用系统。允许访问的路径包括：首页、邮箱绑定相关 API、登出功能、服务协议和隐私保护协议页面。
+
+### Q: 验证码有效期是多久？
+
+A: 邮箱验证码有效期为 10 分钟，过期后需要重新发送。
 
 ---
 
@@ -1176,4 +1291,19 @@ MIT License (c) 2025
 ---
 
 **最后更新**：2025-01-29  
-**项目版本**：v2.0.0（模块化版本）
+**项目版本**：v2.1.0（模块化版本 + 邮箱功能）
+
+### 版本更新记录
+
+#### v2.1.0 (2025-01-29)
+- ✨ 新增邮箱绑定功能
+- ✨ 新增验证码登录功能（支持自动注册）
+- ✨ 新增服务协议和隐私保护协议
+- 🔄 移除传统注册功能，改为验证码登录自动注册
+- 🔒 强制邮箱绑定：未绑定邮箱用户需先绑定才能使用全部功能
+- 🚀 完善生产环境部署配置（Gunicorn、Nginx、systemd）
+- 📝 更新依赖列表和部署文档
+
+#### v2.0.0 (2025-01-XX)
+- 🎉 模块化架构重构
+- 📦 完整功能模块化设计

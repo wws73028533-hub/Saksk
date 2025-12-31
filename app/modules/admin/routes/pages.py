@@ -70,7 +70,7 @@ def admin_user_detail_page(user_id):
     conn = get_db()
     
     u = conn.execute(
-        'SELECT id, username, is_admin, is_locked, created_at, avatar, contact, college FROM users WHERE id=?',
+        'SELECT id, username, is_admin, is_locked, created_at, avatar, contact, college, email, email_verified, email_verified_at FROM users WHERE id=?',
         (user_id,)
     ).fetchone()
     
@@ -129,4 +129,32 @@ def admin_chat_page():
 def admin_subject_permissions_page():
     """题库管理页面（批量操作）"""
     return render_template('admin/admin_subject_permissions.html')
+
+
+@admin_pages_bp.route('/settings')
+def admin_settings_page():
+    """系统设置页面"""
+    return render_template('admin/admin_settings.html')
+
+
+@admin_pages_bp.route('/settings/mail')
+def admin_mail_settings_page():
+    """邮件配置页面"""
+    conn = get_db()
+    # 获取当前邮件配置
+    config_rows = conn.execute(
+        'SELECT config_key, config_value, description FROM system_config WHERE config_key LIKE "mail_%" ORDER BY config_key'
+    ).fetchall()
+    
+    mail_config = {}
+    for row in config_rows:
+        key = row['config_key']
+        value = row['config_value']
+        # 对于密码字段，不返回实际值
+        if 'password' in key.lower():
+            mail_config[key] = '***' if value else ''
+        else:
+            mail_config[key] = value
+    
+    return render_template('admin/admin_mail_settings.html', mail_config=mail_config)
 

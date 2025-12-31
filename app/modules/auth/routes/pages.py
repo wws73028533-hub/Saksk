@@ -38,8 +38,20 @@ def login_page():
                          tip_message=tip_message)
 
 
-@auth_pages_bp.route('/register')
-def register_page():
-    """注册页面"""
-    return render_template('auth/login.html', mode='register')
+# 注册功能已移除，使用邮箱验证码自动注册
+# @auth_pages_bp.route('/register')
+# def register_page():
+#     return render_template('auth/login.html', mode='register')
+
+
+@auth_pages_bp.route('/terms')
+def terms_page():
+    """服务协议页面"""
+    return render_template('auth/terms.html')
+
+
+@auth_pages_bp.route('/privacy')
+def privacy_page():
+    """隐私保护协议页面"""
+    return render_template('auth/privacy.html')
 
