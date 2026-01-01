@@ -27,8 +27,13 @@ def index():
     conn = get_db()
     
     try:
-        # 统计基础数据
-        quiz_count = conn.execute("SELECT COUNT(*) FROM questions").fetchone()[0]
+        # 统计基础数据（只统计未锁定科目的题目）
+        quiz_count = conn.execute("""
+            SELECT COUNT(*) 
+            FROM questions q 
+            LEFT JOIN subjects s ON q.subject_id = s.id 
+            WHERE (s.is_locked=0 OR s.is_locked IS NULL)
+        """).fetchone()[0]
         
         # 统计当前用户的收藏/错题
         if uid:
@@ -58,7 +63,10 @@ def index():
             else:
                 subjects = []
         else:
-            subjects = []  # 未登录用户返回空列表
+            # 未登录用户：显示所有未锁定的科目
+            subjects = [row[0] for row in conn.execute(
+                "SELECT name FROM subjects WHERE (is_locked=0 OR is_locked IS NULL) ORDER BY id"
+            ).fetchall()]
         
         # 获取所有题型（作为备用）
         q_types = [row[0] for row in conn.execute("SELECT DISTINCT q_type FROM questions").fetchall()]
@@ -75,6 +83,21 @@ def index():
                 GROUP BY s.name
                 ORDER BY s.id
             """, accessible_subject_ids).fetchall()
+            for row in rows:
+                if row[0] and row[1]:
+                    subject_q_types[row[0]] = sorted(list(set(row[1].split(','))))
+                elif row[0]:
+                    subject_q_types[row[0]] = []
+        elif not uid:
+            # 未登录用户：获取所有未锁定科目的题型
+            rows = conn.execute("""
+                SELECT s.name, GROUP_CONCAT(DISTINCT q.q_type)
+                FROM subjects s
+                LEFT JOIN questions q ON s.id = q.subject_id
+                WHERE (s.is_locked=0 OR s.is_locked IS NULL)
+                GROUP BY s.name
+                ORDER BY s.id
+            """).fetchall()
             for row in rows:
                 if row[0] and row[1]:
                     subject_q_types[row[0]] = sorted(list(set(row[1].split(','))))

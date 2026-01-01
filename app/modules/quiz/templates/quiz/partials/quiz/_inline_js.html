@@ -3,6 +3,7 @@ const source = '{{ source or "" }}';
 const LOGGED_IN = {{ 'true' if logged_in else 'false' }};
 const USER_KEY = "{{ user_id if logged_in else 'guest' }}"; // 用 user_id 作为进度隔离键
 
+
 // 优化后的进度键生成函数 - 标准化参数顺序,避免重复进度
 // 重要：必须与后端 quiz.py 中的 key 生成逻辑保持一致！
 function progressKey(){
@@ -335,7 +336,17 @@ function updateFabUI(){
 }
 
 function toggleFab(open){
+    const wasOpen = fabOpen;
     fabOpen = typeof open === 'boolean' ? open : !fabOpen;
+    
+    // 首次打开悬浮球时，自动永久关闭悬浮球提示（避免干扰）
+    if (!wasOpen && fabOpen) {
+        const fabHint = document.getElementById('fabHint');
+        if (fabHint && fabHint.style.display !== 'none') {
+            dismissFabHintPermanently();
+        }
+    }
+    
     updateFabUI();
 }
 
@@ -710,9 +721,9 @@ async function init() {
     const shouldShowFab = isFabEnabled() && (mode !== 'exam' || (mode === 'exam' && EXAM_SUBMITTED));
     if (shouldShowFab) {
         bindFab();
-        // 显示悬浮球功能提示（如果用户未关闭）
+        // 启动提示框队列管理系统
         // 延迟一点确保页面渲染完成
-        setTimeout(showFabHint, 500);
+        setTimeout(showNextHint, 500);
     } else {
         try {
             const fab = document.getElementById('quizFab');
@@ -720,6 +731,9 @@ async function init() {
             if (fab) fab.style.display = 'none';
             if (menu) menu.style.display = 'none';
         } catch(e) {}
+        // 即使悬浮球不显示，也可以显示快捷键提示
+        // 仍使用队列系统，但跳过悬浮球提示
+        setTimeout(showNextHint, 500);
     }
     // 进度加载：考试模式（未交卷）也启用，与刷题/背题一致（localStorage + /api/progress）
     if (mode !== 'exam' || (mode === 'exam' && !EXAM_SUBMITTED)) {
@@ -732,7 +746,6 @@ async function init() {
     const isShuffleMode = params.get('shuffle_questions') === '1';
     if (isShuffleMode && !cachedOrder && questions.length > 0) {
         cachedOrder = Array.from(questions).map(q => parseInt(q.getAttribute('data-id')));
-        console.log('[进度初始化] 从 DOM 收集题目顺序:', cachedOrder.length, '题');
     }
 
     if (mode === 'exam') {
@@ -763,17 +776,14 @@ async function init() {
 
 async function preloadProgress(){
     const key = progressKey();
-    console.log('[进度加载] 当前模式:', mode, '进度键:', key);
 
     // 登录用户优先从服务器拉取进度
     if (LOGGED_IN) {
         try {
             const encodedKey = encodeURIComponent(key);
-            console.log('[进度加载] 从服务器获取进度...');
             const res = await fetch(`/api/progress?key=${encodedKey}`);
             if (res.ok) {
                 const js = await res.json();
-                console.log('[进度加载] 服务器响应:', js.status, js.data ? '有数据' : '无数据');
                 if (js.status === 'success' && js.data) {
                     // 比较时间戳,使用最新的进度
                     const serverData = js.data;
@@ -793,9 +803,7 @@ async function preloadProgress(){
                             // 使用时间戳较新的数据，但始终保留order字段
                             if (serverTime > localTime) {
                                 localStorage.setItem(key, JSON.stringify(serverData));
-                                console.log('[进度加载] 使用服务器进度(更新)');
                             } else {
-                                console.log('[进度加载] 使用本地进度(更新)');
                                 // 本地更新,同步到服务器，但保留服务器的order
                                 if (localTime > serverTime) {
                                     // 合并：保留服务器的order到本地数据
@@ -813,10 +821,8 @@ async function preloadProgress(){
                     } else {
                         // 本地无数据,使用服务器数据
                         localStorage.setItem(key, JSON.stringify(serverData));
-                        console.log('[进度加载] 从服务器加载进度');
                     }
                 } else {
-                    console.log('[进度加载] 服务器无进度数据');
                 }
             }
         } catch(e) {
@@ -1722,7 +1728,6 @@ async function syncToServer(payload) {
     if (!LOGGED_IN) return;
     try {
         const key = progressKey();
-        console.log('[进度同步] 保存中...', key);
         const res = await fetch('/api/progress', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1730,7 +1735,6 @@ async function syncToServer(payload) {
         });
         if (res.ok) {
             syncPending = false;
-            console.log('[进度同步] 成功');
         } else {
             console.error('[进度同步] 服务器错误:', res.status);
         }
@@ -1749,7 +1753,6 @@ window.addEventListener('beforeunload', function(e) {
             if (navigator.sendBeacon) {
                 const blob = new Blob([data], {type: 'application/json'});
                 navigator.sendBeacon('/api/progress', blob);
-                console.log('[进度同步] beforeunload 发送成功');
             }
         } catch(err) {
             console.error('[进度同步] beforeunload 发送失败:', err);
@@ -2562,16 +2565,78 @@ function changeSize(sz){
     window.location.href = url.toString();
 }
 
+// ===== 提示框优先级管理系统 =====
+const HINT_PRIORITY_QUEUE = [
+    {
+        id: 'fabHint',
+        storageKey: FAB_HINT_DISMISSED_KEY,
+        showFunc: 'showFabHint',
+        priority: 1, // 优先级：数字越小越优先
+        delay: 800 // 显示延迟（ms）
+    },
+    {
+        id: 'shortcutHint',
+        storageKey: 'shortcut_hint_dismissed',
+        showFunc: 'showShortcutHint',
+        priority: 2,
+        delay: 800
+    }
+];
+
+// 当前显示的提示框ID
+let currentHintId = null;
+
+// 本次会话中临时关闭的提示（刷新页面后重置）
+const temporarilyDismissedHints = new Set();
+
+// 检查并显示下一个提示
+function showNextHint() {
+    // 如果当前有提示正在显示，不处理
+    if (currentHintId) {
+        return;
+    }
+    
+    // 按优先级排序
+    const sortedHints = [...HINT_PRIORITY_QUEUE].sort((a, b) => a.priority - b.priority);
+    
+    // 查找第一个未被永久关闭且未被临时关闭的提示
+    for (const hint of sortedHints) {
+        const permanentlyDismissed = localStorage.getItem(hint.storageKey) === '1';
+        const temporarilyDismissed = temporarilyDismissedHints.has(hint.id);
+        
+        if (!permanentlyDismissed && !temporarilyDismissed) {
+            currentHintId = hint.id;
+            
+            // 延迟显示，确保页面加载完成
+            setTimeout(() => {
+                const showFunc = window[hint.showFunc];
+                if (typeof showFunc === 'function') {
+                    showFunc();
+                }
+            }, hint.delay);
+            return;
+        }
+    }
+}
+
+// 关闭当前提示并尝试显示下一个
+function closeCurrentHintAndShowNext() {
+    currentHintId = null;
+    
+    // 延迟显示下一个提示，避免视觉跳动
+    setTimeout(() => {
+        showNextHint();
+    }, 500);
+}
+
 // ===== 悬浮球功能提示横幅 =====
 function showFabHint() {
     // 检查用户是否选择了"不再提示"
     const dismissed = localStorage.getItem(FAB_HINT_DISMISSED_KEY);
     if (dismissed === '1') {
-        console.log('[悬浮球提示] 用户已选择不再提示');
+        closeCurrentHintAndShowNext(); // 尝试显示下一个
         return;
     }
-    
-    console.log('[悬浮球提示] 开始显示提示');
     
     // 确保 DOM 已加载，重试机制
     function tryShowHint(retries) {
@@ -2582,28 +2647,21 @@ function showFabHint() {
             if (retries < 10) {
                 setTimeout(() => tryShowHint(retries + 1), 100);
             } else {
-                console.warn('[悬浮球提示] 元素未找到，可能已被移除');
+                closeCurrentHintAndShowNext(); // 元素不存在，尝试显示下一个
             }
             return;
         }
         
-        console.log('[悬浮球提示] 找到元素，准备显示');
+        // 显示提示
+        hint.style.display = 'flex';
+        hint.style.opacity = '0.9'; // 确保初始透明度正确
         
-        // 延迟显示，避免与页面加载冲突
+        // 5秒后自动淡出（但不关闭，用户仍可手动关闭）
         setTimeout(() => {
-            if (hint) {
-                hint.style.display = 'flex';
-                hint.style.opacity = '0.9'; // 确保初始透明度正确
-                console.log('[悬浮球提示] 已显示');
-                // 5秒后自动淡出（但不关闭，用户仍可手动关闭）
-                setTimeout(() => {
-                    if (hint && hint.style.display !== 'none') {
-                        hint.style.opacity = '0.5';
-                        console.log('[悬浮球提示] 已淡出');
-                    }
-                }, 5000);
+            if (hint && hint.style.display !== 'none') {
+                hint.style.opacity = '0.5';
             }
-        }, 1000);
+        }, 5000);
     }
     
     tryShowHint();
@@ -2614,7 +2672,16 @@ function dismissFabHint() {
     const hint = document.getElementById('fabHint');
     if (hint) {
         hint.style.display = 'none';
-        // 不保存到localStorage，下次进入仍会显示
+        hint.style.opacity = '0';
+    }
+    // 临时关闭：标记为本次会话已关闭，清除当前提示ID，然后显示下一个
+    if (currentHintId === 'fabHint') {
+        temporarilyDismissedHints.add('fabHint');
+        currentHintId = null;
+        // 延迟显示下一个提示，避免视觉跳动
+        setTimeout(() => {
+            showNextHint();
+        }, 500);
     }
 }
 
@@ -2623,19 +2690,40 @@ function dismissFabHintPermanently() {
     const hint = document.getElementById('fabHint');
     if (hint) {
         hint.style.display = 'none';
+        hint.style.opacity = '0';
         localStorage.setItem(FAB_HINT_DISMISSED_KEY, '1');
     }
+    // 永久关闭：触发队列显示下一个提示
+    closeCurrentHintAndShowNext();
 }
 
 // 试试看：打开悬浮球菜单
 function tryFabHint() {
     const fab = document.getElementById('quizFab');
-    if (fab) {
-        // 触发悬浮球点击，打开菜单
-        fab.click();
-        // 关闭提示横幅
-        dismissFabHint();
+    const menu = document.getElementById('quizFabMenu');
+    
+    if (!fab || !menu) {
+        return;
     }
+    
+    // 用户主动试用，说明已知悉功能，永久关闭提示（不会在下次访问时再显示）
+    dismissFabHintPermanently();
+    
+    // 延迟300ms打开悬浮球，让用户注意到过渡
+    setTimeout(() => {
+        // 如果悬浮球未打开，则打开它
+        if (!fabOpen) {
+            toggleFab(true);
+            
+            // 3秒后自动关闭（给用户足够时间查看菜单项）
+            setTimeout(() => {
+                if (fabOpen) {
+                    toggleFab(false);
+                    showToast('提示：再次点击悬浮球可打开菜单');
+                }
+            }, 3000);
+        }
+    }, 300);
 }
 
 // 全局函数，供HTML onclick调用
@@ -2650,25 +2738,26 @@ function showShortcutHint() {
     // 检查用户是否选择了"不再提示"
     const dismissed = localStorage.getItem(SHORTCUT_HINT_DISMISSED_KEY);
     if (dismissed === '1') {
+        closeCurrentHintAndShowNext(); // 尝试显示下一个
         return;
     }
     
     const hint = document.getElementById('shortcutHint');
-    if (!hint) return;
+    if (!hint) {
+        closeCurrentHintAndShowNext(); // 元素不存在，尝试显示下一个
+        return;
+    }
     
-    // 延迟显示，避免与页面加载冲突
+    // 显示提示
+    hint.style.display = 'flex';
+    hint.style.opacity = '1';
+    
+    // 5秒后自动淡出（但不关闭，用户仍可手动关闭）
     setTimeout(() => {
-        if (hint) {
-            hint.style.display = 'flex';
-            hint.style.opacity = '1';
-            // 5秒后自动淡出（但不关闭，用户仍可手动关闭）
-            setTimeout(() => {
-                if (hint && hint.style.display !== 'none') {
-                    hint.style.opacity = '0.5';
-                }
-            }, 5000);
+        if (hint && hint.style.display !== 'none') {
+            hint.style.opacity = '0.5';
         }
-    }, 1500); // 比悬浮球提示稍晚显示，避免重叠
+    }, 5000);
 }
 
 // 关闭本次提示（不保存状态，下次仍会显示）
@@ -2676,6 +2765,16 @@ function dismissShortcutHint() {
     const hint = document.getElementById('shortcutHint');
     if (hint) {
         hint.style.display = 'none';
+        hint.style.opacity = '0';
+    }
+    // 临时关闭：标记为本次会话已关闭，清除当前提示ID，然后显示下一个
+    if (currentHintId === 'shortcutHint') {
+        temporarilyDismissedHints.add('shortcutHint');
+        currentHintId = null;
+        // 延迟显示下一个提示，避免视觉跳动
+        setTimeout(() => {
+            showNextHint();
+        }, 500);
     }
 }
 
@@ -2684,14 +2783,18 @@ function dismissShortcutHintPermanently() {
     const hint = document.getElementById('shortcutHint');
     if (hint) {
         hint.style.display = 'none';
+        hint.style.opacity = '0';
         localStorage.setItem(SHORTCUT_HINT_DISMISSED_KEY, '1');
     }
+    // 永久关闭：触发队列显示下一个提示
+    closeCurrentHintAndShowNext();
 }
 
 // 跳转到题库设置页
 function goToShortcutSettings() {
+    // 用户主动去设置，说明已知悉快捷键功能，永久关闭提示
+    dismissShortcutHintPermanently();
     window.location.href = '/quiz_settings';
-    dismissShortcutHint();
 }
 
 // 全局函数，供HTML onclick调用
@@ -2699,16 +2802,29 @@ window.dismissShortcutHint = dismissShortcutHint;
 window.dismissShortcutHintPermanently = dismissShortcutHintPermanently;
 window.goToShortcutSettings = goToShortcutSettings;
 
-// 调试用：手动测试显示提示（可在控制台调用 testFabHint()）
-window.testFabHint = function() {
-    console.log('[测试] 清除关闭状态并显示提示');
+// 调试用：手动测试显示提示（可在控制台调用 testHints()）
+window.testHints = function() {
+    console.log('[测试] 清除所有提示状态');
     localStorage.removeItem(FAB_HINT_DISMISSED_KEY);
-    showFabHint();
+    localStorage.removeItem(SHORTCUT_HINT_DISMISSED_KEY);
+    currentHintId = null;
+    // 隐藏所有提示
+    const fabHint = document.getElementById('fabHint');
+    const shortcutHint = document.getElementById('shortcutHint');
+    if (fabHint) {
+        fabHint.style.display = 'none';
+        fabHint.style.opacity = '0';
+    }
+    if (shortcutHint) {
+        shortcutHint.style.display = 'none';
+        shortcutHint.style.opacity = '0';
+    }
+    // 重新开始显示队列
+    setTimeout(() => showNextHint(), 500);
 };
 
-// 页面加载完成后显示快捷键提示（延迟显示，避免与悬浮球提示重叠）
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', showShortcutHint);
-} else {
-    setTimeout(showShortcutHint, 1500);
-}
+// 旧的测试函数保持兼容
+window.testFabHint = function() {
+    console.log('[测试] 使用新的测试函数 testHints() 来测试完整流程');
+    window.testHints();
+};

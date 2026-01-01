@@ -149,9 +149,7 @@ def api_questions_count():
         placeholders = ','.join(['?'] * len(accessible_subject_ids))
         base_sql += f" AND q.subject_id IN ({placeholders})"
         params.extend(accessible_subject_ids)
-    elif not uid:
-        # 未登录用户：返回0
-        return jsonify({'status':'success','count': 0})
+    # 未登录用户：不添加权限过滤，显示所有未锁定科目的题目数（已在base_sql中过滤了is_locked）
     
     if subject != 'all':
         base_sql += " AND s.name = ?"
