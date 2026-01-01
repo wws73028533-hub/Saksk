@@ -58,6 +58,7 @@ def _create_tables(conn):
             college TEXT,
             last_active DATETIME,
             is_subject_admin INTEGER DEFAULT 0,
+            is_notification_admin INTEGER DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     ''')
@@ -246,6 +247,8 @@ def _create_tables(conn):
                 cur.execute('ALTER TABLE users ADD COLUMN last_active DATETIME')
             if 'is_subject_admin' not in cols:
                 cur.execute('ALTER TABLE users ADD COLUMN is_subject_admin INTEGER DEFAULT 0')
+            if 'is_notification_admin' not in cols:
+                cur.execute('ALTER TABLE users ADD COLUMN is_notification_admin INTEGER DEFAULT 0')
             if 'email' not in cols:
                 cur.execute('ALTER TABLE users ADD COLUMN email TEXT')
             if 'email_verified' not in cols:

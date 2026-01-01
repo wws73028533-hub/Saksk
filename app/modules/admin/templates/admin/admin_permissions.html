@@ -1,0 +1,834 @@
+{% extends "admin/admin_base.html" %}
+
+{% block title %}权限管理{% endblock %}
+
+{% block head %}
+<style>
+    .container { 
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(30px) saturate(180%);
+        -webkit-backdrop-filter: blur(30px) saturate(180%);
+        padding: 40px; 
+        border-radius: var(--radius-lg); 
+        box-shadow: var(--shadow-soft);
+        border: 0.5px solid var(--border-color);
+    }
+    h1 { font-size: 22px; margin: 0; }
+    .toolbar { 
+        display:flex; 
+        justify-content: space-between; 
+        align-items: center; 
+        gap: 12px; 
+        margin-bottom: 24px; 
+        flex-wrap: wrap; 
+    }
+    .toolbar-left { display:flex; align-items:center; gap: 10px; flex-wrap: wrap; }
+    .toolbar-right { display:flex; align-items:center; gap: 8px; flex-wrap: wrap; }
+    
+    /* 搜索框 */
+    .search-box {
+        position: relative;
+        display: inline-block;
+    }
+    .search-box input {
+        padding: 10px 12px;
+        padding-left: 36px;
+        width: 250px;
+        border: 0.5px solid var(--border-color);
+        border-radius: var(--radius-md);
+        font-size: 14px;
+        background: rgba(255, 255, 255, 0.8);
+        transition: all 0.25s;
+    }
+    .search-box input:focus {
+        width: 300px;
+        border-color: var(--primary);
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+    }
+    .search-icon {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-sub);
+        font-size: 14px;
+    }
+    
+    /* 批量操作栏 */
+    .batch-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 16px 20px;
+        background: rgba(0, 122, 255, 0.05);
+        border-radius: var(--radius-md);
+        border: 0.5px solid rgba(0, 122, 255, 0.15);
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+    .batch-actions.hidden {
+        display: none;
+    }
+    .selected-count {
+        font-weight: 600;
+        color: var(--primary);
+    }
+    .permission-buttons {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    .permission-btn {
+        padding: 8px 16px;
+        border-radius: var(--radius-md);
+        border: 0.5px solid var(--border-color);
+        background: rgba(255, 255, 255, 0.8);
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.25s;
+    }
+    .permission-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-soft);
+    }
+    .permission-btn.subject-admin {
+        border-color: rgba(255, 149, 0, 0.3);
+        color: var(--warning);
+        background: rgba(255, 149, 0, 0.08);
+    }
+    .permission-btn.subject-admin:hover {
+        background: rgba(255, 149, 0, 0.12);
+    }
+    .permission-btn.notification-admin {
+        border-color: rgba(0, 122, 255, 0.3);
+        color: var(--primary);
+        background: rgba(0, 122, 255, 0.08);
+    }
+    .permission-btn.notification-admin:hover {
+        background: rgba(0, 122, 255, 0.12);
+    }
+    .permission-btn.remove {
+        border-color: rgba(255, 59, 48, 0.3);
+        color: var(--danger);
+        background: rgba(255, 59, 48, 0.08);
+    }
+    .permission-btn.remove:hover {
+        background: rgba(255, 59, 48, 0.12);
+    }
+    
+    /* 表格样式 */
+    .table-wrapper {
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+        border: 0.5px solid var(--border-color);
+        box-shadow: var(--shadow-soft);
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(30px) saturate(180%);
+        -webkit-backdrop-filter: blur(30px) saturate(180%);
+    }
+    table { 
+        width:100%; 
+        border-collapse:collapse;
+        table-layout: fixed;
+    }
+    th, td { 
+        padding: 14px 16px; 
+        border-bottom:0.5px solid var(--border-color); 
+        text-align:left; 
+    }
+    thead th { 
+        background: rgba(142, 142, 147, 0.06);
+        font-weight:600;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        color: var(--text-color);
+        font-size: 13px;
+        letter-spacing: -0.01em;
+    }
+    tbody tr {
+        transition: background-color 0.2s;
+        height: 60px;
+    }
+    tbody tr:hover { 
+        background: rgba(142, 142, 147, 0.08); 
+    }
+    tbody tr:last-child td {
+        border-bottom: none;
+    }
+    tbody td {
+        vertical-align: middle;
+    }
+    
+    /* 复选框样式 */
+    .checkbox-cell {
+        width: 50px;
+        text-align: center;
+    }
+    input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+        accent-color: var(--primary);
+    }
+    
+    /* 权限标签 */
+    .permission-tags {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+    .permission-tag {
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+    .permission-tag.admin {
+        background: rgba(255, 59, 48, 0.1);
+        color: var(--danger);
+        border: 0.5px solid rgba(255, 59, 48, 0.2);
+    }
+    .permission-tag.subject-admin {
+        background: rgba(255, 149, 0, 0.1);
+        color: var(--warning);
+        border: 0.5px solid rgba(255, 149, 0, 0.2);
+    }
+    .permission-tag.notification-admin {
+        background: rgba(0, 122, 255, 0.1);
+        color: var(--primary);
+        border: 0.5px solid rgba(0, 122, 255, 0.2);
+    }
+    .permission-tag.none {
+        background: rgba(142, 142, 147, 0.1);
+        color: var(--text-sub);
+        border: 0.5px solid var(--border-color);
+    }
+    
+    /* 空状态 */
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: var(--text-sub);
+    }
+    .empty-state-text {
+        font-size: 16px;
+        margin-bottom: 8px;
+    }
+    .empty-state-hint {
+        font-size: 14px;
+        opacity: 0.7;
+    }
+    
+    /* 加载状态 */
+    .loading {
+        text-align: center;
+        padding: 40px;
+        color: var(--text-sub);
+    }
+    .loading-spinner {
+        width: 24px;
+        height: 24px;
+        border: 3px solid var(--border-color);
+        border-top-color: var(--primary);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin: 0 auto 12px;
+    }
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    
+    /* 分页 */
+    .pagination {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 12px;
+        margin-top: 24px;
+        flex-wrap: wrap;
+    }
+    .pagination button {
+        padding: 8px 16px;
+        border: 0.5px solid var(--border-color);
+        border-radius: var(--radius-md);
+        background: rgba(255, 255, 255, 0.8);
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.25s;
+    }
+    .pagination button:hover:not(:disabled) {
+        background: rgba(142, 142, 147, 0.1);
+        transform: translateY(-1px);
+    }
+    .pagination button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    .page-info {
+        font-size: 14px;
+        color: var(--text-sub);
+    }
+    
+    /* 统计卡片 - iOS 18风格 */
+    .stats-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 16px;
+        margin-bottom: 32px;
+    }
+    .stat-card {
+        padding: 20px;
+        border-radius: var(--radius-lg);
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(30px) saturate(180%);
+        -webkit-backdrop-filter: blur(30px) saturate(180%);
+        color: var(--text-color);
+        box-shadow: var(--shadow-soft);
+        border: 0.5px solid var(--border-color);
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow);
+        border-color: var(--border-color);
+    }
+    .stat-card.subject-admin {
+        background: rgba(255, 149, 0, 0.08);
+        border-color: rgba(255, 149, 0, 0.15);
+    }
+    .stat-card.notification-admin {
+        background: rgba(0, 122, 255, 0.08);
+        border-color: rgba(0, 122, 255, 0.15);
+    }
+    .stat-card-label {
+        font-size: 12px;
+        opacity: 0.9;
+        margin-bottom: 4px;
+        color: var(--text-sub);
+        font-weight: 500;
+    }
+    .stat-card-value {
+        font-size: 28px;
+        font-weight: 600;
+        letter-spacing: -0.5px;
+        color: var(--text-color);
+    }
+    
+    /* 操作按钮样式 */
+    .btn-sm {
+        padding: 6px 12px;
+        font-size: 13px;
+        border-radius: var(--radius-md);
+        border: 0.5px solid var(--border-color);
+        cursor: pointer;
+        transition: all 0.25s;
+        font-weight: 500;
+    }
+    .btn-action {
+        background: rgba(255, 255, 255, 0.8);
+        color: var(--text-color);
+        backdrop-filter: blur(20px) saturate(180%);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
+    }
+    .btn-action:hover {
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-soft);
+    }
+    
+    /* 黑夜模式 - 操作按钮 */
+    [data-theme="dark"] .btn-action {
+        background: rgba(28, 28, 30, 0.8);
+        color: var(--text-color);
+        border-color: rgba(255, 255, 255, 0.15);
+    }
+    [data-theme="dark"] .btn-action:hover {
+        background: rgba(28, 28, 30, 0.9);
+        border-color: rgba(255, 255, 255, 0.2);
+    }
+    
+    /* 激活状态的按钮样式 */
+    .btn-action-active.btn-action-subject {
+        background: rgba(255, 149, 0, 0.1);
+        color: var(--warning);
+        border-color: rgba(255, 149, 0, 0.2);
+    }
+    .btn-action-active.btn-action-subject:hover {
+        background: rgba(255, 149, 0, 0.15);
+        border-color: rgba(255, 149, 0, 0.3);
+    }
+    
+    .btn-action-active.btn-action-notification {
+        background: rgba(0, 122, 255, 0.1);
+        color: var(--primary);
+        border-color: rgba(0, 122, 255, 0.2);
+    }
+    .btn-action-active.btn-action-notification:hover {
+        background: rgba(0, 122, 255, 0.15);
+        border-color: rgba(0, 122, 255, 0.3);
+    }
+    
+    /* 黑夜模式 - 激活状态的按钮样式 */
+    [data-theme="dark"] .btn-action-active.btn-action-subject {
+        background: rgba(255, 149, 0, 0.15) !important;
+        color: var(--warning) !important;
+        border-color: rgba(255, 149, 0, 0.3) !important;
+    }
+    [data-theme="dark"] .btn-action-active.btn-action-subject:hover {
+        background: rgba(255, 149, 0, 0.2) !important;
+        border-color: rgba(255, 149, 0, 0.4) !important;
+    }
+    
+    [data-theme="dark"] .btn-action-active.btn-action-notification {
+        background: rgba(10, 132, 255, 0.15) !important;
+        color: var(--primary) !important;
+        border-color: rgba(10, 132, 255, 0.3) !important;
+    }
+    [data-theme="dark"] .btn-action-active.btn-action-notification:hover {
+        background: rgba(10, 132, 255, 0.2) !important;
+        border-color: rgba(10, 132, 255, 0.4) !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="toolbar">
+        <div class="toolbar-left">
+            <h1>权限管理</h1>
+        </div>
+        <div class="toolbar-right">
+            <div class="search-box">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="searchInput" placeholder="搜索用户名" onkeydown="if(event.key==='Enter') loadUsers(1)" oninput="handleSearch()">
+            </div>
+            <button class="btn-outline" onclick="loadUsers(curPage)">刷新</button>
+        </div>
+    </div>
+    
+    <!-- 统计卡片 -->
+    <div class="stats-cards" id="statsCards">
+        <div class="stat-card">
+            <div class="stat-card-label">总用户数</div>
+            <div class="stat-card-value" id="statTotal">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-label">在线用户</div>
+            <div class="stat-card-value" id="statOnline">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-label">管理员</div>
+            <div class="stat-card-value" id="statAdmin">0</div>
+        </div>
+        <div class="stat-card subject-admin">
+            <div class="stat-card-label">科目管理员</div>
+            <div class="stat-card-value" id="statSubjectAdmin">0</div>
+        </div>
+
+        <div class="stat-card notification-admin">
+            <div class="stat-card-label">通知管理员</div>
+            <div class="stat-card-value" id="statNotificationAdmin">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-label">已锁定</div>
+            <div class="stat-card-value" id="statLocked">0</div>
+        </div>
+    </div>
+    
+    <!-- 批量操作栏 -->
+    <div class="batch-actions hidden" id="batchActions">
+        <span class="selected-count" id="selectedCount">已选择 0 个用户</span>
+        <div class="permission-buttons">
+            <button class="permission-btn subject-admin" onclick="batchSetPermission('subject_admin', true)">设为科目管理员</button>
+            <button class="permission-btn notification-admin" onclick="batchSetPermission('notification_admin', true)">设为通知管理员</button>
+            <button class="permission-btn subject-admin" onclick="batchSetPermission('subject_admin', false)">取消科目管理员</button>
+            <button class="permission-btn notification-admin" onclick="batchSetPermission('notification_admin', false)">取消通知管理员</button>
+            <button class="permission-btn remove" onclick="clearSelection()">清除选择</button>
+        </div>
+    </div>
+    
+    <!-- 表格 -->
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:50px;" class="checkbox-cell">
+                        <input type="checkbox" id="selectAll" onchange="toggleSelectAll()">
+                    </th>
+                    <th style="width:6%;">ID</th>
+                    <th style="width:15%;">用户名</th>
+                    <th style="width:25%;">当前权限</th>
+                    <th style="width:18%;">创建时间</th>
+                    <th style="width:26%;">操作</th>
+                </tr>
+            </thead>
+            <tbody id="tbody">
+                <tr>
+                    <td colspan="6" class="loading">
+                        <div class="loading-spinner"></div>
+                        <div style="margin-top: 12px;">加载中...</div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- 分页 -->
+    <div class="pagination">
+        <button onclick="changePage('first')" id="btnFirst">首页</button>
+        <button onclick="changePage('prev')" id="btnPrev">上一页</button>
+        <span class="page-info" id="pageInfo">第 1 页 / 共 1 页</span>
+        <button onclick="changePage('next')" id="btnNext">下一页</button>
+        <button onclick="changePage('last')" id="btnLast">末页</button>
+    </div>
+</div>
+
+<script>
+    let allUsers = [];
+    let filteredUsers = [];
+    let selectedUserIds = new Set();
+    let curPage = 1;
+    const pageSize = 20;
+    let searchKeyword = '';
+    let totalUsers = 0; // 保存总用户数（用于分页计算）
+    let allStats = { 
+        total: 0, 
+        online: 0, 
+        admin: 0, 
+        subject_admin: 0,
+        notification_admin: 0,
+        locked: 0 
+    };
+    
+    function qs(sel) { return document.querySelector(sel); }
+    function getVal(id) { return document.getElementById(id).value.trim(); }
+    
+    // 更新统计卡片
+    function updateStats() {
+        document.getElementById('statTotal').textContent = allStats.total;
+        document.getElementById('statOnline').textContent = allStats.online;
+        document.getElementById('statAdmin').textContent = allStats.admin;
+        document.getElementById('statSubjectAdmin').textContent = allStats.subject_admin || 0;
+        document.getElementById('statNotificationAdmin').textContent = allStats.notification_admin || 0;
+        document.getElementById('statLocked').textContent = allStats.locked;
+    }
+    
+    // 加载用户列表
+    async function loadUsers(page) {
+        curPage = page || curPage;
+        searchKeyword = getVal('searchInput');
+        
+        try {
+            const url = `/admin/api/users?search=${encodeURIComponent(searchKeyword)}&page=${curPage}&size=${pageSize}&sort=created_at&order=desc&priority_sort=true`;
+            const res = await fetch(url);
+            const js = await res.json();
+            
+            if (!res.ok || js.status !== 'success') {
+                showError(js.message || '加载失败');
+                return;
+            }
+            
+            allUsers = js.data || [];
+            filteredUsers = allUsers;
+            totalUsers = js.total || 0; // 保存总用户数
+            
+            // 使用后端返回的全局统计数据
+            const stats = js.stats || {};
+            allStats = { 
+                total: js.total || 0, 
+                online: stats.online || 0, 
+                admin: stats.admin || 0, 
+                subject_admin: stats.subject_admin || 0,
+                notification_admin: stats.notification_admin || 0,
+                locked: stats.locked || 0 
+            };
+            
+            updateStats();
+            renderTable();
+            renderPager(totalUsers);
+        } catch (error) {
+            console.error('加载用户失败:', error);
+            showError('网络错误，请稍后重试');
+        }
+    }
+    
+    // 渲染表格
+    function renderTable() {
+        const tb = document.getElementById('tbody');
+        
+        if (filteredUsers.length === 0) {
+            tb.innerHTML = `<tr><td colspan="6" class="empty-state">
+                <div class="empty-state-text">暂无用户</div>
+                <div class="empty-state-hint">${searchKeyword ? '未找到匹配的用户' : '系统中还没有用户'}</div>
+            </td></tr>`;
+            return;
+        }
+        
+        tb.innerHTML = filteredUsers.map(u => {
+            const isSelected = selectedUserIds.has(u.id);
+            const isCurrentUser = u.id === CURRENT_UID;
+            
+            // 构建权限标签
+            let permissionTags = [];
+            if (u.is_admin) {
+                permissionTags.push('<span class="permission-tag admin">管理员</span>');
+            }
+            if (u.is_subject_admin) {
+                permissionTags.push('<span class="permission-tag subject-admin">科目管理员</span>');
+            }
+            if (u.is_notification_admin) {
+                permissionTags.push('<span class="permission-tag notification-admin">通知管理员</span>');
+            }
+            if (permissionTags.length === 0) {
+                permissionTags.push('<span class="permission-tag none">普通用户</span>');
+            }
+            
+            // 操作按钮
+            let actionButtons = '';
+            if (!isCurrentUser) {
+                const subjectAdminClass = u.is_subject_admin ? 'btn-action-active btn-action-subject' : '';
+                const notificationAdminClass = u.is_notification_admin ? 'btn-action-active btn-action-notification' : '';
+                actionButtons = `
+                    <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                        <button class="btn-sm btn-action ${subjectAdminClass}" onclick="togglePermission(${u.id}, 'subject_admin')">
+                            ${u.is_subject_admin ? '取消科目管理员' : '设为科目管理员'}
+                        </button>
+                        <button class="btn-sm btn-action ${notificationAdminClass}" onclick="togglePermission(${u.id}, 'notification_admin')">
+                            ${u.is_notification_admin ? '取消通知管理员' : '设为通知管理员'}
+                        </button>
+                    </div>
+                `;
+            } else {
+                actionButtons = '<span class="muted">当前用户</span>';
+            }
+            
+            return `<tr>
+                <td class="checkbox-cell">
+                    ${!isCurrentUser ? `<input type="checkbox" ${isSelected ? 'checked' : ''} onchange="toggleSelection(${u.id})">` : ''}
+                </td>
+                <td>${u.id}</td>
+                <td>${u.username}</td>
+                <td>
+                    <div class="permission-tags">${permissionTags.join('')}</div>
+                </td>
+                <td>${formatDate(u.created_at)}</td>
+                <td>${actionButtons}</td>
+            </tr>`;
+        }).join('');
+        
+        updateBatchActions();
+    }
+    
+    // 切换选择
+    function toggleSelection(userId) {
+        if (selectedUserIds.has(userId)) {
+            selectedUserIds.delete(userId);
+        } else {
+            selectedUserIds.add(userId);
+        }
+        updateBatchActions();
+        renderTable();
+    }
+    
+    // 全选/取消全选
+    function toggleSelectAll() {
+        const selectAll = document.getElementById('selectAll').checked;
+        const currentUserIds = filteredUsers
+            .filter(u => u.id !== CURRENT_UID)
+            .map(u => u.id);
+        
+        if (selectAll) {
+            currentUserIds.forEach(id => selectedUserIds.add(id));
+        } else {
+            currentUserIds.forEach(id => selectedUserIds.delete(id));
+        }
+        
+        updateBatchActions();
+        renderTable();
+    }
+    
+    // 清除选择
+    function clearSelection() {
+        selectedUserIds.clear();
+        document.getElementById('selectAll').checked = false;
+        updateBatchActions();
+        renderTable();
+    }
+    
+    // 更新批量操作栏
+    function updateBatchActions() {
+        const batchActions = document.getElementById('batchActions');
+        const selectedCount = document.getElementById('selectedCount');
+        const count = selectedUserIds.size;
+        
+        if (count > 0) {
+            batchActions.classList.remove('hidden');
+            selectedCount.textContent = `已选择 ${count} 个用户`;
+        } else {
+            batchActions.classList.add('hidden');
+        }
+        
+        // 更新全选复选框状态
+        const allSelected = filteredUsers
+            .filter(u => u.id !== CURRENT_UID)
+            .every(u => selectedUserIds.has(u.id));
+        document.getElementById('selectAll').checked = allSelected && filteredUsers.filter(u => u.id !== CURRENT_UID).length > 0;
+    }
+    
+    // 批量设置权限
+    async function batchSetPermission(permissionType, enable) {
+        if (selectedUserIds.size === 0) {
+            showError('请先选择用户');
+            return;
+        }
+        
+        const action = enable ? '设为' : '取消';
+        const permissionName = permissionType === 'subject_admin' ? '科目管理员' : '通知管理员';
+        
+        if (!confirm(`确定要${action}${permissionName}吗？\n将影响 ${selectedUserIds.size} 个用户`)) {
+            return;
+        }
+        
+        try {
+            const userIds = Array.from(selectedUserIds);
+            const res = await fetch('/admin/api/permissions/batch', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_ids: userIds,
+                    permission_type: permissionType,
+                    enable: enable
+                })
+            });
+            
+            const js = await res.json();
+            if (res.ok && js.status === 'success') {
+                showMessage(`${action}${permissionName}成功`, true);
+                clearSelection();
+                loadUsers(curPage);
+            } else {
+                showError(js.message || '操作失败');
+            }
+        } catch (error) {
+            console.error('批量设置权限失败:', error);
+            showError('网络错误，请稍后重试');
+        }
+    }
+    
+    // 切换单个用户权限
+    async function togglePermission(userId, permissionType) {
+        const user = allUsers.find(u => u.id === userId);
+        if (!user) return;
+        
+        const currentValue = permissionType === 'subject_admin' ? user.is_subject_admin : user.is_notification_admin;
+        const enable = !currentValue;
+        const action = enable ? '设为' : '取消';
+        const permissionName = permissionType === 'subject_admin' ? '科目管理员' : '通知管理员';
+        
+        if (!confirm(`确定要${action}${permissionName}吗？`)) {
+            return;
+        }
+        
+        try {
+            const res = await fetch('/admin/api/permissions/batch', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_ids: [userId],
+                    permission_type: permissionType,
+                    enable: enable
+                })
+            });
+            
+            const js = await res.json();
+            if (res.ok && js.status === 'success') {
+                showMessage(`${action}${permissionName}成功`, true);
+                loadUsers(curPage);
+            } else {
+                showError(js.message || '操作失败');
+            }
+        } catch (error) {
+            console.error('设置权限失败:', error);
+            showError('网络错误，请稍后重试');
+        }
+    }
+    
+    // 搜索处理
+    function handleSearch() {
+        searchKeyword = getVal('searchInput').toLowerCase();
+        filteredUsers = allUsers.filter(u => 
+            u.username.toLowerCase().includes(searchKeyword)
+        );
+        renderTable();
+    }
+    
+    // 分页
+    function renderPager(total) {
+        const totalPages = Math.max(1, Math.ceil(total / pageSize));
+        document.getElementById('pageInfo').textContent = `第 ${curPage} / ${totalPages} 页 (共 ${total} 条)`;
+        document.getElementById('btnFirst').disabled = curPage <= 1;
+        document.getElementById('btnPrev').disabled = curPage <= 1;
+        document.getElementById('btnNext').disabled = curPage >= totalPages;
+        document.getElementById('btnLast').disabled = curPage >= totalPages;
+    }
+    
+    function changePage(action) {
+        const totalPages = Math.max(1, Math.ceil(totalUsers / pageSize));
+        let newPage = curPage;
+        
+        switch(action) {
+            case 'first': newPage = 1; break;
+            case 'prev': newPage = Math.max(1, curPage - 1); break;
+            case 'next': newPage = Math.min(totalPages, curPage + 1); break;
+            case 'last': newPage = totalPages; break;
+        }
+        
+        if (newPage !== curPage) {
+            loadUsers(newPage);
+        }
+    }
+    
+    // 格式化日期
+    function formatDate(dateStr) {
+        if (!dateStr) return '-';
+        try {
+            const date = new Date(dateStr);
+            return date.toLocaleString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        } catch (e) {
+            return dateStr;
+        }
+    }
+    
+    // 消息提示
+    function showMessage(msg, success) {
+        // 使用现有的消息提示系统
+        if (typeof showToast === 'function') {
+            showToast(msg, success ? 'success' : 'error');
+        } else {
+            alert(msg);
+        }
+    }
+    
+    function showError(msg) {
+        showMessage(msg, false);
+    }
+    
+    // 获取当前用户ID（从全局上下文处理器获取）
+    const CURRENT_UID = {{ user_id if user_id else 0 }};
+    
+    // 页面加载时初始化
+    document.addEventListener('DOMContentLoaded', function() {
+        loadUsers(1);
+    });
+</script>
+{% endblock %}
+

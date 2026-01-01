@@ -42,10 +42,11 @@ def api_login():
     
     conn = get_db()
     
-    # 检查 is_subject_admin 字段是否存在
+    # 检查 is_subject_admin 和 is_notification_admin 字段是否存在
     try:
         user_cols = [r['name'] for r in conn.execute("PRAGMA table_info(users)").fetchall()]
         has_subject_admin_field = 'is_subject_admin' in user_cols
+        has_notification_admin_field = 'is_notification_admin' in user_cols
         # 如果字段不存在，尝试添加
         if not has_subject_admin_field:
             try:
@@ -54,8 +55,16 @@ def api_login():
                 has_subject_admin_field = True
             except Exception:
                 pass
+        if not has_notification_admin_field:
+            try:
+                conn.execute('ALTER TABLE users ADD COLUMN is_notification_admin INTEGER DEFAULT 0')
+                conn.commit()
+                has_notification_admin_field = True
+            except Exception:
+                pass
     except Exception:
         has_subject_admin_field = False
+        has_notification_admin_field = False
     
     # 使用User模型的verify_password方法（支持邮箱和用户名）
     user = User.verify_password(identifier, password)
@@ -75,6 +84,7 @@ def api_login():
     session['username'] = user['username']
     session['is_admin'] = bool(user.get('is_admin', 0))
     session['is_subject_admin'] = bool(user.get('is_subject_admin', 0)) if has_subject_admin_field else False
+    session['is_notification_admin'] = bool(user.get('is_notification_admin', 0)) if has_notification_admin_field else False
     session['session_version'] = user.get('session_version') or 0
     
     current_app.logger.info(
@@ -236,18 +246,21 @@ def api_email_login():
     # 创建会话
     conn = get_db()
     
-    # 检查 is_subject_admin 字段是否存在
+    # 检查 is_subject_admin 和 is_notification_admin 字段是否存在
     try:
         user_cols = [r['name'] for r in conn.execute("PRAGMA table_info(users)").fetchall()]
         has_subject_admin_field = 'is_subject_admin' in user_cols
+        has_notification_admin_field = 'is_notification_admin' in user_cols
     except Exception:
         has_subject_admin_field = False
+        has_notification_admin_field = False
     
     session.permanent = False  # 验证码登录默认不保持登录
     session['user_id'] = user['id']
     session['username'] = user['username']
     session['is_admin'] = bool(user.get('is_admin', 0))
     session['is_subject_admin'] = bool(user.get('is_subject_admin', 0)) if has_subject_admin_field else False
+    session['is_notification_admin'] = bool(user.get('is_notification_admin', 0)) if has_notification_admin_field else False
     session['session_version'] = user.get('session_version') or 0
     
     current_app.logger.info(

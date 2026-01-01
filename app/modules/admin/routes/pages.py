@@ -170,3 +170,9 @@ def admin_limit_settings_page():
     """限制设置页面"""
     return render_template('admin/admin_limit_settings.html')
 
+
+@admin_pages_bp.route('/permissions')
+def admin_permissions_page():
+    """权限管理页面"""
+    return render_template('admin/admin_permissions.html')
+

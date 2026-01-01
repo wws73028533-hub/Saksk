@@ -301,6 +301,7 @@
     /* 表格样式优化 */
     .table-wrapper {
         overflow-x: auto;
+        overflow-y: visible;
         border-radius: var(--radius-lg);
         border: 0.5px solid var(--border-color);
         margin-top: 24px;
@@ -337,6 +338,7 @@
     tbody tr {
         transition: background-color 0.15s;
         height: 65px; /* 统一行高 */
+        position: relative;
     }
 
     tbody tr:hover { 
@@ -352,6 +354,12 @@
         vertical-align: middle;
     }
 
+    /* 操作列允许溢出，确保菜单不被裁剪 */
+    tbody td.actions {
+        position: relative;
+        overflow: visible;
+    }
+
     /* 标题列省略显示 */
     tbody td:nth-child(3) {
         max-width: 200px;
@@ -365,12 +373,15 @@
         gap: 6px; 
         flex-wrap: wrap; 
         align-items: center;
+        position: relative;
+        overflow: visible;
     }
 
-    /* 操作按钮下拉菜单 */
+    /* 操作按钮下拉菜单容器 */
     .action-menu-wrapper {
         position: relative;
         display: inline-block;
+        z-index: 1;
     }
     
     .btn-sm {
@@ -427,7 +438,7 @@
         border-radius: var(--radius-md);
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
         min-width: 120px;
-        z-index: 1000;
+        z-index: 10000;
         overflow: hidden;
     }
     
@@ -505,6 +516,63 @@
     .actions button {
         font-size: 13px;
         padding: 6px 12px;
+    }
+
+    /* 操作按钮组样式 */
+    .actions-group {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .btn-edit {
+        background: rgba(0, 122, 255, 0.1);
+        color: var(--primary);
+        border: 0.5px solid rgba(0, 122, 255, 0.2);
+    }
+
+    .btn-edit:hover {
+        background: rgba(0, 122, 255, 0.15);
+        border-color: rgba(0, 122, 255, 0.3);
+    }
+
+    .btn-toggle {
+        background: rgba(255, 149, 0, 0.1);
+        color: #ff9500;
+        border: 0.5px solid rgba(255, 149, 0, 0.2);
+    }
+
+    .btn-toggle:hover {
+        background: rgba(255, 149, 0, 0.15);
+        border-color: rgba(255, 149, 0, 0.3);
+    }
+
+    .btn-delete {
+        background: rgba(255, 59, 48, 0.1);
+        color: var(--danger);
+        border: 0.5px solid rgba(255, 59, 48, 0.2);
+    }
+
+    .btn-delete:hover {
+        background: rgba(255, 59, 48, 0.15);
+        border-color: rgba(255, 59, 48, 0.3);
+    }
+
+    /* 黑暗模式下的操作按钮 */
+    [data-theme="dark"] .btn-edit {
+        background: rgba(10, 132, 255, 0.15);
+        border-color: rgba(10, 132, 255, 0.25);
+    }
+
+    [data-theme="dark"] .btn-toggle {
+        background: rgba(255, 149, 0, 0.15);
+        border-color: rgba(255, 149, 0, 0.25);
+    }
+
+    [data-theme="dark"] .btn-delete {
+        background: rgba(255, 59, 48, 0.15);
+        border-color: rgba(255, 59, 48, 0.25);
     }
 
     .muted { 
@@ -864,6 +932,7 @@
         .table-wrapper { 
             font-size: 13px;
             overflow-x: auto;
+            overflow-y: visible;
         }
         th, td { padding: 10px 8px; }
         .actions { 
@@ -1614,12 +1683,12 @@
                 <td class="muted">${formatDate(n.created_at)}</td>
                 <td class="actions">
                     <div class="action-menu-wrapper">
-                        <button class="btn-sm btn-action" onclick="toggleActionMenu(${n.id}, event)" title="操作">操作</button>
-                        <div class="action-menu" id="actionMenu_${n.id}">
-                            <button class="action-menu-item" onclick="openEdit(${n.id}); closeActionMenu(${n.id})">编辑</button>
-                            <button class="action-menu-item" onclick="toggleActive(${n.id}); closeActionMenu(${n.id})">${n.is_active ? '禁用' : '启用'}</button>
+                        <button class="btn-sm btn-action" onclick="toggleNotificationsActionMenu(${n.id}, event)" title="操作">操作</button>
+                        <div class="action-menu" id="notificationsActionMenu_${n.id}">
+                            <button class="action-menu-item" onclick="openEdit(${n.id}); closeNotificationsActionMenu(${n.id})">编辑</button>
+                            <button class="action-menu-item" onclick="toggleActive(${n.id}); closeNotificationsActionMenu(${n.id})">${n.is_active ? '禁用' : '启用'}</button>
                             <div class="action-menu-divider"></div>
-                            <button class="action-menu-item danger" onclick="deleteNotification(${n.id}); closeActionMenu(${n.id})">删除</button>
+                            <button class="action-menu-item danger" onclick="deleteNotification(${n.id}); closeNotificationsActionMenu(${n.id})">删除</button>
                         </div>
                     </div>
                 </td>
@@ -1817,50 +1886,6 @@
         }
     }
 
-    // 操作菜单控制
-    function toggleActionMenu(notificationId, event) {
-        event.stopPropagation();
-        const menuId = `actionMenu_${notificationId}`;
-        const menu = document.getElementById(menuId);
-        const allMenus = document.querySelectorAll('.action-menu.show');
-        
-        // 关闭其他所有菜单
-        allMenus.forEach(m => {
-            if (m.id !== menuId) {
-                m.classList.remove('show');
-            }
-        });
-        
-        // 切换当前菜单
-        if (menu) {
-            menu.classList.toggle('show');
-        }
-    }
-    
-    function closeActionMenu(notificationId) {
-        const menu = document.getElementById(`actionMenu_${notificationId}`);
-        if (menu) {
-            menu.classList.remove('show');
-        }
-    }
-    
-    // 点击外部区域关闭所有菜单
-    document.addEventListener('click', function(event) {
-        if (!event.target.closest('.action-menu-wrapper')) {
-            document.querySelectorAll('.action-menu.show').forEach(menu => {
-                menu.classList.remove('show');
-            });
-        }
-    });
-    
-    // ESC键关闭菜单
-    document.addEventListener('keydown', function(event) {
-        if (event.key === 'Escape') {
-            document.querySelectorAll('.action-menu.show').forEach(menu => {
-                menu.classList.remove('show');
-            });
-        }
-    });
 
     async function deleteNotification(id) {
         if (!confirm('⚠️ 确定要删除这条通知吗?\n\n删除后将无法恢复!')) return;
@@ -1877,6 +1902,36 @@
         } catch (e) {
             console.error('删除通知失败:', e);
             alert('❌ 删除通知失败');
+        }
+    }
+
+    // 通知栏管理操作菜单控制
+    function toggleNotificationsActionMenu(notificationId, event) {
+        event.stopPropagation();
+        const menuId = `notificationsActionMenu_${notificationId}`;
+        const menu = document.getElementById(menuId);
+        
+        // 关闭所有已打开的操作菜单（包括通知栏和弹窗管理的，但不包括用户管理页面的）
+        const allMenus = document.querySelectorAll('.action-menu.show');
+        allMenus.forEach(m => {
+            // 只处理通知管理页面的菜单，不影响用户管理页面（actionMenu_开头）
+            if (m.id && (m.id.startsWith('notificationsActionMenu_') || m.id.startsWith('popupsActionMenu_'))) {
+                if (m.id !== menuId) {
+                    m.classList.remove('show');
+                }
+            }
+        });
+        
+        // 切换当前菜单
+        if (menu) {
+            menu.classList.toggle('show');
+        }
+    }
+    
+    function closeNotificationsActionMenu(notificationId) {
+        const menu = document.getElementById(`notificationsActionMenu_${notificationId}`);
+        if (menu) {
+            menu.classList.remove('show');
         }
     }
 
@@ -2276,11 +2331,15 @@
         event.stopPropagation();
         const menuId = `popupsActionMenu_${popupId}`;
         const menu = document.getElementById(menuId);
-        const allMenus = document.querySelectorAll('.action-menu.show');
         
+        // 关闭所有已打开的操作菜单（包括通知栏和弹窗管理的，但不包括用户管理页面的）
+        const allMenus = document.querySelectorAll('.action-menu.show');
         allMenus.forEach(m => {
-            if (m.id !== menuId) {
-                m.classList.remove('show');
+            // 只处理通知管理页面的菜单，不影响用户管理页面（actionMenu_开头）
+            if (m.id && (m.id.startsWith('notificationsActionMenu_') || m.id.startsWith('popupsActionMenu_'))) {
+                if (m.id !== menuId) {
+                    m.classList.remove('show');
+                }
             }
         });
         
@@ -2348,6 +2407,20 @@
             if (modal && modal.style.display === 'flex') {
                 closeContentPreview();
             }
+        }
+    });
+
+    // 点击外部区域关闭所有操作菜单（仅限通知管理页面的菜单）
+    document.addEventListener('click', function(event) {
+        if (!event.target.closest('.action-menu-wrapper')) {
+            // 只关闭通知管理页面的菜单（通过ID前缀识别），不影响其他页面（如用户管理页面）
+            const allMenus = document.querySelectorAll('.action-menu.show');
+            allMenus.forEach(menu => {
+                // 只关闭通知管理和弹窗管理的菜单，不影响用户管理页面的菜单（actionMenu_开头）
+                if (menu.id && (menu.id.startsWith('notificationsActionMenu_') || menu.id.startsWith('popupsActionMenu_'))) {
+                    menu.classList.remove('show');
+                }
+            });
         }
     });
 

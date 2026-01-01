@@ -164,9 +164,18 @@ def _register_before_request(app):
                     has_subject_admin_field = False
                 
                 if has_subject_admin_field:
-                    query = 'SELECT is_locked, is_admin, is_subject_admin, session_version FROM users WHERE id=?'
+                    query = 'SELECT is_locked, is_admin, is_subject_admin, is_notification_admin, session_version FROM users WHERE id=?'
                 else:
-                    query = 'SELECT is_locked, is_admin, session_version FROM users WHERE id=?'
+                    # 检查是否有 is_notification_admin 字段
+                    try:
+                        user_cols = [r['name'] for r in conn.execute("PRAGMA table_info(users)").fetchall()]
+                        has_notification_admin_field = 'is_notification_admin' in user_cols
+                        if has_notification_admin_field:
+                            query = 'SELECT is_locked, is_admin, is_notification_admin, session_version FROM users WHERE id=?'
+                        else:
+                            query = 'SELECT is_locked, is_admin, session_version FROM users WHERE id=?'
+                    except Exception:
+                        query = 'SELECT is_locked, is_admin, session_version FROM users WHERE id=?'
                 
                 row = conn.execute(query, (uid,)).fetchone()
                 
@@ -253,6 +262,7 @@ def _register_before_request(app):
             if path.startswith('/admin') or path.startswith('/admin_'):
                 is_admin_user = session.get('is_admin')
                 is_subject_admin_user = session.get('is_subject_admin')
+                is_notification_admin_user = session.get('is_notification_admin')
                 
                 # 科目管理员允许访问的路由（科目和题集管理）
                 # 匹配规则：
@@ -271,11 +281,39 @@ def _register_before_request(app):
                     '/api/questions' in path
                 )
                 
+                # 通知管理员允许访问的路由（通知管理）
+                # 匹配规则：
+                # 1. /admin/notifications 及其子路径
+                # 2. /admin/api/notifications 及其子路径
+                # 3. /admin/popups 及其子路径（弹窗管理是通知管理的一部分）
+                # 4. /admin/api/popups 及其子路径
+                # 5. /admin 和 /admin/dashboard（重定向到通知管理）
+                is_notification_admin_path = (
+                    path.startswith('/admin/notifications') or
+                    path.startswith('/admin/api/notifications') or
+                    path.startswith('/admin/popups') or
+                    path.startswith('/admin/api/popups') or
+                    '/api/notifications' in path or
+                    '/api/popups' in path
+                )
+                
+                # 通知管理员访问 /admin 或 /admin/dashboard 时，重定向到通知管理页面
+                if (path == '/admin' or path == '/admin/') and is_notification_admin_user and not is_admin_user:
+                    return redirect('/admin/notifications')
+                if path == '/admin/dashboard' and is_notification_admin_user and not is_admin_user:
+                    return redirect('/admin/notifications')
+                
                 # 如果是科目管理员路径，允许科目管理员和管理员访问
                 if is_subject_admin_path:
                     if not (is_admin_user or is_subject_admin_user):
                         if path.startswith('/admin/'):
                             return jsonify({'status': 'forbidden', 'message': '需要管理员或科目管理员权限'}), 403
+                        return redirect('/')
+                # 如果是通知管理员路径，允许通知管理员和管理员访问
+                elif is_notification_admin_path:
+                    if not (is_admin_user or is_notification_admin_user):
+                        if path.startswith('/admin/'):
+                            return jsonify({'status': 'forbidden', 'message': '需要管理员或通知管理员权限'}), 403
                         return redirect('/')
                 # 其他管理后台路由需要管理员权限
                 elif not is_admin_user:

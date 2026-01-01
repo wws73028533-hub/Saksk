@@ -308,7 +308,8 @@
         left: 100%; /* 定位到按钮右侧 */
         top: 0; /* 与按钮顶部对齐 */
         margin-left: 8px; /* 与按钮的间距 */
-        min-width: 160px;
+        min-width: 100px;
+        max-width: 120px;
         background: rgba(255, 255, 255, 0.95);
         backdrop-filter: blur(20px) saturate(180%);
         -webkit-backdrop-filter: blur(20px) saturate(180%);
@@ -338,12 +339,12 @@
         display: flex;
         align-items: center;
         width: 100%;
-        padding: 10px 16px;
+        padding: 8px 12px;
         background: none;
         border: none;
         text-align: left;
         cursor: pointer;
-        font-size: 14px;
+        font-size: 13px;
         color: var(--text-color);
         transition: background 0.2s;
         font-weight: 400;
@@ -595,13 +596,9 @@
 
 {% block content %}
 <div class="container">
-    <!-- 页面标题 -->
-    <div class="page-header">
-        <div class="page-title">
-            <span>科目管理</span>
-        </div>
-    </div>
-
+ 
+    
+    
     <!-- 统计卡片 -->
     <div class="stats-row">
         <div class="stat-card total">

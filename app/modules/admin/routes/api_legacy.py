@@ -414,6 +414,73 @@ def toggle_subject_admin(user_id):
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
+@admin_api_legacy_bp.route('/users/<int:user_id>/toggle_notification_admin', methods=['POST'])
+def toggle_notification_admin(user_id):
+    """切换通知管理员权限（向后兼容路径：/admin/users/<id>/toggle_notification_admin）"""
+    from flask import session, request, current_app
+    from app.core.utils.database import get_db
+    
+    if user_id == session.get('user_id'):
+        return jsonify({'status': 'error', 'message': '不能对自己进行操作'}), 400
+    
+    conn = get_db()
+    try:
+        # 检查 is_notification_admin 字段是否存在，如果不存在则自动添加
+        has_notification_admin_field = False
+        try:
+            user_cols = [r['name'] for r in conn.execute("PRAGMA table_info(users)").fetchall()]
+            has_notification_admin_field = 'is_notification_admin' in user_cols
+            
+            # 如果字段不存在，尝试添加
+            if not has_notification_admin_field:
+                try:
+                    conn.execute('ALTER TABLE users ADD COLUMN is_notification_admin INTEGER DEFAULT 0')
+                    conn.commit()
+                    has_notification_admin_field = True
+                    current_app.logger.info('已自动添加 is_notification_admin 字段')
+                except Exception as e:
+                    current_app.logger.warning(f'添加 is_notification_admin 字段失败（可能已存在）: {e}')
+                    try:
+                        test_row = conn.execute('SELECT is_notification_admin FROM users LIMIT 1').fetchone()
+                        has_notification_admin_field = True
+                    except Exception:
+                        has_notification_admin_field = False
+        except Exception as e:
+            current_app.logger.warning(f'检查 is_notification_admin 字段失败: {e}')
+            try:
+                test_row = conn.execute('SELECT is_notification_admin FROM users LIMIT 1').fetchone()
+                has_notification_admin_field = True
+            except Exception:
+                has_notification_admin_field = False
+        
+        # 根据字段是否存在构建查询
+        if has_notification_admin_field:
+            row = conn.execute('SELECT is_notification_admin, username FROM users WHERE id=?', (user_id,)).fetchone()
+        else:
+            row = conn.execute('SELECT username FROM users WHERE id=?', (user_id,)).fetchone()
+        
+        if not row:
+            return jsonify({'status': 'error', 'message': '用户不存在'}), 404
+        
+        # 如果字段存在，执行更新；否则先添加字段再设置
+        if has_notification_admin_field:
+            conn.execute('UPDATE users SET is_notification_admin = NOT is_notification_admin WHERE id = ?', (user_id,))
+        else:
+            # 字段不存在，先添加字段，然后设置为1（因为默认是0，所以切换后应该是1）
+            conn.execute('ALTER TABLE users ADD COLUMN is_notification_admin INTEGER DEFAULT 0')
+            conn.execute('UPDATE users SET is_notification_admin = 1 WHERE id = ?', (user_id,))
+        
+        conn.execute('UPDATE users SET session_version = COALESCE(session_version,0) + 1 WHERE id=?', (user_id,))
+        conn.commit()
+        
+        current_app.logger.info(f'通知管理员权限切换 - 目标用户: {row["username"]}, 操作者: {session.get("username")}, IP: {request.remote_addr}')
+        return jsonify({'status': 'success', 'message': '通知管理员权限已切换（已强制刷新目标用户会话）'})
+    except Exception as e:
+        import traceback
+        current_app.logger.error(f'切换通知管理员权限失败 - 用户ID: {user_id}, 错误: {str(e)}\n{traceback.format_exc()}')
+        return jsonify({'status': 'error', 'message': f'操作失败: {str(e)}'}), 500
+
+
 @admin_api_legacy_bp.route('/users/<int:user_id>/toggle_lock', methods=['POST'])
 def toggle_lock(user_id):
     """切换用户锁定状态（向后兼容路径：/admin/users/<id>/toggle_lock）"""

@@ -141,6 +141,7 @@ def index():
                          username=session.get('username'),
                          is_admin=session.get('is_admin', False),
                          is_subject_admin=session.get('is_subject_admin', False),
+                         is_notification_admin=session.get('is_notification_admin', False),
                          user_id=uid or 0,
                          email_bound=email_bound,
                          email_bind_required=email_bind_required)

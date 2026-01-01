@@ -2079,8 +2079,8 @@
                 <div class="user-menu" id="userMenu">
                     {% if logged_in %}
                         <a class="btn btn-secondary" href="/chat" style="text-decoration:none; position:relative; overflow: visible;" id="chatEntry">聊天<span id="chatUnreadBadge" style="display:none; position:absolute; top:-10px; right:-10px; min-width:18px; height:18px; padding:0 6px; border-radius:999px; background: var(--danger); color:#fff; font-size:11px; font-weight:700; line-height:18px; text-align:center; box-shadow: 0 4px 10px rgba(0,0,0,0.15);">0</span></a>
-                        {% if is_admin or is_subject_admin %}
-                        <a class="btn btn-secondary" href="/admin{% if is_subject_admin and not is_admin %}/subjects{% endif %}" style="text-decoration:none;">管理</a>
+                        {% if is_admin or is_subject_admin or is_notification_admin %}
+                        <a class="btn btn-secondary" href="/admin{% if is_subject_admin and not is_admin %}/subjects{% elif is_notification_admin and not is_admin %}/notifications{% endif %}" style="text-decoration:none;">管理</a>
                         {% endif %}
                         <a class="menu-btn" href="/user_hub" style="text-decoration: none;">
                             <span class="avatar" id="headerAvatar">
