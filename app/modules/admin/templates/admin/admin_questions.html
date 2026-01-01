@@ -99,6 +99,42 @@
         align-items: center;
         flex-wrap: wrap;
     }
+    /* 统一工具栏按钮和选择框的宽度和高度 */
+    .toolbar .btn,
+    .toolbar .btn-primary,
+    .toolbar .btn-secondary,
+    .toolbar .btn-danger,
+    .toolbar .btn-outline,
+    .toolbar select {
+        width: 120px;
+        height: 44px;
+        min-width: 120px;
+        min-height: 44px;
+        max-width: 120px;
+        max-height: 44px;
+        padding: 10px 12px;
+        font-size: 14px;
+        font-weight: 500;
+        box-sizing: border-box;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        text-overflow: ellipsis;
+        overflow: hidden;
+        white-space: nowrap;
+    }
+    .toolbar select {
+        text-align: left;
+        justify-content: flex-start;
+    }
+    .toolbar .btn,
+    .toolbar .btn-primary,
+    .toolbar .btn-secondary,
+    .toolbar .btn-danger,
+    .toolbar .btn-outline {
+        text-align: center;
+        justify-content: center;
+    }
 
     .btn, .btn-primary, .btn-secondary, .btn-danger, .btn-outline {
         padding: 10px 16px;
@@ -122,55 +158,95 @@
     }
 
     .btn-primary {
-        background-color: rgba(0, 122, 255, 0.7); /* 半透明蓝色 */
+        background-color: rgba(0, 122, 255, 0.4); /* 更透明的蓝色 */
         color: white;
-        border-color: rgba(0, 122, 255, 0.3);
+        border: 1.5px solid rgba(0, 122, 255, 0.6);
+        box-shadow: 0 0 0 1px rgba(0, 122, 255, 0.3) inset,
+                    0 2px 8px rgba(0, 122, 255, 0.2),
+                    0 0 20px rgba(0, 122, 255, 0.15);
     }
     .btn-primary:hover {
-        background-color: rgba(0, 122, 255, 0.85);
-        border-color: rgba(0, 122, 255, 0.4);
+        background-color: rgba(0, 122, 255, 0.5);
+        border-color: rgba(0, 122, 255, 0.8);
         transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
+        box-shadow: 0 0 0 1px rgba(0, 122, 255, 0.4) inset,
+                    0 4px 16px rgba(0, 122, 255, 0.3),
+                    0 0 30px rgba(0, 122, 255, 0.25);
     }
     .btn-primary:active {
         transform: translateY(0);
-        box-shadow: 0 2px 6px rgba(0, 122, 255, 0.2);
+        box-shadow: 0 0 0 1px rgba(0, 122, 255, 0.3) inset,
+                    0 2px 8px rgba(0, 122, 255, 0.2),
+                    0 0 15px rgba(0, 122, 255, 0.15);
     }
 
     .btn-danger {
-        background-color: rgba(255, 59, 48, 0.7); /* 半透明红色 */
+        background-color: rgba(255, 59, 48, 0.4); /* 更透明的红色 */
         color: white;
-        border-color: rgba(255, 59, 48, 0.3);
+        border: 1.5px solid rgba(255, 59, 48, 0.6);
+        box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.3) inset,
+                    0 2px 8px rgba(255, 59, 48, 0.2),
+                    0 0 20px rgba(255, 59, 48, 0.15);
     }
     .btn-danger:hover {
-        background-color: rgba(255, 59, 48, 0.85);
-        border-color: rgba(255, 59, 48, 0.4);
+        background-color: rgba(255, 59, 48, 0.5);
+        border-color: rgba(255, 59, 48, 0.8);
         transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(255, 59, 48, 0.3);
+        box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.4) inset,
+                    0 4px 16px rgba(255, 59, 48, 0.3),
+                    0 0 30px rgba(255, 59, 48, 0.25);
     }
     .btn-danger:active {
         transform: translateY(0);
-        box-shadow: 0 2px 6px rgba(255, 59, 48, 0.2);
+        box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.3) inset,
+                    0 2px 8px rgba(255, 59, 48, 0.2),
+                    0 0 15px rgba(255, 59, 48, 0.15);
     }
     
     /* 暗色模式下的主要按钮 */
     [data-theme="dark"] .btn-primary {
-        background-color: rgba(0, 122, 255, 0.6);
-        border-color: rgba(0, 122, 255, 0.3);
+        background-color: rgba(0, 122, 255, 0.35);
+        border: 1.5px solid rgba(0, 122, 255, 0.6);
+        color: white;
+        box-shadow: 0 0 0 1px rgba(0, 122, 255, 0.3) inset,
+                    0 2px 8px rgba(0, 122, 255, 0.25),
+                    0 0 20px rgba(0, 122, 255, 0.2);
     }
     [data-theme="dark"] .btn-primary:hover {
-        background-color: rgba(0, 122, 255, 0.75);
-        border-color: rgba(0, 122, 255, 0.4);
-        box-shadow: 0 4px 12px rgba(0, 122, 255, 0.4);
+        background-color: rgba(0, 122, 255, 0.45);
+        border-color: rgba(0, 122, 255, 0.8);
+        box-shadow: 0 0 0 1px rgba(0, 122, 255, 0.4) inset,
+                    0 4px 16px rgba(0, 122, 255, 0.35),
+                    0 0 30px rgba(0, 122, 255, 0.3);
+        transform: translateY(-1px);
+    }
+    [data-theme="dark"] .btn-primary:active {
+        transform: translateY(0);
+        box-shadow: 0 0 0 1px rgba(0, 122, 255, 0.3) inset,
+                    0 2px 8px rgba(0, 122, 255, 0.25),
+                    0 0 15px rgba(0, 122, 255, 0.2);
     }
     [data-theme="dark"] .btn-danger {
-        background-color: rgba(255, 59, 48, 0.6);
-        border-color: rgba(255, 59, 48, 0.3);
+        background-color: rgba(255, 59, 48, 0.35);
+        border: 1.5px solid rgba(255, 59, 48, 0.6);
+        color: white;
+        box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.3) inset,
+                    0 2px 8px rgba(255, 59, 48, 0.25),
+                    0 0 20px rgba(255, 59, 48, 0.2);
     }
     [data-theme="dark"] .btn-danger:hover {
-        background-color: rgba(255, 59, 48, 0.75);
-        border-color: rgba(255, 59, 48, 0.4);
-        box-shadow: 0 4px 12px rgba(255, 59, 48, 0.4);
+        background-color: rgba(255, 59, 48, 0.45);
+        border-color: rgba(255, 59, 48, 0.8);
+        box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.4) inset,
+                    0 4px 16px rgba(255, 59, 48, 0.35),
+                    0 0 30px rgba(255, 59, 48, 0.3);
+        transform: translateY(-1px);
+    }
+    [data-theme="dark"] .btn-danger:active {
+        transform: translateY(0);
+        box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.3) inset,
+                    0 2px 8px rgba(255, 59, 48, 0.25),
+                    0 0 15px rgba(255, 59, 48, 0.2);
     }
 
     .btn-secondary, .btn-outline {
@@ -286,6 +362,19 @@
     }
     .dropdown-menu label input {
         margin-right: 8px;
+    }
+    [data-theme="dark"] .dropdown-menu {
+        background: rgba(28, 28, 30, 0.95);
+        backdrop-filter: blur(20px) saturate(180%);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
+        border-color: rgba(255, 255, 255, 0.15);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+    [data-theme="dark"] .dropdown-menu label {
+        color: var(--text-color);
+    }
+    [data-theme="dark"] .dropdown-menu label:hover {
+        background: rgba(255, 255, 255, 0.1);
     }
     
     /* 新增题目按钮下拉箭头 */
@@ -454,6 +543,16 @@
     [data-theme="dark"] select:focus {
         background-color: rgba(255, 255, 255, 0.15);
         border-color: rgba(255, 255, 255, 0.2);
+        box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.2);
+    }
+    [data-theme="dark"] select option {
+        background-color: rgba(28, 28, 30, 0.95);
+        color: var(--text-color);
+    }
+    [data-theme="dark"] select option:checked,
+    [data-theme="dark"] select option:hover {
+        background-color: rgba(0, 122, 255, 0.3);
+        color: white;
     }
 
     /* 表格优化 - iOS 18风格 */
@@ -589,12 +688,30 @@
     .btn-edit:hover {
         background-color: #dee2e6;
     }
+    [data-theme="dark"] .btn-edit {
+        background-color: rgba(255, 255, 255, 0.12);
+        color: var(--text-color);
+        border-color: rgba(255, 255, 255, 0.15);
+    }
+    [data-theme="dark"] .btn-edit:hover {
+        background-color: rgba(255, 255, 255, 0.18);
+        border-color: rgba(255, 255, 255, 0.2);
+    }
     .btn-delete {
         background-color: #ffeef0;
         color: #ff3b30;
     }
     .btn-delete:hover {
         background-color: #ffdcdf;
+    }
+    [data-theme="dark"] .btn-delete {
+        background-color: rgba(255, 59, 48, 0.15);
+        color: #ff6b6b;
+        border-color: rgba(255, 59, 48, 0.25);
+    }
+    [data-theme="dark"] .btn-delete:hover {
+        background-color: rgba(255, 59, 48, 0.22);
+        border-color: rgba(255, 59, 48, 0.3);
     }
 
     /* 抽屉优化 */
@@ -980,7 +1097,39 @@
                     </button>
                 </div>
             </div>
-            <button class="btn-danger" id="batchDeleteBtn" onclick="batchDeleteQuestions()">批量删除</button>
+            <div class="dropdown">
+                <button class="btn-primary" onclick="toggleDropdown('export-menu')">导出本科目</button>
+                <div id="export-menu" class="dropdown-menu add-menu">
+                    <button class="dropdown-item" onclick="exportSubject(); toggleDropdown('export-menu');">
+                       
+                        <span class="item-content">
+                            <span class="item-text">导出json</span>
+                          
+                        </span>
+                    </button>
+                    <button class="dropdown-item" onclick="exportToExcel(); toggleDropdown('export-menu');">
+                      
+                        <span class="item-content">
+                            <span class="item-text">导出Excel</span>
+                            
+                        </span>
+                    </button>
+                    <button class="dropdown-item" onclick="exportToWord(); toggleDropdown('export-menu');">
+                      
+                        <span class="item-content">
+                            <span class="item-text">导出Word</span>
+                            
+                        </span>
+                    </button>
+                    <button class="dropdown-item" onclick="exportPackage(); toggleDropdown('export-menu');">
+                      
+                        <span class="item-content">
+                            <span class="item-text">导出题目包</span>
+                           
+                        </span>
+                    </button>
+                </div>
+            </div>
             <div class="dropdown">
                 <button class="btn-outline" onclick="toggleDropdown('batch-menu')">批量操作</button>
                 <div id="batch-menu" class="dropdown-menu">
@@ -992,12 +1141,10 @@
             </div>
         </div>
         <div class="toolbar-right">
-            <button class="btn-outline" onclick="exportSubject()">导出本科目</button>
-            <button class="btn-outline" onclick="exportToExcel()">导出Excel</button>
-            <button class="btn-primary" onclick="exportPackage()">导出题目包</button>
+            <button class="btn-danger" id="batchDeleteBtn" onclick="batchDeleteQuestions()">批量删除</button>
             <input type="file" id="importPackageFile" style="display: none;" accept=".zip" onchange="uploadPackage()">
             <select id="typeFilter" onchange="loadQuestions()">
-                <option value="all">📋 全部题型</option>
+                <option value="all">全部题型</option>
             </select>
             <div class="dropdown">
                 <button class="btn-outline" onclick="toggleDropdown('col-menu')">显示列</button>
@@ -1720,6 +1867,15 @@
     function exportToExcel() {
         const type = document.getElementById('typeFilter').value;
         let url = `/admin/api/questions/export/excel?subject_id=${subjectId}`;
+        if (type && type !== 'all') {
+            url += `&type=${type}`;
+        }
+        window.open(url, '_blank');
+    }
+
+    function exportToWord() {
+        const type = document.getElementById('typeFilter').value;
+        let url = `/admin/api/questions/export/word?subject_id=${subjectId}`;
         if (type && type !== 'all') {
             url += `&type=${type}`;
         }

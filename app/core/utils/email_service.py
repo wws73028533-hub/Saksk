@@ -13,7 +13,7 @@ from email.header import Header
 from email.utils import formataddr
 from typing import Optional, Dict, Any, Tuple
 from flask import current_app
-from jinja2 import Template
+from app.core.utils.email_templates import render_template, get_email_subject
 
 
 class EmailService:
@@ -110,140 +110,22 @@ class EmailService:
         Returns:
             (subject, body) 元组
         """
-        templates = {
-            'bind_code': {
-                'subject': '邮箱绑定验证码',
-                'body': '''
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <meta charset="UTF-8">
-                    <style>
-                        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-                        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-                        .header { background-color: #4CAF50; color: white; padding: 20px; text-align: center; }
-                        .content { padding: 20px; background-color: #f9f9f9; }
-                        .code-box { background-color: #fff; border: 2px dashed #4CAF50; padding: 20px; text-align: center; margin: 20px 0; }
-                        .code { font-size: 32px; font-weight: bold; color: #4CAF50; letter-spacing: 5px; }
-                        .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
-                        .warning { color: #ff9800; font-weight: bold; }
-                    </style>
-                </head>
-                <body>
-                    <div class="container">
-                        <div class="header">
-                            <h1>邮箱绑定验证</h1>
-                        </div>
-                        <div class="content">
-                            <p>您好！</p>
-                            <p>您正在绑定邮箱 <strong>{{ email }}</strong>，验证码为：</p>
-                            <div class="code-box">
-                                <div class="code">{{ code }}</div>
-                            </div>
-                            <p class="warning">验证码有效期为10分钟，请勿泄露给他人。</p>
-                            <p>如果这不是您的操作，请忽略此邮件。</p>
-                        </div>
-                        <div class="footer">
-                            <p>此邮件由系统自动发送，请勿回复。</p>
-                        </div>
-                    </div>
-                </body>
-                </html>
-                '''
-            },
-            'login_code': {
-                'subject': '登录验证码',
-                'body': '''
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <meta charset="UTF-8">
-                    <style>
-                        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-                        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-                        .header { background-color: #2196F3; color: white; padding: 20px; text-align: center; }
-                        .content { padding: 20px; background-color: #f9f9f9; }
-                        .code-box { background-color: #fff; border: 2px dashed #2196F3; padding: 20px; text-align: center; margin: 20px 0; }
-                        .code { font-size: 32px; font-weight: bold; color: #2196F3; letter-spacing: 5px; }
-                        .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
-                        .warning { color: #ff9800; font-weight: bold; }
-                    </style>
-                </head>
-                <body>
-                    <div class="container">
-                        <div class="header">
-                            <h1>登录验证</h1>
-                        </div>
-                        <div class="content">
-                            <p>您好！</p>
-                            <p>您正在使用邮箱 <strong>{{ email }}</strong> 登录，验证码为：</p>
-                            <div class="code-box">
-                                <div class="code">{{ code }}</div>
-                            </div>
-                            <p class="warning">验证码有效期为10分钟，请勿泄露给他人。</p>
-                            <p>如果这不是您的操作，请立即修改密码。</p>
-                        </div>
-                        <div class="footer">
-                            <p>此邮件由系统自动发送，请勿回复。</p>
-                        </div>
-                    </div>
-                </body>
-                </html>
-                '''
-            },
-            'reset_password': {
-                'subject': '密码重置验证码',
-                'body': '''
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <meta charset="UTF-8">
-                    <style>
-                        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-                        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-                        .header { background-color: #f44336; color: white; padding: 20px; text-align: center; }
-                        .content { padding: 20px; background-color: #f9f9f9; }
-                        .code-box { background-color: #fff; border: 2px dashed #f44336; padding: 20px; text-align: center; margin: 20px 0; }
-                        .code { font-size: 32px; font-weight: bold; color: #f44336; letter-spacing: 5px; }
-                        .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
-                        .warning { color: #ff9800; font-weight: bold; }
-                    </style>
-                </head>
-                <body>
-                    <div class="container">
-                        <div class="header">
-                            <h1>密码重置</h1>
-                        </div>
-                        <div class="content">
-                            <p>您好！</p>
-                            <p>您正在重置账户密码，验证码为：</p>
-                            <div class="code-box">
-                                <div class="code">{{ code }}</div>
-                            </div>
-                            <p class="warning">验证码有效期为10分钟，请勿泄露给他人。</p>
-                            <p>如果这不是您的操作，请立即联系管理员。</p>
-                        </div>
-                        <div class="footer">
-                            <p>此邮件由系统自动发送，请勿回复。</p>
-                        </div>
-                    </div>
-                </body>
-                </html>
-                '''
-            }
-        }
+        # 验证模板类型
+        valid_types = ['bind_code', 'login_code', 'reset_password']
+        if template_type not in valid_types:
+            raise ValueError(f"未知的模板类型: {template_type}，支持的类型: {', '.join(valid_types)}")
         
-        if template_type not in templates:
-            raise ValueError(f"未知的模板类型: {template_type}")
-        
-        template_data = templates[template_type]
-        subject_template = Template(template_data['subject'])
-        body_template = Template(template_data['body'])
-        
-        subject = subject_template.render(**kwargs)
-        body = body_template.render(**kwargs)
-        
-        return subject, body
+        try:
+            # 获取邮件主题
+            subject = get_email_subject(template_type)
+            
+            # 渲染邮件正文
+            body = render_template(template_type, **kwargs)
+            
+            return subject, body
+        except Exception as e:
+            current_app.logger.error(f'邮件模板渲染失败: template_type={template_type}, error={str(e)}', exc_info=True)
+            raise
     
     @staticmethod
     def _send_email_smtp(to_email: str, subject: str, body_html: str) -> bool:

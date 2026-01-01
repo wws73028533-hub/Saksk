@@ -39,6 +39,7 @@
 | **编程题** | 在线编程 | 支持在线代码编辑、执行、自动判题（Python） |
 | **站内聊天** | 实时通信 | 1v1 私聊、图片/语音消息、题目转发、用户备注 |
 | **通知系统** | 站内通知 | 通知公告发布、启用/禁用、优先级控制 |
+| **收费功能** | 会员订阅/按量付费/题集购买 | 支持会员订阅制（管理员可自定义套餐）、按量付费、题集购买；支持微信支付、支付宝；后台可开启/关闭收费功能 |
 
 ### 🎨 用户界面
 
@@ -53,6 +54,15 @@
 - **管理员**：拥有所有权限，可管理所有功能模块
 - **科目管理员**：可管理科目和题集，但无法访问用户管理、聊天管理等
 - **普通用户**：只能使用前台功能（刷题、考试、收藏、错题本等）
+
+### 💰 收费功能（可选）
+
+- **会员订阅制**：支持管理员自定义会员套餐（名称、价格、权益、限制）
+- **按量付费**：额外考试次数、编程题、数据导出等
+- **题集购买**：单科目题集、专题题集、考试真题集、编程题集
+- **支付方式**：微信支付、支付宝
+- **灵活控制**：后台可开启/关闭收费功能，关闭时所有功能免费使用
+- **会员折扣**：会员用户购买题集享受 8 折优惠
 
 ### 🛡️ 安全特性
 
@@ -211,6 +221,15 @@ Saksk_1_Ti/
 │                   ├── admin_subjects.html
 │                   ├── admin_questions.html
 │                   ├── admin_users.html
+│                   └── ...
+│       └── payment/            # 支付模块（可选）
+│           ├── routes/
+│           │   ├── pages.py    # 支付页面路由
+│           │   └── api.py      # 支付 API
+│           └── templates/
+│               └── payment/
+│                   ├── membership.html
+│                   ├── question_sets.html
 │                   └── ...
 │
 ├── instance/                   # 运行时文件
@@ -513,6 +532,53 @@ def register_all_modules(app: Flask):
 - JSON 格式批量导入
 - 批量移动科目、改题型、设难度、标签
 
+**收费管理**（可选）：
+- 收费功能开关控制
+- 会员套餐管理（创建/编辑/删除套餐，自定义价格、权益、限制）
+- 支付订单管理
+- 收入统计
+
+---
+
+### 10. 收费/支付模块 (`payment`)（可选）
+
+**功能**：
+- 会员订阅管理（基础会员、高级会员等，管理员可自定义套餐）
+- 按量付费（额外考试次数、编程题、数据导出）
+- 题集购买（单科目题集、专题题集、考试真题集、编程题集）
+- 支付集成（微信支付、支付宝）
+- 系统配置管理（开启/关闭收费功能）
+
+**路由**：
+- `GET /membership`：会员购买页面
+- `GET /question-sets`：题集商城页面
+- `GET /question-sets/<set_id>`：题集详情页
+- `GET /user/question-sets`：我的题集页面
+- `GET /admin/settings/payment`：收费功能配置页面
+- `GET /admin/membership-plans`：会员套餐管理页面
+
+**API**：
+- `GET /api/membership-plans`：获取会员套餐列表
+- `POST /api/payment/create`：创建支付订单
+- `POST /api/payment/callback/alipay`：支付宝回调
+- `POST /api/payment/callback/wechat`：微信支付回调
+- `GET /api/payment/status`：查询支付状态
+- `GET /api/question-sets`：获取题集列表
+- `POST /api/question-sets/<set_id>/purchase`：购买题集
+- `GET /api/user/subscription`：获取用户订阅信息
+- `GET /admin/api/settings/payment`：获取收费配置
+- `POST /admin/api/settings/payment`：更新收费配置
+- `GET /admin/api/membership-plans`：获取套餐列表（管理员）
+- `POST /admin/api/membership-plans`：创建套餐（管理员）
+- `PUT /admin/api/membership-plans/<plan_id>`：更新套餐（管理员）
+
+**特性**：
+- **灵活控制**：后台可开启/关闭收费功能，关闭时所有功能免费使用
+- **自定义套餐**：管理员可创建、编辑会员套餐，自定义名称、价格、权益、使用限制
+- **会员折扣**：会员用户购买题集享受 8 折优惠
+- **使用限制**：支持每日/每月使用次数限制（可配置）
+- **支付安全**：支付回调签名验证，订单状态同步
+
 ---
 
 ## 🚀 快速开始
@@ -601,6 +667,12 @@ def register_all_modules(app: Flask):
 | `MAIL_DEFAULT_SENDER_NAME` | 默认发件人名称 | `系统通知` |
 | `MAIL_ENABLED` | 是否启用邮件服务 | `true` |
 | `RATELIMIT_STORAGE_URL` | 限流存储（生产环境建议使用 Redis） | `memory://` |
+| `ALIPAY_APP_ID` | 支付宝应用ID（收费功能） | - |
+| `ALIPAY_PRIVATE_KEY` | 支付宝私钥（收费功能） | - |
+| `ALIPAY_PUBLIC_KEY` | 支付宝公钥（收费功能） | - |
+| `WECHAT_APP_ID` | 微信支付应用ID（收费功能） | - |
+| `WECHAT_MCH_ID` | 微信支付商户号（收费功能） | - |
+| `WECHAT_API_KEY` | 微信支付API密钥（收费功能） | - |
 
 ### 配置文件
 
@@ -756,6 +828,126 @@ class Config:
 | `sender_id` | INTEGER | 发送者ID |
 | `message_type` | TEXT | 消息类型（text/image/audio/question） |
 | `content` | TEXT | 消息内容（文本/JSON） |
+| `created_at` | DATETIME | 创建时间 |
+
+#### 9. `system_config` 表（收费功能）
+
+系统配置表。
+
+| 字段 | 类型 | 说明 |
+| ---- | ---- | ---- |
+| `id` | INTEGER | 主键 |
+| `config_key` | TEXT | 配置键（唯一） |
+| `config_value` | TEXT | 配置值 |
+| `config_type` | TEXT | 配置类型（string/boolean/number/json） |
+| `description` | TEXT | 配置描述 |
+| `updated_by` | INTEGER | 最后更新人（管理员ID） |
+| `updated_at` | DATETIME | 更新时间 |
+
+#### 10. `membership_plans` 表（收费功能）
+
+会员套餐表。
+
+| 字段 | 类型 | 说明 |
+| ---- | ---- | ---- |
+| `id` | INTEGER | 主键 |
+| `name` | TEXT | 套餐名称 |
+| `plan_code` | TEXT | 套餐代码（唯一） |
+| `description` | TEXT | 套餐描述 |
+| `monthly_price` | DECIMAL(10,2) | 月付价格 |
+| `yearly_price` | DECIMAL(10,2) | 年付价格 |
+| `features_json` | TEXT | 功能权益（JSON格式） |
+| `limits_json` | TEXT | 使用限制（JSON格式） |
+| `sort_order` | INTEGER | 排序 |
+| `is_active` | BOOLEAN | 是否启用 |
+| `is_default` | BOOLEAN | 是否为默认套餐 |
+| `created_at` | DATETIME | 创建时间 |
+| `updated_at` | DATETIME | 更新时间 |
+
+#### 11. `subscriptions` 表（收费功能）
+
+会员订阅表。
+
+| 字段 | 类型 | 说明 |
+| ---- | ---- | ---- |
+| `id` | INTEGER | 主键 |
+| `user_id` | INTEGER | 用户ID |
+| `plan_id` | INTEGER | 套餐ID |
+| `plan_code` | TEXT | 套餐代码 |
+| `status` | TEXT | 状态（active/expired/cancelled） |
+| `start_date` | DATETIME | 开始时间 |
+| `end_date` | DATETIME | 结束时间 |
+| `auto_renew` | BOOLEAN | 是否自动续费 |
+| `payment_method` | TEXT | 支付方式（alipay/wechat） |
+| `payment_id` | TEXT | 支付订单ID |
+| `created_at` | DATETIME | 创建时间 |
+| `updated_at` | DATETIME | 更新时间 |
+
+#### 12. `payment_orders` 表（收费功能）
+
+支付订单表。
+
+| 字段 | 类型 | 说明 |
+| ---- | ---- | ---- |
+| `id` | INTEGER | 主键 |
+| `user_id` | INTEGER | 用户ID |
+| `order_no` | TEXT | 订单号（唯一） |
+| `order_type` | TEXT | 订单类型（subscription/addon/question_set） |
+| `plan_type` | TEXT | 会员类型或购买类型 |
+| `amount` | DECIMAL(10,2) | 订单金额 |
+| `currency` | TEXT | 货币（默认CNY） |
+| `payment_method` | TEXT | 支付方式（alipay/wechat） |
+| `payment_id` | TEXT | 支付订单ID |
+| `status` | TEXT | 订单状态（pending/paid/failed/refunded） |
+| `paid_at` | DATETIME | 支付时间 |
+| `created_at` | DATETIME | 创建时间 |
+
+#### 13. `question_sets` 表（收费功能）
+
+题集表。
+
+| 字段 | 类型 | 说明 |
+| ---- | ---- | ---- |
+| `id` | INTEGER | 主键 |
+| `name` | TEXT | 题集名称 |
+| `description` | TEXT | 题集描述 |
+| `set_type` | TEXT | 题集类型（subject/topic/exam_paper/coding） |
+| `subject_id` | INTEGER | 科目ID（单科目题集） |
+| `price` | DECIMAL(10,2) | 价格 |
+| `original_price` | DECIMAL(10,2) | 原价（用于显示折扣） |
+| `is_free` | BOOLEAN | 是否免费 |
+| `question_count` | INTEGER | 题目数量 |
+| `cover_image` | TEXT | 封面图片 |
+| `sort_order` | INTEGER | 排序 |
+| `status` | TEXT | 状态（active/inactive） |
+| `created_at` | DATETIME | 创建时间 |
+| `updated_at` | DATETIME | 更新时间 |
+
+#### 14. `user_question_sets` 表（收费功能）
+
+用户题集购买记录表。
+
+| 字段 | 类型 | 说明 |
+| ---- | ---- | ---- |
+| `id` | INTEGER | 主键 |
+| `user_id` | INTEGER | 用户ID |
+| `set_id` | INTEGER | 题集ID |
+| `purchase_price` | DECIMAL(10,2) | 购买价格 |
+| `discount_amount` | DECIMAL(10,2) | 折扣金额 |
+| `order_id` | INTEGER | 订单ID |
+| `purchased_at` | DATETIME | 购买时间 |
+
+#### 15. `usage_records` 表（收费功能）
+
+用户使用记录表。
+
+| 字段 | 类型 | 说明 |
+| ---- | ---- | ---- |
+| `id` | INTEGER | 主键 |
+| `user_id` | INTEGER | 用户ID |
+| `feature_type` | TEXT | 功能类型（quiz/exam/coding/chat/export） |
+| `count` | INTEGER | 使用次数 |
+| `date` | DATE | 日期 |
 | `created_at` | DATETIME | 创建时间 |
 
 ### 数据库初始化
@@ -1023,6 +1215,127 @@ Response: 200 OK
 }
 ```
 
+### 收费/支付 API（可选）
+
+#### 获取会员套餐列表
+```
+GET /api/membership-plans
+
+Response: 200 OK
+{
+  "status": "success",
+  "data": {
+    "plans": [
+      {
+        "id": 1,
+        "name": "基础会员",
+        "plan_code": "basic",
+        "monthly_price": 29.00,
+        "yearly_price": 299.00,
+        "features": {...},
+        "limits": {...}
+      }
+    ]
+  }
+}
+```
+
+#### 创建支付订单
+```
+POST /api/payment/create
+Content-Type: application/json
+
+{
+  "order_type": "subscription",
+  "plan_type": "basic",
+  "amount": 29.00,
+  "payment_method": "alipay"
+}
+
+Response: 200 OK
+{
+  "status": "success",
+  "data": {
+    "order_no": "202501291234567890",
+    "payment_url": "https://...",
+    "expires_at": "2025-01-29 12:00:00"
+  }
+}
+```
+
+#### 查询支付状态
+```
+GET /api/payment/status?order_no=xxx
+
+Response: 200 OK
+{
+  "status": "success",
+  "data": {
+    "order_no": "202501291234567890",
+    "status": "paid",
+    "paid_at": "2025-01-29 10:30:00"
+  }
+}
+```
+
+#### 获取题集列表
+```
+GET /api/question-sets?type=subject
+
+Response: 200 OK
+{
+  "status": "success",
+  "data": {
+    "sets": [
+      {
+        "id": 1,
+        "name": "数学基础题集",
+        "price": 29.90,
+        "member_price": 23.90,
+        "question_count": 150,
+        "is_purchased": false
+      }
+    ]
+  }
+}
+```
+
+#### 购买题集
+```
+POST /api/question-sets/<set_id>/purchase
+Content-Type: application/json
+
+{
+  "payment_method": "alipay"
+}
+
+Response: 200 OK
+{
+  "status": "success",
+  "data": {
+    "order_no": "202501291234567890",
+    "payment_url": "https://...",
+    "amount": 23.90
+  }
+}
+```
+
+#### 获取用户订阅信息
+```
+GET /api/user/subscription
+
+Response: 200 OK
+{
+  "status": "success",
+  "data": {
+    "plan_code": "basic",
+    "plan_name": "基础会员",
+    "end_date": "2025-02-29 10:00:00",
+    "auto_renew": true
+  }
+}
+```
+
 ---
 
 ## 💻 开发指南
@@ -1247,6 +1560,22 @@ A: 未绑定邮箱的用户登录后，系统会弹出绑定提示，并限制�
 
 A: 邮箱验证码有效期为 10 分钟，过期后需要重新发送。
 
+### Q: 如何开启收费功能？
+
+A: 登录管理后台，进入"收费设置"页面，开启收费功能开关。开启后，系统将启用所有收费逻辑；关闭时，所有功能免费使用。
+
+### Q: 如何自定义会员套餐？
+
+A: 在管理后台的"会员套餐管理"页面，可以创建、编辑会员套餐，自定义套餐名称、月付/年付价格、功能权益和使用限制。
+
+### Q: 收费功能关闭后，已付费用户会受影响吗？
+
+A: 不会。关闭收费功能时，所有用户（包括已付费用户）都可以免费使用全部功能。重新开启收费功能后，已付费用户的订阅仍然有效。
+
+### Q: 支持哪些支付方式？
+
+A: 目前支持微信支付和支付宝两种支付方式。需要在环境变量中配置相应的支付参数。
+
 ---
 
 ## 🤝 贡献指南
@@ -1291,9 +1620,20 @@ MIT License (c) 2025
 ---
 
 **最后更新**：2025-01-29  
-**项目版本**：v2.1.0（模块化版本 + 邮箱功能）
+**项目版本**：v2.2.0（模块化版本 + 邮箱功能 + 收费功能）
 
 ### 版本更新记录
+
+#### v2.2.0 (2025-01-29)
+- ✨ 新增收费功能模块（可选）
+- ✨ 新增会员订阅制（管理员可自定义套餐）
+- ✨ 新增按量付费功能（额外考试次数、编程题、数据导出）
+- ✨ 新增题集购买功能（单科目/专题/考试真题/编程题集）
+- ✨ 新增支付集成（微信支付、支付宝）
+- ✨ 新增系统配置管理（可开启/关闭收费功能）
+- 🎛️ 管理员可自定义会员套餐（名称、价格、权益、限制）
+- 💰 会员用户购买题集享受 8 折优惠
+- 📊 新增收入统计和使用记录功能
 
 #### v2.1.0 (2025-01-29)
 - ✨ 新增邮箱绑定功能

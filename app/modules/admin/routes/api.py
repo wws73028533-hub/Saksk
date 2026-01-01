@@ -1815,6 +1815,159 @@ def export_questions_to_excel():
     )
 
 
+@admin_api_bp.route('/questions/export/word', methods=['GET'])
+def export_questions_to_word():
+    """导出题目为Word文档"""
+    # 延迟导入，避免模块加载时出错
+    try:
+        from docx import Document
+        from docx.shared import Pt, RGBColor, Inches
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+    except ImportError as e:
+        return jsonify({'status': 'error', 'message': f'Word导出功能需要安装python-docx库: {str(e)}'}), 500
+    
+    subject_id = request.args.get('subject_id')
+    q_type = request.args.get('type', 'all')
+    
+    conn = get_db()
+    
+    # 构建查询SQL
+    sql = '''
+        SELECT q.*, s.name as subject_name
+        FROM questions q
+        LEFT JOIN subjects s ON q.subject_id = s.id
+        WHERE 1=1
+    '''
+    params = []
+    
+    if subject_id:
+        sql += ' AND q.subject_id = ?'
+        params.append(subject_id)
+    
+    if q_type and q_type != 'all':
+        sql += ' AND q.q_type = ?'
+        params.append(q_type)
+    
+    sql += ' ORDER BY q.id'
+    rows = conn.execute(sql, params).fetchall()
+    
+    if not rows:
+        return jsonify({'status': 'error', 'message': '没有可导出的题目'}), 400
+    
+    # 创建Word文档
+    doc = Document()
+    
+    # 设置文档标题样式
+    title = doc.add_heading('题目导出', 0)
+    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
+    # 添加科目信息
+    subject_name = "所有科目"
+    if subject_id:
+        subject_row = conn.execute('SELECT name FROM subjects WHERE id = ?', (subject_id,)).fetchone()
+        if subject_row:
+            subject_name = subject_row['name']
+    
+    info_para = doc.add_paragraph(f'科目：{subject_name}')
+    if q_type and q_type != 'all':
+        info_para.add_run(f' | 题型：{q_type}')
+    info_para.add_run(f' | 题目数量：{len(rows)}')
+    info_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
+    # 添加分隔线
+    doc.add_paragraph('_' * 50).alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
+    # 遍历题目，添加到文档
+    for idx, row in enumerate(rows, 1):
+        question = dict(row)
+        q_type_val = question.get('q_type', '')
+        content = question.get('content', '')
+        answer = question.get('answer', '')
+        explanation = question.get('explanation', '')
+        
+        # 添加题号
+        q_num = doc.add_heading(f'题目 {idx}', level=2)
+        q_num_format = q_num.runs[0].font
+        q_num_format.size = Pt(14)
+        q_num_format.bold = True
+        
+        # 添加题型标签
+        type_para = doc.add_paragraph()
+        type_run = type_para.add_run(f'【{q_type_val}】')
+        type_run.font.bold = True
+        type_run.font.color.rgb = RGBColor(0, 102, 204)
+        
+        # 添加题干
+        content_para = doc.add_paragraph()
+        content_run = content_para.add_run('题干：')
+        content_run.font.bold = True
+        content_para.add_run(content)
+        
+        # 解析并添加选项（如果是选择题或多选题）
+        options = []
+        if question.get('options'):
+            try:
+                options = json.loads(question['options'])
+            except:
+                options = []
+        
+        if options:
+            options_para = doc.add_paragraph()
+            options_run = options_para.add_run('选项：')
+            options_run.font.bold = True
+            doc.add_paragraph()  # 空行
+            
+            for i, opt in enumerate(options):
+                opt_para = doc.add_paragraph(f'{chr(ord("A") + i)}. {opt}', style='List Bullet')
+                opt_para.paragraph_format.left_indent = Inches(0.5)
+        
+        # 添加答案
+        answer_para = doc.add_paragraph()
+        answer_run = answer_para.add_run('答案：')
+        answer_run.font.bold = True
+        answer_para.add_run(answer)
+        
+        # 如果是填空题，格式化显示答案
+        if q_type_val == '填空题' and answer:
+            blank_answers = answer.split(';;')
+            if len(blank_answers) > 1:
+                answer_para.clear()
+                answer_run = answer_para.add_run('答案：')
+                answer_run.font.bold = True
+                for i, blank in enumerate(blank_answers, 1):
+                    if i > 1:
+                        answer_para.add_run(' | ')
+                    answer_para.add_run(f'空{i}: {blank}')
+        
+        # 添加解析（如果有）
+        if explanation:
+            explanation_para = doc.add_paragraph()
+            explanation_run = explanation_para.add_run('解析：')
+            explanation_run.font.bold = True
+            explanation_para.add_run(explanation)
+        
+        # 添加分隔线
+        if idx < len(rows):
+            doc.add_paragraph('_' * 50).alignment = WD_ALIGN_PARAGRAPH.CENTER
+            doc.add_paragraph()  # 空行
+    
+    # 保存到内存
+    output = io.BytesIO()
+    doc.save(output)
+    output.seek(0)
+    
+    # 生成文件名
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"questions_export_{subject_name}_{timestamp}.docx"
+    
+    return send_file(
+        output,
+        as_attachment=True,
+        download_name=filename,
+        mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    )
+
+
 @admin_api_bp.route('/questions/upload_image', methods=['POST'])
 def upload_question_image():
     """上传题目图片"""
@@ -3215,5 +3368,59 @@ def api_test_mail_config():
         return jsonify({
             'status': 'error',
             'message': f'测试失败: {str(e)}'
+        }), 500
+
+
+@admin_api_bp.route('/settings/mail/template-preview', methods=['POST'])
+def api_get_mail_template_preview():
+    """获取邮件模板预览"""
+    if not session.get('is_admin'):
+        return jsonify({'status': 'error', 'message': '权限不足'}), 403
+    
+    try:
+        data = request.get_json()
+        template_type = data.get('template_type', 'bind_code')
+        
+        # 验证模板类型
+        valid_types = ['bind_code', 'login_code', 'reset_password']
+        if template_type not in valid_types:
+            return jsonify({
+                'status': 'error',
+                'message': f'无效的模板类型，支持的类型: {", ".join(valid_types)}'
+            }), 400
+        
+        # 生成示例验证码
+        import secrets
+        import string
+        digits = string.digits
+        sample_code = ''.join(secrets.choice(digits) for _ in range(6))
+        sample_email = data.get('email', 'user@example.com')
+        
+        # 渲染模板
+        from app.core.utils.email_templates import render_template
+        try:
+            html_content = render_template(
+                template_type,
+                email=sample_email,
+                code=sample_code
+            )
+        except Exception as template_error:
+            current_app.logger.error(f'模板渲染失败: {str(template_error)}', exc_info=True)
+            return jsonify({
+                'status': 'error',
+                'message': f'模板渲染失败: {str(template_error)}'
+            }), 500
+        
+        return jsonify({
+            'status': 'success',
+            'html': html_content,
+            'template_type': template_type
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f'获取邮件模板预览失败: {str(e)}', exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': f'获取预览失败: {str(e)}'
         }), 500
 

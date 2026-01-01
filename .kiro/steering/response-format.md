@@ -1,0 +1,4 @@
+---
+inclusion: always
+---
+Each conversation must start with a statement of which model you are in the header, in the format 【Model】.Before each conversation, read the initial guidance document for the functional module you were given. After each conversation, update the guidance document you were given. After completing the response, explain where you made changes, how you made them, and provide suggestions for further improvement.When the information or requirements I provide to you are not clear enough, you should ask me.指导文件不要写大篇的代码！

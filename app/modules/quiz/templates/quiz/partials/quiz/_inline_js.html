@@ -1242,6 +1242,11 @@ function escapeHtmlLocal(str){
         .replaceAll("'", '&#39;');
 }
 
+// 转义HTML并处理换行：将\n转换为<br>标签
+function escapeHtmlWithBreaks(str){
+    return escapeHtml(str ?? '').replaceAll('\n', '<br>');
+}
+
 function updateDockEmptyState(){
     // 仅影响布局：右侧 dock 是否“有内容”
     const mainArea = document.querySelector('.main-area');
@@ -1292,14 +1297,27 @@ function renderAnswerExplainFromQuestion(qEl) {
 
         // 只取 .answer 的内容；填空题答案做结构化展示（区分：一空多答案 / 多空多答案）
         const answerSpan = bodyClone.querySelector('.answer');
-        let compactHtml = answerSpan ? answerSpan.outerHTML : bodyClone.innerHTML;
-
         const qType = qEl.getAttribute('data-type');
+        let compactHtml = '';
+        
         if (qType === '填空题') {
+            // 填空题使用专门的格式化函数
             const raw = (qEl.getAttribute('data-answer') || '').toString();
             const blankCountHint = (qEl.querySelectorAll('.blank-item').length) || null;
             const formatted = formatFillBlankAnswerForDock(raw, blankCountHint);
-            if (formatted) compactHtml = formatted;
+            if (formatted) {
+                compactHtml = formatted;
+            } else if (answerSpan) {
+                compactHtml = answerSpan.outerHTML;
+            }
+        } else {
+            // 非填空题：从textContent获取原始文本（保留换行），然后转义并处理换行
+            const rawText = answerSpan ? (answerSpan.textContent || answerSpan.innerText || '') : '';
+            if (rawText) {
+                compactHtml = `<p><span class="answer correct">${escapeHtmlWithBreaks(rawText)}</span></p>`;
+            } else {
+                compactHtml = answerSpan ? answerSpan.outerHTML : bodyClone.innerHTML;
+            }
         }
 
         answerHost.innerHTML = `
@@ -1322,6 +1340,20 @@ function renderAnswerExplainFromQuestion(qEl) {
         const titleEl = bodyClone.querySelector('.analysis-title');
         if (titleEl) titleEl.remove();
 
+        // 从.answer元素获取原始文本内容（保留换行），然后转义并处理换行
+        const explainSpan = bodyClone.querySelector('.answer');
+        let explainHtml = '';
+        if (explainSpan) {
+            const rawText = explainSpan.textContent || explainSpan.innerText || '';
+            if (rawText) {
+                explainHtml = `<p><span class="answer">${escapeHtmlWithBreaks(rawText)}</span></p>`;
+            } else {
+                explainHtml = bodyClone.innerHTML;
+            }
+        } else {
+            explainHtml = bodyClone.innerHTML;
+        }
+
         explainHost.innerHTML = `
             <div class="dock-head">
                 <div class="analysis-title">
@@ -1329,7 +1361,7 @@ function renderAnswerExplainFromQuestion(qEl) {
                     <strong>解析</strong>
                 </div>
             </div>
-            <div class="dock-body">${bodyClone.innerHTML}</div>
+            <div class="dock-body">${explainHtml}</div>
         `;
         explainHost.style.display = 'block';
     } else {
