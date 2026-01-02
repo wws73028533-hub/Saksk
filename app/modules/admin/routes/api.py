@@ -351,6 +351,120 @@ def batch_tags():
         return jsonify({'status': 'error', 'message': f'批量操作标签失败: {str(e)}'}), 500
 
 
+@admin_api_bp.route('/questions/duplicate-check/start', methods=['POST'])
+def start_duplicate_check():
+    """启动查重并保存记录"""
+    from app.modules.admin.services.duplicate_check_service import DuplicateCheckService
+    
+    subject_id = request.args.get('subject_id', type=int)
+    similarity_threshold = request.args.get('similarity_threshold', 0.8, type=float)
+    
+    if not subject_id:
+        return jsonify({'status': 'error', 'message': '科目ID不能为空'}), 400
+    
+    try:
+        # 验证科目是否存在
+        conn = get_db()
+        subject = conn.execute('SELECT id FROM subjects WHERE id = ?', (subject_id,)).fetchone()
+        if not subject:
+            return jsonify({'status': 'error', 'message': '科目不存在'}), 404
+        
+        # 获取当前用户ID
+        user_id = session.get('user_id')
+        
+        # 执行查重并保存记录
+        result = DuplicateCheckService.perform_and_save_duplicate_check(
+            subject_id=subject_id,
+            similarity_threshold=similarity_threshold,
+            created_by=user_id
+        )
+        
+        return jsonify({
+            'status': 'success',
+            'message': '查重完成并已保存',
+            'data': result
+        })
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': f'启动查重失败: {str(e)}'}), 500
+
+
+@admin_api_bp.route('/questions/duplicate-check/results', methods=['GET'])
+def get_duplicate_check_results():
+    """获取查重结果（优先返回历史记录，如果没有则执行新查重）"""
+    from app.modules.admin.services.duplicate_check_service import DuplicateCheckService
+    
+    subject_id = request.args.get('subject_id', type=int)
+    min_similarity = request.args.get('min_similarity', type=float)
+    max_similarity = request.args.get('max_similarity', type=float)
+    force_new = request.args.get('force_new', 'false').lower() == 'true'  # 强制重新查重
+    
+    if not subject_id:
+        return jsonify({'status': 'error', 'message': '科目ID不能为空'}), 400
+    
+    try:
+        # 如果强制重新查重，或者没有历史记录，则执行新查重
+        if force_new:
+            # 执行新查重
+            user_id = session.get('user_id')
+            results = DuplicateCheckService.perform_and_save_duplicate_check(
+                subject_id=subject_id,
+                created_by=user_id
+            )
+            results['is_new'] = True
+        else:
+            # 尝试获取历史记录
+            latest_record = DuplicateCheckService.get_latest_duplicate_check_record(subject_id)
+            
+            if latest_record:
+                # 使用历史记录
+                duplicates = latest_record.get('duplicates', [])
+                
+                # 获取科目信息
+                conn = get_db()
+                subject = conn.execute(
+                    'SELECT id, name FROM subjects WHERE id = ?',
+                    (subject_id,)
+                ).fetchone()
+                subject_name = dict(subject).get('name', '') if subject else ''
+                
+                # 应用相似度筛选
+                if min_similarity is not None or max_similarity is not None:
+                    filtered_duplicates = []
+                    for dup in duplicates:
+                        sim = dup.get('similarity', 0)
+                        if min_similarity is not None and sim < min_similarity:
+                            continue
+                        if max_similarity is not None and sim > max_similarity:
+                            continue
+                        filtered_duplicates.append(dup)
+                    duplicates = filtered_duplicates
+                
+                results = {
+                    'record_id': latest_record.get('id'),
+                    'total_pairs': latest_record.get('total_pairs', 0),
+                    'duplicates': duplicates,
+                    'subject_id': subject_id,
+                    'subject_name': subject_name,
+                    'created_at': latest_record.get('created_at'),
+                    'is_new': False
+                }
+            else:
+                # 没有历史记录，执行新查重
+                user_id = session.get('user_id')
+                results = DuplicateCheckService.perform_and_save_duplicate_check(
+                    subject_id=subject_id,
+                    created_by=user_id
+                )
+                results['is_new'] = True
+        
+        return jsonify({
+            'status': 'success',
+            'data': results
+        })
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': f'获取查重结果失败: {str(e)}'}), 500
+
+
 @admin_api_bp.route('/subjects', methods=['POST'])
 def api_add_subject():
     """添加科目"""

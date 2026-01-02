@@ -377,6 +377,28 @@
         background: rgba(255, 255, 255, 0.1);
     }
     
+    /* 批量菜单按钮黑夜模式样式 */
+    [data-theme="dark"] #batch-menu .btn {
+        background-color: rgba(255, 255, 255, 0.1);
+        color: var(--text-color);
+        border-color: rgba(255, 255, 255, 0.15);
+        transition: all 0.2s;
+    }
+    
+    [data-theme="dark"] #batch-menu .btn:hover {
+        background-color: rgba(255, 255, 255, 0.15);
+        border-color: rgba(255, 255, 255, 0.25);
+        color: var(--text-color);
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+    
+    [data-theme="dark"] #batch-menu .btn:active {
+        transform: translateY(0);
+        background-color: rgba(255, 255, 255, 0.12);
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+    }
+    
     /* 新增题目按钮下拉箭头 */
     .dropdown > .btn-primary::after {
         content: ' ▼';
@@ -1139,6 +1161,7 @@
                     <button class="btn" onclick="openBatchTags()">修改标签</button>
                 </div>
             </div>
+            <button class="btn-secondary" onclick="startDuplicateCheck()">查重去重</button>
         </div>
         <div class="toolbar-right">
             <button class="btn-danger" id="batchDeleteBtn" onclick="batchDeleteQuestions()">批量删除</button>
@@ -1889,6 +1912,17 @@
             url += `&type=${type}`;
         }
         window.open(url, '_blank');
+    }
+
+    // 启动查重功能
+    async function startDuplicateCheck() {
+        if (!subjectId) {
+            showError('无法获取科目ID');
+            return;
+        }
+        
+        // 直接跳转到查重结果页面，页面会自动加载历史记录或执行新查重
+        window.location.href = `/admin/subjects/${subjectId}/questions/duplicate-check`;
     }
 
     async function uploadPackage() {

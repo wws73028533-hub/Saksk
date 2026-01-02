@@ -599,6 +599,21 @@ def _create_tables(conn):
         )
     ''')
     
+    # 查重记录表
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS duplicate_check_records (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            subject_id INTEGER NOT NULL,
+            total_pairs INTEGER DEFAULT 0,
+            duplicates_json TEXT NOT NULL,
+            similarity_threshold REAL DEFAULT 0.8,
+            created_by INTEGER,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(subject_id) REFERENCES subjects(id) ON DELETE CASCADE,
+            FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE SET NULL
+        )
+    ''')
+    
     # 初始化系统配置（如果不存在）
     default_configs = [
         ('quiz_limit_enabled', '0', '刷题数限制功能开关（0=关闭，1=开启）'),
@@ -644,6 +659,12 @@ def _create_indexes(conn):
             'CREATE INDEX IF NOT EXISTS idx_questions_subject ON questions(subject_id)',
             'CREATE INDEX IF NOT EXISTS idx_questions_type ON questions(q_type)',
             'CREATE INDEX IF NOT EXISTS idx_questions_subject_type ON questions(subject_id, q_type)',
+        ])
+    
+    # 查重记录相关索引
+    if 'duplicate_check_records' in existing_tables:
+        indexes.extend([
+            'CREATE INDEX IF NOT EXISTS idx_duplicate_check_subject ON duplicate_check_records(subject_id, created_at DESC)',
         ])
     
     # 考试相关索引（只对存在的表创建）
