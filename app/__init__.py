@@ -355,9 +355,16 @@ def _register_before_request(app):
             # 这个 API 允许未登录访问（返回0）
             return
 
-        # 通知 API（以及页面）需要登录：历史通知属于用户中心功能
-        if path.startswith('/api/notifications') or path == '/notifications':
+        # 通知 API 允许未登录访问（用于主页显示通知）
+        # 但通知历史页面需要登录（属于用户中心功能）
+        if path == '/notifications':
             return jsonify({'status': 'unauthorized', 'message': '请先登录'}), 401
+        
+        # /api/notifications 允许未登录访问，但标记已读/关闭等操作仍需要登录
+        if path.startswith('/api/notifications'):
+            # 对于需要登录的操作（read, dismiss），在路由函数内部检查
+            # 列表查询允许未登录访问
+            return
         
         # 需要登录的功能路径
         login_required_paths = {
