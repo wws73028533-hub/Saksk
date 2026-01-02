@@ -12,7 +12,9 @@ from app.modules.auth.schemas import (
     BindEmailSchema,
     SendLoginCodeSchema,
     EmailLoginSchema,
-    LoginSchema
+    LoginSchema,
+    SendForgotPasswordCodeSchema,
+    ResetPasswordSchema
 )
 from app.modules.auth.services.email_service import EmailAuthService
 
@@ -91,8 +93,16 @@ def api_login():
         f'用户登录成功 - 用户: {identifier}, remember={remember}, IP: {request.remote_addr}'
     )
     
+    # 检查用户是否需要设置密码
+    needs_password_set = not User.has_password_set(user['id'])
+    
     redirect_url = login_data.redirect or '/'
-    return jsonify({'status': 'success', 'redirect': redirect_url, 'remember': remember})
+    return jsonify({
+        'status': 'success', 
+        'redirect': redirect_url, 
+        'remember': remember,
+        'needs_password_set': needs_password_set
+    })
 
 
 @auth_api_bp.route('/logout', methods=['POST'])
@@ -267,9 +277,80 @@ def api_email_login():
         f'验证码登录成功 - 邮箱: {schema.email}, 用户: {user["username"]}, IP: {request.remote_addr}'
     )
     
+    # 检查用户是否需要设置密码
+    needs_password_set = not User.has_password_set(user['id'])
+    
     redirect_url = data.get('redirect', '/') if isinstance(data, dict) else '/'
     return jsonify({
         'status': 'success',
-        'redirect': redirect_url
+        'redirect': redirect_url,
+        'needs_password_set': needs_password_set
+    }), 200
+
+
+@auth_api_bp.route('/forgot-password/send-code', methods=['POST'])
+@limiter.limit("1 per minute;5 per hour")  # 同一邮箱1分钟1次，同一IP1小时5次
+def api_send_forgot_password_code():
+    """发送忘记密码验证码API"""
+    data = request.json or {}
+    
+    # 使用Pydantic验证
+    try:
+        schema = SendForgotPasswordCodeSchema.model_validate(data)
+    except Exception as e:
+        current_app.logger.warning(f'发送忘记密码验证码失败: 数据验证失败 - {str(e)}, IP: {request.remote_addr}')
+        return jsonify({'status': 'error', 'message': f'数据验证失败: {str(e)}'}), 400
+    
+    # 调用业务逻辑服务
+    success, error_msg = EmailAuthService.send_reset_password_code(schema.email)
+    
+    if not success:
+        # 如果是频率限制等错误，返回真实错误消息
+        # 如果是邮箱未绑定，服务层已返回True，不会到这里
+        return jsonify({
+            'status': 'error',
+            'message': error_msg or '发送验证码失败，请稍后再试'
+        }), 400
+    
+    # 防止邮箱枚举攻击：统一返回成功消息
+    return jsonify({
+        'status': 'success',
+        'message': '验证码已发送，请查收邮件'
+    }), 200
+
+
+@auth_api_bp.route('/forgot-password/reset', methods=['POST'])
+@limiter.limit("10 per minute")
+def api_reset_password():
+    """重置密码API"""
+    data = request.json or {}
+    
+    # 使用Pydantic验证
+    try:
+        schema = ResetPasswordSchema.model_validate(data)
+    except Exception as e:
+        current_app.logger.warning(f'重置密码失败: 数据验证失败 - {str(e)}, IP: {request.remote_addr}')
+        return jsonify({'status': 'error', 'message': f'数据验证失败: {str(e)}'}), 400
+    
+    # 调用业务逻辑服务
+    success, error_msg = EmailAuthService.reset_password(
+        schema.email, schema.code, schema.new_password
+    )
+    
+    if not success:
+        # 防止邮箱枚举攻击：统一返回相同的错误消息
+        current_app.logger.warning(
+            f'重置密码失败: {error_msg} - 邮箱: {schema.email}, IP: {request.remote_addr}'
+        )
+        # 统一返回相同的错误消息，防止通过错误消息判断邮箱是否存在
+        return jsonify({'status': 'error', 'message': '验证码错误或已过期'}), 400
+    
+    current_app.logger.info(
+        f'密码重置成功 - 邮箱: {schema.email}, IP: {request.remote_addr}'
+    )
+    
+    return jsonify({
+        'status': 'success',
+        'message': '密码重置成功'
     }), 200
 

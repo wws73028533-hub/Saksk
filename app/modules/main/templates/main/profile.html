@@ -151,22 +151,22 @@
 
         <div class="grid-layout">
             <div class="card">
-                <h2>🔒 修改密码</h2>
+                <h2 id="passwordTitle">🔒 修改密码</h2>
                 <form id="passwordForm">
-                    <div class="form-group">
+                    <div class="form-group" id="currentPasswordGroup">
                         <label for="current_password">当前密码</label>
-                        <input type="password" id="current_password" name="current_password" class="main-input" required>
+                        <input type="password" id="current_password" name="current_password" class="main-input">
                     </div>
                     <div class="form-group">
-                        <label for="new_password">新密码</label>
+                        <label for="new_password" id="newPasswordLabel">新密码</label>
                         <input type="password" id="new_password" name="new_password" class="main-input" placeholder="至少8位，含数字与字母" required>
                     </div>
                     <div class="form-group">
-                        <label for="confirm_password">确认新密码</label>
+                        <label for="confirm_password" id="confirmPasswordLabel">确认新密码</label>
                         <input type="password" id="confirm_password" name="confirm_password" class="main-input" placeholder="请再次输入新密码" required>
                     </div>
                     <div class="actions">
-                        <button type="submit" class="btn btn-primary">🔄 提交修改</button>
+                        <button type="submit" class="btn btn-primary" id="passwordSubmitBtn">🔄 提交修改</button>
                     </div>
                     <div id="pwdMsg" class="message"></div>
                 </form>
@@ -361,6 +361,48 @@
             }
         });
 
+        // 加载用户信息，判断是否需要设置密码
+        let needsPasswordSet = false;
+        async function loadUserPasswordStatus() {
+            try {
+                const res = await fetch('/api/profile');
+                if (!res.ok) throw new Error('加载失败');
+                const d = await res.json();
+                if (d.status !== 'success') throw new Error(d.message || '加载失败');
+                
+                needsPasswordSet = !d.data.has_password_set;
+                
+                // 根据是否需要设置密码更新UI
+                if (needsPasswordSet) {
+                    // 设置密码模式
+                    document.getElementById('passwordTitle').textContent = '🔒 设置密码';
+                    document.getElementById('currentPasswordGroup').style.display = 'none';
+                    document.getElementById('current_password').required = false;
+                    document.getElementById('newPasswordLabel').textContent = '密码';
+                    document.getElementById('confirmPasswordLabel').textContent = '确认密码';
+                    document.getElementById('passwordSubmitBtn').textContent = '✅ 设置密码';
+                } else {
+                    // 修改密码模式
+                    document.getElementById('passwordTitle').textContent = '🔒 修改密码';
+                    document.getElementById('currentPasswordGroup').style.display = 'block';
+                    document.getElementById('current_password').required = true;
+                    document.getElementById('newPasswordLabel').textContent = '新密码';
+                    document.getElementById('confirmPasswordLabel').textContent = '确认新密码';
+                    document.getElementById('passwordSubmitBtn').textContent = '🔄 提交修改';
+                }
+            } catch (err) {
+                console.error('[账号管理] 加载用户信息失败:', err);
+                // 出错时默认显示修改密码模式（安全起见）
+                document.getElementById('passwordTitle').textContent = '🔒 修改密码';
+                document.getElementById('currentPasswordGroup').style.display = 'block';
+                document.getElementById('current_password').required = true;
+                document.getElementById('newPasswordLabel').textContent = '新密码';
+                document.getElementById('confirmPasswordLabel').textContent = '确认新密码';
+                document.getElementById('passwordSubmitBtn').textContent = '🔄 提交修改';
+                needsPasswordSet = false;
+            }
+        }
+        
         document.getElementById('passwordForm').addEventListener('submit', async e => {
             e.preventDefault();
             const cur = document.getElementById('current_password').value;
@@ -376,11 +418,23 @@
             }
 
             if (nw !== c_nw) {
-                showMessage('两次输入的新密码不一致', 'error');
+                showMessage('两次输入的密码不一致', 'error');
                 return;
             }
             if (nw.length < 8 || !(/[a-zA-Z]/.test(nw) && /\d/.test(nw))) {
-                showMessage('新密码至少8位且包含字母和数字', 'error');
+                showMessage('密码至少8位且包含字母和数字', 'error');
+                return;
+            }
+
+            // 如果是设置密码，不需要当前密码
+            if (needsPasswordSet && cur) {
+                showMessage('设置密码不需要输入当前密码', 'error');
+                return;
+            }
+            
+            // 如果是修改密码，需要当前密码
+            if (!needsPasswordSet && !cur) {
+                showMessage('修改密码需要输入当前密码', 'error');
                 return;
             }
 
@@ -388,17 +442,33 @@
                 const res = await fetch('/api/profile/password', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ current_password: cur, new_password: nw })
+                    body: JSON.stringify({ 
+                        current_password: cur || '', 
+                        new_password: nw,
+                        is_set_password: needsPasswordSet
+                    })
                 });
                 const d = await res.json();
-                if (!res.ok || d.status !== 'success') throw new Error(d.message || '修改失败');
+                if (!res.ok || d.status !== 'success') throw new Error(d.message || '操作失败');
                 
-                showMessage('✅ 修改成功，请重新登录', 'success');
-                setTimeout(() => location.href = '/login', 1500);
+                if (needsPasswordSet) {
+                    showMessage('✅ 密码设置成功', 'success');
+                    // 重新加载状态
+                    setTimeout(() => {
+                        loadUserPasswordStatus();
+                        document.getElementById('passwordForm').reset();
+                    }, 1500);
+                } else {
+                    showMessage('✅ 修改成功，请重新登录', 'success');
+                    setTimeout(() => location.href = '/login', 1500);
+                }
             } catch (err) {
                 showMessage('❌ ' + err.message, 'error');
             }
         });
+        
+        // 页面加载时获取用户密码状态
+        loadUserPasswordStatus();
         
         // 页面加载时获取邮箱信息
         loadEmailInfo();

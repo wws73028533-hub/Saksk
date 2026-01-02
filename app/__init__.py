@@ -329,7 +329,9 @@ def _register_before_request(app):
             '/privacy',  # 隐私保护协议页面
             '/api/login',
             '/api/email/send-login-code',  # 发送登录验证码（无需登录，支持自动注册）
-            '/api/email/login'  # 验证码登录（无需登录，支持自动注册）
+            '/api/email/login',  # 验证码登录（无需登录，支持自动注册）
+            '/api/forgot-password/send-code',  # 发送忘记密码验证码（无需登录）
+            '/api/forgot-password/reset'  # 重置密码（无需登录）
         }
         if path in allow_paths or path.startswith('/static'):
             return

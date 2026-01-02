@@ -33,6 +33,8 @@ def init_db():
         _create_tables(conn)
         # 创建索引
         _create_indexes(conn)
+        # 运行数据迁移
+        _run_migrations(conn)
         conn.commit()
         print('[OK] 数据库初始化完成')
     except Exception as e:
@@ -40,6 +42,29 @@ def init_db():
         conn.rollback()
     finally:
         conn.close()
+
+
+def _run_migrations(conn):
+    """运行数据库迁移"""
+    try:
+        # 检查has_password_set字段是否存在
+        cols = [r['name'] for r in conn.execute("PRAGMA table_info(users)").fetchall()]
+        if 'has_password_set' in cols:
+            # 字段存在，检查是否有需要更新的老用户
+            # 更新所有有password_hash但没有email的老用户（has_password_set=0或NULL）
+            result = conn.execute('''
+                UPDATE users 
+                SET has_password_set = 1 
+                WHERE password_hash IS NOT NULL 
+                AND password_hash != '' 
+                AND (email IS NULL OR email = '')
+                AND (has_password_set = 0 OR has_password_set IS NULL)
+            ''')
+            updated_count = result.rowcount
+            if updated_count > 0:
+                print(f'[迁移] 已为 {updated_count} 个老用户更新 has_password_set=1')
+    except Exception as e:
+        print(f'[WARN] 迁移has_password_set字段失败: {e}')
 
 
 def _create_tables(conn):
@@ -255,6 +280,23 @@ def _create_tables(conn):
                 cur.execute('ALTER TABLE users ADD COLUMN email_verified INTEGER DEFAULT 0')
             if 'email_verified_at' not in cols:
                 cur.execute('ALTER TABLE users ADD COLUMN email_verified_at DATETIME')
+            if 'has_password_set' not in cols:
+                cur.execute('ALTER TABLE users ADD COLUMN has_password_set INTEGER DEFAULT 0')
+                # 为所有有password_hash但没有email的老用户设置has_password_set=1
+                # （老用户通过用户名注册，有真实密码）
+                try:
+                    cur.execute('''
+                        UPDATE users 
+                        SET has_password_set = 1 
+                        WHERE password_hash IS NOT NULL 
+                        AND password_hash != '' 
+                        AND (email IS NULL OR email = '')
+                    ''')
+                    updated_count = cur.rowcount
+                    if updated_count > 0:
+                        print(f'[迁移] 已为 {updated_count} 个老用户设置 has_password_set=1')
+                except Exception as e:
+                    print(f'[WARN] 迁移老用户has_password_set字段失败: {e}')
             
             # 创建邮箱唯一索引（如果不存在）
             try:

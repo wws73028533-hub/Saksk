@@ -202,6 +202,10 @@ def api_profile():
         # 将Row对象转换为字典
         user = dict(user_row)
         
+        # 检查用户是否设置了密码
+        from app.core.models.user import User
+        has_password_set = User.has_password_set(uid)
+        
         # 统计数据
         favorites_count = conn.execute(
             'SELECT COUNT(*) FROM favorites WHERE user_id = ?',
@@ -240,6 +244,7 @@ def api_profile():
                 'email_verified': bool(user.get('email_verified', 0)),
                 'created_at': user['created_at'][:10] if user['created_at'] else '-',
                 'is_admin': bool(user['is_admin']),
+                'has_password_set': has_password_set,
                 'streak_days': streak_days,
                 'total_answered': total_answered,
                 'correct_answered': correct_answered,
@@ -254,7 +259,7 @@ def api_profile():
 
 @user_api_bp.route('/profile/password', methods=['POST'])
 def change_password():
-    """修改密码"""
+    """修改密码或设置密码"""
     if not session.get('user_id'):
         return jsonify({'status': 'unauthorized', 'message': '请先登录'}), 401
     
@@ -262,9 +267,10 @@ def change_password():
     data = request.json or {}
     current_password = data.get('current_password', '')
     new_password = data.get('new_password', '')
+    is_set_password = data.get('is_set_password', False)  # 是否为设置密码
     
-    if not current_password or not new_password:
-        return jsonify({'status': 'error', 'message': '请填写完整信息'}), 400
+    if not new_password:
+        return jsonify({'status': 'error', 'message': '请填写新密码'}), 400
     
     if len(new_password) < 8:
         return jsonify({'status': 'error', 'message': '新密码至少8位'}), 400
@@ -272,6 +278,7 @@ def change_password():
     conn = get_db()
     
     try:
+        # 检查用户是否存在
         user = conn.execute(
             'SELECT password_hash FROM users WHERE id = ?',
             (uid,)
@@ -280,21 +287,29 @@ def change_password():
         if not user:
             return jsonify({'status': 'error', 'message': '用户不存在'}), 404
         
-        # 验证当前密码
-        if not check_password_hash(user['password_hash'], current_password):
-            return jsonify({'status': 'error', 'message': '当前密码错误'}), 400
+        # 检查用户是否设置了密码
+        from app.core.models.user import User
+        has_password = User.has_password_set(uid)
         
-        # 更新密码
-        new_hash = generate_password_hash(new_password)
-        conn.execute(
-            'UPDATE users SET password_hash = ? WHERE id = ?',
-            (new_hash, uid)
-        )
-        conn.commit()
-        
-        return jsonify({'status': 'success', 'message': '密码修改成功'})
+        # 如果是设置密码（用户还没有设置密码），不需要验证当前密码
+        if is_set_password or not has_password:
+            # 设置密码
+            User.update_password(uid, new_password, set_password=True)
+            return jsonify({'status': 'success', 'message': '密码设置成功'})
+        else:
+            # 修改密码，需要验证当前密码
+            if not current_password:
+                return jsonify({'status': 'error', 'message': '请填写当前密码'}), 400
+            
+            # 验证当前密码
+            if not check_password_hash(user['password_hash'], current_password):
+                return jsonify({'status': 'error', 'message': '当前密码错误'}), 400
+            
+            # 更新密码
+            User.update_password(uid, new_password, set_password=False)
+            return jsonify({'status': 'success', 'message': '密码修改成功'})
     except Exception as e:
-        return jsonify({'status': 'error', 'message': f'修改失败: {str(e)}'}), 500
+        return jsonify({'status': 'error', 'message': f'操作失败: {str(e)}'}), 500
 
 
 @user_api_bp.route('/stats/daily')

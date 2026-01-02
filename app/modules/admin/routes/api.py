@@ -897,6 +897,14 @@ def delete_user(user_id):
             ('notification_dismissals', 'SELECT COUNT(1) FROM notification_dismissals WHERE user_id=?'),
             ('notifications(创建者)', 'SELECT COUNT(1) FROM notifications WHERE created_by=?'),
             ('questions(出题人)', 'SELECT COUNT(1) FROM questions WHERE created_by=?'),
+            ('code_submissions', 'SELECT COUNT(1) FROM code_submissions WHERE user_id=?'),
+            ('coding_statistics', 'SELECT COUNT(1) FROM coding_statistics WHERE user_id=?'),
+            ('user_coding_stats', 'SELECT COUNT(1) FROM user_coding_stats WHERE user_id=?'),
+            ('code_drafts', 'SELECT COUNT(1) FROM code_drafts WHERE user_id=?'),
+            ('user_subjects', 'SELECT COUNT(1) FROM user_subjects WHERE user_id=?'),
+            ('user_quiz_stats', 'SELECT COUNT(1) FROM user_quiz_stats WHERE user_id=?'),
+            ('email_verification_codes', 'SELECT COUNT(1) FROM email_verification_codes WHERE user_id=?'),
+            ('popup_dismissals', 'SELECT COUNT(1) FROM popup_dismissals WHERE user_id=?'),
         ]
         details = []
         for name, sql in checks:
@@ -924,18 +932,55 @@ def delete_user(user_id):
             if admin_count <= 1:
                 return jsonify({'status': 'error', 'message': '不能删除最后一个管理员'}), 400
 
-        # 级联清理（仅清理我们明确知道的表；其余若还有外键引用，会被 IntegrityError 拦住）
+        # 级联清理所有关联数据（按依赖顺序删除，避免外键约束错误）
+        # 注意：即使某些表有 ON DELETE CASCADE，手动删除更可靠，因为可能数据库创建时外键未启用
+        
+        # 1. 删除考试相关数据（exams 表没有 CASCADE，必须先删除）
+        conn.execute('DELETE FROM exam_questions WHERE exam_id IN (SELECT id FROM exams WHERE user_id=?)', (user_id,))
+        conn.execute('DELETE FROM exams WHERE user_id=?', (user_id,))
+        
+        # 2. 删除用户基础数据
         conn.execute('DELETE FROM favorites WHERE user_id=?', (user_id,))
         conn.execute('DELETE FROM mistakes WHERE user_id=?', (user_id,))
         conn.execute('DELETE FROM user_answers WHERE user_id=?', (user_id,))
         conn.execute('DELETE FROM user_progress WHERE user_id=?', (user_id,))
+        
+        # 3. 删除聊天相关数据
+        conn.execute('DELETE FROM chat_messages WHERE sender_id=?', (user_id,))
+        conn.execute('DELETE FROM chat_members WHERE user_id=?', (user_id,))
+        conn.execute('DELETE FROM user_remarks WHERE owner_user_id=? OR target_user_id=?', (user_id, user_id))
+        
+        # 4. 删除通知相关数据
+        conn.execute('DELETE FROM notification_dismissals WHERE user_id=?', (user_id,))
+        
+        # 5. 删除编程相关数据
+        conn.execute('DELETE FROM code_submissions WHERE user_id=?', (user_id,))
+        conn.execute('DELETE FROM coding_statistics WHERE user_id=?', (user_id,))
+        conn.execute('DELETE FROM user_coding_stats WHERE user_id=?', (user_id,))
+        conn.execute('DELETE FROM code_drafts WHERE user_id=?', (user_id,))
+        
+        # 6. 删除其他用户数据
+        conn.execute('DELETE FROM user_subjects WHERE user_id=?', (user_id,))
+        conn.execute('DELETE FROM user_quiz_stats WHERE user_id=?', (user_id,))
+        conn.execute('DELETE FROM email_verification_codes WHERE user_id=?', (user_id,))
+        conn.execute('DELETE FROM popup_dismissals WHERE user_id=?', (user_id,))
+        
+        # 7. 更新引用该用户的字段（SET NULL 处理）
         conn.execute('UPDATE questions SET created_by=NULL WHERE created_by=?', (user_id,))
+        conn.execute('UPDATE notifications SET created_by=NULL WHERE created_by=?', (user_id,))
+        conn.execute('UPDATE popups SET created_by=NULL WHERE created_by=?', (user_id,))
+        conn.execute('UPDATE popup_views SET user_id=NULL WHERE user_id=?', (user_id,))
+        conn.execute('UPDATE system_config SET updated_by=NULL WHERE updated_by=?', (user_id,))
+        conn.execute('UPDATE user_subjects SET restricted_by=NULL WHERE restricted_by=?', (user_id,))
+        
+        # 8. 最后删除用户本身
         conn.execute('DELETE FROM users WHERE id=?', (user_id,))
         conn.commit()
 
         return jsonify({'status': 'success', 'message': '用户已删除'})
 
     except sqlite3.IntegrityError as e:
+        conn.rollback()
         # 外键约束失败：返回“哪些表还在引用”
         msg = str(e)
         if 'FOREIGN KEY constraint failed' in msg:
@@ -956,6 +1001,7 @@ def delete_user(user_id):
         return jsonify({'status': 'error', 'message': msg}), 400
 
     except Exception as e:
+        conn.rollback()
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 

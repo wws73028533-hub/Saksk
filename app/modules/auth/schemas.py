@@ -61,3 +61,30 @@ class BindEmailResponseSchema(BaseModel):
     class Config:
         from_attributes = True
 
+
+class SendForgotPasswordCodeSchema(BaseModel):
+    """发送忘记密码验证码Schema"""
+    email: EmailStr = Field(..., description="邮箱地址")
+
+
+class ResetPasswordSchema(BaseModel):
+    """重置密码Schema"""
+    email: EmailStr = Field(..., description="邮箱地址")
+    code: str = Field(..., min_length=6, max_length=6, description="验证码")
+    new_password: str = Field(..., min_length=8, description="新密码")
+    
+    @field_validator('code')
+    @classmethod
+    def validate_code(cls, v: str) -> str:
+        """验证验证码格式"""
+        if not v.isdigit():
+            raise ValueError('验证码必须是6位数字')
+        return v
+    
+    @field_validator('new_password')
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        """验证密码强度"""
+        if len(v) < 8:
+            raise ValueError('密码长度至少8位')
+        return v

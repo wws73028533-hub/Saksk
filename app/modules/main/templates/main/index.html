@@ -2213,7 +2213,7 @@
         </div>
 
         <footer class="page-footer">
-            By: Saksk | V3.0.0
+            By: Saksk | V3.2.1
         </footer>
     </div>
 
@@ -3282,9 +3282,26 @@
     </style>
 
     <script>
-        // 邮箱绑定相关功能
-        let bindCodeCountdown = 0;
-        let bindCodeTimer = null;
+        // 邮箱绑定相关功能（使用window对象避免重复声明）
+        if (typeof window.bindCodeCountdown === 'undefined') {
+            window.bindCodeCountdown = 0;
+        }
+        if (typeof window.bindCodeTimer === 'undefined') {
+            window.bindCodeTimer = null;
+        }
+        // 使用window对象，避免重复声明
+        var bindCodeCountdown = window.bindCodeCountdown;
+        var bindCodeTimer = window.bindCodeTimer;
+        
+        // 创建更新函数，确保window对象也被更新
+        function updateBindCodeCountdown(value) {
+            window.bindCodeCountdown = value;
+            bindCodeCountdown = value;
+        }
+        function updateBindCodeTimer(value) {
+            window.bindCodeTimer = value;
+            bindCodeTimer = value;
+        }
 
         // 发送绑定验证码
         async function sendBindCode() {
@@ -3319,6 +3336,7 @@
                 
                 if (data.status === 'success') {
                     // 开始倒计时
+                    window.bindCodeCountdown = 60;
                     bindCodeCountdown = 60;
                     startBindCodeCountdown();
                     showBindError('验证码已发送，请查收邮件', 'success');
@@ -3343,8 +3361,9 @@
             
             if (bindCodeTimer) clearInterval(bindCodeTimer);
             
-            bindCodeTimer = setInterval(() => {
-                bindCodeCountdown--;
+            window.bindCodeTimer = setInterval(() => {
+                window.bindCodeCountdown--;
+                bindCodeCountdown = window.bindCodeCountdown;
                 if (bindCodeCountdown > 0) {
                     btn.disabled = true;
                     btn.textContent = `${bindCodeCountdown}秒后重发`;
@@ -3354,6 +3373,7 @@
                     btn.textContent = '发送验证码';
                     hint.textContent = '验证码有效期为10分钟';
                     clearInterval(bindCodeTimer);
+                    window.bindCodeTimer = null;
                     bindCodeTimer = null;
                 }
             }, 1000);
@@ -3452,13 +3472,29 @@
             }
         });
         
-        // 弹窗显示逻辑
-        let popupQueue = [];
-        let currentPopupIndex = 0;
-        let currentPopupId = null;
+        // 弹窗显示逻辑（使用window对象避免重复声明）
+        if (typeof window.popupQueue === 'undefined') {
+            window.popupQueue = [];
+        }
+        if (typeof window.currentPopupIndex === 'undefined') {
+            window.currentPopupIndex = 0;
+        }
+        if (typeof window.currentPopupId === 'undefined') {
+            window.currentPopupId = null;
+        }
+        // 为了兼容性，也创建局部引用
+        var popupQueue = window.popupQueue;
+        var currentPopupIndex = window.currentPopupIndex;
+        var currentPopupId = window.currentPopupId;
         
         async function loadPopups() {
             {% if logged_in %}
+            // 检查是否正在显示设置密码弹窗，如果是则不显示其他弹窗
+            const passwordModal = document.getElementById('passwordSetModal');
+            if (passwordModal && passwordModal.style.display !== 'none' && passwordModal.style.display !== '') {
+                return; // 如果设置密码弹窗正在显示，不加载其他弹窗
+            }
+            
             try {
                 const res = await fetch('/api/popups/active?limit=10');
                 const data = await res.json();
@@ -3475,6 +3511,12 @@
         }
         
         function showNextPopup() {
+            // 如果设置密码弹窗正在显示，不显示其他弹窗
+            const passwordModal = document.getElementById('passwordSetModal');
+            if (passwordModal && passwordModal.style.display !== 'none' && passwordModal.style.display !== '') {
+                return;
+            }
+            
             if (currentPopupIndex >= popupQueue.length) {
                 return;
             }
@@ -3687,9 +3729,26 @@
     </style>
 
     <script>
-        // 邮箱绑定相关功能
-        let bindCodeCountdown = 0;
-        let bindCodeTimer = null;
+        // 邮箱绑定相关功能（使用window对象避免重复声明）
+        if (typeof window.bindCodeCountdown === 'undefined') {
+            window.bindCodeCountdown = 0;
+        }
+        if (typeof window.bindCodeTimer === 'undefined') {
+            window.bindCodeTimer = null;
+        }
+        // 使用window对象，避免重复声明
+        var bindCodeCountdown = window.bindCodeCountdown;
+        var bindCodeTimer = window.bindCodeTimer;
+        
+        // 创建更新函数，确保window对象也被更新
+        function updateBindCodeCountdown(value) {
+            window.bindCodeCountdown = value;
+            bindCodeCountdown = value;
+        }
+        function updateBindCodeTimer(value) {
+            window.bindCodeTimer = value;
+            bindCodeTimer = value;
+        }
 
         // 发送绑定验证码
         async function sendBindCode() {
@@ -3724,6 +3783,7 @@
                 
                 if (data.status === 'success') {
                     // 开始倒计时
+                    window.bindCodeCountdown = 60;
                     bindCodeCountdown = 60;
                     startBindCodeCountdown();
                     showBindError('验证码已发送，请查收邮件', 'success');
@@ -3748,8 +3808,9 @@
             
             if (bindCodeTimer) clearInterval(bindCodeTimer);
             
-            bindCodeTimer = setInterval(() => {
-                bindCodeCountdown--;
+            window.bindCodeTimer = setInterval(() => {
+                window.bindCodeCountdown--;
+                bindCodeCountdown = window.bindCodeCountdown;
                 if (bindCodeCountdown > 0) {
                     btn.disabled = true;
                     btn.textContent = `${bindCodeCountdown}秒后重发`;
@@ -3759,6 +3820,7 @@
                     btn.textContent = '发送验证码';
                     hint.textContent = '验证码有效期为10分钟';
                     clearInterval(bindCodeTimer);
+                    window.bindCodeTimer = null;
                     bindCodeTimer = null;
                 }
             }, 1000);
@@ -3857,13 +3919,29 @@
             }
         });
         
-        // 弹窗显示逻辑
-        let popupQueue = [];
-        let currentPopupIndex = 0;
-        let currentPopupId = null;
+        // 弹窗显示逻辑（使用window对象避免重复声明）
+        if (typeof window.popupQueue === 'undefined') {
+            window.popupQueue = [];
+        }
+        if (typeof window.currentPopupIndex === 'undefined') {
+            window.currentPopupIndex = 0;
+        }
+        if (typeof window.currentPopupId === 'undefined') {
+            window.currentPopupId = null;
+        }
+        // 为了兼容性，也创建局部引用
+        var popupQueue = window.popupQueue;
+        var currentPopupIndex = window.currentPopupIndex;
+        var currentPopupId = window.currentPopupId;
         
         async function loadPopups() {
             {% if logged_in %}
+            // 检查是否正在显示设置密码弹窗，如果是则不显示其他弹窗
+            const passwordModal = document.getElementById('passwordSetModal');
+            if (passwordModal && passwordModal.style.display !== 'none' && passwordModal.style.display !== '') {
+                return; // 如果设置密码弹窗正在显示，不加载其他弹窗
+            }
+            
             try {
                 const res = await fetch('/api/popups/active?limit=10');
                 const data = await res.json();
@@ -3880,6 +3958,12 @@
         }
         
         function showNextPopup() {
+            // 如果设置密码弹窗正在显示，不显示其他弹窗
+            const passwordModal = document.getElementById('passwordSetModal');
+            if (passwordModal && passwordModal.style.display !== 'none' && passwordModal.style.display !== '') {
+                return;
+            }
+            
             if (currentPopupIndex >= popupQueue.length) {
                 return;
             }
@@ -3954,14 +4038,612 @@
         
         // 页面加载完成后加载弹窗
         {% if logged_in %}
+        // 立即检查sessionStorage（不等待DOMContentLoaded）
+        (function() {
+            const needsPasswordSetFromLogin = sessionStorage.getItem('needs_password_set');
+            
+            if (needsPasswordSetFromLogin === 'true') {
+                // 等待DOM加载完成后再显示弹窗
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', function() {
+                        setTimeout(() => {
+                            showPasswordSetModal();
+                            sessionStorage.removeItem('needs_password_set');
+                        }, 500);
+                    });
+                } else {
+                    setTimeout(() => {
+                        showPasswordSetModal();
+                        sessionStorage.removeItem('needs_password_set');
+                    }, 500);
+                }
+            }
+        })();
+        
         document.addEventListener('DOMContentLoaded', function() {
-            // 延迟显示，避免影响页面加载
-            setTimeout(() => {
-                loadPopups();
-            }, 1000);
+            // 优先检查是否需要设置密码
+            checkPasswordSetStatus().then(needsPasswordSet => {
+                if (!needsPasswordSet) {
+                    // 如果不需要设置密码，才加载其他弹窗
+                    setTimeout(() => {
+                        loadPopups();
+                    }, 1000);
+                }
+            }).catch(err => {
+                // 即使出错，也尝试加载其他弹窗
+                setTimeout(() => {
+                    loadPopups();
+                }, 1000);
+            });
         });
         {% endif %}
+        
+        // 检查是否需要设置密码（优先显示）
+        async function checkPasswordSetStatus() {
+            try {
+                // 先检查sessionStorage中是否有标记（从登录页面传递过来的）
+                const needsPasswordSetFromLogin = sessionStorage.getItem('needs_password_set');
+                
+                // 如果登录时标记了需要设置密码，立即显示
+                if (needsPasswordSetFromLogin === 'true') {
+                    sessionStorage.removeItem('needs_password_set'); // 清除标记
+                    setTimeout(() => {
+                        showPasswordSetModal();
+                    }, 500); // 短暂延迟，确保页面加载完成
+                    return true;
+                }
+                
+                // 否则检查API
+                const res = await fetch('/api/profile');
+                if (!res.ok) {
+                    return false;
+                }
+                const d = await res.json();
+                if (d.status === 'success') {
+                    if (!d.data.has_password_set) {
+                        // 检查是否已经显示过设置密码弹窗（使用sessionStorage）
+                        const shown = sessionStorage.getItem('password_set_modal_shown');
+                        if (!shown) {
+                            setTimeout(() => {
+                                showPasswordSetModal();
+                            }, 500); // 短暂延迟，确保页面加载完成
+                        }
+                        return true;
+                    }
+                }
+                return false;
+            } catch (err) {
+                return false;
+            }
+        }
+        
+        // 显示设置密码弹窗（最优先显示）
+        function showPasswordSetModal() {
+            const modal = document.getElementById('passwordSetModal');
+            
+            if (!modal) {
+                return;
+            }
+            
+            // 如果其他弹窗正在显示，先关闭它们
+            const popupOverlay = document.getElementById('popupOverlay');
+            if (popupOverlay && popupOverlay.style.display !== 'none') {
+                closePopup(); // 关闭其他弹窗
+            }
+            
+            modal.style.display = 'flex';
+            sessionStorage.setItem('password_set_modal_shown', 'true');
+        }
+        
+        // 关闭设置密码弹窗
+        function closePasswordSetModal() {
+            const modal = document.getElementById('passwordSetModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+        
+        // 稍后设置
+        function setPasswordLater() {
+            closePasswordSetModal();
+        }
+        
+        // 提交设置密码
+        async function submitPasswordSet() {
+            const password = document.getElementById('setPasswordInput').value;
+            const confirmPassword = document.getElementById('setPasswordConfirmInput').value;
+            const msg = document.getElementById('setPasswordMsg');
+            
+            msg.style.display = 'none';
+            
+            if (!password || !confirmPassword) {
+                msg.textContent = '请填写完整信息';
+                msg.className = 'message error';
+                msg.style.display = 'block';
+                return;
+            }
+            
+            if (password !== confirmPassword) {
+                msg.textContent = '两次输入的密码不一致';
+                msg.className = 'message error';
+                msg.style.display = 'block';
+                return;
+            }
+            
+            if (password.length < 8 || !(/[a-zA-Z]/.test(password) && /\d/.test(password))) {
+                msg.textContent = '密码至少8位且包含字母和数字';
+                msg.className = 'message error';
+                msg.style.display = 'block';
+                return;
+            }
+            
+            const btn = document.getElementById('setPasswordSubmitBtn');
+            btn.disabled = true;
+            btn.textContent = '设置中...';
+            
+            try {
+                const res = await fetch('/api/profile/password', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ 
+                        new_password: password,
+                        is_set_password: true
+                    })
+                });
+                const d = await res.json();
+                
+                if (d.status === 'success') {
+                    msg.textContent = '✅ 密码设置成功';
+                    msg.className = 'message success';
+                    msg.style.display = 'block';
+                    setTimeout(() => {
+                        closePasswordSetModal();
+                        // 清除标记，以便下次登录时不再显示
+                        sessionStorage.removeItem('password_set_modal_shown');
+                    }, 1500);
+                } else {
+                    msg.textContent = '❌ ' + (d.message || '设置失败');
+                    msg.className = 'message error';
+                    msg.style.display = 'block';
+                }
+            } catch (err) {
+                msg.textContent = '❌ 设置失败，请稍后重试';
+                msg.className = 'message error';
+                msg.style.display = 'block';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '设置密码';
+            }
+        }
     </script>
+    
+    <!-- 设置密码弹窗 -->
+    {% if logged_in %}
+    <div id="passwordSetModal" class="password-set-modal-overlay" style="display: none;">
+        <div class="password-set-modal-content">
+            <!-- Header -->
+            <div class="password-set-modal-header">
+                <div class="password-set-modal-icon-wrapper">
+                    <svg class="password-set-modal-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2C8.13 2 5 5.13 5 9V11C3.9 11 3 11.9 3 13V20C3 21.1 3.9 22 5 22H19C20.1 22 21 21.1 21 20V13C21 11.9 20.1 11 19 11H17V9C17 5.13 13.87 2 10 2H12ZM12 4C12.34 4 12.67 4.03 13 4.08V9H11V4.08C11.33 4.03 11.66 4 12 4ZM7 9V11H5V9C5 6.24 7.24 4 10 4C10.34 4 10.67 4.03 11 4.08V9H7ZM5 13H19V20H5V13Z" fill="currentColor"/>
+                    </svg>
+                </div>
+                <h2 class="password-set-modal-title">设置密码</h2>
+                <button class="password-set-modal-close" onclick="closePasswordSetModal()" aria-label="关闭">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 4L4 12M4 4L12 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </div>
+            
+            <p class="password-set-modal-subtitle">为了您的账号安全，请设置一个密码。您也可以稍后在账号管理页面设置。</p>
+            
+            <!-- Form Fields -->
+            <div class="password-set-form">
+                <div class="password-set-field">
+                    <label class="password-set-label">密码</label>
+                    <div class="password-set-input-wrapper">
+                        <input type="password" id="setPasswordInput" class="password-set-input" placeholder="至少8位，含数字与字母" autocomplete="new-password" required>
+                    </div>
+                    <div class="password-set-hint">密码长度至少8位，建议包含字母和数字</div>
+                </div>
+                
+                <div class="password-set-field">
+                    <label class="password-set-label">确认密码</label>
+                    <div class="password-set-input-wrapper">
+                        <input type="password" id="setPasswordConfirmInput" class="password-set-input" placeholder="请再次输入密码" autocomplete="new-password" required>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Message -->
+            <div id="setPasswordMsg" class="password-set-message" style="display: none;"></div>
+            
+            <!-- Actions -->
+            <div class="password-set-actions">
+                <button type="button" class="password-set-btn-primary" id="setPasswordSubmitBtn" onclick="submitPasswordSet()">
+                    <span>设置密码</span>
+                </button>
+                <button type="button" class="password-set-btn-secondary" onclick="setPasswordLater()">
+                    <span>稍后设置</span>
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <style>
+        /* iOS 18 Style Password Set Modal */
+        .password-set-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            animation: passwordModalFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        
+        .password-set-modal-content {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(40px) saturate(180%);
+            -webkit-backdrop-filter: blur(40px) saturate(180%);
+            border-radius: 28px;
+            box-shadow: 
+                0 20px 60px rgba(0, 0, 0, 0.08),
+                0 8px 24px rgba(0, 0, 0, 0.04),
+                inset 0 1px 0 rgba(255, 255, 255, 0.9);
+            border: 0.5px solid rgba(255, 255, 255, 0.6);
+            padding: 0;
+            position: relative;
+            max-width: 440px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            animation: passwordModalSlideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
+        }
+        
+        body.dark-mode .password-set-modal-content {
+            background: rgba(28, 28, 30, 0.85);
+            border: 0.5px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 
+                0 20px 60px rgba(0, 0, 0, 0.5),
+                0 8px 24px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+        
+        /* Header */
+        .password-set-modal-header {
+            display: flex;
+            align-items: center;
+            padding: 28px 28px 20px;
+            gap: 16px;
+            position: relative;
+        }
+        
+        .password-set-modal-icon-wrapper {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: rgba(0, 122, 255, 0.12);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        
+        body.dark-mode .password-set-modal-icon-wrapper {
+            background: rgba(10, 132, 255, 0.2);
+        }
+        
+        .password-set-modal-icon {
+            width: 24px;
+            height: 24px;
+            color: #007AFF;
+        }
+        
+        body.dark-mode .password-set-modal-icon {
+            color: #0A84FF;
+        }
+        
+        .password-set-modal-title {
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            margin: 0;
+            flex: 1;
+            color: #1d1d1f;
+            line-height: 1.2;
+        }
+        
+        body.dark-mode .password-set-modal-title {
+            color: #f5f5f7;
+        }
+        
+        .password-set-modal-close {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            color: #86868b;
+            flex-shrink: 0;
+            padding: 0;
+        }
+        
+        .password-set-modal-close:hover {
+            background: rgba(142, 142, 147, 0.12);
+            color: #1d1d1f;
+        }
+        
+        body.dark-mode .password-set-modal-close {
+            color: #a1a1a6;
+        }
+        
+        body.dark-mode .password-set-modal-close:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #f5f5f7;
+        }
+        
+        .password-set-modal-subtitle {
+            color: #86868b;
+            font-size: 15px;
+            line-height: 1.5;
+            margin: 0 28px 28px;
+            letter-spacing: -0.1px;
+        }
+        
+        body.dark-mode .password-set-modal-subtitle {
+            color: #a1a1a6;
+        }
+        
+        /* Form */
+        .password-set-form {
+            padding: 0 28px;
+        }
+        
+        .password-set-field {
+            margin-bottom: 24px;
+        }
+        
+        .password-set-field:last-of-type {
+            margin-bottom: 0;
+        }
+        
+        .password-set-label {
+            display: block;
+            font-weight: 600;
+            color: #1d1d1f;
+            margin-bottom: 10px;
+            font-size: 13px;
+            letter-spacing: -0.08px;
+            text-transform: uppercase;
+        }
+        
+        body.dark-mode .password-set-label {
+            color: #f5f5f7;
+        }
+        
+        .password-set-input-wrapper {
+            position: relative;
+        }
+        
+        .password-set-input {
+            width: 100%;
+            padding: 16px 18px;
+            border: 1px solid rgba(142, 142, 147, 0.2);
+            border-radius: 12px;
+            font-size: 17px;
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            color: #1d1d1f;
+            box-sizing: border-box;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+        
+        .password-set-input:focus {
+            outline: none;
+            border-color: #007AFF;
+            background: rgba(255, 255, 255, 0.8);
+            box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1);
+        }
+        
+        body.dark-mode .password-set-input {
+            background: rgba(44, 44, 46, 0.6);
+            border-color: rgba(255, 255, 255, 0.15);
+            color: #f5f5f7;
+        }
+        
+        body.dark-mode .password-set-input:focus {
+            border-color: #0A84FF;
+            background: rgba(44, 44, 46, 0.8);
+            box-shadow: 0 0 0 4px rgba(10, 132, 255, 0.15);
+        }
+        
+        .password-set-input::placeholder {
+            color: #86868b;
+            opacity: 0.6;
+        }
+        
+        body.dark-mode .password-set-input::placeholder {
+            color: #a1a1a6;
+        }
+        
+        .password-set-hint {
+            font-size: 13px;
+            color: #86868b;
+            margin-top: 8px;
+            line-height: 1.4;
+            letter-spacing: -0.08px;
+        }
+        
+        body.dark-mode .password-set-hint {
+            color: #a1a1a6;
+        }
+        
+        /* Message */
+        .password-set-message {
+            margin: 20px 28px 0;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 14px;
+            line-height: 1.5;
+            display: none;
+        }
+        
+        .password-set-message.success {
+            background: rgba(52, 199, 89, 0.1);
+            color: #34c759;
+            border: 0.5px solid rgba(52, 199, 89, 0.2);
+        }
+        
+        .password-set-message.error {
+            background: rgba(255, 59, 48, 0.1);
+            color: #ff3b30;
+            border: 0.5px solid rgba(255, 59, 48, 0.2);
+        }
+        
+        /* Actions */
+        .password-set-actions {
+            padding: 28px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 8px;
+        }
+        
+        .password-set-btn-primary,
+        .password-set-btn-secondary {
+            width: 100%;
+            padding: 16px 24px;
+            border: none;
+            border-radius: 14px;
+            font-size: 17px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
+            letter-spacing: -0.2px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .password-set-btn-primary {
+            background: #007AFF;
+            color: #ffffff;
+            box-shadow: 0 4px 14px rgba(0, 122, 255, 0.25);
+        }
+        
+        .password-set-btn-primary:hover {
+            background: #0051D5;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(0, 122, 255, 0.3);
+        }
+        
+        .password-set-btn-primary:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 8px rgba(0, 122, 255, 0.25);
+        }
+        
+        .password-set-btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        body.dark-mode .password-set-btn-primary {
+            background: #0A84FF;
+            box-shadow: 0 4px 14px rgba(10, 132, 255, 0.3);
+        }
+        
+        body.dark-mode .password-set-btn-primary:hover {
+            background: #0051D5;
+        }
+        
+        .password-set-btn-secondary {
+            background: rgba(142, 142, 147, 0.12);
+            color: #1d1d1f;
+            border: 0.5px solid rgba(142, 142, 147, 0.2);
+        }
+        
+        .password-set-btn-secondary:hover {
+            background: rgba(142, 142, 147, 0.18);
+            transform: translateY(-1px);
+        }
+        
+        .password-set-btn-secondary:active {
+            transform: translateY(0);
+        }
+        
+        body.dark-mode .password-set-btn-secondary {
+            background: rgba(255, 255, 255, 0.08);
+            color: #f5f5f7;
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+        
+        body.dark-mode .password-set-btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.12);
+        }
+        
+        /* Animations */
+        @keyframes passwordModalFadeIn {
+            from { 
+                opacity: 0; 
+            }
+            to { 
+                opacity: 1; 
+            }
+        }
+        
+        @keyframes passwordModalSlideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px) scale(0.96);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        
+        /* Responsive */
+        @media (max-width: 480px) {
+            .password-set-modal-content {
+                max-width: 100%;
+                border-radius: 24px 24px 0 0;
+                margin-top: auto;
+                max-height: 85vh;
+            }
+            
+            .password-set-modal-header,
+            .password-set-modal-subtitle,
+            .password-set-form,
+            .password-set-actions {
+                padding-left: 24px;
+                padding-right: 24px;
+            }
+        }
+    </style>
+    {% endif %}
 </body>
 </html>
 
