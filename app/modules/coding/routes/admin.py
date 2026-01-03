@@ -36,6 +36,15 @@ def admin_questions_page():
     return render_template('admin/coding/questions.html', subject_id=subject_id or 0)
 
 
+@coding_admin_bp.route('/questions/edit')
+@coding_admin_bp.route('/questions/edit/<int:question_id>')
+@admin_required
+def admin_question_edit_page(question_id: int = None):
+    """题目编辑页面（创建/编辑）"""
+    subject_id = request.args.get('subject', type=int)
+    return render_template('admin/coding/edit.html', question_id=question_id, subject_id=subject_id or 0)
+
+
 # ==================== 题目集管理API ====================
 
 @coding_admin_bp.route('/api/subjects', methods=['GET'])

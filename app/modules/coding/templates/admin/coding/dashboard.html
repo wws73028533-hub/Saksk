@@ -349,7 +349,6 @@
     <!-- 标签页 -->
     <div class="tabs">
         <button class="tab active" onclick="switchTab('subjects', this)">题目集管理</button>
-        <button class="tab" onclick="switchTab('questions', this)">题目管理</button>
     </div>
     
     <!-- 题目集管理 -->
@@ -359,37 +358,6 @@
             <button class="btn-create" onclick="showCreateSubjectModal()">创建题目集</button>
         </div>
         <div id="subjects-container">
-            <div class="loading">加载中...</div>
-        </div>
-    </div>
-    
-    <!-- 题目管理 -->
-    <div id="tab-questions" class="tab-content">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <h2 style="font-size: 20px; font-weight: 600;">题目列表</h2>
-            <button class="btn-create" onclick="showCreateQuestionModal()">创建题目</button>
-        </div>
-        
-        <!-- 筛选器 -->
-        <div class="filters-bar">
-            <select id="filter-subject" class="filter-select">
-                <option value="">所有题目集</option>
-            </select>
-            <select id="filter-type" class="filter-select">
-                <option value="">所有类型</option>
-                <option value="函数题">函数题</option>
-                <option value="编程题">编程题</option>
-            </select>
-            <select id="filter-difficulty" class="filter-select">
-                <option value="">所有难度</option>
-                <option value="easy">简单</option>
-                <option value="medium">中等</option>
-                <option value="hard">困难</option>
-            </select>
-            <input type="text" id="filter-keyword" class="filter-input" placeholder="搜索题目...">
-        </div>
-        
-        <div id="questions-container">
             <div class="loading">加载中...</div>
         </div>
     </div>
@@ -489,9 +457,6 @@ function switchTab(tab, element) {
     
     if (tab === 'subjects') {
         loadSubjects();
-    } else if (tab === 'questions') {
-        loadSubjectsForFilter();
-        loadQuestions();
     }
 }
 
@@ -559,11 +524,9 @@ function renderSubjects(subjects) {
     container.appendChild(grid);
 }
 
-// 管理题目（切换到题目管理标签页并筛选）
+// 管理题目（跳转到题目管理页面）
 function manageQuestions(subjectId) {
-    switchTab('questions');
-    document.getElementById('filter-subject').value = subjectId;
-    loadQuestions();
+    window.location.href = `/admin/coding/questions?subject=${subjectId}`;
 }
 
 // 显示创建题目集模态框
@@ -898,14 +861,8 @@ function closeQuestionModal() {
 
 // 筛选器事件
 document.addEventListener('DOMContentLoaded', function() {
-    document.getElementById('filter-subject').addEventListener('change', loadQuestions);
-    document.getElementById('filter-type').addEventListener('change', loadQuestions);
-    document.getElementById('filter-difficulty').addEventListener('change', loadQuestions);
-    document.getElementById('filter-keyword').addEventListener('input', debounce(loadQuestions, 500));
-    
     // 初始化加载
     loadSubjects();
-    loadSubjectsForFilter();
 });
 
 function debounce(func, wait) {

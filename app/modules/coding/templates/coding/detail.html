@@ -322,6 +322,123 @@
         .question-description p {
             margin: 12px 0;
         }
+        
+        /* Markdown内容样式 */
+        .markdown-content {
+            line-height: 1.8;
+        }
+        
+        .markdown-content h1,
+        .markdown-content h2,
+        .markdown-content h3,
+        .markdown-content h4,
+        .markdown-content h5,
+        .markdown-content h6 {
+            font-weight: 600;
+            margin-top: 24px;
+            margin-bottom: 12px;
+            color: var(--text-color);
+        }
+        
+        .markdown-content h1 {
+            font-size: 24px;
+        }
+        
+        .markdown-content h2 {
+            font-size: 20px;
+        }
+        
+        .markdown-content h3 {
+            font-size: 18px;
+        }
+        
+        .markdown-content h4 {
+            font-size: 16px;
+        }
+        
+        .markdown-content p {
+            margin: 12px 0;
+            color: var(--text-color);
+        }
+        
+        .markdown-content strong {
+            font-weight: 600;
+            color: var(--text-color);
+        }
+        
+        .markdown-content em {
+            font-style: italic;
+        }
+        
+        .markdown-content code {
+            background: var(--bg-secondary);
+            border: 0.5px solid var(--border-primary);
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
+            font-size: 0.9em;
+            color: var(--text-color);
+        }
+        
+        .markdown-content pre {
+            background: var(--bg-secondary);
+            border: 0.5px solid var(--border-primary);
+            border-radius: var(--radius-sm);
+            padding: 16px;
+            overflow-x: auto;
+            margin: 16px 0;
+        }
+        
+        .markdown-content pre code {
+            background: transparent;
+            border: none;
+            padding: 0;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        
+        .markdown-content ul,
+        .markdown-content ol {
+            margin: 12px 0;
+            padding-left: 24px;
+        }
+        
+        .markdown-content li {
+            margin: 6px 0;
+            color: var(--text-color);
+        }
+        
+        .markdown-content blockquote {
+            border-left: 3px solid var(--border-secondary);
+            padding-left: 16px;
+            margin: 16px 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .markdown-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 16px 0;
+        }
+        
+        .markdown-content table th,
+        .markdown-content table td {
+            border: 0.5px solid var(--border-primary);
+            padding: 8px 12px;
+            text-align: left;
+        }
+        
+        .markdown-content table th {
+            background: var(--bg-secondary);
+            font-weight: 600;
+        }
+        
+        .markdown-content hr {
+            border: none;
+            border-top: 0.5px solid var(--border-primary);
+            margin: 24px 0;
+        }
 
         .example-box {
             background: var(--card-bg-solid);
@@ -1715,6 +1832,8 @@
             word-wrap: break-word;
         }
     </style>
+    <!-- Marked.js for Markdown rendering (必须在Monaco之前加载) -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@11/marked.min.js"></script>
     <!-- Monaco Editor -->
     <script src="https://cdn.jsdelivr.net/npm/monaco-editor@latest/min/vs/loader.js"></script>
 </head>
@@ -2202,9 +2321,47 @@
             
             let html = '';
             
-            // 题目描述
+            // 题目描述（支持Markdown）
             if (data.description) {
-                html += `<p>${escapeHtml(data.description)}</p>`;
+                // 尝试渲染Markdown
+                let markdownRendered = false;
+                
+                // 检查marked.js是否可用
+                if (typeof marked !== 'undefined') {
+                    try {
+                        // marked.js v11使用marked.parse()
+                        const markdownHtml = marked.parse(data.description);
+                        html += `<div class="markdown-content">${markdownHtml}</div>`;
+                        markdownRendered = true;
+                    } catch (e) {
+                        console.error('Markdown解析失败:', e);
+                    }
+                }
+                
+                // 如果Markdown未渲染，使用纯文本
+                if (!markdownRendered) {
+                    html += `<p>${escapeHtml(data.description)}</p>`;
+                    
+                    // 延迟尝试渲染（等待marked.js加载）
+                    const descriptionText = data.description; // 保存描述文本
+                    setTimeout(() => {
+                        if (typeof marked !== 'undefined') {
+                            try {
+                                const markdownHtml = marked.parse(descriptionText);
+                                const descEl = document.getElementById('question-description');
+                                if (descEl) {
+                                    // 查找第一个p标签并替换
+                                    const firstP = descEl.querySelector('p');
+                                    if (firstP) {
+                                        firstP.outerHTML = `<div class="markdown-content">${markdownHtml}</div>`;
+                                    }
+                                }
+                            } catch (e) {
+                                console.error('延迟Markdown渲染失败:', e);
+                            }
+                        }
+                    }, 300);
+                }
             }
             
             // 示例
@@ -2255,6 +2412,24 @@
             }
 
             document.getElementById('question-description').innerHTML = html;
+            
+            // 如果之前使用了纯文本，现在尝试重新渲染Markdown
+            if (data.description) {
+                setTimeout(() => {
+                    const descEl = document.getElementById('question-description');
+                    if (descEl) {
+                        const firstP = descEl.querySelector('p');
+                        if (firstP && typeof marked !== 'undefined' && marked && marked.parse) {
+                            try {
+                                const markdownHtml = marked.parse(data.description);
+                                firstP.outerHTML = `<div class="markdown-content">${markdownHtml}</div>`;
+                            } catch (e) {
+                                console.error('延迟Markdown渲染失败:', e);
+                            }
+                        }
+                    }
+                }, 100);
+            }
         }
 
         // 运行代码（测试用例）
@@ -3215,22 +3390,31 @@
         function initDebugPanel() {
             const debugHeaderBar = document.getElementById('debug-header-bar');
             const debugPanel = document.getElementById('debug-panel');
+            const debugToggleBtn = document.getElementById('debug-toggle');
             const debugContents = document.querySelectorAll('.debug-content');
             const debugHeaderTabs = document.querySelectorAll('.debug-header-tab');
             const testcaseTextarea = document.getElementById('testcase-input-textarea');
             const testcaseLineNumbers = document.getElementById('testcase-line-numbers');
             let lastTestCase = '';
 
-            if (!debugHeaderBar || !debugPanel) return;
+            if (!debugPanel) return;
 
-            // Debug窗口展开/收起切换
-            debugHeaderBar.addEventListener('click', (e) => {
-                // 如果点击的是提交按钮或复制按钮，不切换
-                if (e.target.closest('.btn-submit') || e.target.closest('.debug-copy-btn')) {
-                    return;
-                }
+            // 切换Debug面板显示/隐藏的函数
+            function toggleDebugPanel() {
+                const isCollapsed = debugPanel.classList.contains('collapsed');
                 debugPanel.classList.toggle('collapsed');
                 debugPanel.classList.toggle('expanded');
+                
+                // 更新按钮状态（展开时显示active，收起时移除active）
+                if (debugToggleBtn) {
+                    if (!isCollapsed) {
+                        // 当前是展开的，切换后是收起的
+                        debugToggleBtn.classList.remove('active');
+                    } else {
+                        // 当前是收起的，切换后是展开的
+                        debugToggleBtn.classList.add('active');
+                    }
+                }
                 
                 // 调整编辑器高度
                 if (editor) {
@@ -3238,7 +3422,42 @@
                         editor.layout();
                     }, 100);
                 }
-            });
+            }
+
+            // 更新按钮状态的辅助函数
+            function updateDebugToggleButtonState() {
+                if (debugToggleBtn && debugPanel) {
+                    const isExpanded = debugPanel.classList.contains('expanded');
+                    if (isExpanded) {
+                        debugToggleBtn.classList.add('active');
+                    } else {
+                        debugToggleBtn.classList.remove('active');
+                    }
+                }
+            }
+
+            // 初始化按钮状态
+            updateDebugToggleButtonState();
+
+            // Debug切换按钮点击事件
+            if (debugToggleBtn) {
+                debugToggleBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleDebugPanel();
+                });
+            }
+
+            // Debug窗口展开/收起切换（通过header bar）
+            if (debugHeaderBar) {
+                debugHeaderBar.addEventListener('click', (e) => {
+                    // 如果点击的是提交按钮或复制按钮，不切换
+                    if (e.target.closest('.btn-submit') || e.target.closest('.debug-copy-btn')) {
+                        return;
+                    }
+                    toggleDebugPanel();
+                });
+            }
 
             // 收起栏中的标签点击（切换标签，如果窗口是收缩的则展开）
             debugHeaderTabs.forEach(tab => {
@@ -3254,6 +3473,7 @@
                     if (debugPanel.classList.contains('collapsed')) {
                         debugPanel.classList.remove('collapsed');
                         debugPanel.classList.add('expanded');
+                        updateDebugToggleButtonState();
                         // 调整编辑器高度
                         if (editor) {
                             setTimeout(() => {
@@ -3317,6 +3537,7 @@
                     if (debugPanel.classList.contains('collapsed')) {
                         debugPanel.classList.remove('collapsed');
                         debugPanel.classList.add('expanded');
+                        updateDebugToggleButtonState();
                         // 切换到测试用例标签（通过收起栏中的标签）
                         const testcaseHeaderTab = document.querySelector('.debug-header-tab[data-tab="testcase"]');
                         if (testcaseHeaderTab) {
