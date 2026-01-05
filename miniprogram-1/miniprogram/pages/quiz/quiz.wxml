@@ -1,0 +1,201 @@
+<!--quiz.wxml - 刷题/背题页面-->
+<view class="page-root">
+  <navigation-bar 
+    title="第 {{progress.current}} 题 / 共 {{progress.total}} 题" 
+    back="{{true}}" 
+    color="black" 
+    background="#FFF"
+  >
+    <view slot="right" class="nav-right-actions">
+      <view class="nav-action-btn" bindtap="onOpenQuestionList">
+        <text class="iconfont icon-list">≡</text>
+      </view>
+      <view class="nav-action-btn" bindtap="onToggleFavorite">
+        <text class="iconfont icon-heart">{{isFavorite ? '♥' : '♡'}}</text>
+      </view>
+    </view>
+  </navigation-bar>
+
+  <view class="page-container">
+    <scroll-view class="content-area" scroll-y type="list" bounces="{{false}}">
+    <view class="container">
+      <!-- 加载状态 -->
+      <view class="loading" wx:if="{{loading}}">
+        <text>加载中...</text>
+      </view>
+
+      <!-- 题目内容 -->
+      <view class="question-wrapper" wx:if="{{!loading && currentQuestion}}">
+        <!-- 题目卡片 -->
+        <view class="question-card">
+          <view class="question-header">
+            <view class="question-type-tag">{{currentQuestion.q_type}}</view>
+          </view>
+        <view class="question-content">
+            <text class="question-text {{currentQuestion.isCode ? 'mono' : ''}}">{{currentQuestion.displayContent || currentQuestion.content}}</text>
+            <view class="question-images" wx:if="{{currentQuestion.image_urls && currentQuestion.image_urls.length}}">
+              <image
+                class="question-image"
+                wx:for="{{currentQuestion.image_urls}}"
+                wx:key="*this"
+                src="{{item}}"
+                mode="widthFix"
+                bindtap="previewImage"
+                data-index="{{index}}"
+              ></image>
+            </view>
+          </view>
+        </view>
+
+        <!-- 选择题/多选题/判断题：选项（统一渲染，提交后高亮对错） -->
+        <view wx:if="{{currentQuestion.q_type === '选择题' || currentQuestion.q_type === '多选题' || currentQuestion.q_type === '判断题'}}">
+          <view 
+            class="option-item {{item.className}}"
+            wx:for="{{displayOptions}}" 
+            wx:key="key"
+            bindtap="onSelectAnswer"
+            data-answer="{{item.answerValue}}"
+          >
+            <text class="option-key">{{item.key}}.</text>
+            <text class="option-text">{{item.value}}</text>
+            <text class="correct-mark" wx:if="{{(mode === 'memo' || showAnswer) && item.isCorrect}}">✓</text>
+            <text class="wrong-mark" wx:if="{{showAnswer && item.isWrong}}">✕</text>
+          </view>
+        </view>
+
+        <!-- 填空题：输入框（刷题模式且未提交时显示） -->
+        <view wx:if="{{mode === 'quiz' && !showAnswer && currentQuestion.q_type === '填空题'}}" class="fill-blank-wrapper">
+          <view class="blank-item" wx:for="{{blankIndexes}}" wx:key="*this" wx:for-item="idx">
+            <text class="blank-label">第{{idx + 1}}空</text>
+            <input
+              class="blank-input"
+              placeholder="请输入第{{idx + 1}}空"
+              value="{{blankAnswers[idx]}}"
+              bindinput="onBlankInput"
+              data-index="{{idx}}"
+              maxlength="200"
+            />
+          </view>
+        </view>
+
+        <!-- 主观题：问答/简答/计算 -->
+        <view
+          wx:if="{{mode === 'quiz' && !showAnswer && (currentQuestion.q_type === '问答题' || currentQuestion.q_type === '简答题' || currentQuestion.q_type === '计算题')}}"
+          class="text-answer-wrapper"
+        >
+          <textarea
+            class="text-answer-input"
+            placeholder="请输入你的答案"
+            value="{{selectedAnswer}}"
+            bindinput="onInputAnswer"
+            auto-height
+            maxlength="1000"
+          ></textarea>
+        </view>
+
+        <!-- 背题模式：答案展示 -->
+        <view wx:if="{{mode === 'memo'}}" class="answer-display-card">
+          <view class="answer-title">正确答案：{{currentQuestion.displayAnswer || currentQuestion.answer}}</view>
+          <view class="answer-divider"></view>
+          <text
+            class="answer-tip"
+            wx:if="{{currentQuestion.q_type === '选择题' || currentQuestion.q_type === '多选题' || currentQuestion.q_type === '判断题'}}"
+          >已在选项中高亮正确答案</text>
+          <text
+            class="answer-tip"
+            wx:if="{{!(currentQuestion.q_type === '选择题' || currentQuestion.q_type === '多选题' || currentQuestion.q_type === '判断题')}}"
+          >请对照答案巩固记忆</text>
+        </view>
+
+        <!-- 刷题模式：答案结果展示 -->
+        <view wx:if="{{mode === 'quiz' && showAnswer}}" class="answer-result-card">
+          <view class="result-header {{isJudgable ? (isCorrect ? 'correct' : 'wrong') : 'submitted'}}">
+            <text class="result-icon">{{isJudgable ? (isCorrect ? '✓' : '✕') : '✓'}}</text>
+            <text class="result-text">{{isJudgable ? (isCorrect ? '回答正确' : '回答错误') : '已提交'}}</text>
+          </view>
+          <view class="correct-answer">
+            <text class="answer-label">正确答案：</text>
+            <text class="answer-value">{{currentQuestion.displayAnswer || currentQuestion.answer}}</text>
+          </view>
+          <view class="user-answer" wx:if="{{!isJudgable || !isCorrect}}">
+            <text class="answer-label">你的答案：</text>
+            <text class="answer-value wrong">{{userAnswerText}}</text>
+          </view>
+        </view>
+
+        <!-- 解析 -->
+        <view class="explanation-card" wx:if="{{(mode === 'memo' || showAnswer) && currentQuestion.explanation}}">
+          <view class="explanation-title">解析：</view>
+          <text class="explanation-text {{currentQuestion.explanationIsCode ? 'mono' : ''}}">{{currentQuestion.displayExplanation || currentQuestion.explanation}}</text>
+        </view>
+      </view>
+
+      <!-- 空状态 -->
+      <view class="empty-state" wx:if="{{!loading && !currentQuestion && questions.length === 0}}">
+        <text>暂无题目</text>
+      </view>
+    </view>
+  </scroll-view>
+
+  <!-- 提交按钮（刷题模式，未提交时显示） -->
+  <view class="submit-btn-wrapper" wx:if="{{mode === 'quiz' && !showAnswer && currentQuestion && showSubmitButton}}">
+    <button 
+      class="submit-btn {{submitDisabled ? 'disabled' : ''}}"
+      bindtap="onSubmitAnswer"
+      disabled="{{submitDisabled}}"
+    >
+      提交答案
+    </button>
+  </view>
+
+  <!-- 底部导航栏 -->
+  <view class="bottom-nav" wx:if="{{!loading && currentQuestion}}">
+    <button 
+      class="nav-btn prev-btn {{currentIndex === 0 ? 'disabled' : ''}}"
+      bindtap="onPrevQuestion"
+      disabled="{{currentIndex === 0}}"
+    >
+      上一题
+    </button>
+    <button 
+      class="nav-btn next-btn"
+      bindtap="onNextQuestion"
+    >
+      {{currentIndex === questions.length - 1 ? '完成' : '下一题'}}
+    </button>
+  </view>
+</view>
+</view>
+
+<!-- 题目列表抽屉 -->
+<view class="drawer-mask {{showQuestionList ? 'show' : ''}}" bindtap="onCloseQuestionList">
+  <view class="drawer-container {{showQuestionList ? 'show' : ''}}" catchtap="stopPropagation">
+    <view class="drawer-header">
+      <text class="drawer-title">题目列表</text>
+      <view class="drawer-close" bindtap="onCloseQuestionList">
+        <text>×</text>
+      </view>
+    </view>
+    <scroll-view class="drawer-content" scroll-y>
+      <view 
+        class="drawer-item {{currentIndex === index ? 'active' : ''}} {{answerRecords[item.id] ? (answerRecords[item.id].isCorrect ? 'correct' : 'wrong') : ''}}"
+        wx:for="{{questions}}" 
+        wx:key="id"
+        wx:for-index="index"
+        bindtap="onQuestionListItemTap"
+        data-index="{{index}}"
+      >
+        <view class="drawer-item-content">
+          <text class="drawer-item-number">{{index + 1}}.</text>
+          <text class="drawer-item-text">{{item.contentPreview || item.content}}</text>
+        </view>
+        <view class="drawer-item-meta">
+          <text class="drawer-item-type">{{item.q_type}}</text>
+          <text class="drawer-item-status" wx:if="{{answerRecords[item.id]}}">
+            {{answerRecords[item.id].isCorrect ? '✓' : '✕'}}
+          </text>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+</view>

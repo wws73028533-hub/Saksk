@@ -1,0 +1,114 @@
+<!-- exam-setup.wxml - 考试设置 -->
+<view class="page-root">
+  <navigation-bar title="考试设置" back="{{true}}" color="black" background="#FFF"></navigation-bar>
+
+  <view class="page-container">
+    <scroll-view class="content-area" scroll-y type="list">
+      <view class="container">
+        <view class="card">
+          <view class="subject-row">
+            <text class="label">科目</text>
+            <text class="value">{{subject}}</text>
+          </view>
+          <view class="row">
+            <text class="label">考试时长（分钟）</text>
+            <input
+              class="input"
+              type="number"
+              value="{{duration}}"
+              bindinput="onDurationInput"
+              maxlength="4"
+            />
+          </view>
+          <view class="row">
+            <text class="label">题目数量（目标）</text>
+            <input
+              class="input"
+              type="number"
+              value="{{total}}"
+              bindinput="onTotalInput"
+              maxlength="4"
+            />
+          </view>
+          <view class="row summary-row">
+            <text class="label">已设置题数</text>
+            <text class="value">{{computedTotal}} 题</text>
+          </view>
+          <view class="row summary-row">
+            <text class="label">预计总分</text>
+            <text class="value">{{computedScoreText}} 分</text>
+          </view>
+        </view>
+
+        <view class="card">
+          <view class="section-title">题型范围</view>
+          <view class="types-list">
+            <view class="type-block" wx:for="{{types}}" wx:key="name">
+              <view class="type-row">
+                <view class="type-left">
+                  <text class="type-name">{{item.name}}</text>
+                  <text class="type-sub">可用 {{item.available}} 题</text>
+                </view>
+                <switch
+                  checked="{{item.enabled}}"
+                  bindchange="onToggleTypeSwitch"
+                  data-name="{{item.name}}"
+                  color="#007AFF"
+                />
+              </view>
+
+              <view class="type-config" wx:if="{{item.enabled}}" catchtap="stopPropagation">
+                <view class="config-field">
+                  <text class="config-label">题数</text>
+                  <input
+                    class="config-input"
+                    type="number"
+                    value="{{item.count}}"
+                    bindinput="onTypeConfigInput"
+                    data-name="{{item.name}}"
+                    data-field="count"
+                    maxlength="4"
+                  />
+                  <text class="config-unit">题</text>
+                </view>
+                <view class="config-field">
+                  <text class="config-label">分/题</text>
+                  <input
+                    class="config-input"
+                    type="digit"
+                    value="{{item.score}}"
+                    bindinput="onTypeConfigInput"
+                    data-name="{{item.name}}"
+                    data-field="score"
+                    maxlength="6"
+                  />
+                  <text class="config-unit">分</text>
+                </view>
+              </view>
+            </view>
+          </view>
+          <view class="hint" wx:if="{{types.length === 0 && !loading}}">
+            <text>当前科目暂无题目</text>
+          </view>
+        </view>
+
+        <view class="loading" wx:if="{{loading}}">
+          <text>加载中...</text>
+        </view>
+      </view>
+    </scroll-view>
+
+    <view class="action-bar">
+      <button
+        class="primary-btn {{(loading || creating || types.length === 0 || computedTotal <= 0) ? 'disabled' : ''}}"
+        bindtap="onStartExam"
+        disabled="{{loading || creating || types.length === 0 || computedTotal <= 0}}"
+      >
+        {{creating ? '创建中...' : '开始考试'}}
+      </button>
+      <view class="sub-hint" wx:if="{{warnText}}">
+        <text>{{warnText}}</text>
+      </view>
+    </view>
+  </view>
+</view>

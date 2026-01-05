@@ -2,3 +2,9 @@
 alwaysApply: true
 ---
 Mobile App UI design, iOS 18 style, minimalist Apple aesthetic, premium look and feel. Clean white and light gray color palette, monochromatic, no vivid colors. Elements: Soft rounded corners, frosted glass effect (glassmorphism), heavy use of whitespace, San Francisco typography, elegant iconography. Lighting: Soft diffused studio lighting, subtle drop shadows for depth, silky smooth texture. Layout: Organized Bento grid system. High definition, 8k, photorealistic, trending on Dribbble, UX/UI masterpiece.
+
+Additional UI constraints for this repo:
+- Prefer monochrome palette: `#FFFFFF`, `#F2F2F7`, `rgba(60,60,67,0.6)`; avoid vivid gradients.
+- Cards must be responsive and fill width by default; avoid center-stacked narrow cards.
+- Layout: fixed top navigation; fixed bottom action bars where present; only the middle content area scrolls when overflow.
+- Prevent overflow: add `min-width: 0`, `box-sizing: border-box`, and safe line wrapping for long text/content.

@@ -1,0 +1,76 @@
+<!--index.wxml-->
+<view class="page-root">
+  <navigation-bar title="首页" back="{{false}}" color="black" background="#FFF"></navigation-bar>
+  <view class="page-container">
+    <scroll-view
+      class="content-area"
+      scroll-y
+      type="list"
+      bounces="{{false}}"
+      refresher-enabled="{{true}}"
+      bindrefresherrefresh="onPullDownRefresh"
+    >
+      <view class="container">
+        <!-- 顶部信息（Glass Card） -->
+        <view class="hero-card">
+          <view class="hero-left">
+            <image
+              class="avatar"
+              src="{{(userInfo && (userInfo.avatar || userInfo.avatar_url)) || '/images/default-avatar.png'}}"
+              mode="aspectFill"
+            ></image>
+            <view class="hero-text">
+              <text class="hero-title">{{(userInfo && (userInfo.username || userInfo.nickname)) || '用户'}}</text>
+              <text class="hero-subtitle">保持节奏，稳步提升</text>
+            </view>
+          </view>
+          <view class="hero-right" bindtap="onGoSubjectsTap">
+            <text class="hero-right-text">科目</text>
+          </view>
+        </view>
+
+        <!-- 继续上次练习 -->
+        <view class="continue-card" wx:if="{{lastSession}}">
+          <view class="card-head">
+            <text class="card-title">继续上次</text>
+            <text class="card-time">{{lastSession.timeText}}</text>
+          </view>
+          <view class="card-body">
+            <text class="session-subject">{{lastSession.subject}}</text>
+            <text class="session-meta">{{lastSession.metaText}}</text>
+          </view>
+          <view class="card-actions">
+            <view class="primary-btn" bindtap="onContinueTap">
+              <text>继续练习</text>
+            </view>
+          </view>
+        </view>
+
+        <!-- Bento 数据卡片 -->
+        <view class="bento-grid">
+          <view class="bento-card">
+            <text class="bento-value">{{stats.total || 0}}</text>
+            <text class="bento-label">题目</text>
+          </view>
+          <view class="bento-card">
+            <text class="bento-value">{{stats.favorites || 0}}</text>
+            <text class="bento-label">收藏</text>
+          </view>
+          <view class="bento-card">
+            <text class="bento-value">{{stats.mistakes || 0}}</text>
+            <text class="bento-label">错题</text>
+          </view>
+          <view class="bento-card bento-action" bindtap="onGoSubjectsTap">
+            <text class="bento-action-title">选择科目</text>
+            <text class="bento-action-sub">进入科目详情</text>
+          </view>
+        </view>
+
+        <!-- 加载提示 -->
+        <view class="loading" wx:if="{{loading}}">
+          <text>加载中...</text>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+</view>

@@ -1,0 +1,124 @@
+<!--practice-setup.wxml - 练习设置页面-->
+<view class="page-root">
+  <navigation-bar title="{{subject}}" back="{{true}}" color="black" background="#FFF"></navigation-bar>
+  <view class="page-container">
+    <!-- 主卡片容器 -->
+    <view class="main-card">
+      <!-- 内容区域（超出才滚动） -->
+      <scroll-view class="content-area" scroll-y type="list">
+        <!-- 刷题范围选择区域 -->
+        <view class="section-block">
+          <view class="tags-container">
+            <view 
+              class="tag {{selectedSource === 'all' ? 'active' : ''}}"
+              bindtap="onSourceTap"
+              data-source="all"
+            >
+              <text class="tag-text">全部</text>
+            </view>
+            <view 
+              class="tag {{selectedSource === 'favorites' ? 'active' : ''}}"
+              bindtap="onSourceTap"
+              data-source="favorites"
+            >
+              <text class="tag-text">收藏</text>
+            </view>
+            <view 
+              class="tag {{selectedSource === 'mistakes' ? 'active' : ''}}"
+              bindtap="onSourceTap"
+              data-source="mistakes"
+            >
+              <text class="tag-text">错题</text>
+            </view>
+          </view>
+        </view>
+
+        <!-- 题型选择区域 -->
+        <view class="section-block">
+          <view class="tags-container tags-wrap">
+            <view
+              class="tag {{selectedType === 'all' ? 'active' : ''}}"
+              bindtap="onTypeTap"
+              data-type="all"
+            >
+              <text class="tag-text">全部</text>
+            </view>
+            <view
+              class="tag {{selectedType === item ? 'active' : ''}}"
+              wx:for="{{availableTypes}}"
+              wx:key="*this"
+              bindtap="onTypeTap"
+              data-type="{{item}}"
+            >
+              <text class="tag-text">{{item}}</text>
+            </view>
+          </view>
+        </view>
+
+        <!-- 设置选项区域 -->
+        <view class="section-block">
+          <view class="settings-row">
+            <text class="settings-label">打乱题目</text>
+            <switch 
+              class="settings-switch"
+              checked="{{settings.shuffleQuestions}}"
+              bindchange="onSettingChange"
+              data-setting="shuffleQuestions"
+              color="#007AFF"
+            />
+          </view>
+          <view class="settings-row">
+            <text class="settings-label">打乱选项</text>
+            <switch 
+              class="settings-switch"
+              checked="{{settings.shuffleOptions}}"
+              bindchange="onSettingChange"
+              data-setting="shuffleOptions"
+              color="#007AFF"
+            />
+          </view>
+        </view>
+
+        <!-- 题目数量统计区域 -->
+        <view class="stats-section">
+          <text class="stats-text">总数 {{stats.total}}</text>
+          <text class="stats-text">收藏 {{stats.favorites}}</text>
+          <text class="stats-text">错题 {{stats.mistakes}}</text>
+        </view>
+
+        <!-- 加载提示 -->
+        <view class="loading" wx:if="{{loading}}">
+          <text>加载中...</text>
+        </view>
+      </scroll-view>
+
+      <!-- 操作按钮区域（固定在底部） -->
+      <view class="action-section">
+        <view 
+          class="action-button {{(loading || stats.total === 0) ? 'disabled' : ''}}"
+          bindtap="onActionButtonTap"
+          data-mode="quiz"
+        >
+          <text class="action-title">刷题</text>
+        </view>
+        <view 
+          class="action-button {{(loading || stats.total === 0) ? 'disabled' : ''}}"
+          bindtap="onActionButtonTap"
+          data-mode="memo"
+        >
+          <text class="action-title">背题</text>
+        </view>
+        <view
+          class="action-button danger {{loading ? 'disabled' : ''}}"
+          bindtap="onClearProgressTap"
+        >
+          <text class="action-title">清除刷题进度</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>
+
+<view class="empty-hint" wx:if="{{!loading && stats.total === 0}}">
+  <text class="empty-hint-text">当前筛选暂无题目</text>
+</view>

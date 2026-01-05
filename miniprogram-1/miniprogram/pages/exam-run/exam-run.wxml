@@ -1,0 +1,155 @@
+<!-- exam-run.wxml - 模拟考试 -->
+<view class="page-root">
+  <navigation-bar
+    title="第 {{currentIndex + 1}} / {{questions.length}} 题"
+    back="{{true}}"
+    color="black"
+    background="#FFF"
+  >
+    <view slot="right" class="nav-right">
+      <view class="nav-action-btn" bindtap="onOpenQuestionList">
+        <text class="iconfont icon-list">≡</text>
+      </view>
+      <view class="timer">{{timeText}}</view>
+      <view class="submit-exam-btn {{submitted ? 'disabled' : ''}}" bindtap="onSubmitExam">
+        <text>{{submitted ? '已交卷' : '交卷'}}</text>
+      </view>
+    </view>
+  </navigation-bar>
+
+  <view class="page-container">
+    <scroll-view class="content-area" scroll-y type="list" bounces="{{false}}">
+      <view class="container">
+        <view class="loading" wx:if="{{loading}}">
+          <text>加载中...</text>
+        </view>
+
+        <view class="question-wrapper" wx:if="{{!loading && currentQuestion}}">
+          <view class="question-card">
+            <view class="question-header">
+              <view class="question-type-tag">{{currentQuestion.q_type}}</view>
+              <view class="question-score" wx:if="{{currentQuestion.score_val}}">
+                <text>{{currentQuestion.score_val}} 分</text>
+              </view>
+            </view>
+            <view class="question-content">
+              <text class="question-text {{currentQuestion.isCode ? 'mono' : ''}}">{{currentQuestion.displayContent || currentQuestion.content}}</text>
+              <view class="question-images" wx:if="{{currentQuestion.image_urls && currentQuestion.image_urls.length}}">
+                <image
+                  class="question-image"
+                  wx:for="{{currentQuestion.image_urls}}"
+                  wx:key="*this"
+                  src="{{item}}"
+                  mode="widthFix"
+                  bindtap="previewImage"
+                  data-index="{{index}}"
+                ></image>
+              </view>
+            </view>
+          </view>
+
+          <!-- 选择/多选/判断 -->
+          <view wx:if="{{currentQuestion.q_type === '选择题' || currentQuestion.q_type === '多选题' || currentQuestion.q_type === '判断题'}}">
+            <view
+              class="option-item {{item.className}}"
+              wx:for="{{displayOptions}}"
+              wx:key="key"
+              bindtap="onSelectAnswer"
+              data-answer="{{item.answerValue}}"
+            >
+              <text class="option-key">{{item.key}}.</text>
+              <text class="option-text">{{item.value}}</text>
+            </view>
+          </view>
+
+          <!-- 填空 -->
+          <view wx:if="{{currentQuestion.q_type === '填空题'}}" class="fill-blank-wrapper">
+            <view class="blank-item" wx:for="{{blankIndexes}}" wx:key="*this" wx:for-item="idx">
+              <text class="blank-label">第{{idx + 1}}空</text>
+              <input
+                class="blank-input"
+                placeholder="请输入第{{idx + 1}}空"
+                value="{{blankAnswers[idx]}}"
+                bindinput="onBlankInput"
+                data-index="{{idx}}"
+                maxlength="200"
+                disabled="{{submitted}}"
+              />
+            </view>
+          </view>
+
+          <!-- 主观题 -->
+          <view
+            wx:if="{{currentQuestion.q_type === '问答题' || currentQuestion.q_type === '简答题' || currentQuestion.q_type === '计算题'}}"
+            class="text-answer-wrapper"
+          >
+            <textarea
+              class="text-answer-input"
+              placeholder="请输入你的答案"
+              value="{{selectedAnswer}}"
+              bindinput="onInputAnswer"
+              auto-height
+              maxlength="1500"
+              disabled="{{submitted}}"
+            ></textarea>
+          </view>
+
+          <!-- 交卷后展示正确答案/解析（可选） -->
+          <view wx:if="{{submitted}}" class="answer-card">
+            <view class="answer-row">
+              <text class="answer-label">正确答案：</text>
+              <text class="answer-value">{{currentQuestion.displayAnswer || currentQuestion.answer}}</text>
+            </view>
+            <view class="answer-row" wx:if="{{currentQuestion.explanation}}">
+              <text class="answer-label">解析：</text>
+              <text class="answer-value {{currentQuestion.explanationIsCode ? 'mono' : ''}}">{{currentQuestion.displayExplanation || currentQuestion.explanation}}</text>
+            </view>
+          </view>
+        </view>
+
+        <view class="empty-state" wx:if="{{!loading && !currentQuestion}}">
+          <text>暂无题目</text>
+        </view>
+      </view>
+    </scroll-view>
+
+    <view class="bottom-nav" wx:if="{{!loading && currentQuestion}}">
+      <button class="nav-btn prev-btn {{currentIndex === 0 ? 'disabled' : ''}}" bindtap="onPrevQuestion" disabled="{{currentIndex === 0}}">
+        上一题
+      </button>
+      <button class="nav-btn next-btn" bindtap="onNextQuestion">
+        {{currentIndex === questions.length - 1 ? '最后一题' : '下一题'}}
+      </button>
+    </view>
+  </view>
+</view>
+
+<!-- 题目列表抽屉 -->
+<view class="drawer-mask {{showQuestionList ? 'show' : ''}}" bindtap="onCloseQuestionList">
+  <view class="drawer-container {{showQuestionList ? 'show' : ''}}" catchtap="stopPropagation">
+    <view class="drawer-header">
+      <text class="drawer-title">题目列表</text>
+      <view class="drawer-close" bindtap="onCloseQuestionList">
+        <text>×</text>
+      </view>
+    </view>
+    <scroll-view class="drawer-content" scroll-y>
+      <view
+        class="drawer-item {{currentIndex === index ? 'active' : ''}} {{answers[item.id] ? 'answered' : ''}}"
+        wx:for="{{questions}}"
+        wx:key="id"
+        wx:for-index="index"
+        bindtap="onQuestionListItemTap"
+        data-index="{{index}}"
+      >
+        <view class="drawer-item-content">
+          <text class="drawer-item-number">{{index + 1}}.</text>
+          <text class="drawer-item-text">{{item.contentPreview || item.content}}</text>
+        </view>
+        <view class="drawer-item-meta">
+          <text class="drawer-item-type">{{item.q_type}}</text>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+</view>

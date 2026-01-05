@@ -1,0 +1,18 @@
+<view class="page">
+  <view class="card">
+    <view class="title">网页登录</view>
+    <view class="sub">请确认是否在网页端登录你的账号</view>
+
+    <view class="meta" wx:if="{{sid}}">
+      <view class="meta-item">会话：{{sid}}</view>
+    </view>
+
+    <view class="error" wx:if="{{error}}">{{error}}</view>
+
+    <view class="actions">
+      <button class="btn primary" loading="{{loading}}" disabled="{{loading}}" bindtap="onConfirm">确认</button>
+      <button class="btn ghost" disabled="{{loading}}" bindtap="onCancel">取消</button>
+    </view>
+  </view>
+</view>
+

@@ -1284,7 +1284,15 @@
         <div class="form-group"><label>难度 (1-5)</label><input type="number" id="qDifficulty" min="1" max="5" value="1"></div>
         <div class="form-group"><label>标签 (逗号分隔)</label><input type="text" id="qTags" placeholder="例如: 计算机网络, TCP/IP"></div>
         <div class="form-group"><label>题干</label><textarea id="qContent" rows="5" oninput="updatePreview()"></textarea></div>
-        <div class="form-group"><label>选项 (每行一个)</label><textarea id="qOptions" rows="4" oninput="updatePreview()"></textarea></div>
+        <div class="form-group" id="optionsGroup">
+            <label>选项</label>
+            <div id="optionsContainer" style="display: flex; flex-direction: column; gap: 12px;">
+                <!-- 选项列表将动态生成在这里 -->
+            </div>
+            <button type="button" class="btn-secondary" onclick="addOption()" style="margin-top: 12px; width: 100%;">
+                + 添加选项
+            </button>
+        </div>
                 <div class="form-group">
             <label>答案</label>
             <div id="answer-container">
@@ -1605,12 +1613,125 @@
 
     function handleQuestionTypeChange() {
         rebuildAnswerInput(); // Rebuild based on new type
-        const optionsGroup = document.getElementById('qOptions').parentElement;
+        const optionsGroup = document.getElementById('optionsGroup');
         const qType = document.getElementById('qType').value;
         if (qType === '选择题' || qType === '多选题') {
             optionsGroup.style.display = 'block';
+            // 如果没有选项，自动添加4个空选项
+            if (document.querySelectorAll('.option-item').length === 0) {
+                for (let i = 0; i < 4; i++) {
+                    addOption();
+                }
+            }
         } else {
             optionsGroup.style.display = 'none';
+        }
+    }
+    
+    // 添加选项
+    function addOption() {
+        const container = document.getElementById('optionsContainer');
+        const optionIndex = container.querySelectorAll('.option-item').length;
+        const optionKey = String.fromCharCode(65 + optionIndex); // A, B, C, D...
+        
+        const optionItem = document.createElement('div');
+        optionItem.className = 'option-item';
+        optionItem.style.cssText = 'display: flex; align-items: flex-start; gap: 12px; padding: 12px; background: rgba(142, 142, 147, 0.06); border-radius: 8px; border: 1px solid rgba(0,0,0,0.1);';
+        
+        const label = document.createElement('div');
+        label.style.cssText = 'flex: 0 0 auto; width: 32px; padding-top: 8px; font-weight: 600; color: #333;';
+        label.textContent = optionKey + '.';
+        
+        const textarea = document.createElement('textarea');
+        textarea.className = 'option-textarea';
+        textarea.style.cssText = 'flex: 1; min-height: 60px; padding: 8px 12px; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px; font-size: 14px; line-height: 1.5; resize: vertical; font-family: inherit;';
+        textarea.rows = 2;
+        textarea.placeholder = '输入选项内容（支持多行）';
+        textarea.oninput = updatePreview;
+        
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.className = 'btn-delete-option';
+        deleteBtn.style.cssText = 'flex: 0 0 auto; padding: 8px 12px; background: rgba(255, 59, 48, 0.1); color: #ff3b30; border: 1px solid rgba(255, 59, 48, 0.2); border-radius: 6px; cursor: pointer; font-size: 13px; white-space: nowrap;';
+        deleteBtn.textContent = '删除';
+        deleteBtn.onclick = function() {
+            optionItem.remove();
+            updateOptionLabels();
+            updatePreview();
+        };
+        
+        optionItem.appendChild(label);
+        optionItem.appendChild(textarea);
+        optionItem.appendChild(deleteBtn);
+        container.appendChild(optionItem);
+        
+        updatePreview();
+        textarea.focus();
+    }
+    
+    // 更新选项标签（A, B, C, D...）
+    function updateOptionLabels() {
+        const items = document.querySelectorAll('.option-item');
+        items.forEach((item, index) => {
+            const label = item.querySelector('div');
+            const optionKey = String.fromCharCode(65 + index);
+            label.textContent = optionKey + '.';
+        });
+    }
+    
+    // 获取所有选项内容（保留换行符）
+    function getOptions() {
+        const items = document.querySelectorAll('.option-item');
+        return Array.from(items).map(item => {
+            const textarea = item.querySelector('.option-textarea');
+            if (!textarea) return '';
+            // 保留换行符，只去掉首尾空白（不包含换行符）
+            const value = textarea.value;
+            // 去掉首尾的空白字符（空格、制表符），但保留换行符
+            return value.replace(/^[\s\t]+|[\s\t]+$/g, '');
+        }).filter(Boolean);
+    }
+    
+    // 设置选项内容
+    function setOptions(options) {
+        const container = document.getElementById('optionsContainer');
+        container.innerHTML = '';
+        
+        if (options && options.length > 0) {
+            options.forEach((opt, index) => {
+                const optionItem = document.createElement('div');
+                optionItem.className = 'option-item';
+                optionItem.style.cssText = 'display: flex; align-items: flex-start; gap: 12px; padding: 12px; background: rgba(142, 142, 147, 0.06); border-radius: 8px; border: 1px solid rgba(0,0,0,0.1);';
+                
+                const optionKey = String.fromCharCode(65 + index);
+                const label = document.createElement('div');
+                label.style.cssText = 'flex: 0 0 auto; width: 32px; padding-top: 8px; font-weight: 600; color: #333;';
+                label.textContent = optionKey + '.';
+                
+                const textarea = document.createElement('textarea');
+                textarea.className = 'option-textarea';
+                textarea.style.cssText = 'flex: 1; min-height: 60px; padding: 8px 12px; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px; font-size: 14px; line-height: 1.5; resize: vertical; font-family: inherit;';
+                textarea.rows = 2;
+                textarea.value = opt;
+                textarea.placeholder = '输入选项内容（支持多行）';
+                textarea.oninput = updatePreview;
+                
+                const deleteBtn = document.createElement('button');
+                deleteBtn.type = 'button';
+                deleteBtn.className = 'btn-delete-option';
+                deleteBtn.style.cssText = 'flex: 0 0 auto; padding: 8px 12px; background: rgba(255, 59, 48, 0.1); color: #ff3b30; border: 1px solid rgba(255, 59, 48, 0.2); border-radius: 6px; cursor: pointer; font-size: 13px; white-space: nowrap;';
+                deleteBtn.textContent = '删除';
+                deleteBtn.onclick = function() {
+                    optionItem.remove();
+                    updateOptionLabels();
+                    updatePreview();
+                };
+                
+                optionItem.appendChild(label);
+                optionItem.appendChild(textarea);
+                optionItem.appendChild(deleteBtn);
+                container.appendChild(optionItem);
+            });
         }
     }
 
@@ -1630,7 +1751,20 @@
                 document.getElementById('qDifficulty').value = full_q.difficulty || 1;
                 document.getElementById('qTags').value = full_q.tags || '';
                 document.getElementById('qContent').value = full_q.content;
-                document.getElementById('qOptions').value = (full_q.options && JSON.parse(full_q.options).join('\n')) || '';
+                
+                // 设置选项（支持多行）
+                if (full_q.options) {
+                    try {
+                        const options = JSON.parse(full_q.options);
+                        setOptions(options);
+                    } catch(e) {
+                        // 兼容旧格式：如果是字符串数组
+                        const options = Array.isArray(full_q.options) ? full_q.options : [];
+                        setOptions(options);
+                    }
+                } else {
+                    setOptions([]);
+                }
                 
                 // Set answer value on the newly created element
                 // 填空题：用结构化编辑器回填
@@ -1656,7 +1790,8 @@
         } else {
             document.getElementById('drawer-title').textContent = '新增题目';
             // Reset all fields
-            ['qDifficulty', 'qTags', 'qContent', 'qOptions', 'qExplanation'].forEach(elId => document.getElementById(elId).value = '');
+            ['qDifficulty', 'qTags', 'qContent', 'qExplanation'].forEach(elId => document.getElementById(elId).value = '');
+            setOptions([]);
             document.getElementById('qDifficulty').value = 1;
             document.getElementById('qType').selectedIndex = 0; // Reset to first type
             handleQuestionTypeChange(); // Build UI for default type
@@ -1689,7 +1824,7 @@
             return;
         }
         
-        const options = document.getElementById('qOptions').value.trim().split('\n').filter(Boolean);
+        const options = getOptions();
         const payload = {
             subject_id: subjectId,
             q_type: document.getElementById('qType').value,
@@ -1771,8 +1906,12 @@
 
     function updatePreview() {
         document.getElementById('previewContent').innerHTML = document.getElementById('qContent').value.replace(/\n/g, '<br>');
-        const opts = document.getElementById('qOptions').value.trim().split('\n').filter(Boolean);
-        const optsHtml = opts.map(o => `<label>${o}</label>`).join('');
+        const opts = getOptions();
+        const optsHtml = opts.map((o, index) => {
+            const optionKey = String.fromCharCode(65 + index);
+            const optText = o.replace(/\n/g, '<br>');
+            return `<label><strong>${optionKey}.</strong> ${optText}</label>`;
+        }).join('');
         document.getElementById('previewOptions').innerHTML = optsHtml;
     }
 

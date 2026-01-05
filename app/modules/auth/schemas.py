@@ -4,7 +4,7 @@
 使用Pydantic进行数据验证和序列化
 """
 from pydantic import BaseModel, Field, EmailStr, field_validator
-from typing import Optional
+from typing import Optional, Dict, Any
 
 
 class SendBindCodeSchema(BaseModel):
@@ -88,3 +88,10 @@ class ResetPasswordSchema(BaseModel):
         if len(v) < 8:
             raise ValueError('密码长度至少8位')
         return v
+
+
+class WechatLoginSchema(BaseModel):
+    """微信登录Schema"""
+    code: str = Field(..., description="微信登录code")
+    user_info: Optional[Dict[str, Any]] = Field(None, description="微信用户信息（可选）")
+    allow_create: bool = Field(default=True, description="未绑定时是否允许自动创建账号")

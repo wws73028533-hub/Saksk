@@ -1,5 +1,5 @@
         :root {
-    --main-card-max-width: 766px;
+    --main-card-max-width: 700px;
             --card-side-gap: 20px; /* 卡片左右总留白（通常=左右 margin 之和） */
             --bg-color: #fafafa;
             --card-bg: rgba(242, 242, 247, 0.65); /* 更透明的背景 */
@@ -423,6 +423,7 @@
             display: flex; 
             justify-content: space-between; 
             align-items: center; 
+            margin-top: -20px;
             margin-bottom: 24px; 
             border-bottom: 0.5px solid var(--border-color); 
             padding-bottom: 16px; 
@@ -563,7 +564,20 @@
                 transform: translateX(0); 
             } 
         }
-        .question-box.active { display: flex; }
+        .question-box.active { 
+            display: flex; 
+        }
+        /* 确保两种布局在question-box中正确显示 */
+        .question-box.active .question-layout-traditional,
+        .question-box.active .question-layout-card {
+            display: block;
+        }
+        body.quiz-layout-card .question-box.active .question-layout-traditional {
+            display: none !important;
+        }
+        body.quiz-layout-card .question-box.active .question-layout-card {
+            display: block !important;
+        }
         
         .fav-btn { 
             position: absolute; 
@@ -791,7 +805,9 @@
         .options span[data-opt-text]{
             display: block;
             padding: 12px 0; /* 默认行高节奏 */
-   
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
  
         .tf-options span[data-opt-text]{
@@ -879,7 +895,7 @@
 
         /* dock 内卡片宽度与主卡对齐（避免偏左/偏右） */
         #answerExplainDock{ width: 100%; display:flex; flex-direction:column; align-items:center; }
-        #answerExplainDock .card-container{ width: calc(100% - var(--card-side-gap)); max-width: var(--main-card-max-width); margin-left:auto; margin-right:auto; }
+        #answerExplainDock .card-container{ width: calc(100% - var(--card-side-gap)); max-width: 600px; margin-left:auto; margin-right:auto; }
 
 
         /* 题内答案/解析卡片默认隐藏，不占布局；外部 dock 的卡片壳使用 .quiz-card.standalone */
@@ -1998,6 +2014,632 @@
             }
         }
         
+        /* =========================
+         * 布局主题切换：传统布局 vs 卡片布局
+         * ========================= */
+        
+        /* 默认显示传统布局，隐藏卡片布局 */
+        .question-layout-traditional {
+            display: block !important;
+        }
+        .question-layout-card {
+            display: none !important;
+        }
+        
+        /* 卡片布局主题：显示卡片布局，隐藏传统布局 */
+        body.quiz-layout-card .question-layout-traditional {
+            display: none !important;
+        }
+        body.quiz-layout-card .question-layout-card {
+            display: block !important;
+        }
+        
+        /* 卡片布局模式下：去掉主卡片容器的背景和边框 */
+        body.quiz-layout-card #mainCard.card-container {
+            background: transparent !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            border: none !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            max-width: 100% !important;
+        }
+        body.quiz-layout-card #mainCard.card-container::before,
+        body.quiz-layout-card #mainCard.card-container::after {
+            display: none !important;
+        }
+        
+        /* 卡片布局模式下：题干和选项卡片宽度限制为600px，与答案解析一致 */
+        body.quiz-layout-card .question-stem-card {
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        body.quiz-layout-card .option-card,
+        body.quiz-layout-card .tf-option-card {
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        body.quiz-layout-card .options-container,
+        body.quiz-layout-card .tf-options-container {
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        /* =========================
+         * 卡片布局样式（新样式）- 使用与答案解析相同的样式
+         * ========================= */
+        
+        /* 题干卡片 - 使用与 card-container 相同的样式，自适应内容高度 */
+        .question-stem-card {
+            background: transparent;
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
+            border: none;
+            border-radius: 0;
+            padding: 16px 20px;
+            margin-bottom: 12px;
+            box-shadow: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            isolation: isolate;
+            height: auto;
+            min-height: auto;
+        }
+        body.dark-mode .question-stem-card {
+            border: none;
+        }
+        .question-stem-card::before {
+            display: none;
+        }
+        body.dark-mode .question-stem-card::before {
+            display: none;
+        }
+        .question-stem-card::after {
+            display: none;
+        }
+        body.dark-mode .question-stem-card::after {
+            display: none;
+        }
+        .question-stem-header,
+        .question-stem-content {
+            position: relative;
+            z-index: 3;
+        }
+        
+        .question-stem-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .question-stem-header .q-type-label {
+            margin: 0;
+        }
+        .question-stem-header .question-score {
+            font-size: 12px;
+            color: var(--text-sub);
+        }
+        .question-stem-header .fav-btn {
+            margin-left: auto;
+            position: static;
+        }
+        
+        .question-stem-content .q-content {
+            margin-bottom: 0;
+            padding-right: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+        .question-stem-content .question-image-gallery {
+            margin-top: 20px;
+        }
+        
+        /* 选项容器 */
+        .options-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        
+        /* 选项卡片（选择题/多选题）- 使用与 card-container 相同的样式，自适应内容高度 */
+        .option-card {
+            background: var(--card-bg);
+            backdrop-filter: var(--blur);
+            -webkit-backdrop-filter: var(--blur);
+            border: 0.5px solid rgba(0, 0, 0, 0.04);
+            border-radius: 24px;
+            padding: 16px 20px;
+            height: auto;
+            min-height: auto;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: var(--shadow);
+            position: relative;
+            isolation: isolate;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        body.dark-mode .option-card {
+            border-color: rgba(255, 255, 255, 0.10);
+        }
+        .option-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 24px;
+            padding: 0.5px;
+            background: rgba(255, 255, 255, 0.95);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask-composite: exclude;
+            pointer-events: none;
+            z-index: 1;
+        }
+        body.dark-mode .option-card::before {
+            background: rgba(255, 255, 255, 0.08);
+        }
+        .option-card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 35%;
+            background: linear-gradient(180deg, 
+                rgba(255, 255, 255, 0.4) 0%,
+                rgba(255, 255, 255, 0.15) 50%,
+                transparent 100%
+            );
+            border-radius: 24px 24px 0 0;
+            pointer-events: none;
+            z-index: 2;
+        }
+        body.dark-mode .option-card::after {
+            background: linear-gradient(180deg, 
+                rgba(255, 255, 255, 0.08) 0%,
+                rgba(255, 255, 255, 0.03) 50%,
+                transparent 100%
+            );
+        }
+        .option-card:hover {
+            box-shadow: var(--shadow-hover);
+            transform: translateY(-1px);
+        }
+        .option-card label {
+            position: relative;
+            z-index: 3;
+        }
+        
+        .option-card label {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            cursor: pointer;
+            margin: 0;
+            padding: 0;
+            border: none;
+            border-radius: 0;
+            background: transparent;
+            height: auto;
+            min-height: auto;
+            width: 100%;
+            min-width: 0;
+        }
+        .option-card label:hover {
+            background: transparent;
+            transform: none;
+        }
+        
+        .option-card input[type="checkbox"],
+        .option-card input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+            width: 1px;
+            height: 1px;
+            pointer-events: none;
+        }
+        
+        .option-card .option-label {
+            flex: 0 0 auto;
+            width: auto;
+            height: auto;
+            min-height: auto;
+            border-radius: 0;
+            border: none;
+            background: transparent;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-color);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            margin-top: 0;
+            margin-right: 8px;
+            padding: 0;
+        }
+        body.dark-mode .option-card .option-label {
+            background: transparent;
+        }
+        
+        .option-card .option-text {
+            flex: 1;
+            min-width: 0;
+            font-size: 16px;
+            line-height: 1.6;
+            color: var(--text-color);
+            padding: 0;
+            white-space: pre-wrap !important;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            word-break: break-word;
+        }
+        
+        /* 选项卡片选中状态 - 优化视觉效果 */
+        .option-card label.selected .option-label,
+        .option-card input:checked + .option-label {
+            background: rgba(10, 132, 255, 0.12);
+            border: 1.5px solid var(--primary);
+            border-radius: 6px;
+            color: var(--primary);
+            font-weight: 700;
+            padding: 4px 8px;
+            min-width: 28px;
+            text-align: center;
+        }
+        body.dark-mode .option-card label.selected .option-label,
+        body.dark-mode .option-card input:checked + .option-label {
+            background: rgba(10, 132, 255, 0.18);
+            border-color: var(--primary);
+        }
+        .option-card label.selected .option-text,
+        .option-card input:checked + .option-label + .option-text {
+            font-weight: normal !important;
+            color: var(--text-color) !important;
+        }
+        .option-card label.selected {
+            background: transparent;
+        }
+        .option-card.selected,
+        .option-card label.selected {
+            background: transparent !important;
+            border-color: var(--border-color) !important;
+            box-shadow: none !important;
+        }
+        body.dark-mode .option-card.selected,
+        body.dark-mode .option-card label.selected {
+            background: transparent !important;
+            border-color: var(--border-color) !important;
+            box-shadow: none !important;
+        }
+        
+        /* 选项卡片答题后的对错标记（选择题/多选题） */
+        .option-card:not(.tf-option-card).correct-opt {
+            border-color: rgba(52, 199, 89, 0.5) !important;
+            background: rgba(52, 199, 89, 0.08) !important;
+            position: relative;
+        }
+        /* 移除对错标记图标，只保留高亮效果 */
+        .option-card:not(.tf-option-card).correct-opt::after {
+            display: none !important;
+        }
+        body.dark-mode .option-card:not(.tf-option-card).correct-opt {
+            border-color: rgba(48, 209, 88, 0.5) !important;
+            background: rgba(48, 209, 88, 0.12) !important;
+        }
+        
+        .option-card:not(.tf-option-card).wrong-opt {
+            border-color: rgba(255, 59, 48, 0.5) !important;
+            background: rgba(255, 59, 48, 0.08) !important;
+            position: relative;
+        }
+        /* 移除对错标记图标，只保留高亮效果 */
+        .option-card:not(.tf-option-card).wrong-opt::after {
+            display: none !important;
+        }
+        body.dark-mode .option-card:not(.tf-option-card).wrong-opt {
+            border-color: rgba(255, 69, 58, 0.5) !important;
+            background: rgba(255, 69, 58, 0.12) !important;
+        }
+        
+        /* 答题后选项文本颜色调整 - 但用户选中的选项文本保持普通颜色 */
+        .option-card.correct-opt:not(.selected) .option-text,
+        .option-card.correct-opt label:not(.selected) .option-text {
+            color: rgba(52, 199, 89, 0.95);
+            font-weight: 650;
+        }
+        body.dark-mode .option-card.correct-opt:not(.selected) .option-text,
+        body.dark-mode .option-card.correct-opt label:not(.selected) .option-text {
+            color: rgba(48, 209, 88, 0.95);
+        }
+        .option-card.wrong-opt:not(.selected) .option-text,
+        .option-card.wrong-opt label:not(.selected) .option-text {
+            color: rgba(255, 59, 48, 0.95);
+            font-weight: 650;
+        }
+        body.dark-mode .option-card.wrong-opt:not(.selected) .option-text,
+        body.dark-mode .option-card.wrong-opt label:not(.selected) .option-text {
+            color: rgba(255, 69, 58, 0.95);
+        }
+        
+        /* 卡片布局中：隐藏 label 级别的标记样式，只使用卡片级别的标记 */
+        body.quiz-layout-card .option-card label.correct-opt,
+        body.quiz-layout-card .option-card label.wrong-opt {
+            border-color: inherit !important;
+            background-color: transparent !important;
+            color: inherit !important;
+            font-weight: inherit !important;
+        }
+        
+        /* 判断题选项卡片特殊样式 - 优化对错标记 */
+        .tf-option-card .option-icon {
+            flex: 0 0 auto;
+            width: 32px;
+            height: 32px;
+            min-height: 32px;
+            border-radius: 50%;
+            border: 1.5px solid;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: 700;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            margin-top: 2px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        /* 正确选项：绿色主题 */
+        .tf-option-card[data-option="correct"] .option-icon {
+            color: #34c759;
+            background: rgba(52, 199, 89, 0.12);
+            border-color: rgba(52, 199, 89, 0.4);
+        }
+        body.dark-mode .tf-option-card[data-option="correct"] .option-icon {
+            color: #30d158;
+            background: rgba(48, 209, 88, 0.18);
+            border-color: rgba(48, 209, 88, 0.5);
+        }
+        /* 错误选项：红色主题 */
+        .tf-option-card[data-option="wrong"] .option-icon {
+            color: #ff3b30;
+            background: rgba(255, 59, 48, 0.12);
+            border-color: rgba(255, 59, 48, 0.4);
+        }
+        body.dark-mode .tf-option-card[data-option="wrong"] .option-icon {
+            color: #ff453a;
+            background: rgba(255, 69, 58, 0.18);
+            border-color: rgba(255, 69, 58, 0.5);
+        }
+        /* 选中状态：蓝色高亮 */
+        .tf-option-card label.selected .option-icon,
+        .tf-option-card input:checked + .option-icon {
+            background: rgba(10, 132, 255, 0.15) !important;
+            border-color: rgba(10, 132, 255, 0.5) !important;
+            color: var(--primary) !important;
+            box-shadow: 0 2px 6px rgba(10, 132, 255, 0.25);
+            transform: scale(1.05);
+        }
+        body.dark-mode .tf-option-card label.selected .option-icon,
+        body.dark-mode .tf-option-card input:checked + .option-icon {
+            background: rgba(10, 132, 255, 0.22) !important;
+            border-color: rgba(10, 132, 255, 0.6) !important;
+            box-shadow: 0 2px 8px rgba(10, 132, 255, 0.3);
+        }
+        
+        /* 判断题答题后的对错标记 - 增强图标显示 */
+        .tf-option-card.correct-opt .option-icon {
+            background: rgba(52, 199, 89, 0.2) !important;
+            border-color: rgba(52, 199, 89, 0.6) !important;
+            color: #34c759 !important;
+            box-shadow: 0 2px 8px rgba(52, 199, 89, 0.3);
+            transform: scale(1.1);
+        }
+        body.dark-mode .tf-option-card.correct-opt .option-icon {
+            background: rgba(48, 209, 88, 0.25) !important;
+            border-color: rgba(48, 209, 88, 0.7) !important;
+            color: #30d158 !important;
+            box-shadow: 0 2px 10px rgba(48, 209, 88, 0.4);
+        }
+        
+        .tf-option-card.wrong-opt .option-icon {
+            background: rgba(255, 59, 48, 0.2) !important;
+            border-color: rgba(255, 59, 48, 0.6) !important;
+            color: #ff3b30 !important;
+            box-shadow: 0 2px 8px rgba(255, 59, 48, 0.3);
+            transform: scale(1.1);
+        }
+        body.dark-mode .tf-option-card.wrong-opt .option-icon {
+            background: rgba(255, 69, 58, 0.25) !important;
+            border-color: rgba(255, 69, 58, 0.7) !important;
+            color: #ff453a !important;
+            box-shadow: 0 2px 10px rgba(255, 69, 58, 0.4);
+        }
+        .tf-option-card label.selected {
+            background: transparent;
+        }
+        .tf-option-card.selected,
+        .tf-option-card label.selected {
+            background: rgba(10, 132, 255, 0.08);
+            border-color: rgba(10, 132, 255, 0.2);
+        }
+        body.dark-mode .tf-option-card.selected,
+        body.dark-mode .tf-option-card label.selected {
+            background: rgba(10, 132, 255, 0.12);
+            border-color: rgba(10, 132, 255, 0.3);
+        }
+        /* 判断题选项卡片：增强视觉区分 */
+        .tf-option-card[data-option="correct"] {
+            border-left: 3px solid rgba(52, 199, 89, 0.3);
+        }
+        .tf-option-card[data-option="wrong"] {
+            border-left: 3px solid rgba(255, 59, 48, 0.3);
+        }
+        .tf-option-card[data-option="correct"]:hover {
+            border-left-color: rgba(52, 199, 89, 0.5);
+            background: rgba(52, 199, 89, 0.05);
+        }
+        .tf-option-card[data-option="wrong"]:hover {
+            border-left-color: rgba(255, 59, 48, 0.5);
+            background: rgba(255, 59, 48, 0.05);
+        }
+        body.dark-mode .tf-option-card[data-option="correct"] {
+            border-left-color: rgba(48, 209, 88, 0.4);
+        }
+        body.dark-mode .tf-option-card[data-option="wrong"] {
+            border-left-color: rgba(255, 69, 58, 0.4);
+        }
+        body.dark-mode .tf-option-card[data-option="correct"]:hover {
+            border-left-color: rgba(48, 209, 88, 0.6);
+            background: rgba(48, 209, 88, 0.08);
+        }
+        body.dark-mode .tf-option-card[data-option="wrong"]:hover {
+            border-left-color: rgba(255, 69, 58, 0.6);
+            background: rgba(255, 69, 58, 0.08);
+        }
+        
+        /* 判断题选项卡片：确保label和文本支持换行 */
+        .tf-option-card label {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            cursor: pointer;
+            margin: 0;
+            padding: 0;
+            border: none;
+            border-radius: 0;
+            background: transparent;
+            height: auto;
+            min-height: auto;
+            width: 100%;
+            min-width: 0;
+        }
+        .tf-option-card .option-text {
+            flex: 1;
+            min-width: 0;
+            font-size: 16px;
+            line-height: 1.6;
+            color: var(--text-color);
+            padding: 0;
+            white-space: pre-wrap !important;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            word-break: break-word;
+        }
+        
+        /* 判断题选项容器：可以并排显示（桌面端） */
+        @media (min-width: 768px) {
+            .tf-options-container {
+                flex-direction: row;
+                gap: 16px;
+            }
+            .tf-option-card {
+                flex: 1;
+            }
+        }
+        
+        /* 填空题和问答题在卡片布局中的样式 - 使用与 card-container 相同的样式 */
+        .fill-in-the-blanks-card,
+        .essay-card {
+            background: var(--card-bg);
+            backdrop-filter: var(--blur);
+            -webkit-backdrop-filter: var(--blur);
+            border: 0.5px solid rgba(0, 0, 0, 0.04);
+            border-radius: 24px;
+            padding: 16px 20px;
+            margin-bottom: 12px;
+            box-shadow: var(--shadow);
+            position: relative;
+            isolation: isolate;
+        }
+        body.dark-mode .fill-in-the-blanks-card,
+        body.dark-mode .essay-card {
+            border-color: rgba(255, 255, 255, 0.10);
+        }
+        .fill-in-the-blanks-card::before,
+        .essay-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 24px;
+            padding: 0.5px;
+            background: rgba(255, 255, 255, 0.95);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask-composite: exclude;
+            pointer-events: none;
+            z-index: 1;
+        }
+        body.dark-mode .fill-in-the-blanks-card::before,
+        body.dark-mode .essay-card::before {
+            background: rgba(255, 255, 255, 0.08);
+        }
+        .fill-in-the-blanks-card::after,
+        .essay-card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 35%;
+            background: linear-gradient(180deg, 
+                rgba(255, 255, 255, 0.4) 0%,
+                rgba(255, 255, 255, 0.15) 50%,
+                transparent 100%
+            );
+            border-radius: 24px 24px 0 0;
+            pointer-events: none;
+            z-index: 2;
+        }
+        body.dark-mode .fill-in-the-blanks-card::after,
+        body.dark-mode .essay-card::after {
+            background: linear-gradient(180deg, 
+                rgba(255, 255, 255, 0.08) 0%,
+                rgba(255, 255, 255, 0.03) 50%,
+                transparent 100%
+            );
+        }
+        .fill-in-the-blanks-card > *,
+        .essay-card > * {
+            position: relative;
+            z-index: 3;
+        }
+        
+        /* 卡片布局中的答案/解析卡片样式调整 */
+        body.quiz-layout-card .quiz-card {
+            margin-top: 16px;
+            margin-bottom: 0;
+        }
+        
+        /* 响应式设计：移动端优化 */
+        @media (max-width: 767px) {
+            .question-stem-card {
+                padding: 16px 18px;
+                margin-bottom: 12px;
+            }
+            .option-card {
+                padding: 14px 16px;
+                min-height: 52px;
+            }
+            .option-card .option-label {
+                width: 24px;
+                height: 24px;
+                font-size: 12px;
+            }
+            .option-card .option-text {
+                font-size: 15px;
+            }
+            .options-container {
+                gap: 10px;
+            }
+        }
 
 
 

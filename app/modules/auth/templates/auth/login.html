@@ -303,6 +303,52 @@
     .login-form.active {
       display: block;
     }
+
+    /* 扫码登录 */
+    .qr-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+    }
+    .qr-box {
+      width: 220px;
+      height: 220px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.9);
+      border: 0.5px solid rgba(0, 0, 0, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .qr-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    .qr-status {
+      font-size: 13px;
+      color: var(--text-sub);
+      line-height: 1.6;
+      text-align: center;
+    }
+    .qr-actions {
+      width: 100%;
+      display: flex;
+      gap: 10px;
+    }
+    .btn-secondary {
+      width: 100%;
+      padding: 14px;
+      border-radius: 12px;
+      border: 0.5px solid rgba(0, 0, 0, 0.08);
+      background: rgba(255, 255, 255, 0.9);
+      color: var(--text-color);
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 500;
+    }
     /* 验证码输入框和发送按钮 */
     .code-field {
       display: flex;
@@ -442,6 +488,7 @@
       <div class="login-tabs">
         <button class="login-tab active" onclick="switchLoginMode('password')">密码登录</button>
         <button class="login-tab" onclick="switchLoginMode('code')">验证码登录</button>
+        <button class="login-tab" onclick="switchLoginMode('qr')">扫码登录</button>
       </div>
 
       <!-- 密码登录表单 -->
@@ -507,6 +554,20 @@
         </div>
         <div class="err" id="err-code"></div>
         <button class="btn" onclick="doEmailLogin(this)">登录</button>
+      </div>
+
+      <!-- 扫码登录表单 -->
+      <div id="qr-form" class="login-form">
+        <div class="qr-wrap">
+          <div class="qr-box">
+            <img id="qr-image" alt="扫码登录二维码" style="display:none;" />
+            <div id="qr-placeholder" style="color: var(--text-sub); font-size: 14px;">正在加载…</div>
+          </div>
+          <div class="qr-status" id="qr-status">请使用小程序扫码，并在手机上点击“确认登录”。</div>
+          <div class="qr-actions">
+            <button class="btn-secondary" onclick="refreshQrLogin()">刷新二维码</button>
+          </div>
+        </div>
       </div>
 
       <div style="text-align: center; margin-top: 16px; padding: 12px; background: rgba(0, 122, 255, 0.08); border-radius: 12px; font-size: 14px; color: var(--text-sub); line-height: 1.6;">
@@ -578,10 +639,114 @@
       // 切换表单显示
       document.getElementById('password-form').classList.toggle('active', mode === 'password');
       document.getElementById('code-form').classList.toggle('active', mode === 'code');
+      document.getElementById('qr-form').classList.toggle('active', mode === 'qr');
       
       // 清空错误信息
       setErr('', 'password');
       setErr('', 'code');
+
+      if (mode === 'qr') {
+        startQrLogin();
+      } else {
+        stopQrLogin();
+      }
+    }
+
+    // === 扫码登录 ===
+    let _qrSid = null;
+    let _qrPollTimer = null;
+    let _qrBusy = false;
+
+    function setQrStatus(msg) {
+      const el = document.getElementById('qr-status');
+      if (el) el.innerText = msg || '';
+    }
+
+    function setQrImage(url) {
+      const img = document.getElementById('qr-image');
+      const ph = document.getElementById('qr-placeholder');
+      if (!img || !ph) return;
+      if (!url) {
+        img.style.display = 'none';
+        ph.style.display = 'block';
+        return;
+      }
+      img.src = url;
+      img.style.display = 'block';
+      ph.style.display = 'none';
+    }
+
+    async function refreshQrLogin() {
+      stopQrLogin();
+      await startQrLogin();
+    }
+
+    async function startQrLogin() {
+      if (_qrBusy) return;
+      _qrBusy = true;
+      try {
+        setQrStatus('正在生成二维码…');
+        setQrImage(null);
+        const res = await fetch('/api/web_login/qrcode', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({})
+        });
+        const payload = await res.json();
+        if (!res.ok || payload.status !== 'success') {
+          throw new Error(payload.message || '生成二维码失败');
+        }
+        _qrSid = payload.data.sid;
+        setQrImage(payload.data.qrcode_url);
+        setQrStatus('请使用小程序扫码，并在手机上点击“确认登录”。');
+        _qrPollTimer = setInterval(pollQrLogin, 1500);
+      } catch (e) {
+        setQrStatus((e && e.message) ? e.message : '二维码加载失败');
+      } finally {
+        _qrBusy = false;
+      }
+    }
+
+    function stopQrLogin() {
+      if (_qrPollTimer) {
+        clearInterval(_qrPollTimer);
+        _qrPollTimer = null;
+      }
+      _qrSid = null;
+    }
+
+    async function pollQrLogin() {
+      if (!_qrSid) return;
+      try {
+        const res = await fetch(`/api/web_login/sessions/${encodeURIComponent(_qrSid)}`, { method: 'GET' });
+        const payload = await res.json();
+        if (!res.ok || payload.status !== 'success') return;
+        const state = payload.data.state;
+
+        if (state === 'expired') {
+          setQrStatus('二维码已过期，请刷新二维码。');
+          stopQrLogin();
+          return;
+        }
+
+        if (state === 'confirmed' && payload.data.token) {
+          setQrStatus('已确认，正在登录…');
+          stopQrLogin();
+          const ex = await fetch('/api/web_login/exchange', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: payload.data.token })
+          });
+          const exData = await ex.json();
+          if (!ex.ok || exData.status !== 'success') {
+            throw new Error(exData.message || '登录失败');
+          }
+          const redirectUrl = new URLSearchParams(window.location.search).get('redirect') || '/';
+          location.href = redirectUrl || '/';
+        }
+      } catch (e) {
+        // 轮询失败不打断，减少闪动
+      }
     }
 
     // 密码登录
@@ -975,4 +1140,3 @@
   </script>
 </body>
 </html>
-

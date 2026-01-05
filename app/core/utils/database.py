@@ -297,6 +297,8 @@ def _create_tables(conn):
                         print(f'[迁移] 已为 {updated_count} 个老用户设置 has_password_set=1')
                 except Exception as e:
                     print(f'[WARN] 迁移老用户has_password_set字段失败: {e}')
+            if 'openid' not in cols:
+                cur.execute('ALTER TABLE users ADD COLUMN openid TEXT')
             
             # 创建邮箱唯一索引（如果不存在）
             try:
@@ -307,8 +309,11 @@ def _create_tables(conn):
                 if 'idx_users_email_unique' not in indexes:
                     # SQLite中，UNIQUE约束通过唯一索引实现
                     cur.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users(email) WHERE email IS NOT NULL')
+                # 创建openid唯一索引（如果不存在）
+                if 'idx_users_openid' not in indexes:
+                    cur.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_openid ON users(openid) WHERE openid IS NOT NULL')
             except Exception as e:
-                print(f'[WARN] 创建邮箱唯一索引失败: {e}')
+                print(f'[WARN] 创建邮箱/openid唯一索引失败: {e}')
 
         # 添加 questions 表的字段（如果不存在）- 兼容旧数据库
         # 注意：questions 表只用于题库中心，不包含编程题字段

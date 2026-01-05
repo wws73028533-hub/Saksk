@@ -1,0 +1,52 @@
+<view class="page">
+  <view class="card">
+    <view class="title">账号选择</view>
+    <view class="sub">首次微信登录需要选择创建新账号或绑定已有账号</view>
+
+    <view class="error" wx:if="{{error}}">{{error}}</view>
+
+    <view class="choice" wx:if="{{step === 'choice'}}">
+      <button class="btn primary" loading="{{loadingCreate}}" disabled="{{actionDisabled}}" bindtap="onCreate">创建</button>
+      <button class="btn ghost" disabled="{{actionDisabled}}" bindtap="onGoBind">绑定</button>
+    </view>
+
+    <view wx:if="{{step === 'bind'}}" class="bind">
+      <view class="tabs">
+        <view class="tab {{mode==='password' ? 'active' : ''}}" bindtap="setMode" data-mode="password">密码</view>
+        <view class="tab {{mode==='email_code' ? 'active' : ''}}" bindtap="setMode" data-mode="email_code">邮箱</view>
+      </view>
+
+      <view wx:if="{{mode==='password'}}">
+        <view class="field">
+          <view class="label">账号</view>
+          <input class="input" placeholder="用户名/邮箱" placeholder-class="placeholder" value="{{account}}" bindinput="onAccount" />
+        </view>
+        <view class="field">
+          <view class="label">密码</view>
+          <input class="input" placeholder="密码" placeholder-class="placeholder" password value="{{password}}" bindinput="onPassword" />
+        </view>
+      </view>
+
+      <view wx:if="{{mode==='email_code'}}">
+        <view class="field">
+          <view class="label">邮箱</view>
+          <input class="input" placeholder="邮箱" placeholder-class="placeholder" value="{{email}}" bindinput="onEmail" />
+        </view>
+        <view class="field">
+          <view class="label">验证码</view>
+          <view class="codeRow">
+            <input class="input" placeholder="验证码" placeholder-class="placeholder" maxlength="6" value="{{code}}" bindinput="onCode" />
+            <button class="codeBtn" disabled="{{sendCodeDisabled}}" bindtap="onSendCode">
+              {{codeSending ? countdown + 's' : '发送'}}
+            </button>
+          </view>
+        </view>
+      </view>
+
+      <view class="actions">
+        <button class="btn primary" loading="{{loadingBind}}" disabled="{{actionDisabled}}" bindtap="onBind">确认</button>
+        <button class="btn ghost" disabled="{{actionDisabled}}" bindtap="onBack">返回</button>
+      </view>
+    </view>
+  </view>
+</view>

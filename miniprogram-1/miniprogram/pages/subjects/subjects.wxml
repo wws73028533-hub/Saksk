@@ -1,0 +1,54 @@
+<!-- subjects.wxml - 科目页 -->
+<view class="page-root">
+  <navigation-bar title="科目" back="{{false}}" color="black" background="#FFF"></navigation-bar>
+
+  <view class="page-container">
+    <scroll-view
+      class="content-area"
+      scroll-y
+      type="list"
+      bounces="{{false}}"
+      refresher-enabled="{{true}}"
+      bindrefresherrefresh="onPullDownRefresh"
+    >
+      <view class="container">
+        <view class="search-card">
+          <view class="search-row">
+            <input
+              class="search-input"
+              placeholder="搜索科目"
+              value="{{keyword}}"
+              bindinput="onKeywordInput"
+              confirm-type="search"
+              maxlength="40"
+            />
+            <view class="clear-btn" wx:if="{{keyword}}" bindtap="onClearKeyword">
+              <text>清除</text>
+            </view>
+          </view>
+        </view>
+
+        <view class="subjects-grid">
+          <view
+            class="subject-card"
+            wx:for="{{filteredSubjects}}"
+            wx:key="*this"
+            bindtap="onSubjectTap"
+            data-subject="{{item}}"
+          >
+            <text class="subject-name">{{item}}</text>
+            <text class="subject-enter">进入</text>
+          </view>
+        </view>
+
+        <view class="empty-state" wx:if="{{!loading && filteredSubjects.length === 0}}">
+          <text class="empty-text">{{keyword ? '无匹配科目' : '暂无可用科目'}}</text>
+        </view>
+
+        <view class="loading" wx:if="{{loading}}">
+          <text>加载中...</text>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+</view>

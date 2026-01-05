@@ -132,6 +132,58 @@
         .message.success { background: rgba(52, 199, 89, 0.1); color: var(--success); border: 0.5px solid rgba(52, 199, 89, 0.3); }
         .message.error { background: rgba(255, 59, 48, 0.1); color: var(--danger); border: 0.5px solid rgba(255, 59, 48, 0.3); }
 
+        /* 微信绑定弹窗 */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.28);
+            z-index: 9999;
+            padding: 18px;
+            box-sizing: border-box;
+        }
+        .modal-card {
+            width: 100%;
+            max-width: 420px;
+            background: var(--card-bg-solid);
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-hover);
+            padding: 22px;
+        }
+        .modal-title {
+            margin: 0 0 6px 0;
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.2px;
+        }
+        .modal-sub {
+            margin: 0 0 16px 0;
+            color: var(--text-sub);
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        .qr-box {
+            width: 240px;
+            height: 240px;
+            margin: 0 auto;
+            border-radius: 18px;
+            border: 1px solid var(--border-color);
+            background: rgba(255,255,255,0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        body.dark-mode .qr-box { background: rgba(28, 28, 30, 0.9); }
+        .qr-img { width: 100%; height: 100%; object-fit: contain; display: none; }
+        .qr-ph { color: var(--text-sub); font-size: 13px; }
+        .qr-status { margin-top: 14px; font-size: 13px; color: var(--text-sub); text-align: center; line-height: 1.6; min-height: 20px; }
+        .modal-actions { display: flex; gap: 10px; margin-top: 16px; }
+        .modal-actions .btn { flex: 1; justify-content: center; }
+
         .grid-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
 
         @media (max-width: 768px) {
@@ -179,6 +231,11 @@
                         <span id="emailDisplay">加载中...</span> 
                         <a href="#" id="bindEmailLink" style="color: var(--primary); text-decoration: none; margin-left: 8px;">去绑定</a>
                     </p>
+                    <p><strong>🟩 微信:</strong>
+                        <span id="wechatDisplay">加载中...</span>
+                        <a href="#" id="bindWechatLink" style="color: var(--primary); text-decoration: none; margin-left: 8px;">去绑定</a>
+                        <a href="#" id="unbindWechatLink" style="color: var(--danger); text-decoration: none; margin-left: 10px; display:none;">解绑</a>
+                    </p>
                     <p><strong>📱 手机号:</strong> <span>未绑定</span> <a href="#" onclick="return false;" style="opacity: 0.5;">去绑定</a></p>
                 </div>
                 
@@ -205,6 +262,23 @@
         </div>
     </main>
 
+    <!-- 微信绑定二维码弹窗 -->
+    <div id="wechatBindModal" class="modal-overlay" onclick="closeWechatBindModal(event)">
+        <div class="modal-card" onclick="event.stopPropagation()">
+            <div class="modal-title">绑定微信</div>
+            <div class="modal-sub">打开小程序扫码，并在手机上确认绑定。</div>
+            <div class="qr-box">
+                <img id="wechatBindQrImg" class="qr-img" alt="绑定微信二维码" />
+                <div id="wechatBindQrPh" class="qr-ph">正在生成…</div>
+            </div>
+            <div id="wechatBindStatus" class="qr-status"></div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="refreshWechatBindQr()">刷新</button>
+                <button type="button" class="btn btn-primary" onclick="closeWechatBindModal()">关闭</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             if (localStorage.getItem('theme') === 'dark') {
@@ -222,6 +296,9 @@
                 
                 const emailDisplay = document.getElementById('emailDisplay');
                 const bindEmailLink = document.getElementById('bindEmailLink');
+                const wechatDisplay = document.getElementById('wechatDisplay');
+                const bindWechatLink = document.getElementById('bindWechatLink');
+                const unbindWechatLink = document.getElementById('unbindWechatLink');
                 
                 if (d.data.email) {
                     emailDisplay.textContent = d.data.email + (d.data.email_verified ? ' ✓' : ' (未验证)');
@@ -230,8 +307,19 @@
                     emailDisplay.textContent = '未绑定';
                     bindEmailLink.textContent = '去绑定';
                 }
+
+                if (d.data.wechat_bound) {
+                    wechatDisplay.textContent = '已绑定 ✓';
+                    bindWechatLink.textContent = '更换';
+                    unbindWechatLink.style.display = 'inline';
+                } else {
+                    wechatDisplay.textContent = '未绑定';
+                    bindWechatLink.textContent = '去绑定';
+                    unbindWechatLink.style.display = 'none';
+                }
             } catch (err) {
                 document.getElementById('emailDisplay').textContent = '加载失败';
+                document.getElementById('wechatDisplay').textContent = '加载失败';
             }
         }
         
@@ -263,6 +351,128 @@
             e.preventDefault();
             document.getElementById('emailBindForm').style.display = 'block';
             document.getElementById('bindEmailInput').focus();
+        });
+
+        // === 微信绑定（扫码确认）===
+        let wechatBindSid = null;
+        let wechatBindTimer = null;
+        let wechatBindBusy = false;
+
+        function setWechatBindStatus(text) {
+            const el = document.getElementById('wechatBindStatus');
+            if (el) el.textContent = text || '';
+        }
+
+        function setWechatBindQr(url) {
+            const img = document.getElementById('wechatBindQrImg');
+            const ph = document.getElementById('wechatBindQrPh');
+            if (!img || !ph) return;
+            if (!url) {
+                img.style.display = 'none';
+                ph.style.display = 'block';
+                return;
+            }
+            img.src = url;
+            img.style.display = 'block';
+            ph.style.display = 'none';
+        }
+
+        function openWechatBindModal() {
+            const modal = document.getElementById('wechatBindModal');
+            if (!modal) return;
+            modal.style.display = 'flex';
+            refreshWechatBindQr();
+        }
+
+        function closeWechatBindModal(e) {
+            if (e && e.target && e.target.id !== 'wechatBindModal') return;
+            const modal = document.getElementById('wechatBindModal');
+            if (modal) modal.style.display = 'none';
+            if (wechatBindTimer) {
+                clearInterval(wechatBindTimer);
+                wechatBindTimer = null;
+            }
+            wechatBindSid = null;
+            wechatBindBusy = false;
+        }
+
+        async function refreshWechatBindQr() {
+            if (wechatBindBusy) return;
+            wechatBindBusy = true;
+            if (wechatBindTimer) {
+                clearInterval(wechatBindTimer);
+                wechatBindTimer = null;
+            }
+            wechatBindSid = null;
+            setWechatBindQr(null);
+            setWechatBindStatus('正在生成二维码…');
+            try {
+                const res = await fetch('/api/wechat/bind_qrcode', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    credentials: 'include',
+                    body: JSON.stringify({})
+                });
+                const d = await res.json();
+                if (!res.ok || d.status !== 'success') throw new Error(d.message || '生成失败');
+                wechatBindSid = d.data.sid;
+                setWechatBindQr(d.data.qrcode_url);
+                setWechatBindStatus('请使用小程序扫码并确认绑定。');
+                wechatBindTimer = setInterval(pollWechatBind, 1500);
+            } catch (e2) {
+                setWechatBindStatus('二维码生成失败：' + ((e2 && e2.message) ? e2.message : '请稍后重试'));
+            } finally {
+                wechatBindBusy = false;
+            }
+        }
+
+        async function pollWechatBind() {
+            if (!wechatBindSid) return;
+            try {
+                const res = await fetch(`/api/wechat/bind_sessions/${encodeURIComponent(wechatBindSid)}`, { credentials: 'include' });
+                const d = await res.json();
+                if (!res.ok || d.status !== 'success') return;
+                const state = d.data.state;
+                if (state === 'expired') {
+                    setWechatBindStatus('二维码已过期，请刷新。');
+                    if (wechatBindTimer) { clearInterval(wechatBindTimer); wechatBindTimer = null; }
+                    return;
+                }
+                if (state === 'bound') {
+                    setWechatBindStatus('绑定成功 ✓');
+                    if (wechatBindTimer) { clearInterval(wechatBindTimer); wechatBindTimer = null; }
+                    setTimeout(() => {
+                        closeWechatBindModal();
+                        loadEmailInfo();
+                    }, 800);
+                }
+            } catch (e) {
+                // 忽略轮询错误
+            }
+        }
+
+        document.getElementById('bindWechatLink').addEventListener('click', (e) => {
+            e.preventDefault();
+            openWechatBindModal();
+        });
+
+        document.getElementById('unbindWechatLink').addEventListener('click', async (e) => {
+            e.preventDefault();
+            if (!confirm('确定要解绑微信吗？解绑后将无法使用微信一键登录。')) return;
+            try {
+                const res = await fetch('/api/wechat/unbind', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    credentials: 'include',
+                    body: JSON.stringify({})
+                });
+                const d = await res.json();
+                if (!res.ok || d.status !== 'success') throw new Error(d.message || '解绑失败');
+                alert('解绑成功');
+                loadEmailInfo();
+            } catch (err) {
+                alert('解绑失败：' + ((err && err.message) ? err.message : '请稍后重试'));
+            }
         });
         
         document.getElementById('cancelBindBtn').addEventListener('click', () => {

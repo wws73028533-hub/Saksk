@@ -712,6 +712,14 @@ function bindFab(){
 
 async function init() {
     if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark-mode');
+    
+    // 布局主题切换：根据用户设置切换传统布局或卡片布局
+    const layoutTheme = localStorage.getItem('quiz_layout_theme_v1') || 'traditional';
+    if (layoutTheme === 'card') {
+        document.body.classList.add('quiz-layout-card');
+    } else {
+        document.body.classList.remove('quiz-layout-card');
+    }
 
     // 悬浮球开关：题库设置页可关闭/开启。
     // 规则：
@@ -1136,25 +1144,57 @@ document.addEventListener('change', function(e){
     const t = e.target;
     if (!(t instanceof HTMLInputElement)) return;
 
-    // 判断题（radio）：仅处理判断题容器
+    // 判断题（radio）：处理传统布局和卡片布局
     if (t.type === 'radio') {
+        // 传统布局
         const wrap = t.closest('.tf-options');
-        if (!wrap) return;
-        const name = t.name;
-        wrap.querySelectorAll(`input[type="radio"][name="${CSS.escape(name)}"]`).forEach(r => {
-            const lab = r.closest('label');
-            if (lab) lab.classList.toggle('selected', r.checked);
-        });
+        if (wrap) {
+            const name = t.name;
+            wrap.querySelectorAll(`input[type="radio"][name="${CSS.escape(name)}"]`).forEach(r => {
+                const lab = r.closest('label');
+                if (lab) lab.classList.toggle('selected', r.checked);
+            });
+        }
+        // 卡片布局
+        const cardWrap = t.closest('.tf-option-card');
+        if (cardWrap) {
+            const name = t.name;
+            const container = cardWrap.closest('.options-container');
+            if (container) {
+                container.querySelectorAll(`input[type="radio"][name="${CSS.escape(name)}"]`).forEach(r => {
+                    const card = r.closest('.option-card');
+                    if (card) {
+                        const lab = r.closest('label');
+                        if (lab) {
+                            lab.classList.toggle('selected', r.checked);
+                            // 同时给选项卡片添加 selected 类，用于整体高亮
+                            card.classList.toggle('selected', r.checked);
+                        }
+                    }
+                });
+            }
+        }
         return;
     }
 
-    // 选择题（checkbox）：统一成判断题同款“整行高亮 + 左侧标记”
+    // 选择题（checkbox）：统一成判断题同款"整行高亮 + 左侧标记"
     if (t.type === 'checkbox') {
+        // 传统布局
         const wrap = t.closest('.options');
-        if (!wrap) return;
-        if (wrap.classList.contains('tf-options')) return;
-        const lab = t.closest('label');
-        if (lab) lab.classList.toggle('selected', t.checked);
+        if (wrap && !wrap.classList.contains('tf-options')) {
+            const lab = t.closest('label');
+            if (lab) lab.classList.toggle('selected', t.checked);
+        }
+        // 卡片布局
+        const cardWrap = t.closest('.option-card');
+        if (cardWrap) {
+            const lab = t.closest('label');
+            if (lab) {
+                lab.classList.toggle('selected', t.checked);
+                // 同时给选项卡片添加 selected 类，用于整体高亮
+                cardWrap.classList.toggle('selected', t.checked);
+            }
+        }
         return;
     }
 });
@@ -1603,12 +1643,28 @@ function reviewJump(index) {
 
 function judgeQuestion(q, type, answer) {
     if (type === '选择题' || type === '判断题' || type === '多选题') {
-        const inputs = q.querySelectorAll('input');
+        // 兼容两种布局：传统布局和卡片布局
+        const inputs = q.querySelectorAll('input[type="checkbox"], input[type="radio"]');
         let userVals = [];
         inputs.forEach(i => { if(i.checked) userVals.push(i.value) });
+        
+        // 多选题：漏选、少选也要判错，必须完全匹配
+        if (type === '多选题') {
+            // 确保 answer 是字符串
+            const correctAnswer = String(answer || '');
+            // 用户答案排序
+            const userAnswerStr = userVals.sort().join("");
+            // 标准答案排序
+            const correctAnswerStr = correctAnswer.split('').sort().join("");
+            // 必须数量相等且内容完全匹配
+            return userVals.length === correctAnswer.length && userAnswerStr === correctAnswerStr;
+        }
+        
+        // 选择题和判断题：保持原有逻辑
         return userVals.sort().join("") === answer;
     } else if (type === '填空题') {
-        const inputs = q.querySelectorAll('.main-input');
+        // 兼容两种布局
+        const inputs = q.querySelectorAll('.main-input[type="text"], input.main-input');
         const correctBlanks = answer.split(';;').map(a => a.trim());
 
         if (inputs.length === 0) return false; // 没有找到输入框
@@ -1624,17 +1680,22 @@ function judgeQuestion(q, type, answer) {
         }
         return allCorrect;
     } else if (type === '问答题') {
-        return !!q.querySelector('textarea').value.trim();
+        // 兼容两种布局
+        const textarea = q.querySelector('textarea');
+        return !!(textarea && textarea.value.trim());
     }
     return false;
 }
 
 function hasAnswered(q, type) {
-    if (type === '选择题' || type === '判断题' || type === '多选题') return !!q.querySelector('input:checked');
+    if (type === '选择题' || type === '判断题' || type === '多选题') {
+        // 兼容两种布局：传统布局和卡片布局
+        return !!q.querySelector('input[type="checkbox"]:checked, input[type="radio"]:checked');
+    }
 
     if (type === '填空题') {
-        // 多空时：必须所有输入框都非空才算“已作答”
-        const inputs = q.querySelectorAll('.main-input');
+        // 兼容两种布局
+        const inputs = q.querySelectorAll('.main-input[type="text"], input.main-input[type="text"], input[type="text"].main-input');
         if (inputs.length > 1) {
             return Array.from(inputs).every(i => (i.value || '').trim().length > 0);
         }
@@ -1644,6 +1705,7 @@ function hasAnswered(q, type) {
     }
 
     if (type === '问答题') {
+        // 兼容两种布局
         const ta = q.querySelector('textarea');
         return !!(ta && ta.value && ta.value.trim());
     }
@@ -1654,18 +1716,41 @@ function styleFeedback(q, type, answer, isCorrect) {
     if (type === '选择题' || type === '判断题' || type === '多选题') {
         q.querySelectorAll('input').forEach(input => {
             const label = input.parentElement;
-            label.classList.remove('correct-opt', 'wrong-opt');
+            const optionCard = label.closest('.option-card');
+            const isCardLayout = !!optionCard;
+            
+            // 移除所有标记
+            if (!isCardLayout) {
+                // 传统布局：在 label 上添加标记
+                label.classList.remove('correct-opt', 'wrong-opt');
+            }
+            if (optionCard) {
+                // 卡片布局：在卡片上添加标记
+                optionCard.classList.remove('correct-opt', 'wrong-opt');
+            }
+            
             if (isCorrect) {
                 // 做对时，用户选中的都绿色
-                if (input.checked) label.classList.add('correct-opt');
+                if (input.checked) {
+                    if (!isCardLayout) {
+                        label.classList.add('correct-opt');
+                    }
+                    if (optionCard) optionCard.classList.add('correct-opt');
+                }
             } else {
                 // 做错时，用户选中的错误选项标红
                 if (input.checked && !answer.includes(input.value)) {
-                    label.classList.add('wrong-opt');
+                    if (!isCardLayout) {
+                        label.classList.add('wrong-opt');
+                    }
+                    if (optionCard) optionCard.classList.add('wrong-opt');
                 }
                 // 总是高亮正确答案
                 if (answer.includes(input.value)) {
-                    label.classList.add('correct-opt');
+                    if (!isCardLayout) {
+                        label.classList.add('correct-opt');
+                    }
+                    if (optionCard) optionCard.classList.add('correct-opt');
                 }
             }
         });
@@ -2084,7 +2169,17 @@ function applyReviewFromServer() {
             }
             // 展示解析与高亮
             const isCorrect = (function(){
-                if (type === '选择题' || type === '多选题') return (ua.split('').sort().join('') === (stdAns||'').split('').sort().join('')) && ua !== '';
+                if (type === '选择题') return (ua.split('').sort().join('') === (stdAns||'').split('').sort().join('')) && ua !== '';
+                if (type === '多选题') {
+                    // 多选题：漏选、少选也要判错，必须完全匹配
+                    if (!ua || ua === '') return false;
+                    const correctAnswer = String(stdAns || '');
+                    const userAnswerArr = ua.split('').sort();
+                    const correctAnswerArr = correctAnswer.split('').sort();
+                    // 必须数量相等且内容完全匹配
+                    return userAnswerArr.length === correctAnswerArr.length && 
+                           userAnswerArr.join('') === correctAnswerArr.join('');
+                }
                 if (type === '判断题') return ua === stdAns && ua !== '';
                 if (type === '填空题') {
                     // 标准答案：不同空用 ";;" 分隔；每空多答案用 ";" 分隔

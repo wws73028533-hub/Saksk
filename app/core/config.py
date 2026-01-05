@@ -56,6 +56,10 @@ class Config:
     MAIL_ENABLED = os.environ.get('MAIL_ENABLED', 'true').lower() in ['true', 'on', '1']
     # 开发环境控制台输出验证码（不发送真实邮件）
     MAIL_CONSOLE_OUTPUT = os.environ.get('MAIL_CONSOLE_OUTPUT', 'false').lower() in ['true', 'on', '1']
+    
+    # 微信小程序配置
+    WECHAT_APPID = os.environ.get('WECHAT_APPID') or os.environ.get('WX_APPID')
+    WECHAT_SECRET = os.environ.get('WECHAT_SECRET') or os.environ.get('WX_SECRET')
 
 
 class DevelopmentConfig(Config):

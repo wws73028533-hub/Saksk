@@ -150,8 +150,16 @@ def _register_before_request(app):
     def enforce_login():
         path = request.path or ''
         
-        # 已登录的会话校验
-        if session.get('user_id'):
+        # 检查JWT token（小程序）
+        jwt_token = request.headers.get('Authorization') or request.headers.get('authorization')
+        has_jwt_token = False
+        if jwt_token and jwt_token.startswith('Bearer '):
+            # 如果有JWT token，跳过session检查，让@auth_required装饰器处理
+            # 但需要先检查路径是否在白名单中（JWT token也需要通过@auth_required验证）
+            has_jwt_token = True
+        
+        # 已登录的会话校验（仅Web端，小程序使用JWT token）
+        if session.get('user_id') and not has_jwt_token:
             try:
                 uid = session.get('user_id')
                 conn = get_db()
@@ -328,12 +336,32 @@ def _register_before_request(app):
             '/terms',  # 服务协议页面
             '/privacy',  # 隐私保护协议页面
             '/api/login',
+            '/api/wechat/login',  # 微信登录（无需登录，支持自动注册）
+            '/api/wechat/create',  # 微信创建新账号（临时票据）
+            '/api/wechat/bind',  # 微信绑定已有账号（临时票据）
+            '/api/wechat/bind/send_code',  # 微信绑定：发送邮箱验证码（临时票据）
+            '/api/wechat/bind_confirm',  # Web账号管理：扫码绑定微信（小程序确认）
+            '/api/mini/login',  # 小程序：账号密码登录（JWT）
+            '/api/mini/email/send-login-code',  # 小程序：发送邮箱登录验证码（JWT）
+            '/api/mini/email/login',  # 小程序：邮箱验证码登录（JWT）
             '/api/email/send-login-code',  # 发送登录验证码（无需登录，支持自动注册）
             '/api/email/login',  # 验证码登录（无需登录，支持自动注册）
             '/api/forgot-password/send-code',  # 发送忘记密码验证码（无需登录）
             '/api/forgot-password/reset'  # 重置密码（无需登录）
         }
         if path in allow_paths or path.startswith('/static'):
+            return
+
+        # Web 扫码登录相关 API（未登录可访问，confirm 仍由 jwt_required 控制）
+        if path.startswith('/api/web_login/'):
+            return
+
+        # 扫码登录二维码图片（仅允许该目录）
+        if path.startswith('/uploads/web_login/'):
+            return
+
+        # 绑定微信二维码图片（仅允许该目录）
+        if path.startswith('/uploads/wechat_bind/'):
             return
 
         # 公开API（需要检查参数）
@@ -409,9 +437,17 @@ def _register_before_request(app):
         
         for api_path in login_required_apis:
             if path.startswith(api_path):
+                # 如果有JWT token，让@auth_required装饰器处理
+                jwt_token = request.headers.get('Authorization') or request.headers.get('authorization')
+                if jwt_token and jwt_token.startswith('Bearer '):
+                    return  # 跳过检查，让装饰器处理
                 return jsonify({'status': 'unauthorized', 'message': '请先登录后使用此功能'}), 401
         
         if path.startswith('/api'):
+            # 如果有JWT token，让@auth_required装饰器处理
+            jwt_token = request.headers.get('Authorization') or request.headers.get('authorization')
+            if jwt_token and jwt_token.startswith('Bearer '):
+                return  # 跳过检查，让装饰器处理
             return jsonify({'status': 'unauthorized', 'message': '请先登录'}), 401
         return redirect('/login')
 

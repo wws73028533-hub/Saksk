@@ -4,129 +4,34 @@
 """
 from flask import Flask
 
+
 def register_all_modules(app: Flask):
     """注册所有功能模块（渐进式迁移，只注册已迁移的模块）"""
-    # 按依赖顺序注册（只注册已迁移的模块）
-    
-    # 已迁移的模块
-    try:
-        from .auth import init_auth_module
-        init_auth_module(app)
-        app.logger.info('✓ auth模块已注册')
-    except ImportError as e:
-        app.logger.warning(f'✗ auth模块注册失败: {e}')
-    
-    try:
-        from .main import init_main_module
-        init_main_module(app)
-        app.logger.info('✓ main模块已注册')
-    except ImportError as e:
-        app.logger.warning(f'✗ main模块注册失败: {e}')
-    
-    try:
-        from .quiz import init_quiz_module
-        init_quiz_module(app)
-        app.logger.info('✓ quiz模块已注册')
-    except ImportError as e:
-        app.logger.warning(f'✗ quiz模块注册失败: {e}')
-    
-    try:
-        from .exam import init_exam_module
-        init_exam_module(app)
-        app.logger.info('✓ exam模块已注册')
-    except ImportError as e:
-        app.logger.warning(f'✗ exam模块注册失败: {e}')
-    
-    try:
-        from .user import init_user_module
-        init_user_module(app)
-        app.logger.info('✓ user模块已注册')
-    except ImportError as e:
-        app.logger.warning(f'✗ user模块注册失败: {e}')
-    
-    try:
-        from .chat import init_chat_module
-        init_chat_module(app)
-        app.logger.info('✓ chat模块已注册')
-    except ImportError as e:
-        app.logger.warning(f'✗ chat模块注册失败: {e}')
-    
-    try:
-        from .notifications import init_notifications_module
-        init_notifications_module(app)
-        app.logger.info('✓ notifications模块已注册')
-    except ImportError as e:
-        app.logger.warning(f'✗ notifications模块注册失败: {e}')
-    
-    try:
-        from .popups import init_popups_module
-        init_popups_module(app)
-        app.logger.info('✓ popups模块已注册')
-    except ImportError as e:
-        app.logger.warning(f'✗ popups模块注册失败: {e}')
-    
-    try:
-        from .coding import init_coding_module
-        init_coding_module(app)
-        app.logger.info('✓ coding模块已注册')
-    except ImportError as e:
-        app.logger.warning(f'✗ coding模块注册失败: {e}')
-    
-    try:
-        from .admin import init_admin_module
-        init_admin_module(app)
-        app.logger.info('✓ admin模块已注册')
-    except ImportError as e:
-        app.logger.warning(f'✗ admin模块注册失败: {e}')
-    
-    # 所有模块已迁移完成
-    # try:
-    #     from .main import init_main_module
-    #     init_main_module(app)
-    # except ImportError:
-    #     pass
-    # 
-    # try:
-    #     from .quiz import init_quiz_module
-    #     init_quiz_module(app)
-    # except ImportError:
-    #     pass
-    # 
-    # try:
-    #     from .exam import init_exam_module
-    #     init_exam_module(app)
-    # except ImportError:
-    #     pass
-    # 
-    # try:
-    #     from .user import init_user_module
-    #     init_user_module(app)
-    # except ImportError:
-    #     pass
-    # 
-    # try:
-    #     from .chat import init_chat_module
-    #     init_chat_module(app)
-    # except ImportError:
-    #     pass
-    # 
-    # try:
-    #     from .coding import init_coding_module
-    #     init_coding_module(app)
-    # except ImportError:
-    #     pass
-    # 
-    # try:
-    #     from .notifications import init_notifications_module
-    #     init_notifications_module(app)
-    # except ImportError:
-    #     pass
-    # 
-    # try:
-    #     from .admin import init_admin_module
-    #     init_admin_module(app)
-    # except ImportError:
-    #     pass
-    
+
+    def _init_module(import_path: str, init_name: str, label: str):
+        """初始化模块：开发环境失败直接抛出，避免服务以缺失模块的状态继续运行。"""
+        try:
+            module = __import__(import_path, fromlist=[init_name])
+            init_func = getattr(module, init_name)
+            init_func(app)
+            app.logger.info(f'✓ {label}模块已注册')
+        except Exception as e:
+            # 记录完整堆栈，方便定位 import 或初始化失败原因
+            app.logger.exception(f'✗ {label}模块注册失败: {e}')
+            if app.config.get('DEBUG'):
+                raise
+
+    # 按依赖顺序注册
+    _init_module('app.modules.auth', 'init_auth_module', 'auth')
+    _init_module('app.modules.main', 'init_main_module', 'main')
+    _init_module('app.modules.quiz', 'init_quiz_module', 'quiz')
+    _init_module('app.modules.exam', 'init_exam_module', 'exam')
+    _init_module('app.modules.user', 'init_user_module', 'user')
+    _init_module('app.modules.chat', 'init_chat_module', 'chat')
+    _init_module('app.modules.notifications', 'init_notifications_module', 'notifications')
+    _init_module('app.modules.popups', 'init_popups_module', 'popups')
+    _init_module('app.modules.coding', 'init_coding_module', 'coding')
+    _init_module('app.modules.admin', 'init_admin_module', 'admin')
+
     app.logger.info('模块注册完成')
 

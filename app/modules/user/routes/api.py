@@ -190,11 +190,19 @@ def api_profile():
     conn = get_db()
     
     try:
+        user_cols = [r['name'] for r in conn.execute("PRAGMA table_info(users)").fetchall()]
+        has_openid = 'openid' in user_cols
         # 获取用户基本信息
-        user_row = conn.execute(
-            'SELECT id, username, created_at, is_admin, avatar, contact, college, email, email_verified FROM users WHERE id = ?',
-            (uid,)
-        ).fetchone()
+        if has_openid:
+            user_row = conn.execute(
+                'SELECT id, username, created_at, is_admin, avatar, contact, college, email, email_verified, openid FROM users WHERE id = ?',
+                (uid,)
+            ).fetchone()
+        else:
+            user_row = conn.execute(
+                'SELECT id, username, created_at, is_admin, avatar, contact, college, email, email_verified FROM users WHERE id = ?',
+                (uid,)
+            ).fetchone()
         
         if not user_row:
             return jsonify({'status': 'error', 'message': '用户不存在'}), 404
@@ -242,6 +250,7 @@ def api_profile():
                 'college': user['college'],
                 'email': user.get('email'),
                 'email_verified': bool(user.get('email_verified', 0)),
+                'wechat_bound': bool(user.get('openid')) if has_openid else False,
                 'created_at': user['created_at'][:10] if user['created_at'] else '-',
                 'is_admin': bool(user['is_admin']),
                 'has_password_set': has_password_set,
@@ -477,5 +486,4 @@ def uploaded_file(filename):
     """访问上传的文件"""
     upload_folder = current_app.config['UPLOAD_FOLDER']
     return send_from_directory(upload_folder, filename)
-
 
