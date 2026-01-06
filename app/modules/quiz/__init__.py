@@ -6,7 +6,15 @@ from flask import Flask, Blueprint
 def init_quiz_module(app: Flask):
     """初始化刷题模块"""
     from .routes.pages import quiz_pages_bp
-    from .routes.api import quiz_api_bp, toggle_favorite, record_result, progress_api, api_questions_count, api_user_counts
+    from .routes.api import (
+        quiz_api_bp,
+        toggle_favorite,
+        record_result,
+        progress_api,
+        api_questions_count,
+        api_user_counts,
+        api_ai_explain,
+    )
     
     # 获取模块目录，用于设置模板路径
     module_dir = os.path.dirname(os.path.abspath(__file__))
@@ -26,6 +34,7 @@ def init_quiz_module(app: Flask):
     app.add_url_rule('/api/progress', endpoint='api_progress', view_func=progress_api, methods=['GET', 'POST', 'DELETE'])
     app.add_url_rule('/api/questions/count', endpoint='api_questions_count', view_func=api_questions_count, methods=['GET'])
     app.add_url_rule('/api/questions/user_counts', endpoint='api_questions_user_counts', view_func=api_user_counts, methods=['GET'])
+    app.add_url_rule('/api/ai/explain', endpoint='api_ai_explain', view_func=api_ai_explain, methods=['POST'])
     
     # 注册主蓝图（用于页面路由）
     app.register_blueprint(quiz_bp)

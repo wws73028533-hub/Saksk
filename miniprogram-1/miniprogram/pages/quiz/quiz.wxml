@@ -149,20 +149,23 @@
   </view>
 
   <!-- 底部导航栏 -->
-  <view class="bottom-nav" wx:if="{{!loading && currentQuestion}}">
-    <button 
-      class="nav-btn prev-btn {{currentIndex === 0 ? 'disabled' : ''}}"
-      bindtap="onPrevQuestion"
-      disabled="{{currentIndex === 0}}"
-    >
-      上一题
-    </button>
-    <button 
-      class="nav-btn next-btn"
-      bindtap="onNextQuestion"
-    >
-      {{currentIndex === questions.length - 1 ? '完成' : '下一题'}}
-    </button>
+  <view class="bottom-actions" wx:if="{{!loading && currentQuestion}}">
+    <view class="bottom-col left">
+      <button
+        class="nav-btn prev-btn {{currentIndex === 0 ? 'disabled' : ''}}"
+        bindtap="onPrevQuestion"
+        disabled="{{currentIndex === 0}}"
+      >
+        上一题
+      </button>
+      <button class="mini-action-btn" bindtap="onOpenSettings">设置</button>
+    </view>
+    <view class="bottom-col right">
+      <button class="nav-btn next-btn" bindtap="onNextQuestion">
+        {{currentIndex === questions.length - 1 ? '完成' : '下一题'}}
+      </button>
+      <button class="mini-action-btn ai" bindtap="onToggleAIExplain">AI</button>
+    </view>
   </view>
 </view>
 </view>
@@ -188,13 +191,62 @@
         <view class="drawer-item-content">
           <text class="drawer-item-number">{{index + 1}}.</text>
           <text class="drawer-item-text">{{item.contentPreview || item.content}}</text>
-        </view>
-        <view class="drawer-item-meta">
-          <text class="drawer-item-type">{{item.q_type}}</text>
           <text class="drawer-item-status" wx:if="{{answerRecords[item.id]}}">
             {{answerRecords[item.id].isCorrect ? '✓' : '✕'}}
           </text>
         </view>
+      </view>
+    </scroll-view>
+  </view>
+</view>
+
+<!-- 刷题设置弹窗 -->
+<view wx:if="{{showSettings}}" class="modal-mask" bindtap="onCloseSettings">
+  <view class="modal-card" catchtap="stopPropagation">
+    <view class="modal-header">
+      <text class="modal-title">刷题设置</text>
+      <view class="modal-close" bindtap="onCloseSettings"><text>×</text></view>
+    </view>
+    <view class="modal-body">
+      <view class="setting-item">
+        <view class="setting-text">
+          <text class="setting-title">答对自动切题</text>
+          <text class="setting-desc">答错不切题</text>
+        </view>
+        <switch checked="{{practiceSettings.autoNextOnCorrect}}" bindchange="onSettingSwitchChange" data-key="autoNextOnCorrect" />
+      </view>
+      <view class="setting-item">
+        <view class="setting-text">
+          <text class="setting-title">做错自动收藏</text>
+          <text class="setting-desc">自动加入收藏夹</text>
+        </view>
+        <switch checked="{{practiceSettings.autoFavoriteOnWrong}}" bindchange="onSettingSwitchChange" data-key="autoFavoriteOnWrong" />
+      </view>
+      <view class="setting-item">
+        <view class="setting-text">
+          <text class="setting-title">答题震动反馈</text>
+          <text class="setting-desc">提交后轻微震动</text>
+        </view>
+        <switch checked="{{practiceSettings.vibrationFeedback}}" bindchange="onSettingSwitchChange" data-key="vibrationFeedback" />
+      </view>
+    </view>
+  </view>
+</view>
+
+<!-- AI 解析卡片 -->
+<view wx:if="{{showAIExplain}}" class="ai-mask" bindtap="onToggleAIExplain">
+  <view class="ai-card" catchtap="stopPropagation">
+    <view class="ai-header">
+      <text class="ai-title">AI 解析</text>
+      <view class="ai-actions">
+        <button class="ai-btn" bindtap="onRegenerateAIExplain" loading="{{aiLoading}}" disabled="{{aiLoading}}">重新生成</button>
+      </view>
+    </view>
+    <scroll-view class="ai-body" scroll-y>
+      <view class="ai-loading" wx:if="{{aiLoading}}"><text>生成中...</text></view>
+      <view class="ai-error" wx:if="{{!aiLoading && aiExplainError}}"><text>{{aiExplainError}}</text></view>
+      <view wx:if="{{!aiLoading && !aiExplainError}}">
+        <text class="ai-text">{{aiExplainText}}</text>
       </view>
     </scroll-view>
   </view>

@@ -151,7 +151,7 @@ function request<T = any>(
           reject(new Error(errorMsg));
         }
       },
-      fail: (err) => {
+      fail: (err: any) => {
         console.error('网络请求失败:', err);
         // 处理网络错误
         const errorMsg = err.errMsg || err.message || '网络请求失败，请检查网络连接';
@@ -208,6 +208,10 @@ export const api = {
 
   miniEmailLogin: (email: string, code: string) =>
     request('/mini/email/login', 'POST', { email, code }),
+
+  // 小程序：已登录用户绑定微信（密码/邮箱登录后引导绑定）
+  miniWechatBind: (code: string) =>
+    request('/mini/wechat/bind', 'POST', { code }),
   
   // 获取科目列表
   getSubjects: () => request('/quiz/subjects', 'GET'),
@@ -247,6 +251,10 @@ export const api = {
   // 切换收藏
   toggleFavorite: (questionId: number) =>
     request('/quiz/favorite', 'POST', { question_id: questionId }),
+
+  // AI 解析（占位/可替换为真实 AI）
+  aiExplain: (payload: { question_id?: number; content?: string; q_type?: string; options?: any }) =>
+    request('/quiz/ai/explain', 'POST', payload),
   
   // 获取科目详情信息
   getSubjectInfo: (subject: string) =>

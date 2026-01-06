@@ -903,7 +903,8 @@ def api_mini_password_login():
         if user.get('is_locked'):
             return jsonify({'status': 'error', 'message': '账户已被锁定，请联系管理员'}), 403
 
-        token = generate_jwt_token(int(user['id']), '', session_version=int(user.get('session_version') or 0))
+        openid = str(user.get('openid') or '').strip()
+        token = generate_jwt_token(int(user['id']), openid, session_version=int(user.get('session_version') or 0))
         return jsonify({
             'status': 'success',
             'data': {
@@ -913,7 +914,8 @@ def api_mini_password_login():
                     'id': int(user['id']),
                     'username': user.get('username'),
                     'avatar': user.get('avatar'),
-                    'is_new_user': False
+                    'is_new_user': False,
+                    'wechat_bound': bool(openid)
                 }
             }
         }), 200
@@ -957,7 +959,8 @@ def api_mini_email_login():
         if user_data.get('is_locked'):
             return jsonify({'status': 'error', 'message': '账户已被锁定，请联系管理员'}), 403
 
-        token = generate_jwt_token(int(user_data['id']), '', session_version=int(user_data.get('session_version') or 0))
+        openid = str(user_data.get('openid') or '').strip()
+        token = generate_jwt_token(int(user_data['id']), openid, session_version=int(user_data.get('session_version') or 0))
         return jsonify({
             'status': 'success',
             'data': {
@@ -967,10 +970,101 @@ def api_mini_email_login():
                     'id': int(user_data['id']),
                     'username': user_data.get('username'),
                     'avatar': user_data.get('avatar'),
-                    'is_new_user': bool(user_data.get('is_new_user', False))
+                    'is_new_user': bool(user_data.get('is_new_user', False)),
+                    'wechat_bound': bool(openid)
                 }
             }
         }), 200
     except Exception as e:
         current_app.logger.error(f'小程序邮箱验证码登录异常: {e}', exc_info=True)
         return jsonify({'status': 'error', 'message': '登录失败，请稍后重试'}), 500
+
+
+@auth_api_bp.route('/mini/wechat/bind', methods=['POST'])
+@jwt_required
+@limiter.limit("60 per minute")
+def api_mini_wechat_bind():
+    """小程序：已登录用户绑定微信（密码/邮箱登录后弹窗绑定）"""
+    from flask import g
+
+    data = request.json or {}
+    code = (data.get('code') or '').strip()
+    if not code:
+        return jsonify({'status': 'error', 'message': '缺少code'}), 400
+
+    wechat_data = WechatAuthService.verify_code(code)
+    if wechat_data.get('error'):
+        return jsonify({'status': 'error', 'message': wechat_data.get('error') or '微信登录失败'}), 400
+
+    openid = str(wechat_data.get('openid') or '').strip()
+    if not openid:
+        return jsonify({'status': 'error', 'message': '微信登录失败：未获取到openid'}), 400
+
+    uid = int(getattr(g, 'current_user_id', 0) or 0)
+    if not uid:
+        return jsonify({'status': 'unauthorized', 'message': '请先登录'}), 401
+
+    conn = get_db()
+    try:
+        row = conn.execute(
+            'SELECT id, username, avatar, is_locked, session_version, openid FROM users WHERE id = ?',
+            (uid,)
+        ).fetchone()
+        if not row:
+            return jsonify({'status': 'error', 'message': '用户不存在'}), 404
+        user = dict(row)
+
+        if int(user.get('is_locked') or 0) == 1:
+            return jsonify({'status': 'error', 'message': '账户已被锁定，请联系管理员'}), 403
+
+        existing_openid = str(user.get('openid') or '').strip()
+        if existing_openid:
+            # 已绑定：如果绑定的是同一个微信，直接返回成功；否则提示先解绑
+            if existing_openid != openid:
+                return jsonify({'status': 'error', 'message': '该账号已绑定其他微信，如需更换请先解绑'}), 409
+
+            token = generate_jwt_token(uid, existing_openid, session_version=int(user.get('session_version') or 0))
+            return jsonify({
+                'status': 'success',
+                'data': {
+                    'token': token,
+                    'user_info': {
+                        'id': uid,
+                        'username': user.get('username'),
+                        'avatar': user.get('avatar'),
+                        'wechat_bound': True,
+                    }
+                }
+            }), 200
+
+        # 防止 openid 被重复绑定
+        existing = conn.execute('SELECT id FROM users WHERE openid = ? LIMIT 1', (openid,)).fetchone()
+        if existing and int(existing['id']) != uid:
+            return jsonify({'status': 'error', 'message': '该微信已绑定其他账号'}), 409
+
+        try:
+            conn.execute('UPDATE users SET openid = ? WHERE id = ?', (openid, uid))
+            conn.commit()
+        except sqlite3.IntegrityError:
+            conn.rollback()
+            return jsonify({'status': 'error', 'message': '该微信已绑定其他账号'}), 409
+
+        # 绑定完成后返回包含 openid 的新 JWT（便于后续强制下线校验）
+        refreshed = User.get_by_id(uid) or user
+        token = generate_jwt_token(uid, openid, session_version=int(refreshed.get('session_version') or 0))
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'token': token,
+                'user_info': {
+                    'id': uid,
+                    'username': refreshed.get('username'),
+                    'avatar': refreshed.get('avatar'),
+                    'wechat_bound': True,
+                }
+            }
+        }), 200
+    except Exception as e:
+        conn.rollback()
+        current_app.logger.error(f'小程序绑定微信失败: {e}', exc_info=True)
+        return jsonify({'status': 'error', 'message': '绑定失败，请稍后重试'}), 500

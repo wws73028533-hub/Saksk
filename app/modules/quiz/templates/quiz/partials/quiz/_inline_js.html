@@ -361,11 +361,19 @@ async function toggleCurrentFavorite(){
     showToast('收藏按钮不可用');
 }
 
-async function openAIExplain(){
-    if (!LOGGED_IN) { showToast('请先登录'); return; }
+// Web 端 AI 解析：点击 AI 仅开关卡片；“重新生成”才会再次调用接口
+const aiExplainState = {
+    qid: null,
+    explain: '',
+    open: false,
+    loading: false,
+    lastReqId: 0
+};
+
+function getCurrentAiPayload(){
     const q = questions[currentIndex];
-    if (!q) return;
-    const qid = q.getAttribute('data-id') || '';
+    if (!q) return null;
+    const qidRaw = q.getAttribute('data-id') || '';
     const qtype = q.getAttribute('data-type') || '';
     const contentEl = q.querySelector('.q-content');
     const content = contentEl ? (contentEl.innerText || '').trim() : '';
@@ -382,53 +390,133 @@ async function openAIExplain(){
         }
     } catch(e) {}
 
-    try {
-        const explainCard = document.getElementById('aiExplainCard') || document.getElementById('explainCard');
-        if (explainCard) {
-            explainCard.style.display = 'block';
-            explainCard.innerHTML = `
-                <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
-                    <div style="font-weight:800;">AI 解析</div>
-                    <div style="font-size:12px; color:var(--text-sub);">生成中…</div>
-                </div>
-                <div style="margin-top:10px; color:var(--text-sub); font-size:14px; line-height:1.6;">请稍候</div>
-            `;
-        }
-    } catch(e) {}
+    const qid = qidRaw ? Number(qidRaw) : null;
+    return { qid, qtype, content, options };
+}
 
+function getAIExplainHost(){
+    return document.getElementById('aiExplainCard') || document.getElementById('explainCard');
+}
+
+function renderAIExplainCard({ loading, explainText }){
+    const host = getAIExplainHost();
+    if (!host) return;
+
+    const safeText = (explainText || '').toString();
+    const loadingText = loading ? '生成中…' : '';
+
+    host.style.display = 'block';
+    host.innerHTML = `
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+            <div style="font-weight:800;">AI 解析</div>
+            <div style="display:flex; align-items:center; gap:8px;">
+                ${loading ? `<div style="font-size:12px; color:var(--text-sub);">${loadingText}</div>` : ``}
+                <button class="btn" style="padding:6px 10px; font-size:12px;" id="aiExplainRegenerateBtn" ${loading ? 'disabled' : ''}>重新生成</button>
+                <button class="btn" style="padding:6px 10px; font-size:12px;" id="aiExplainCopyBtn" ${loading ? 'disabled' : ''}>复制</button>
+            </div>
+        </div>
+        ${loading
+            ? `<div style="margin-top:10px; color:var(--text-sub); font-size:14px; line-height:1.6;">请稍候</div>`
+            : `<pre style="margin:10px 0 0 0; white-space:pre-wrap; font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial; font-size:14px; line-height:1.6; color:var(--text-color);">${escapeHtml(safeText || '暂无内容')}</pre>`
+        }
+    `;
+
+    const regenBtn = document.getElementById('aiExplainRegenerateBtn');
+    if (regenBtn) {
+        regenBtn.onclick = async function(){
+            await requestAIExplain({ force: true });
+        };
+    }
+
+    const copyBtn = document.getElementById('aiExplainCopyBtn');
+    if (copyBtn) {
+        copyBtn.onclick = async function(){
+            try { await navigator.clipboard.writeText(safeText || ''); showToast('已复制'); }
+            catch(e) { showToast('复制失败'); }
+        };
+    }
+}
+
+function hideAIExplainCard({ clear = false } = {}){
+    const host = getAIExplainHost();
+    if (!host) return;
+    host.style.display = 'none';
+    host.classList.remove('show');
+    if (clear) host.innerHTML = '';
+    aiExplainState.open = false;
+    updateDockEmptyState();
+}
+
+function showAIExplainCard(){
+    const host = getAIExplainHost();
+    if (!host) return;
+    host.style.display = 'block';
+    host.classList.add('show');
+    aiExplainState.open = true;
+    updateDockEmptyState();
+}
+
+async function requestAIExplain({ force = false } = {}){
+    if (!LOGGED_IN) { showToast('请先登录'); return; }
+    const payload = getCurrentAiPayload();
+    if (!payload) return;
+
+    const { qid, qtype, content, options } = payload;
+    if (!force && aiExplainState.explain && aiExplainState.qid === qid) {
+        renderAIExplainCard({ loading: false, explainText: aiExplainState.explain });
+        return;
+    }
+
+    showAIExplainCard();
+    aiExplainState.loading = true;
+    renderAIExplainCard({ loading: true, explainText: '' });
+
+    const reqId = ++aiExplainState.lastReqId;
     try {
         const res = await fetch('/api/ai/explain', {
             method:'POST',
             headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({ question_id: qid ? Number(qid) : null, q_type: qtype, content, options })
+            body: JSON.stringify({ question_id: qid, q_type: qtype, content, options })
         });
         const js = await res.json();
+        if (reqId !== aiExplainState.lastReqId) return; // 被新的请求覆盖
         if (!res.ok || !js || js.status !== 'success') {
-            showToast(js.message || 'AI 解析失败');
+            showToast((js && js.message) || 'AI 解析失败');
+            aiExplainState.loading = false;
+            renderAIExplainCard({ loading: false, explainText: 'AI 解析失败，请稍后重试。' });
             return;
         }
         const explain = (js.data && js.data.explain) ? js.data.explain : '';
-        const explainCard = document.getElementById('aiExplainCard') || document.getElementById('explainCard');
-        if (explainCard) {
-            explainCard.style.display = 'block';
-            explainCard.innerHTML = `
-                <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
-                    <div style="font-weight:800;">AI 解析</div>
-                    <button class="btn" style="padding:6px 10px; font-size:12px;" id="aiExplainCopyBtn">复制</button>
-                </div>
-                <pre style="margin:10px 0 0 0; white-space:pre-wrap; font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial; font-size:14px; line-height:1.6; color:var(--text-color);">${escapeHtml(explain)}</pre>
-            `;
-            const btn = document.getElementById('aiExplainCopyBtn');
-            if (btn) {
-                btn.onclick = async function(){
-                    try { await navigator.clipboard.writeText(explain || ''); showToast('已复制'); }
-                    catch(e) { showToast('复制失败'); }
-                };
-            }
-        }
+        aiExplainState.qid = qid;
+        aiExplainState.explain = (explain || '').toString();
+        aiExplainState.loading = false;
+        renderAIExplainCard({ loading: false, explainText: aiExplainState.explain });
     } catch(e) {
+        if (reqId !== aiExplainState.lastReqId) return;
+        aiExplainState.loading = false;
         showToast('AI 解析失败');
+        renderAIExplainCard({ loading: false, explainText: 'AI 解析失败，请检查网络或稍后重试。' });
     }
+}
+
+async function toggleAIExplain(){
+    const host = getAIExplainHost();
+    if (!host) return;
+    const isOpen = host.style.display !== 'none';
+    if (isOpen) {
+        // 关闭但保留内容，避免再次点击触发重新生成
+        hideAIExplainCard({ clear: false });
+        return;
+    }
+
+    showAIExplainCard();
+    const payload = getCurrentAiPayload();
+    const qid = payload ? payload.qid : null;
+    if (aiExplainState.explain && aiExplainState.qid === qid) {
+        renderAIExplainCard({ loading: false, explainText: aiExplainState.explain });
+        return;
+    }
+    await requestAIExplain({ force: true });
 }
 
 function bindFab(){
@@ -458,9 +546,6 @@ function bindFab(){
         startLeft = rect.left;
         startTop = rect.top;
 
-        // 拖动时关闭菜单
-        if (fabOpen) toggleFab(false);
-
         try { fab.setPointerCapture(e.pointerId); } catch(err) {}
     });
 
@@ -468,7 +553,11 @@ function bindFab(){
         if (!dragging) return;
         const dx = e.clientX - startX;
         const dy = e.clientY - startY;
-        if (Math.abs(dx) + Math.abs(dy) > 6) moved = true;
+        if (!moved && Math.abs(dx) + Math.abs(dy) > 6) {
+            moved = true;
+            // 仅当用户确实在拖动时关闭菜单（否则点击“二次关闭”会被 pointerdown 抢先关掉又被 click 重新打开）
+            if (fabOpen) toggleFab(false);
+        }
         const next = normalizeFabPos({ left: startLeft + dx, top: startTop + dy });
         applyFabPos(next.left, next.top);
     });
@@ -550,17 +639,7 @@ function bindFab(){
             }
 
             if (action === 'aiExplain') {
-                // 再次点击：关闭 AI 解析（作为一个 toggle）
-                const explainCard = document.getElementById('aiExplainCard') || document.getElementById('explainCard');
-                const isOpen = !!(explainCard && explainCard.style.display !== 'none');
-                if (isOpen) {
-                    // 只关闭 AI 解析，不影响题目自身“解析/答案”dock
-                    try { explainCard.style.display = 'none'; explainCard.innerHTML = ''; explainCard.classList.remove('show'); } catch(e) {}
-                    // 如果右侧/下方 dock 需要根据空状态自适应，这里顺便刷新
-                    try { updateDockEmptyState(); } catch(e) {}
-                } else {
-                    await openAIExplain();
-                }
+                await toggleAIExplain();
                 toggleFab(false);
                 return;
             }
@@ -1423,6 +1502,7 @@ function hideAnswerExplainDock() {
     if (explainHost) { explainHost.style.display = 'none'; explainHost.innerHTML = ''; explainHost.classList.remove('show'); }
     // AI 解析独立卡片一并隐藏
     if (aiHost) { aiHost.style.display = 'none'; aiHost.innerHTML = ''; aiHost.classList.remove('show'); }
+    try { aiExplainState.open = false; } catch(e) {}
     setAnswerResultBadge(null);
     updateDockEmptyState();
 }
@@ -2432,6 +2512,36 @@ function normalizeEventToken(e){
     return mods.length ? `${mods.join('+')}+${keyCode}` : keyCode;
 }
 
+function isElementVisibleForHotkey(el) {
+    if (!el) return false;
+    const style = window.getComputedStyle(el);
+    if (style.display === 'none' || style.visibility === 'hidden') return false;
+    return !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
+}
+
+function getActiveOptionLabelsForHotkey(currentQ) {
+    const preferCard = document.body.classList.contains('quiz-layout-card');
+    const card = Array.from(currentQ.querySelectorAll('.question-layout-card .options-container label'));
+    const traditional = Array.from(currentQ.querySelectorAll('.question-layout-traditional .options label'));
+    const primary = preferCard ? card : traditional;
+    const secondary = preferCard ? traditional : card;
+    const hasVisible = (arr) => arr && arr.some(isElementVisibleForHotkey);
+    if (primary.length && hasVisible(primary)) return primary;
+    if (secondary.length && hasVisible(secondary)) return secondary;
+    return primary.length ? primary : secondary;
+}
+
+function getActiveFavBtnForHotkey(currentQ) {
+    const preferCard = document.body.classList.contains('quiz-layout-card');
+    const card = currentQ.querySelector('.question-layout-card .fav-btn');
+    const traditional = currentQ.querySelector('.question-layout-traditional .fav-btn');
+    const primary = preferCard ? card : traditional;
+    const secondary = preferCard ? traditional : card;
+    if (primary && isElementVisibleForHotkey(primary)) return primary;
+    if (secondary && isElementVisibleForHotkey(secondary)) return secondary;
+    return primary || secondary;
+}
+
 document.addEventListener('keydown', function(e) {
     const isInputFocused = document.activeElement.tagName === 'INPUT';
     const isTextareaFocused = document.activeElement.tagName === 'TEXTAREA';
@@ -2528,7 +2638,7 @@ document.addEventListener('keydown', function(e) {
 
     const currentQ = questions[currentIndex];
     if (!currentQ) return;
-    const options = currentQ.querySelectorAll('.options label');
+    const options = getActiveOptionLabelsForHotkey(currentQ);
 
     // 选项选择（选择题/判断题）
     // 只使用自定义快捷键，如果设置了自定义快捷键就不再使用默认值
@@ -2597,13 +2707,13 @@ document.addEventListener('keydown', function(e) {
     
     if (hasCustomFavorite && token === HK.toggle_favorite) {
         e.preventDefault();
-        const favBtn = currentQ.querySelector('.fav-btn');
+        const favBtn = getActiveFavBtnForHotkey(currentQ);
         if (favBtn) favBtn.click();
         return;
     }
     if (!hasCustomFavorite && (e.key === 'f' || e.key === 'F')) {
         e.preventDefault();
-        const favBtn = currentQ.querySelector('.fav-btn');
+        const favBtn = getActiveFavBtnForHotkey(currentQ);
         if (favBtn) favBtn.click();
         return;
     }

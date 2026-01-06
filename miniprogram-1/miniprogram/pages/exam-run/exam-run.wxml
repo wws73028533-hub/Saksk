@@ -146,9 +146,6 @@
           <text class="drawer-item-number">{{index + 1}}.</text>
           <text class="drawer-item-text">{{item.contentPreview || item.content}}</text>
         </view>
-        <view class="drawer-item-meta">
-          <text class="drawer-item-type">{{item.q_type}}</text>
-        </view>
       </view>
     </scroll-view>
   </view>

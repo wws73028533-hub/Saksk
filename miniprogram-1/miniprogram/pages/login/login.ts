@@ -34,6 +34,44 @@ Page({
     }
   },
 
+  async promptBindWechatIfNeeded(loginData: any) {
+    const userInfo = (loginData && loginData.user_info) || wx.getStorageSync('userInfo') || null;
+    const wechatBound = !!(userInfo && (userInfo.wechat_bound || userInfo.wechatBound));
+    if (wechatBound) return;
+
+    const modalRes: any = await new Promise((resolve) => {
+      wx.showModal({
+        title: '绑定微信',
+        content: '绑定后可使用微信快捷登录',
+        confirmText: '绑定',
+        cancelText: '稍后',
+        success: resolve
+      });
+    });
+
+    if (!modalRes || !modalRes.confirm) return;
+
+    try {
+      const code: string = await new Promise((resolve, reject) => {
+        wx.login({
+          success: (res) => {
+            if (res.code) resolve(res.code);
+            else reject(new Error('获取微信登录code失败'));
+          },
+          fail: (err) => reject(err)
+        });
+      });
+
+      const bindRes: any = await api.miniWechatBind(code);
+      if (bindRes && bindRes.token) wx.setStorageSync('token', bindRes.token);
+      if (bindRes && bindRes.user_info) wx.setStorageSync('userInfo', bindRes.user_info);
+      wx.showToast({ title: '微信已绑定', icon: 'success' });
+    } catch (e: any) {
+      const msg = (e && (e.message || e.errMsg)) || '绑定失败';
+      wx.showToast({ title: msg, icon: 'none' });
+    }
+  },
+
   // 微信登录
   async handleLogin() {
     if (this.data.loading) return;
@@ -117,6 +155,7 @@ Page({
       wx.setStorageSync('token', data.token);
       if (data.user_info) wx.setStorageSync('userInfo', data.user_info);
 
+      await this.promptBindWechatIfNeeded(data);
       wx.showToast({ title: '登录成功', icon: 'success' });
       const pending = wx.getStorageSync('pendingWebLogin');
       if (pending && pending.sid && pending.nonce) {
@@ -179,6 +218,7 @@ Page({
       wx.setStorageSync('token', data.token);
       if (data.user_info) wx.setStorageSync('userInfo', data.user_info);
 
+      await this.promptBindWechatIfNeeded(data);
       wx.showToast({ title: '登录成功', icon: 'success' });
       const pending = wx.getStorageSync('pendingWebLogin');
       if (pending && pending.sid && pending.nonce) {

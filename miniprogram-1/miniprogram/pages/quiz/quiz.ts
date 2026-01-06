@@ -44,6 +44,21 @@ Page({
     showSubmitButton: false,
     submitDisabled: true,
     userAnswerText: '',
+
+    // 刷题设置
+    showSettings: false,
+    practiceSettings: {
+      autoNextOnCorrect: false,   // 答对自动切题（答错不切题）
+      autoFavoriteOnWrong: false, // 做错自动收藏
+      vibrationFeedback: false    // 答题震动反馈
+    },
+
+    // AI 解析
+    showAIExplain: false,
+    aiLoading: false,
+    aiExplainText: '',
+    aiExplainError: '',
+    aiExplainQuestionId: 0,
     
     // 进度信息
     progress: {
@@ -63,6 +78,7 @@ Page({
   saveProgressTimer: null as any,
   syncPending: false as any,
   lastSavedPayload: null as any,
+  practiceSettingsKey: 'quiz_practice_settings_v1' as any,
 
   onLoad(options: any) {
     console.log('刷题页面 onLoad，参数:', options);
@@ -112,8 +128,53 @@ Page({
       startId: isFinite(startId) && startId > 0 ? startId : 0,
       loading: true
     });
+
+    this.initPracticeSettings();
     
     this.loadQuestions(type, source, shuffleQuestions, shuffleOptions);
+  },
+
+  initPracticeSettings() {
+    try {
+      const raw = wx.getStorageSync(this.practiceSettingsKey);
+      if (raw && typeof raw === 'object') {
+        const s: any = raw;
+        const next = {
+          autoNextOnCorrect: !!s.autoNextOnCorrect,
+          autoFavoriteOnWrong: !!s.autoFavoriteOnWrong,
+          vibrationFeedback: !!s.vibrationFeedback
+        };
+        this.setData({ practiceSettings: next });
+      }
+    } catch (e) {
+      // 忽略本地存储异常
+    }
+  },
+
+  savePracticeSettings() {
+    try {
+      wx.setStorageSync(this.practiceSettingsKey, this.data.practiceSettings);
+    } catch (e) {
+      // 忽略本地存储异常
+    }
+  },
+
+  onOpenSettings() {
+    this.setData({ showSettings: true });
+  },
+
+  onCloseSettings() {
+    this.setData({ showSettings: false });
+  },
+
+  onSettingSwitchChange(e: any) {
+    const key = e.currentTarget?.dataset?.key;
+    const value = !!(e && e.detail && e.detail.value);
+    if (!key) return;
+
+    const next = Object.assign({}, this.data.practiceSettings);
+    (next as any)[key] = value;
+    this.setData({ practiceSettings: next }, () => this.savePracticeSettings());
   },
 
   // 加载题目列表
@@ -353,6 +414,11 @@ Page({
       isCorrect,
       userAnswerText,
       isFavorite: question.is_fav === 1 || question.is_fav === true,
+      showAIExplain: false,
+      aiLoading: false,
+      aiExplainText: '',
+      aiExplainError: '',
+      aiExplainQuestionId: question.id || 0,
       progress: {
         current: index + 1,
         total: this.data.progress.total
@@ -543,6 +609,95 @@ Page({
       }
     } catch (err: any) {
       console.error('记录答题结果失败:', err);
+    }
+
+    // 震动反馈（提交后）
+    if (isJudgable && this.data.practiceSettings.vibrationFeedback) {
+      try {
+        const vibrateType = isCorrect ? 'medium' : 'heavy';
+        // @ts-ignore - 部分基础库不支持 type 参数
+        wx.vibrateShort({ type: vibrateType });
+      } catch (e) {
+        try {
+          wx.vibrateShort();
+        } catch (e2) {
+          // ignore
+        }
+      }
+    }
+
+    // 做错自动收藏（仅在未收藏时触发）
+    if (isJudgable && !isCorrect && this.data.practiceSettings.autoFavoriteOnWrong) {
+      await this.autoFavoriteIfNeeded();
+    }
+
+    // 答对自动切题（给用户一点点反馈时间）
+    if (isJudgable && isCorrect && this.data.practiceSettings.autoNextOnCorrect) {
+      setTimeout(() => {
+        // 仍在当前题且已展示答案时再切题
+        if (this.data.showAnswer && this.data.currentQuestion && this.data.currentQuestion.id === currentQuestion.id) {
+          this.onNextQuestion();
+        }
+      }, 650);
+    }
+  },
+
+  async autoFavoriteIfNeeded() {
+    const { currentQuestion, isFavorite } = this.data;
+    if (!currentQuestion || isFavorite) return;
+
+    try {
+      await api.toggleFavorite(currentQuestion.id);
+      this.setData({ isFavorite: true });
+      const questions = this.data.questions.map((q: any) => {
+        if (q.id === currentQuestion.id) return Object.assign({}, q, { is_fav: 1 });
+        return q;
+      });
+      this.setData({ questions });
+    } catch (err: any) {
+      console.error('自动收藏失败:', err);
+    }
+  },
+
+  onToggleAIExplain() {
+    const next = !this.data.showAIExplain;
+    this.setData({ showAIExplain: next }, () => {
+      if (next) {
+        this.loadAIExplain(false);
+      }
+    });
+  },
+
+  onRegenerateAIExplain() {
+    this.loadAIExplain(true);
+  },
+
+  async loadAIExplain(force: boolean) {
+    const cq = this.data.currentQuestion;
+    if (!cq) return;
+
+    const qid = Number(cq.id) || 0;
+    if (!force && this.data.aiExplainText && this.data.aiExplainQuestionId === qid) {
+      return;
+    }
+
+    const options = Array.isArray(cq.options)
+      ? cq.options.map((x: any) => ({ key: x.key, value: x.value }))
+      : undefined;
+
+    this.setData({ aiLoading: true, aiExplainError: '', aiExplainText: '', aiExplainQuestionId: qid });
+    try {
+      const res: any = await api.aiExplain({
+        question_id: qid || undefined,
+        content: (cq.content || '').toString(),
+        q_type: (cq.q_type || '').toString(),
+        options
+      });
+      const text = (res && res.explain) ? String(res.explain) : '';
+      this.setData({ aiExplainText: text || '暂无解析内容', aiLoading: false });
+    } catch (err: any) {
+      console.error('AI解析失败:', err);
+      this.setData({ aiExplainError: err?.message || 'AI解析失败，请稍后重试', aiLoading: false });
     }
   },
 

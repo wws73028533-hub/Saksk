@@ -61,6 +61,15 @@ class Config:
     WECHAT_APPID = os.environ.get('WECHAT_APPID') or os.environ.get('WX_APPID')
     WECHAT_SECRET = os.environ.get('WECHAT_SECRET') or os.environ.get('WX_SECRET')
 
+    # === 阿里云百炼（DashScope OpenAI 兼容接口）===
+    # 文档：https://help.aliyun.com/zh/model-studio/first-api-call-to-qwen
+    DASHSCOPE_API_KEY = os.environ.get('DASHSCOPE_API_KEY')
+    # 北京地域（默认）：https://dashscope.aliyuncs.com/compatible-mode/v1
+    # 新加坡地域：    https://dashscope-intl.aliyuncs.com/compatible-mode/v1
+    DASHSCOPE_BASE_URL = os.environ.get('DASHSCOPE_BASE_URL', 'https://dashscope.aliyuncs.com/compatible-mode/v1')
+    DASHSCOPE_MODEL = os.environ.get('DASHSCOPE_MODEL', 'qwen-plus')
+    DASHSCOPE_TIMEOUT = int(os.environ.get('DASHSCOPE_TIMEOUT', '25') or 25)
+
 
 class DevelopmentConfig(Config):
     """开发环境配置"""
@@ -120,4 +129,3 @@ config = {
     'testing': TestingConfig,
     'default': DevelopmentConfig
 }
-

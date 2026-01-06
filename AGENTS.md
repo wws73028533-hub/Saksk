@@ -5,7 +5,7 @@ This file defines hard constraints and working conventions for this repo. Prefer
 ## Non-negotiable response format
 - Always respond in Simplified Chinese.
 - Every assistant message must start with:
-  1) `【当前的model】`
+  1) `【<当前模型型号>】`（必须填写本次实际使用的模型名，例如：`【GPT-5.2】`）
   2) `亲爱的Wang`
 
 ## Scope / Allowed changes

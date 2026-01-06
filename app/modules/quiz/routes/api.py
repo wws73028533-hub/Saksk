@@ -635,66 +635,77 @@ def api_search_questions():
 
 
 @quiz_api_bp.route('/ai/explain', methods=['POST'])
+@auth_required  # 支持session和JWT
 @limiter.exempt
 def api_ai_explain():
-    """AI 解析占位接口：返回基于题目信息的模板化解析。
+    """AI 解析接口（阿里云百炼 DashScope OpenAI 兼容接口）。
 
-    说明：
-    - 本项目默认不集成真实大模型（避免泄露密钥/部署复杂度）。
-    - 你可以后续把这里替换为 OpenAI/Claude/自建模型调用。
+    环境变量（推荐写入项目根目录 .env）：
+    - DASHSCOPE_API_KEY: 百炼 API-KEY
+    - DASHSCOPE_BASE_URL: 可选，北京默认 https://dashscope.aliyuncs.com/compatible-mode/v1
+    - DASHSCOPE_MODEL: 可选，默认 qwen-plus
     """
-    if not session.get('user_id'):
-        return jsonify({'status': 'unauthorized', 'message': '请先登录后使用 AI 解析'}), 401
+    from flask import current_app
+    from app.core.utils.subject_permissions import can_user_access_subject
+    from app.modules.quiz.services.ai_explain_service import generate_ai_explain
 
+    uid = current_user_id()
     data = request.json or {}
-    question_id = data.get('question_id')
-    content = (data.get('content') or '').strip()
-    q_type = (data.get('q_type') or '').strip()
-    options = data.get('options')  # 可选
 
-    # 简单校验
-    if not question_id and not content:
+    # 允许前端仅传 question_id；后端优先用库内题目，避免前端篡改
+    raw_qid = data.get('question_id')
+    qid = None
+    try:
+        qid = int(raw_qid) if raw_qid is not None and str(raw_qid).strip() else None
+    except Exception:
+        qid = None
+
+    payload = {
+        'question_id': qid,
+        'content': (data.get('content') or '').strip(),
+        'q_type': (data.get('q_type') or '').strip(),
+        'options': data.get('options'),
+        'answer': (data.get('answer') or '').strip(),
+    }
+
+    if qid:
+        q = Question.get_by_id(qid)
+        if q:
+            subject_id = q.get('subject_id')
+            if subject_id and uid and not can_user_access_subject(uid, subject_id):
+                return jsonify({'status': 'forbidden', 'message': '无权限访问该题目'}), 403
+
+            payload['content'] = (q.get('content') or '').strip()
+            payload['q_type'] = (q.get('q_type') or '').strip()
+            payload['options'] = q.get('options')
+            payload['answer'] = (q.get('answer') or '').strip()
+
+    if not payload.get('content') and not payload.get('question_id'):
         return jsonify({'status': 'error', 'message': '缺少题目信息'}), 400
 
-    # 返回"模板化解析"（可替换为真实 AI）
-    text_lines = []
-    text_lines.append('AI 解析（占位）：')
-    if q_type:
-        text_lines.append(f'- 题型：{q_type}')
-    if question_id:
-        text_lines.append(f'- 题目ID：{question_id}')
-    if content:
-        preview = content.replace('\n', ' ').strip()
-        if len(preview) > 80:
-            preview = preview[:80] + '…'
-        text_lines.append(f'- 题干要点：{preview}')
+    api_key = (current_app.config.get('DASHSCOPE_API_KEY') or '').strip()
+    base_url = (current_app.config.get('DASHSCOPE_BASE_URL') or '').strip()
+    model = (current_app.config.get('DASHSCOPE_MODEL') or '').strip()
+    timeout = int(current_app.config.get('DASHSCOPE_TIMEOUT') or 25)
 
-    if isinstance(options, list) and options:
-        # options 可能是 [{key,value}]，也可能是字符串
-        try:
-            opt_preview = []
-            for opt in options[:6]:
-                if isinstance(opt, dict):
-                    opt_preview.append(f"{opt.get('key','')}. {opt.get('value','')}")
-                else:
-                    opt_preview.append(str(opt))
-            text_lines.append('- 选项：' + ' / '.join(opt_preview))
-        except Exception:
-            pass
+    # 未配置密钥：保留旧行为，返回“占位解析”，同时提示如何配置
+    if not api_key:
+        tip = '（未配置 DASHSCOPE_API_KEY，当前为模板解析；配置后将自动使用百炼模型）'
+        lines = [tip, '', '建议解题思路：', '1) 先圈出关键词与限定条件。', '2) 把题干转为可验证的结论/公式/步骤。', '3) 对选择题：用排除法 + 代入验证。', '4) 对填空/问答题：列步骤，逐步推导，最后回代检查。']
+        return jsonify({'status': 'success', 'data': {'explain': '\n'.join(lines), 'provider': 'placeholder'}})
 
-    text_lines.append('')
-    text_lines.append('建议解题思路：')
-    text_lines.append('1) 先圈出关键词与限定条件。')
-    text_lines.append('2) 把题干转为可验证的结论/公式/步骤。')
-    text_lines.append('3) 对选择题：用排除法 + 代入验证。')
-    text_lines.append('4) 对填空/问答题：列步骤，逐步推导，最后回代检查。')
-
-    return jsonify({
-        'status': 'success',
-        'data': {
-            'explain': '\n'.join(text_lines)
-        }
-    })
+    try:
+        explain = generate_ai_explain(
+            api_key=api_key,
+            base_url=base_url,
+            model=model or 'qwen-plus',
+            payload=payload,
+            timeout=timeout,
+        )
+        return jsonify({'status': 'success', 'data': {'explain': explain, 'provider': 'dashscope', 'model': model or 'qwen-plus'}})
+    except Exception as e:
+        current_app.logger.error('AI解析失败: %s', str(e), exc_info=True)
+        return jsonify({'status': 'error', 'message': 'AI解析失败，请检查 DASHSCOPE_API_KEY / 计费状态 / 地域 Base URL 配置'}), 502
 
 
 @quiz_api_bp.route('/coding/execute', methods=['POST'])
