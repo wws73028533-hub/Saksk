@@ -1,0 +1,145 @@
+<!--practice.wxml - 练习页面-->
+<view class="page-root">
+  <navigation-bar title="{{subject}}" back="{{true}}" color="black" background="#FFF"></navigation-bar>
+  <view class="page-container">
+    <scroll-view class="content-area" scroll-y type="list">
+      <view class="container">
+        <!-- 刷题范围选择区域 -->
+        <view class="section-card">
+          <view class="tags-container">
+            <view 
+              class="tag {{selectedSource === 'all' ? 'active' : ''}}"
+              bindtap="onSourceTap"
+              data-source="all"
+            >
+              <text class="tag-text">全部</text>
+            </view>
+            <view 
+              class="tag {{selectedSource === 'favorites' ? 'active' : ''}}"
+              bindtap="onSourceTap"
+              data-source="favorites"
+            >
+              <text class="tag-text">收藏</text>
+            </view>
+            <view 
+              class="tag {{selectedSource === 'mistakes' ? 'active' : ''}}"
+              bindtap="onSourceTap"
+              data-source="mistakes"
+            >
+              <text class="tag-text">错题</text>
+            </view>
+          </view>
+        </view>
+
+        <!-- 题型选择区域 -->
+        <view class="section-card">
+          <view class="tags-container tags-wrap">
+            <view 
+              class="tag {{selectedType === 'all' ? 'active' : ''}}"
+              bindtap="onTypeTap"
+              data-type="all"
+            >
+              <text class="tag-text">全部</text>
+            </view>
+            <view 
+              class="tag {{selectedType === '选择题' ? 'active' : ''}}"
+              bindtap="onTypeTap"
+              data-type="选择题"
+            >
+              <text class="tag-text">选择题</text>
+            </view>
+            <view 
+              class="tag {{selectedType === '多选题' ? 'active' : ''}}"
+              bindtap="onTypeTap"
+              data-type="多选题"
+            >
+              <text class="tag-text">多选题</text>
+            </view>
+            <view 
+              class="tag {{selectedType === '判断题' ? 'active' : ''}}"
+              bindtap="onTypeTap"
+              data-type="判断题"
+            >
+              <text class="tag-text">判断题</text>
+            </view>
+            <view 
+              class="tag {{selectedType === '填空题' ? 'active' : ''}}"
+              bindtap="onTypeTap"
+              data-type="填空题"
+            >
+              <text class="tag-text">填空题</text>
+            </view>
+          </view>
+        </view>
+
+        <!-- 设置选项区域 -->
+        <view class="section-card">
+          <view class="settings-row">
+            <text class="settings-label">打乱题目</text>
+            <switch 
+              class="settings-switch"
+              checked="{{settings.shuffleQuestions}}"
+              bindchange="onSettingChange"
+              data-setting="shuffleQuestions"
+              color="#007AFF"
+            />
+          </view>
+          <view class="settings-row">
+            <text class="settings-label">打乱选项</text>
+            <switch 
+              class="settings-switch"
+              checked="{{settings.shuffleOptions}}"
+              bindchange="onSettingChange"
+              data-setting="shuffleOptions"
+              color="#007AFF"
+            />
+          </view>
+        </view>
+
+        <!-- 题目数量统计区域 -->
+        <view class="stats-section">
+          <text class="stats-text">总数: {{stats.total}}</text>
+          <text class="stats-text">收藏: {{stats.favorites}}</text>
+          <text class="stats-text">错题: {{stats.mistakes}}</text>
+        </view>
+
+        <!-- 操作按钮区域 -->
+        <view class="action-section">
+          <view 
+            class="action-button {{(loading || stats.total === 0) ? 'disabled' : ''}}"
+            bindtap="onActionButtonTap"
+            data-mode="quiz"
+          >
+            <text class="action-title">刷题</text>
+            <text class="action-desc">随机练习，即时反馈</text>
+          </view>
+          <view 
+            class="action-button {{(loading || stats.total === 0) ? 'disabled' : ''}}"
+            bindtap="onActionButtonTap"
+            data-mode="memo"
+          >
+            <text class="action-title">背题</text>
+            <text class="action-desc">查看答案，巩固记忆</text>
+          </view>
+
+          <view
+            class="action-button danger {{loading ? 'disabled' : ''}}"
+            bindtap="onClearProgressTap"
+          >
+            <text class="action-title danger-title">清除刷题记录</text>
+            <text class="action-desc danger-desc">仅清除当前筛选进度</text>
+          </view>
+        </view>
+
+        <view class="empty-hint" wx:if="{{!loading && stats.total === 0}}">
+          <text class="empty-hint-text">当前筛选暂无题目</text>
+        </view>
+
+        <!-- 加载提示 -->
+        <view class="loading" wx:if="{{loading}}">
+          <text>加载中...</text>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+</view>

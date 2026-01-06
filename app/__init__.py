@@ -150,8 +150,16 @@ def _register_before_request(app):
     def enforce_login():
         path = request.path or ''
         
-        # 已登录的会话校验
-        if session.get('user_id'):
+        # 检查JWT token（小程序）
+        jwt_token = request.headers.get('Authorization') or request.headers.get('authorization')
+        has_jwt_token = False
+        if jwt_token and jwt_token.startswith('Bearer '):
+            # 如果有JWT token，跳过session检查，让@auth_required装饰器处理
+            # 但需要先检查路径是否在白名单中（JWT token也需要通过@auth_required验证）
+            has_jwt_token = True
+        
+        # 已登录的会话校验（仅Web端，小程序使用JWT token）
+        if session.get('user_id') and not has_jwt_token:
             try:
                 uid = session.get('user_id')
                 conn = get_db()
@@ -164,9 +172,18 @@ def _register_before_request(app):
                     has_subject_admin_field = False
                 
                 if has_subject_admin_field:
-                    query = 'SELECT is_locked, is_admin, is_subject_admin, session_version FROM users WHERE id=?'
+                    query = 'SELECT is_locked, is_admin, is_subject_admin, is_notification_admin, session_version FROM users WHERE id=?'
                 else:
-                    query = 'SELECT is_locked, is_admin, session_version FROM users WHERE id=?'
+                    # 检查是否有 is_notification_admin 字段
+                    try:
+                        user_cols = [r['name'] for r in conn.execute("PRAGMA table_info(users)").fetchall()]
+                        has_notification_admin_field = 'is_notification_admin' in user_cols
+                        if has_notification_admin_field:
+                            query = 'SELECT is_locked, is_admin, is_notification_admin, session_version FROM users WHERE id=?'
+                        else:
+                            query = 'SELECT is_locked, is_admin, session_version FROM users WHERE id=?'
+                    except Exception:
+                        query = 'SELECT is_locked, is_admin, session_version FROM users WHERE id=?'
                 
                 row = conn.execute(query, (uid,)).fetchone()
                 
@@ -253,6 +270,7 @@ def _register_before_request(app):
             if path.startswith('/admin') or path.startswith('/admin_'):
                 is_admin_user = session.get('is_admin')
                 is_subject_admin_user = session.get('is_subject_admin')
+                is_notification_admin_user = session.get('is_notification_admin')
                 
                 # 科目管理员允许访问的路由（科目和题集管理）
                 # 匹配规则：
@@ -271,11 +289,39 @@ def _register_before_request(app):
                     '/api/questions' in path
                 )
                 
+                # 通知管理员允许访问的路由（通知管理）
+                # 匹配规则：
+                # 1. /admin/notifications 及其子路径
+                # 2. /admin/api/notifications 及其子路径
+                # 3. /admin/popups 及其子路径（弹窗管理是通知管理的一部分）
+                # 4. /admin/api/popups 及其子路径
+                # 5. /admin 和 /admin/dashboard（重定向到通知管理）
+                is_notification_admin_path = (
+                    path.startswith('/admin/notifications') or
+                    path.startswith('/admin/api/notifications') or
+                    path.startswith('/admin/popups') or
+                    path.startswith('/admin/api/popups') or
+                    '/api/notifications' in path or
+                    '/api/popups' in path
+                )
+                
+                # 通知管理员访问 /admin 或 /admin/dashboard 时，重定向到通知管理页面
+                if (path == '/admin' or path == '/admin/') and is_notification_admin_user and not is_admin_user:
+                    return redirect('/admin/notifications')
+                if path == '/admin/dashboard' and is_notification_admin_user and not is_admin_user:
+                    return redirect('/admin/notifications')
+                
                 # 如果是科目管理员路径，允许科目管理员和管理员访问
                 if is_subject_admin_path:
                     if not (is_admin_user or is_subject_admin_user):
                         if path.startswith('/admin/'):
                             return jsonify({'status': 'forbidden', 'message': '需要管理员或科目管理员权限'}), 403
+                        return redirect('/')
+                # 如果是通知管理员路径，允许通知管理员和管理员访问
+                elif is_notification_admin_path:
+                    if not (is_admin_user or is_notification_admin_user):
+                        if path.startswith('/admin/'):
+                            return jsonify({'status': 'forbidden', 'message': '需要管理员或通知管理员权限'}), 403
                         return redirect('/')
                 # 其他管理后台路由需要管理员权限
                 elif not is_admin_user:
@@ -290,10 +336,32 @@ def _register_before_request(app):
             '/terms',  # 服务协议页面
             '/privacy',  # 隐私保护协议页面
             '/api/login',
+            '/api/wechat/login',  # 微信登录（无需登录，支持自动注册）
+            '/api/wechat/create',  # 微信创建新账号（临时票据）
+            '/api/wechat/bind',  # 微信绑定已有账号（临时票据）
+            '/api/wechat/bind/send_code',  # 微信绑定：发送邮箱验证码（临时票据）
+            '/api/wechat/bind_confirm',  # Web账号管理：扫码绑定微信（小程序确认）
+            '/api/mini/login',  # 小程序：账号密码登录（JWT）
+            '/api/mini/email/send-login-code',  # 小程序：发送邮箱登录验证码（JWT）
+            '/api/mini/email/login',  # 小程序：邮箱验证码登录（JWT）
             '/api/email/send-login-code',  # 发送登录验证码（无需登录，支持自动注册）
-            '/api/email/login'  # 验证码登录（无需登录，支持自动注册）
+            '/api/email/login',  # 验证码登录（无需登录，支持自动注册）
+            '/api/forgot-password/send-code',  # 发送忘记密码验证码（无需登录）
+            '/api/forgot-password/reset'  # 重置密码（无需登录）
         }
         if path in allow_paths or path.startswith('/static'):
+            return
+
+        # Web 扫码登录相关 API（未登录可访问，confirm 仍由 jwt_required 控制）
+        if path.startswith('/api/web_login/'):
+            return
+
+        # 扫码登录二维码图片（仅允许该目录）
+        if path.startswith('/uploads/web_login/'):
+            return
+
+        # 绑定微信二维码图片（仅允许该目录）
+        if path.startswith('/uploads/wechat_bind/'):
             return
 
         # 公开API（需要检查参数）
@@ -315,9 +383,16 @@ def _register_before_request(app):
             # 这个 API 允许未登录访问（返回0）
             return
 
-        # 通知 API（以及页面）需要登录：历史通知属于用户中心功能
-        if path.startswith('/api/notifications') or path == '/notifications':
+        # 通知 API 允许未登录访问（用于主页显示通知）
+        # 但通知历史页面需要登录（属于用户中心功能）
+        if path == '/notifications':
             return jsonify({'status': 'unauthorized', 'message': '请先登录'}), 401
+        
+        # /api/notifications 允许未登录访问，但标记已读/关闭等操作仍需要登录
+        if path.startswith('/api/notifications'):
+            # 对于需要登录的操作（read, dismiss），在路由函数内部检查
+            # 列表查询允许未登录访问
+            return
         
         # 需要登录的功能路径
         login_required_paths = {
@@ -362,9 +437,17 @@ def _register_before_request(app):
         
         for api_path in login_required_apis:
             if path.startswith(api_path):
+                # 如果有JWT token，让@auth_required装饰器处理
+                jwt_token = request.headers.get('Authorization') or request.headers.get('authorization')
+                if jwt_token and jwt_token.startswith('Bearer '):
+                    return  # 跳过检查，让装饰器处理
                 return jsonify({'status': 'unauthorized', 'message': '请先登录后使用此功能'}), 401
         
         if path.startswith('/api'):
+            # 如果有JWT token，让@auth_required装饰器处理
+            jwt_token = request.headers.get('Authorization') or request.headers.get('authorization')
+            if jwt_token and jwt_token.startswith('Bearer '):
+                return  # 跳过检查，让装饰器处理
             return jsonify({'status': 'unauthorized', 'message': '请先登录'}), 401
         return redirect('/login')
 

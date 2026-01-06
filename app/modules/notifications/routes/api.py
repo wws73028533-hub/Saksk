@@ -38,10 +38,15 @@ def _bool_arg(val) -> bool:
 @notifications_api_bp.route('/notifications')
 @limiter.exempt
 def api_notifications_list():
-    if not session.get('user_id'):
-        return jsonify({'status': 'unauthorized', 'message': '请先登录'}), 401
-
-    uid = int(session.get('user_id') or 0)
+    # 允许未登录用户访问（用于主页显示通知）
+    uid = session.get('user_id')
+    is_logged_in = uid is not None
+    
+    if is_logged_in:
+        uid = int(uid)
+    else:
+        uid = None  # 未登录用户，不查询已读状态
+    
     limit = int(request.args.get('limit') or 50)
     limit = max(1, min(limit, 200))
     include_dismissed = _bool_arg(request.args.get('include_dismissed'))
@@ -52,7 +57,7 @@ def api_notifications_list():
     try:
         current_app.logger.info(
             f"[notifications.list] uid={uid} db={current_app.config.get('DATABASE_PATH')}"
-            f" session_user={session.get('username')} include_dismissed={include_dismissed}"
+            f" session_user={session.get('username')} include_dismissed={include_dismissed} is_logged_in={is_logged_in}"
         )
     except Exception:
         pass
@@ -60,10 +65,10 @@ def api_notifications_list():
     # 说明：notification_dismissals 同时承担"已读/已关闭"的记录。
     # - 首页需要：默认不展示已关闭（否则刷新会再次出现）
     # - 历史页需要：展示全部（所以历史页调用 include_dismissed=1）
-    where_dismiss = "" if include_dismissed else " AND d.id IS NULL "
-
-    rows = conn.execute(
-        f"""
+    # - 未登录用户：不查询已读状态，显示所有活跃通知（都标记为未读）
+    if is_logged_in:
+        where_dismiss = "" if include_dismissed else " AND d.id IS NULL "
+        query = f"""
         SELECT
           n.id, n.title, n.content, n.n_type, n.priority,
           n.start_at, n.end_at, n.created_at,
@@ -77,9 +82,23 @@ def api_notifications_list():
           AND (n.end_at   IS NULL OR datetime(n.end_at)   >= datetime({_now_expr()}))
         ORDER BY n.priority DESC, n.created_at DESC, n.id DESC
         LIMIT ?
-        """,
-        (uid, limit)
-    ).fetchall()
+        """
+        rows = conn.execute(query, (uid, limit)).fetchall()
+    else:
+        # 未登录用户：返回所有活跃通知，不查询已读状态（都标记为未读）
+        query = f"""
+        SELECT
+          n.id, n.title, n.content, n.n_type, n.priority,
+          n.start_at, n.end_at, n.created_at,
+          0 AS is_read
+        FROM notifications n
+        WHERE n.is_active = 1
+          AND (n.start_at IS NULL OR datetime(n.start_at) <= datetime({_now_expr()}))
+          AND (n.end_at   IS NULL OR datetime(n.end_at)   >= datetime({_now_expr()}))
+        ORDER BY n.priority DESC, n.created_at DESC, n.id DESC
+        LIMIT ?
+        """
+        rows = conn.execute(query, (limit,)).fetchall()
 
     return jsonify({'status': 'success', 'data': [dict(r) for r in rows]})
 

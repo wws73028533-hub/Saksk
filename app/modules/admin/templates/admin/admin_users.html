@@ -439,10 +439,6 @@
       <div class="stat-card-label">管理员</div>
       <div class="stat-card-value" id="statAdmin">-</div>
     </div>
-    <div class="stat-card" style="background:rgba(255, 149, 0, 0.1);">
-      <div class="stat-card-label">科目管理员</div>
-      <div class="stat-card-value" id="statSubjectAdmin">-</div>
-    </div>
     <div class="stat-card locked">
       <div class="stat-card-label">已锁定</div>
       <div class="stat-card-value" id="statLocked">-</div>
@@ -615,7 +611,6 @@
     qs('#statTotal').textContent = allStats.total;
     qs('#statOnline').textContent = allStats.online;
     qs('#statAdmin').textContent = allStats.admin;
-    qs('#statSubjectAdmin').textContent = allStats.subjectAdmin || 0;
     qs('#statLocked').textContent = allStats.locked;
   }
 
@@ -634,12 +629,14 @@
     }
     
     tb.innerHTML = rows.map((u,i)=>{
-      // 权限标签：管理员 > 科目管理员 > 普通用户
+      // 权限标签：管理员 > 科目管理员 > 通知管理员 > 普通用户
       let adminTag = '';
       if (u.is_admin) {
         adminTag = '<span class="tag tag-admin">管理员</span>';
       } else if (u.is_subject_admin) {
         adminTag = '<span class="tag" style="background:rgba(255, 149, 0, 0.1); color:var(--warning); border:0.5px solid rgba(255, 149, 0, 0.2);">科目管理员</span>';
+      } else if (u.is_notification_admin) {
+        adminTag = '<span class="tag" style="background:rgba(0, 122, 255, 0.1); color:var(--primary); border:0.5px solid rgba(0, 122, 255, 0.2);">通知管理员</span>';
       } else {
         adminTag = '<span class="tag tag-user">普通用户</span>';
       }
@@ -683,6 +680,7 @@
               <button class="action-menu-item" onclick="toggleLock(${u.id}); closeActionMenu(${u.id})">${u.is_locked ? '解锁用户' : '锁定用户'}</button>
               <button class="action-menu-item" onclick="toggleAdmin(${u.id}); closeActionMenu(${u.id})">${u.is_admin ? '取消管理员' : '设为管理员'}</button>
               <button class="action-menu-item" onclick="toggleSubjectAdmin(${u.id}); closeActionMenu(${u.id})">${u.is_subject_admin ? '取消科目管理员' : '设为科目管理员'}</button>
+              <button class="action-menu-item" onclick="toggleNotificationAdmin(${u.id}); closeActionMenu(${u.id})">${u.is_notification_admin ? '取消通知管理员' : '设为通知管理员'}</button>
               ${u.is_online ? `<button class="action-menu-item" onclick="forceLogout(${u.id}); closeActionMenu(${u.id})">强制下线</button>` : ''}
               <div class="action-menu-divider"></div>
               <button class="action-menu-item danger" onclick="delUser(${u.id}); closeActionMenu(${u.id})">删除用户</button>
@@ -796,6 +794,18 @@
     if (!confirm('确定要切换该用户的科目管理员权限吗？')) return;
     try {
       const res = await fetch(`/admin/users/${id}/toggle_subject_admin`, { method:'POST' });
+      const js = await res.json(); 
+      showMessage(js.message||'操作完成', js.status==='success'); 
+      if(js.status==='success') loadUsers(curPage);
+    } catch (error) {
+      showError('操作失败，请稍后重试');
+    }
+  }
+  
+  async function toggleNotificationAdmin(id){
+    if (!confirm('确定要切换该用户的通知管理员权限吗？')) return;
+    try {
+      const res = await fetch(`/admin/users/${id}/toggle_notification_admin`, { method:'POST' });
       const js = await res.json(); 
       showMessage(js.message||'操作完成', js.status==='success'); 
       if(js.status==='success') loadUsers(curPage);

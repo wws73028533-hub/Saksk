@@ -1,0 +1,15 @@
+---
+alwaysApply: true
+---
+Project structure & coding conventions:
+
+- Backend:
+  - Keep using existing Flask Blueprints under `app/modules/**`.
+  - New endpoints must be backward compatible and return JSON with stable keys.
+  - Endpoints used by mini program must support JWT `Authorization: Bearer ...`; endpoints shared with web should also support session where applicable.
+
+- Mini program:
+  - Page layout must follow `page-root -> navigation-bar -> page-container -> scroll-view(content-area)` pattern.
+  - Fixed top nav and (when used) fixed bottom action bar; content scroll only when overflow.
+  - Keep each page self-contained: `pages/<name>/<name>.{ts,wxml,less,json}`.
+  - Avoid heavy global styles; global styles must be neutral.

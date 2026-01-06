@@ -314,12 +314,41 @@ class EmailAuthService:
                 from werkzeug.security import generate_password_hash
                 password_hash = generate_password_hash(random_password)
                 
-                # 插入用户，同时绑定邮箱
-                conn.execute(
-                    '''INSERT INTO users (username, password_hash, email, email_verified, email_verified_at, is_admin)
-                       VALUES (?, ?, ?, ?, ?, ?)''',
-                    (username, password_hash, email, 1, now, is_admin)
-                )
+                # 检查has_password_set字段是否存在
+                try:
+                    user_cols = [r['name'] for r in conn.execute("PRAGMA table_info(users)").fetchall()]
+                    has_password_set_field = 'has_password_set' in user_cols
+                    
+                    if not has_password_set_field:
+                        # 添加字段
+                        conn.execute('ALTER TABLE users ADD COLUMN has_password_set INTEGER DEFAULT 0')
+                        # 为所有有password_hash但没有email的老用户设置has_password_set=1
+                        # （老用户通过用户名注册，有真实密码）
+                        conn.execute('''
+                            UPDATE users 
+                            SET has_password_set = 1 
+                            WHERE password_hash IS NOT NULL 
+                            AND password_hash != '' 
+                            AND (email IS NULL OR email = '')
+                        ''')
+                        conn.commit()
+                        has_password_set_field = True
+                except Exception:
+                    has_password_set_field = False
+                
+                # 插入用户，同时绑定邮箱（新注册用户has_password_set默认为0）
+                if has_password_set_field:
+                    conn.execute(
+                        '''INSERT INTO users (username, password_hash, email, email_verified, email_verified_at, is_admin, has_password_set)
+                           VALUES (?, ?, ?, ?, ?, ?, ?)''',
+                        (username, password_hash, email, 1, now, is_admin, 0)
+                    )
+                else:
+                    conn.execute(
+                        '''INSERT INTO users (username, password_hash, email, email_verified, email_verified_at, is_admin)
+                           VALUES (?, ?, ?, ?, ?, ?)''',
+                        (username, password_hash, email, 1, now, is_admin)
+                    )
                 conn.commit()
                 
                 # 获取新创建的用户
@@ -340,4 +369,155 @@ class EmailAuthService:
             conn.rollback()
             current_app.logger.error(f'验证登录验证码失败: {str(e)}', exc_info=True)
             return False, '系统错误，请稍后再试', None
+    
+    @staticmethod
+    def send_reset_password_code(email: str) -> Tuple[bool, Optional[str]]:
+        """
+        发送重置密码验证码
+        
+        Args:
+            email: 邮箱地址
+            
+        Returns:
+            (是否成功, 错误消息) 元组
+        """
+        # 验证邮箱格式
+        if not EmailService.validate_email_format(email):
+            return False, '邮箱格式不正确'
+        
+        # 检查邮箱是否已绑定
+        user = User.get_by_email(email)
+        if not user:
+            # 防止邮箱枚举攻击：即使邮箱未绑定也返回相同消息
+            return True, None
+        
+        user_id = user['id']
+        
+        # 检查发送频率（1分钟内只能发送1次）
+        conn = get_db()
+        one_minute_ago = datetime.now() - timedelta(minutes=1)
+        recent_count = conn.execute(
+            '''SELECT COUNT(*) FROM email_verification_codes
+               WHERE email = ? AND code_type = 'reset_password' AND created_at > ?''',
+            (email, one_minute_ago)
+        ).fetchone()[0]
+        
+        if recent_count > 0:
+            return False, '发送验证码过于频繁，请稍后再试'
+        
+        # 检查用户发送频率（1小时内最多5次）
+        one_hour_ago = datetime.now() - timedelta(hours=1)
+        user_recent_count = conn.execute(
+            '''SELECT COUNT(*) FROM email_verification_codes
+               WHERE user_id = ? AND code_type = 'reset_password' AND created_at > ?''',
+            (user_id, one_hour_ago)
+        ).fetchone()[0]
+        
+        if user_recent_count >= 5:
+            return False, '发送验证码次数过多，请稍后再试'
+        
+        # 生成并发送验证码
+        code = EmailService.generate_verification_code()
+        success, sent_code = EmailService.send_verification_code(
+            to_email=email,
+            code_type='reset_password',
+            code=code
+        )
+        
+        if not success:
+            return False, '邮件发送失败，请稍后再试'
+        
+        # 保存验证码到数据库
+        try:
+            expires_at = datetime.now() + timedelta(minutes=EmailAuthService.CODE_EXPIRE_MINUTES)
+            conn.execute(
+                '''INSERT INTO email_verification_codes
+                   (email, code, code_type, user_id, expires_at)
+                   VALUES (?, ?, ?, ?, ?)''',
+                (email, code, 'reset_password', user_id, expires_at)
+            )
+            conn.commit()
+            
+            current_app.logger.info(f'重置密码验证码已发送: email={email}, user_id={user_id}')
+            return True, None
+            
+        except Exception as e:
+            conn.rollback()
+            current_app.logger.error(f'保存验证码失败: {str(e)}', exc_info=True)
+            return False, '系统错误，请稍后再试'
+    
+    @staticmethod
+    def reset_password(email: str, code: str, new_password: str) -> Tuple[bool, Optional[str]]:
+        """
+        重置密码
+        
+        Args:
+            email: 邮箱地址
+            code: 验证码
+            new_password: 新密码
+            
+        Returns:
+            (是否成功, 错误消息) 元组
+        """
+        # 验证邮箱格式
+        if not EmailService.validate_email_format(email):
+            return False, '邮箱格式不正确'
+        
+        # 检查邮箱是否已绑定
+        user = User.get_by_email(email)
+        if not user:
+            # 防止邮箱枚举攻击：即使邮箱未绑定也返回相同消息
+            return False, '验证码错误或已过期'
+        
+        user_id = user['id']
+        
+        # 验证验证码
+        conn = get_db()
+        now = datetime.now()
+        
+        # 查找有效的验证码
+        code_record = conn.execute(
+            '''SELECT * FROM email_verification_codes
+               WHERE email = ? AND code = ? AND code_type = 'reset_password'
+                 AND user_id = ? AND is_used = 0 AND expires_at > ?
+               ORDER BY created_at DESC
+               LIMIT 1''',
+            (email, code, user_id, now)
+        ).fetchone()
+        
+        if not code_record:
+            # 检查是否验证码错误次数过多
+            recent_attempts = conn.execute(
+                '''SELECT COUNT(*) FROM email_verification_codes
+                   WHERE email = ? AND code_type = 'reset_password' AND user_id = ?
+                     AND created_at > ? AND is_used = 0''',
+                (email, user_id, datetime.now() - timedelta(minutes=10))
+            ).fetchone()[0]
+            
+            if recent_attempts >= EmailAuthService.MAX_VERIFY_ATTEMPTS:
+                return False, '验证码错误次数过多，请重新发送验证码'
+            
+            return False, '验证码错误或已过期'
+        
+        # 标记验证码为已使用并更新密码
+        try:
+            conn.execute(
+                '''UPDATE email_verification_codes
+                   SET is_used = 1, used_at = ?
+                   WHERE id = ?''',
+                (now, code_record['id'])
+            )
+            
+            # 更新密码
+            User.update_password(user_id, new_password)
+            
+            conn.commit()
+            
+            current_app.logger.info(f'密码重置成功: email={email}, user_id={user_id}')
+            return True, None
+            
+        except Exception as e:
+            conn.rollback()
+            current_app.logger.error(f'重置密码失败: {str(e)}', exc_info=True)
+            return False, '系统错误，请稍后再试'
 

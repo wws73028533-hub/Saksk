@@ -1,0 +1,99 @@
+2025-12-21 18:13:47,260 INFO: 题库系统启动 [in C:\Users\Administrator\ti\app.py:29]
+2025-12-21 18:13:52,600 INFO: 题库系统启动 [in C:\Users\Administrator\ti\app.py:29]
+2025-12-21 18:14:55,313 INFO: 题库系统启动 [in C:\Users\Administrator\ti\app.py:29]
+2025-12-21 18:15:16,391 INFO: 题库系统启动 [in C:\Users\Administrator\ti\app.py:29]
+2025-12-21 18:15:36,917 INFO: 题库系统启动 [in C:\Users\Administrator\ti\app.py:29]
+2025-12-21 18:15:38,342 INFO: 题库系统启动 [in C:\Users\Administrator\ti\app.py:29]
+2025-12-21 18:18:49,171 INFO: 题库系统启动 [in C:\Users\Administrator\ti\app.py:29]
+2025-12-21 18:22:51,533 INFO: 题库系统启动 [in C:\Users\Administrator\ti\app.py:29]
+2025-12-21 18:22:51,806 INFO: 题库系统启动 [in C:\Users\Administrator\ti\app.py:29]
+2025-12-21 18:22:52,069 INFO: 题库系统启动 [in C:\Users\Administrator\ti\app.py:29]
+2025-12-21 18:23:38,450 INFO: 题库系统启动 [in c:\Users\Administrator\ti\app.py:29]
+2025-12-21 18:23:38,727 INFO: 题库系统启动 [in c:\Users\Administrator\ti\app.py:29]
+2025-12-21 18:32:51,204 INFO: 题库系统启动 [in C:\Users\Administrator\ti\app.py:29]
+2025-12-21 18:34:24,518 INFO: 题库系统启动 [in c:\Users\Administrator\ti\app.py:29]
+2025-12-21 18:34:24,783 INFO: 题库系统启动 [in c:\Users\Administrator\ti\app.py:29]
+2025-12-21 18:34:52,981 INFO: 题库系统启动 [in c:\Users\Administrator\ti\app.py:29]
+2025-12-21 18:34:53,250 INFO: 题库系统启动 [in c:\Users\Administrator\ti\app.py:29]
+2025-12-21 18:39:58,083 INFO: 题库系统启动 [in C:\Users\Administrator\ti\app.py:29]
+2025-12-21 18:40:42,860 INFO: 题库系统启动 [in c:\Users\Administrator\ti\app.py:29]
+2025-12-21 18:40:55,292 INFO: 题库系统启动 [in c:\Users\Administrator\ti\app.py:29]
+2025-12-21 18:40:55,572 INFO: 题库系统启动 [in c:\Users\Administrator\ti\app.py:29]
+2025-12-21 18:41:12,129 INFO: 题库系统启动 [in c:\Users\Administrator\ti\app.py:29]
+2025-12-21 18:41:34,543 INFO: 题库系统启动 [in c:\Users\Administrator\ti\app.py:29]
+2025-12-21 18:41:34,809 INFO: 题库系统启动 [in c:\Users\Administrator\ti\app.py:29]
+2025-12-21 18:44:34,182 INFO: 题库系统启动 [in c:\Users\Administrator\ti\app.py:29]
+2025-12-21 18:45:19,049 INFO: 题库系统启动 [in c:\Users\Administrator\ti\app.py:29]
+2025-12-21 18:45:39,586 INFO: 题库系统启动 [in c:\Users\Administrator\ti\app.py:29]
+2025-12-21 18:46:06,192 INFO: 题库系统启动 [in c:\Users\Administrator\ti\app.py:29]
+2025-12-21 18:46:25,750 INFO: 题库系统启动 [in c:\Users\Administrator\ti\app.py:29]
+2025-12-21 18:46:53,413 INFO: 题库系统启动 [in c:\Users\Administrator\ti\app.py:29]
+2025-12-21 18:47:11,937 INFO: 题库系统启动 [in c:\Users\Administrator\ti\app.py:29]
+2025-12-21 18:47:37,131 INFO: 题库系统启动 [in C:\Users\Administrator\ti\app.py:29]
+2025-12-21 18:49:03,800 INFO: 题库系统启动 [in c:\Users\Administrator\ti\app.py:29]
+2025-12-21 18:51:36,602 INFO: 题库系统启动 [in c:\Users\Administrator\ti\app.py:29]
+2025-12-21 18:51:36,895 INFO: 题库系统启动 [in c:\Users\Administrator\ti\app.py:29]
+2025-12-21 18:55:39,206 INFO: 题库系统启动 [in c:\Users\Administrator\ti\app.py:29]
+2025-12-31 07:32:02,161 INFO: 模块注册完成 [in c:\Users\Administrator\Desktop\Project\Saksk_1_Ti\app\modules\__init__.py:124]
+2025-12-31 07:32:02,167 INFO: 后台任务已启动 [in c:\Users\Administrator\Desktop\Project\Saksk_1_Ti\app\core\tasks.py:46]
+2025-12-31 07:32:02,168 INFO: 应用启动完成 [in c:\Users\Administrator\Desktop\Project\Saksk_1_Ti\app\__init__.py:74]
+2025-12-31 07:32:02,172 INFO: 清理过期验证码: 删除了 1 条记录 [in c:\Users\Administrator\Desktop\Project\Saksk_1_Ti\app\core\tasks.py:105]
+2025-12-31 07:33:29,910 INFO: 模块注册完成 [in c:\Users\Administrator\Desktop\Project\Saksk_1_Ti\app\modules\__init__.py:124]
+2025-12-31 07:33:29,915 INFO: 后台任务已启动 [in c:\Users\Administrator\Desktop\Project\Saksk_1_Ti\app\core\tasks.py:46]
+2025-12-31 07:33:29,915 INFO: 应用启动完成 [in c:\Users\Administrator\Desktop\Project\Saksk_1_Ti\app\__init__.py:74]
+2025-12-31 07:45:54,961 INFO: 模块注册完成 [in c:\Users\Administrator\Desktop\Project\Saksk_1_Ti\app\modules\__init__.py:124]
+2025-12-31 07:45:54,967 INFO: 后台任务已启动 [in c:\Users\Administrator\Desktop\Project\Saksk_1_Ti\app\core\tasks.py:46]
+2025-12-31 07:45:54,967 INFO: 应用启动完成 [in c:\Users\Administrator\Desktop\Project\Saksk_1_Ti\app\__init__.py:74]
+2025-12-31 07:46:06,495 INFO: 用户登录成功 - 用户: Saksk, remember=True, IP: 127.0.0.1 [in c:\Users\Administrator\Desktop\Project\Saksk_1_Ti\app\modules\auth\routes\api.py:80]
+2025-12-31 07:46:10,108 INFO: [notifications.list] uid=10 db=c:\Users\Administrator\Desktop\Project\Saksk_1_Ti\instance\submissions.db session_user=Saksk include_dismissed=False [in c:\Users\Administrator\Desktop\Project\Saksk_1_Ti\app\modules\notifications\routes\api.py:53]
+2025-12-31 07:46:50,617 INFO: 模块注册完成 [in c:\Users\Administrator\Desktop\Project\Saksk_1_Ti\app\modules\__init__.py:124]
+2025-12-31 07:46:50,623 INFO: 后台任务已启动 [in c:\Users\Administrator\Desktop\Project\Saksk_1_Ti\app\core\tasks.py:46]
+2025-12-31 07:46:50,623 INFO: 应用启动完成 [in c:\Users\Administrator\Desktop\Project\Saksk_1_Ti\app\__init__.py:74]
+2025-12-31 07:47:01,502 INFO: 用户登录成功 - 用户: Saksk, remember=True, IP: 127.0.0.1 [in c:\Users\Administrator\Desktop\Project\Saksk_1_Ti\app\modules\auth\routes\api.py:80]
+2025-12-31 07:47:01,838 INFO: [notifications.list] uid=10 db=c:\Users\Administrator\Desktop\Project\Saksk_1_Ti\instance\submissions.db session_user=Saksk include_dismissed=False [in c:\Users\Administrator\Desktop\Project\Saksk_1_Ti\app\modules\notifications\routes\api.py:53]
+2025-12-31 07:47:05,883 ERROR: Unhandled exception: admin/admin_mail_settings.html [in c:\Users\Administrator\Desktop\Project\Saksk_1_Ti\app\core\errors.py:112]
+Traceback (most recent call last):
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python39\lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python39\lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+  File "c:\Users\Administrator\Desktop\Project\Saksk_1_Ti\app\modules\admin\routes\pages.py", line 159, in admin_mail_settings_page
+    return render_template('admin/admin_mail_settings.html', mail_config=mail_config)
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python39\lib\site-packages\flask\templating.py", line 149, in render_template
+    template = app.jinja_env.get_or_select_template(template_name_or_list)
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python39\lib\site-packages\jinja2\environment.py", line 1087, in get_or_select_template
+    return self.get_template(template_name_or_list, parent, globals)
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python39\lib\site-packages\jinja2\environment.py", line 1016, in get_template
+    return self._load_template(name, globals)
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python39\lib\site-packages\jinja2\environment.py", line 975, in _load_template
+    template = self.loader.load(self, name, self.make_globals(globals))
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python39\lib\site-packages\jinja2\loaders.py", line 126, in load
+    source, filename, uptodate = self.get_source(environment, name)
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python39\lib\site-packages\flask\templating.py", line 65, in get_source
+    return self._get_source_fast(environment, template)
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python39\lib\site-packages\flask\templating.py", line 99, in _get_source_fast
+    raise TemplateNotFound(template)
+jinja2.exceptions.TemplateNotFound: admin/admin_mail_settings.html
+2025-12-31 07:47:08,546 ERROR: Unhandled exception: admin/admin_mail_settings.html [in c:\Users\Administrator\Desktop\Project\Saksk_1_Ti\app\core\errors.py:112]
+Traceback (most recent call last):
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python39\lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python39\lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+  File "c:\Users\Administrator\Desktop\Project\Saksk_1_Ti\app\modules\admin\routes\pages.py", line 159, in admin_mail_settings_page
+    return render_template('admin/admin_mail_settings.html', mail_config=mail_config)
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python39\lib\site-packages\flask\templating.py", line 149, in render_template
+    template = app.jinja_env.get_or_select_template(template_name_or_list)
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python39\lib\site-packages\jinja2\environment.py", line 1087, in get_or_select_template
+    return self.get_template(template_name_or_list, parent, globals)
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python39\lib\site-packages\jinja2\environment.py", line 1016, in get_template
+    return self._load_template(name, globals)
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python39\lib\site-packages\jinja2\environment.py", line 975, in _load_template
+    template = self.loader.load(self, name, self.make_globals(globals))
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python39\lib\site-packages\jinja2\loaders.py", line 126, in load
+    source, filename, uptodate = self.get_source(environment, name)
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python39\lib\site-packages\flask\templating.py", line 65, in get_source
+    return self._get_source_fast(environment, template)
+  File "C:\Users\Administrator\AppData\Local\Programs\Python\Python39\lib\site-packages\flask\templating.py", line 99, in _get_source_fast
+    raise TemplateNotFound(template)
+jinja2.exceptions.TemplateNotFound: admin/admin_mail_settings.html

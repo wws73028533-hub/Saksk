@@ -64,6 +64,20 @@ def admin_questions_page(subject_id):
     return render_template('admin/admin_questions.html', subject_id=subject_id, subject=dict(subject))
 
 
+@admin_pages_bp.route('/subjects/<int:subject_id>/questions/duplicate-check')
+def admin_duplicate_check_page(subject_id):
+    """题集查重结果页面"""
+    conn = get_db()
+    
+    # 获取科目信息
+    subject = conn.execute('SELECT id, name FROM subjects WHERE id=?', (subject_id,)).fetchone()
+    
+    if not subject:
+        return "科目不存在", 404
+    
+    return render_template('admin/admin_duplicate_check.html', subject_id=subject_id, subject=dict(subject))
+
+
 @admin_pages_bp.route('/users/<int:user_id>')
 def admin_user_detail_page(user_id):
     """用户详情页面"""
@@ -169,4 +183,10 @@ def admin_mail_settings_page():
 def admin_limit_settings_page():
     """限制设置页面"""
     return render_template('admin/admin_limit_settings.html')
+
+
+@admin_pages_bp.route('/permissions')
+def admin_permissions_page():
+    """权限管理页面"""
+    return render_template('admin/admin_permissions.html')
 

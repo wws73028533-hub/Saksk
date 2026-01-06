@@ -85,15 +85,127 @@ class User:
         return user
     
     @staticmethod
-    def update_password(user_id, new_password):
-        """更新密码"""
+    def update_password(user_id, new_password, set_password=False):
+        """
+        更新密码
+        
+        Args:
+            user_id: 用户ID
+            new_password: 新密码
+            set_password: 是否为设置密码（True表示设置密码，False表示修改密码）
+        """
         conn = get_db()
         password_hash = generate_password_hash(new_password)
-        conn.execute(
-            'UPDATE users SET password_hash = ? WHERE id = ?',
-            (password_hash, user_id)
-        )
+        
+        # 检查has_password_set字段是否存在
+        try:
+            user_cols = [r['name'] for r in conn.execute("PRAGMA table_info(users)").fetchall()]
+            has_password_set_field = 'has_password_set' in user_cols
+            
+            if not has_password_set_field:
+                # 添加字段
+                conn.execute('ALTER TABLE users ADD COLUMN has_password_set INTEGER DEFAULT 0')
+                # 为所有有password_hash但没有email的老用户设置has_password_set=1
+                # （老用户通过用户名注册，有真实密码）
+                conn.execute('''
+                    UPDATE users 
+                    SET has_password_set = 1 
+                    WHERE password_hash IS NOT NULL 
+                    AND password_hash != '' 
+                    AND (email IS NULL OR email = '')
+                ''')
+                conn.commit()
+                has_password_set_field = True
+        except Exception:
+            has_password_set_field = False
+        
+        if set_password and has_password_set_field:
+            # 设置密码时，同时标记has_password_set为1
+            conn.execute(
+                'UPDATE users SET password_hash = ?, has_password_set = 1 WHERE id = ?',
+                (password_hash, user_id)
+            )
+        else:
+            conn.execute(
+                'UPDATE users SET password_hash = ? WHERE id = ?',
+                (password_hash, user_id)
+            )
         conn.commit()
+    
+    @staticmethod
+    def has_password_set(user_id: int) -> bool:
+        """
+        检查用户是否设置了密码
+        
+        Args:
+            user_id: 用户ID
+            
+        Returns:
+            是否设置了密码
+        """
+        conn = get_db()
+        try:
+            # 检查has_password_set字段是否存在
+            user_cols = [r['name'] for r in conn.execute("PRAGMA table_info(users)").fetchall()]
+            has_password_set_field = 'has_password_set' in user_cols
+            
+            if has_password_set_field:
+                # 字段存在，查询has_password_set值和用户信息
+                row = conn.execute(
+                    'SELECT has_password_set, password_hash, email FROM users WHERE id = ?',
+                    (user_id,)
+                ).fetchone()
+                if row:
+                    # 如果has_password_set为1，肯定已设置密码
+                    if row['has_password_set'] == 1:
+                        return True
+                    
+                    # 如果has_password_set为0，需要判断：
+                    # - 如果是邮箱验证码注册的新用户（有email且has_password_set=0），未设置密码
+                    # - 如果是老用户（没有email或email为空），即使has_password_set=0也认为已设置密码（兼容旧数据）
+                    if row['has_password_set'] == 0:
+                        # 检查是否有邮箱（邮箱注册的用户has_password_set默认为0）
+                        if row['email'] and row['email'].strip():
+                            # 有邮箱且has_password_set=0，说明是邮箱验证码注册的新用户，未设置密码
+                            return False
+                        # 没有邮箱，说明是老用户（通过用户名注册），即使has_password_set=0也认为已设置密码
+                        if row['password_hash']:
+                            return True
+                        return False
+                    
+                    # has_password_set为NULL的情况（字段刚添加，老用户）
+                    if row['has_password_set'] is None:
+                        # 如果有password_hash，说明是老用户，已设置密码
+                        if row['password_hash']:
+                            # 自动更新字段，避免下次再判断
+                            try:
+                                conn.execute(
+                                    'UPDATE users SET has_password_set = 1 WHERE id = ?',
+                                    (user_id,)
+                                )
+                                conn.commit()
+                            except Exception:
+                                pass
+                            return True
+                        return False
+                    
+                    return False
+            
+            # 字段不存在（非常老的数据库），检查password_hash（兼容旧数据）
+            # 如果password_hash存在且不为空，说明是老用户，已设置密码
+            row = conn.execute(
+                'SELECT password_hash FROM users WHERE id = ?',
+                (user_id,)
+            ).fetchone()
+            if row and row['password_hash']:
+                return True
+            
+            return False
+        except Exception as e:
+            # 出错时，为了安全起见，假设已设置密码（避免误判，老用户不应该看到设置密码弹窗）
+            import logging
+            logging.error(f'检查用户密码设置状态失败: {e}')
+            return True
     
     @staticmethod
     def update_profile(user_id, avatar=None, contact=None, college=None):

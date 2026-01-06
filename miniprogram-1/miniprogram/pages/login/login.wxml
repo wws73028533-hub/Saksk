@@ -1,0 +1,52 @@
+<!--登录页面-->
+<view class="page">
+  <navigation-bar title="登录" back="{{false}}" color="black" background="#FFF"></navigation-bar>
+  <view class="body">
+    <view class="login-card">
+    <view class="title">登录</view>
+    <view class="subtitle">支持微信 / 密码 / 邮箱验证码</view>
+
+    <view class="tabs">
+      <view class="tab {{mode==='wechat' ? 'active' : ''}}" data-mode="wechat" bindtap="onSwitchMode">微信</view>
+      <view class="tab {{mode==='password' ? 'active' : ''}}" data-mode="password" bindtap="onSwitchMode">密码</view>
+      <view class="tab {{mode==='email' ? 'active' : ''}}" data-mode="email" bindtap="onSwitchMode">邮箱</view>
+    </view>
+
+    <view wx:if="{{mode==='wechat'}}" class="panel">
+      <button class="btn primary" bindtap="onLoginTap" disabled="{{loading}}" loading="{{loading}}">微信登录</button>
+      <view class="hint">首次微信登录会提示创建/绑定已有账号</view>
+    </view>
+
+    <view wx:if="{{mode==='password'}}" class="panel">
+      <view class="field">
+        <view class="label">账号</view>
+        <input class="input" placeholder="用户名/邮箱" placeholder-class="placeholder" value="{{username}}" bindinput="onUsernameInput" />
+      </view>
+      <view class="field">
+        <view class="label">密码</view>
+        <input class="input" password placeholder="密码" placeholder-class="placeholder" value="{{password}}" bindinput="onPasswordInput" />
+      </view>
+      <button class="btn primary" bindtap="onPasswordLoginTap" disabled="{{loading}}" loading="{{loading}}">登录</button>
+    </view>
+
+    <view wx:if="{{mode==='email'}}" class="panel">
+      <view class="field">
+        <view class="label">邮箱</view>
+        <input class="input" placeholder="邮箱" placeholder-class="placeholder" value="{{email}}" bindinput="onEmailInput" />
+      </view>
+      <view class="field">
+        <view class="label">验证码</view>
+        <view class="codeRow">
+          <input class="input" placeholder="验证码" placeholder-class="placeholder" maxlength="6" value="{{code}}" bindinput="onCodeInput" />
+          <button class="codeBtn" bindtap="onSendCodeTap" disabled="{{codeSending || loading}}">
+            {{codeSending ? countdown + 's' : '发送'}}
+          </button>
+        </view>
+      </view>
+      <button class="btn primary" bindtap="onEmailLoginTap" disabled="{{loading}}" loading="{{loading}}">登录</button>
+      <view class="hint">邮箱验证码登录支持自动注册</view>
+    </view>
+    </view>
+  </view>
+</view>
+

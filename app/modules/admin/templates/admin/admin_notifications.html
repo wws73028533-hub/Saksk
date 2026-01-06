@@ -255,12 +255,41 @@
         border-radius:8px; 
         font-size:14px;
         transition: all 0.2s;
+        background: rgba(255, 255, 255, 0.7);
+        color: var(--text-color);
     }
 
     input:focus, textarea:focus, select:focus {
         outline: none;
         border-color: var(--primary);
         box-shadow: 0 0 0 3px var(--primary-light);
+    }
+
+    /* 黑暗模式下的输入框 */
+    [data-theme="dark"] input[type="text"],
+    [data-theme="dark"] input[type="datetime-local"],
+    [data-theme="dark"] input[type="number"],
+    [data-theme="dark"] textarea,
+    [data-theme="dark"] select {
+        background: rgba(28, 28, 30, 0.6);
+        border-color: var(--border-color);
+        color: var(--text-color);
+    }
+
+    [data-theme="dark"] input[type="text"]:focus,
+    [data-theme="dark"] input[type="datetime-local"]:focus,
+    [data-theme="dark"] input[type="number"]:focus,
+    [data-theme="dark"] textarea:focus,
+    [data-theme="dark"] select:focus {
+        background: rgba(28, 28, 30, 0.8);
+        border-color: var(--primary);
+    }
+
+    /* 黑暗模式下的输入框占位符 */
+    [data-theme="dark"] input::placeholder,
+    [data-theme="dark"] textarea::placeholder {
+        color: var(--text-sub);
+        opacity: 0.7;
     }
 
     textarea { 
@@ -272,6 +301,7 @@
     /* 表格样式优化 */
     .table-wrapper {
         overflow-x: auto;
+        overflow-y: visible;
         border-radius: var(--radius-lg);
         border: 0.5px solid var(--border-color);
         margin-top: 24px;
@@ -308,6 +338,7 @@
     tbody tr {
         transition: background-color 0.15s;
         height: 65px; /* 统一行高 */
+        position: relative;
     }
 
     tbody tr:hover { 
@@ -323,6 +354,12 @@
         vertical-align: middle;
     }
 
+    /* 操作列允许溢出，确保菜单不被裁剪 */
+    tbody td.actions {
+        position: relative;
+        overflow: visible;
+    }
+
     /* 标题列省略显示 */
     tbody td:nth-child(3) {
         max-width: 200px;
@@ -336,12 +373,15 @@
         gap: 6px; 
         flex-wrap: wrap; 
         align-items: center;
+        position: relative;
+        overflow: visible;
     }
 
-    /* 操作按钮下拉菜单 */
+    /* 操作按钮下拉菜单容器 */
     .action-menu-wrapper {
         position: relative;
         display: inline-block;
+        z-index: 1;
     }
     
     .btn-sm {
@@ -398,7 +438,7 @@
         border-radius: var(--radius-md);
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
         min-width: 120px;
-        z-index: 1000;
+        z-index: 10000;
         overflow: hidden;
     }
     
@@ -478,6 +518,63 @@
         padding: 6px 12px;
     }
 
+    /* 操作按钮组样式 */
+    .actions-group {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .btn-edit {
+        background: rgba(0, 122, 255, 0.1);
+        color: var(--primary);
+        border: 0.5px solid rgba(0, 122, 255, 0.2);
+    }
+
+    .btn-edit:hover {
+        background: rgba(0, 122, 255, 0.15);
+        border-color: rgba(0, 122, 255, 0.3);
+    }
+
+    .btn-toggle {
+        background: rgba(255, 149, 0, 0.1);
+        color: #ff9500;
+        border: 0.5px solid rgba(255, 149, 0, 0.2);
+    }
+
+    .btn-toggle:hover {
+        background: rgba(255, 149, 0, 0.15);
+        border-color: rgba(255, 149, 0, 0.3);
+    }
+
+    .btn-delete {
+        background: rgba(255, 59, 48, 0.1);
+        color: var(--danger);
+        border: 0.5px solid rgba(255, 59, 48, 0.2);
+    }
+
+    .btn-delete:hover {
+        background: rgba(255, 59, 48, 0.15);
+        border-color: rgba(255, 59, 48, 0.3);
+    }
+
+    /* 黑暗模式下的操作按钮 */
+    [data-theme="dark"] .btn-edit {
+        background: rgba(10, 132, 255, 0.15);
+        border-color: rgba(10, 132, 255, 0.25);
+    }
+
+    [data-theme="dark"] .btn-toggle {
+        background: rgba(255, 149, 0, 0.15);
+        border-color: rgba(255, 149, 0, 0.25);
+    }
+
+    [data-theme="dark"] .btn-delete {
+        background: rgba(255, 59, 48, 0.15);
+        border-color: rgba(255, 59, 48, 0.25);
+    }
+
     .muted { 
         color: var(--text-sub); 
         font-size: 13px; 
@@ -498,6 +595,8 @@
     .tag-announcement { background:#cffafe; color:#0e7490; }
     .tag-reminder { background:#fef3c7; color:#92400e; }
     .tag-warning { background:#fee2e2; color:#991b1b; }
+    .tag-success { background:#d1fae5; color:#065f46; }
+    .tag-error { background:#fee2e2; color:#991b1b; }
     .tag-active { background:#d1fae5; color:#065f46; }
     .tag-inactive { background:#f3f4f6; color:#4b5563; }
 
@@ -508,6 +607,12 @@
         white-space: nowrap;
         color: var(--text-sub);
         font-size: 14px;
+        cursor: pointer;
+        transition: color 0.2s;
+    }
+
+    .content-preview:hover {
+        color: var(--primary);
     }
 
     .priority-badge {
@@ -556,6 +661,15 @@
         box-shadow: 0 20px 60px rgba(0,0,0,0.15);
         border: 0.5px solid var(--border-color);
         animation: slideUp 0.3s ease-out;
+    }
+
+    /* 黑暗模式下的弹窗 */
+    [data-theme="dark"] .modal {
+        background: rgba(28, 28, 30, 0.95);
+        backdrop-filter: blur(40px) saturate(180%);
+        -webkit-backdrop-filter: blur(40px) saturate(180%);
+        border-color: var(--border-color);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
     }
 
     @keyframes slideUp {
@@ -641,6 +755,25 @@
         box-shadow: 0 0 0 3px var(--primary-light);
     }
 
+    /* 黑暗模式下的类型选择器 */
+    [data-theme="dark"] .type-option {
+        background: rgba(28, 28, 30, 0.6);
+        border-color: var(--border-color);
+        color: var(--text-color);
+    }
+
+    [data-theme="dark"] .type-option:hover {
+        background: rgba(28, 28, 30, 0.8);
+        border-color: rgba(142, 142, 147, 0.5);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    }
+
+    [data-theme="dark"] .type-option.selected {
+        background: rgba(10, 132, 255, 0.15);
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.2);
+    }
+
     .type-option input { 
         display: none; 
     }
@@ -656,6 +789,8 @@
     .type-dot.announcement { background: #06b6d4; }
     .type-dot.reminder { background: #f59e0b; }
     .type-dot.warning { background: #ef4444; }
+    .type-dot.success { background: #10b981; }
+    .type-dot.error { background: #ef4444; }
 
     .type-label {
         font-weight: 600;
@@ -797,6 +932,7 @@
         .table-wrapper { 
             font-size: 13px;
             overflow-x: auto;
+            overflow-y: visible;
         }
         th, td { padding: 10px 8px; }
         .actions { 
@@ -866,7 +1002,7 @@
     }
     
     .tab-content {
-        display: block;
+        display: none;
     }
     
     .tab-content.active {
@@ -883,6 +1019,52 @@
     
     [data-theme="dark"] .tab-btn.active {
         color: var(--primary);
+    }
+
+    /* 内容预览弹窗样式 */
+    .preview-close-btn {
+        background: none;
+        border: none;
+        font-size: 24px;
+        cursor: pointer;
+        color: var(--text-sub);
+        padding: 0;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 4px;
+        transition: all 0.2s;
+    }
+
+    .preview-close-btn:hover {
+        background: rgba(142, 142, 147, 0.1);
+        color: var(--text-color);
+    }
+
+    .preview-content-box {
+        padding: 16px;
+        background: rgba(142, 142, 147, 0.06);
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+        max-height: 400px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        line-height: 1.6;
+        color: var(--text-color);
+        font-size: 14px;
+    }
+
+    /* 黑暗模式下的预览内容框 */
+    [data-theme="dark"] .preview-content-box {
+        background: rgba(28, 28, 30, 0.6);
+        border-color: var(--border-color);
+    }
+
+    [data-theme="dark"] .preview-close-btn:hover {
+        background: rgba(142, 142, 147, 0.2);
     }
 </style>
 {% endblock %}
@@ -974,6 +1156,92 @@
         <span class="page-info" id="pageInfo">第 1 页 / 共 1 页</span>
         <button onclick="changePage('next')" id="btnNext">下一页</button>
         <button onclick="changePage('last')" id="btnLast">末页</button>
+    </div>
+</div>
+
+    <!-- 弹窗管理区域 -->
+    <div id="popupsTab" class="tab-content" style="display: none;">
+        <div class="toolbar">
+            <div class="toolbar-left">
+                <h1>弹窗管理</h1>
+            </div>
+            <div class="toolbar-right">
+                <button class="btn-outline" onclick="refreshPopupsData()">刷新</button>
+                <button class="btn-primary" onclick="openPopupCreate()">新建弹窗</button>
+            </div>
+        </div>
+
+        <!-- 统计卡片 -->
+        <div class="stats-row" id="popupsStatsRow"></div>
+
+        <!-- 搜索和筛选栏 -->
+        <div class="filter-bar">
+            <div class="search-box">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="popupsSearchInput" placeholder="       搜索标题或内容..." oninput="handlePopupsSearch()">
+                <button class="clear-search" id="popupsClearSearch" onclick="clearPopupsSearch()">×</button>
+            </div>
+        </div>
+        
+        <div class="filter-bar" style="margin-top: -8px;">
+            <div class="filter-group">
+                <span class="filter-label">类型:</span>
+                <div class="filter-chips">
+                    <button class="filter-chip active" data-popup-type="all" onclick="filterPopupsByType('all')">全部</button>
+                    <button class="filter-chip" data-popup-type="info" onclick="filterPopupsByType('info')">信息</button>
+                    <button class="filter-chip" data-popup-type="success" onclick="filterPopupsByType('success')">成功</button>
+                    <button class="filter-chip" data-popup-type="warning" onclick="filterPopupsByType('warning')">警告</button>
+                    <button class="filter-chip" data-popup-type="error" onclick="filterPopupsByType('error')">错误</button>
+                </div>
+            </div>
+
+            <div class="filter-group">
+                <span class="filter-label">状态:</span>
+                <div class="filter-chips">
+                    <button class="filter-chip active" data-popup-status="all" onclick="filterPopupsByStatus('all')">全部</button>
+                    <button class="filter-chip" data-popup-status="active" onclick="filterPopupsByStatus('active')">启用</button>
+                    <button class="filter-chip" data-popup-status="inactive" onclick="filterPopupsByStatus('inactive')">禁用</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 表格 -->
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:50px;">ID</th>
+                        <th style="width:140px;">类型</th>
+                        <th>标题</th>
+                        <th>内容预览</th>
+                        <th style="width:80px;">优先级</th>
+                        <th style="width:90px;">状态</th>
+                        <th style="width:100px;">显示次数</th>
+                        <th style="width:100px;">关闭次数</th>
+                        <th style="width:100px;">关闭率</th>
+                        <th style="width:160px;">创建时间</th>
+                        <th style="width:100px;">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="popupsTbody">
+                    <tr>
+                        <td colspan="11" class="loading">
+                            <div class="loading-spinner"></div>
+                            <div style="margin-top: 12px;">加载中...</div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 分页 -->
+        <div class="pagination" id="popupsPagination" style="display: none;">
+            <button onclick="changePopupsPage('first')" id="popupsBtnFirst">首页</button>
+            <button onclick="changePopupsPage('prev')" id="popupsBtnPrev">上一页</button>
+            <span class="page-info" id="popupsPageInfo">第 1 页 / 共 1 页</span>
+            <button onclick="changePopupsPage('next')" id="popupsBtnNext">下一页</button>
+            <button onclick="changePopupsPage('last')" id="popupsBtnLast">末页</button>
+        </div>
     </div>
 </div>
 
@@ -1135,6 +1403,23 @@
     </div>
 </div>
 
+<!-- 内容预览弹窗 -->
+<div id="contentPreviewModal" class="modal-overlay" style="display: none;">
+    <div class="modal" style="max-width: 600px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3 style="margin: 0;">内容预览</h3>
+            <button id="closePreviewBtn" onclick="closeContentPreview()" class="preview-close-btn">&times;</button>
+        </div>
+        <div class="form-group" style="margin-bottom: 0;">
+            <label style="margin-bottom: 8px; font-weight: 600; color: var(--text-color);">完整内容</label>
+            <div id="previewContent" class="preview-content-box"></div>
+        </div>
+        <div class="modal-actions" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border-color);">
+            <button class="btn-outline" onclick="closeContentPreview()">关闭</button>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
@@ -1162,8 +1447,46 @@
     let currentStatusFilter = 'all';
     let searchKeyword = '';
 
+    // 弹窗管理全局状态
+    let allPopups = [];
+    let filteredPopups = [];
+    let popupStats = {};
+    let popupsCurrentPage = 1;
+    const popupsPageSize = 10;
+    let popupsCurrentTypeFilter = 'all';
+    let popupsCurrentStatusFilter = 'all';
+    let popupsSearchKeyword = '';
+
     function qs(sel) { return document.querySelector(sel); }
     function getVal(id) { return document.getElementById(id).value.trim(); }
+
+    // 切换标签页
+    function switchTab(tab) {
+        // 更新按钮状态
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.tab === tab);
+        });
+
+        // 更新内容区域
+        const notificationsTab = document.getElementById('notificationsTab');
+        const popupsTab = document.getElementById('popupsTab');
+        
+        if (tab === 'notifications') {
+            notificationsTab.classList.add('active');
+            notificationsTab.style.display = 'block';
+            popupsTab.classList.remove('active');
+            popupsTab.style.display = 'none';
+        } else if (tab === 'popups') {
+            popupsTab.classList.add('active');
+            popupsTab.style.display = 'block';
+            notificationsTab.classList.remove('active');
+            notificationsTab.style.display = 'none';
+            // 首次切换到弹窗管理时加载数据
+            if (allPopups.length === 0) {
+                loadPopups();
+            }
+        }
+    }
 
     async function loadNotifications() {
         try {
@@ -1354,18 +1677,18 @@
                 <td>${n.id}</td>
                 <td><span class="tag ${typeClass}">${TYPE_LABELS[n.n_type] || n.n_type}</span></td>
                 <td><strong>${escapeHtml(n.title)}</strong></td>
-                <td class="content-preview" title="${escapeHtml(n.content)}">${escapeHtml(n.content)}</td>
+                <td class="content-preview" title="${escapeHtml(n.content)}" data-content="${escapeHtml(n.content).replace(/"/g, '&quot;')}" onclick="showContentPreview(this.dataset.content)">${escapeHtml(n.content)}</td>
                 <td><span class="priority-badge ${priorityClass}">${n.priority || 0}</span></td>
                 <td><span class="tag ${statusClass}">${statusText}</span></td>
                 <td class="muted">${formatDate(n.created_at)}</td>
                 <td class="actions">
                     <div class="action-menu-wrapper">
-                        <button class="btn-sm btn-action" onclick="toggleActionMenu(${n.id}, event)" title="操作">操作</button>
-                        <div class="action-menu" id="actionMenu_${n.id}">
-                            <button class="action-menu-item" onclick="openEdit(${n.id}); closeActionMenu(${n.id})">编辑</button>
-                            <button class="action-menu-item" onclick="toggleActive(${n.id}); closeActionMenu(${n.id})">${n.is_active ? '禁用' : '启用'}</button>
+                        <button class="btn-sm btn-action" onclick="toggleNotificationsActionMenu(${n.id}, event)" title="操作">操作</button>
+                        <div class="action-menu" id="notificationsActionMenu_${n.id}">
+                            <button class="action-menu-item" onclick="openEdit(${n.id}); closeNotificationsActionMenu(${n.id})">编辑</button>
+                            <button class="action-menu-item" onclick="toggleActive(${n.id}); closeNotificationsActionMenu(${n.id})">${n.is_active ? '禁用' : '启用'}</button>
                             <div class="action-menu-divider"></div>
-                            <button class="action-menu-item danger" onclick="deleteNotification(${n.id}); closeActionMenu(${n.id})">删除</button>
+                            <button class="action-menu-item danger" onclick="deleteNotification(${n.id}); closeNotificationsActionMenu(${n.id})">删除</button>
                         </div>
                     </div>
                 </td>
@@ -1563,50 +1886,6 @@
         }
     }
 
-    // 操作菜单控制
-    function toggleActionMenu(notificationId, event) {
-        event.stopPropagation();
-        const menuId = `actionMenu_${notificationId}`;
-        const menu = document.getElementById(menuId);
-        const allMenus = document.querySelectorAll('.action-menu.show');
-        
-        // 关闭其他所有菜单
-        allMenus.forEach(m => {
-            if (m.id !== menuId) {
-                m.classList.remove('show');
-            }
-        });
-        
-        // 切换当前菜单
-        if (menu) {
-            menu.classList.toggle('show');
-        }
-    }
-    
-    function closeActionMenu(notificationId) {
-        const menu = document.getElementById(`actionMenu_${notificationId}`);
-        if (menu) {
-            menu.classList.remove('show');
-        }
-    }
-    
-    // 点击外部区域关闭所有菜单
-    document.addEventListener('click', function(event) {
-        if (!event.target.closest('.action-menu-wrapper')) {
-            document.querySelectorAll('.action-menu.show').forEach(menu => {
-                menu.classList.remove('show');
-            });
-        }
-    });
-    
-    // ESC键关闭菜单
-    document.addEventListener('keydown', function(event) {
-        if (event.key === 'Escape') {
-            document.querySelectorAll('.action-menu.show').forEach(menu => {
-                menu.classList.remove('show');
-            });
-        }
-    });
 
     async function deleteNotification(id) {
         if (!confirm('⚠️ 确定要删除这条通知吗?\n\n删除后将无法恢复!')) return;
@@ -1626,6 +1905,36 @@
         }
     }
 
+    // 通知栏管理操作菜单控制
+    function toggleNotificationsActionMenu(notificationId, event) {
+        event.stopPropagation();
+        const menuId = `notificationsActionMenu_${notificationId}`;
+        const menu = document.getElementById(menuId);
+        
+        // 关闭所有已打开的操作菜单（包括通知栏和弹窗管理的，但不包括用户管理页面的）
+        const allMenus = document.querySelectorAll('.action-menu.show');
+        allMenus.forEach(m => {
+            // 只处理通知管理页面的菜单，不影响用户管理页面（actionMenu_开头）
+            if (m.id && (m.id.startsWith('notificationsActionMenu_') || m.id.startsWith('popupsActionMenu_'))) {
+                if (m.id !== menuId) {
+                    m.classList.remove('show');
+                }
+            }
+        });
+        
+        // 切换当前菜单
+        if (menu) {
+            menu.classList.toggle('show');
+        }
+    }
+    
+    function closeNotificationsActionMenu(notificationId) {
+        const menu = document.getElementById(`notificationsActionMenu_${notificationId}`);
+        if (menu) {
+            menu.classList.remove('show');
+        }
+    }
+
     // 点击弹窗外部关闭
     qs('#dlgEdit').addEventListener('click', function(e) {
         if (e.target === this) closeEdit();
@@ -1634,6 +1943,485 @@
     // 点击弹窗外部关闭（弹窗管理）
     document.getElementById('popupDlgEdit').addEventListener('click', function(e) {
         if (e.target === this) closePopupEdit();
+    });
+
+    // ==================== 弹窗管理 ====================
+    const POPUP_TYPE_LABELS = {
+        info: '信息',
+        success: '成功',
+        warning: '警告',
+        error: '错误'
+    };
+
+    async function loadPopups() {
+        try {
+            const [popupsRes, statsRes] = await Promise.all([
+                fetch('/admin/api/popups'),
+                fetch('/admin/api/popups/stats')
+            ]);
+            
+            const popupsJs = await popupsRes.json();
+            if (!popupsRes.ok || popupsJs.status !== 'success') {
+                showPopupsError(popupsJs.message || '加载失败');
+                return;
+            }
+            allPopups = popupsJs.popups || [];
+            
+            const statsJs = await statsRes.json();
+            if (statsRes.ok && statsJs.status === 'success') {
+                popupStats = {};
+                (statsJs.stats || []).forEach(s => {
+                    popupStats[s.popup_id] = s;
+                });
+            }
+            
+            applyPopupsFilters();
+            renderPopupsStats();
+        } catch (e) {
+            console.error('加载弹窗失败:', e);
+            showPopupsError('加载弹窗失败');
+        }
+    }
+
+    function refreshPopupsData() {
+        showPopupsLoading();
+        loadPopups();
+    }
+
+    function showPopupsLoading() {
+        const tb = document.getElementById('popupsTbody');
+        tb.innerHTML = `<tr><td colspan="11" class="loading">
+            <div class="loading-spinner"></div>
+            <div style="margin-top: 12px;">加载中...</div>
+        </td></tr>`;
+    }
+
+    function showPopupsError(msg) {
+        const tb = document.getElementById('popupsTbody');
+        tb.innerHTML = `<tr><td colspan="11" class="empty-state">
+            <div class="empty-state-text">加载失败</div>
+            <div class="empty-state-hint">${escapeHtml(msg)}</div>
+        </td></tr>`;
+    }
+
+    function renderPopupsStats() {
+        const total = allPopups.length;
+        const active = allPopups.filter(p => p.is_active).length;
+        const inactive = total - active;
+        const totalViews = Object.values(popupStats).reduce((sum, s) => sum + (s.total_views || 0), 0);
+        const totalDismissals = Object.values(popupStats).reduce((sum, s) => sum + (s.total_dismissals || 0), 0);
+        const avgDismissalRate = totalViews > 0 ? ((totalDismissals / totalViews) * 100).toFixed(1) : 0;
+
+        const statsHtml = `
+            <div class="stat-card info">
+                <div class="stat-label">总弹窗数</div>
+                <div class="stat-value">${total}</div>
+            </div>
+            <div class="stat-card success">
+                <div class="stat-label">已启用</div>
+                <div class="stat-value">${active}</div>
+            </div>
+            <div class="stat-card warning">
+                <div class="stat-label">总显示次数</div>
+                <div class="stat-value">${totalViews}</div>
+            </div>
+            <div class="stat-card danger">
+                <div class="stat-label">平均关闭率</div>
+                <div class="stat-value">${avgDismissalRate}%</div>
+            </div>
+        `;
+        
+        qs('#popupsStatsRow').innerHTML = statsHtml;
+    }
+
+    function applyPopupsFilters() {
+        filteredPopups = allPopups.filter(p => {
+            if (popupsCurrentTypeFilter !== 'all' && p.popup_type !== popupsCurrentTypeFilter) {
+                return false;
+            }
+            
+            if (popupsCurrentStatusFilter === 'active' && !p.is_active) {
+                return false;
+            }
+            if (popupsCurrentStatusFilter === 'inactive' && p.is_active) {
+                return false;
+            }
+            
+            if (popupsSearchKeyword) {
+                const keyword = popupsSearchKeyword.toLowerCase();
+                const title = (p.title || '').toLowerCase();
+                const content = (p.content || '').toLowerCase();
+                if (!title.includes(keyword) && !content.includes(keyword)) {
+                    return false;
+                }
+            }
+            
+            return true;
+        });
+        
+        popupsCurrentPage = 1;
+        renderPopupsTable();
+    }
+
+    function handlePopupsSearch() {
+        const input = qs('#popupsSearchInput');
+        popupsSearchKeyword = input.value.trim();
+        const clearBtn = qs('#popupsClearSearch');
+        clearBtn.style.display = popupsSearchKeyword ? 'block' : 'none';
+        applyPopupsFilters();
+    }
+
+    function clearPopupsSearch() {
+        qs('#popupsSearchInput').value = '';
+        popupsSearchKeyword = '';
+        qs('#popupsClearSearch').style.display = 'none';
+        applyPopupsFilters();
+    }
+
+    function filterPopupsByType(type) {
+        popupsCurrentTypeFilter = type;
+        document.querySelectorAll('[data-popup-type]').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.popupType === type);
+        });
+        applyPopupsFilters();
+    }
+
+    function filterPopupsByStatus(status) {
+        popupsCurrentStatusFilter = status;
+        document.querySelectorAll('[data-popup-status]').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.popupStatus === status);
+        });
+        applyPopupsFilters();
+    }
+
+    function changePopupsPage(action) {
+        const totalPages = Math.ceil(filteredPopups.length / popupsPageSize);
+        
+        switch(action) {
+            case 'first':
+                popupsCurrentPage = 1;
+                break;
+            case 'prev':
+                if (popupsCurrentPage > 1) popupsCurrentPage--;
+                break;
+            case 'next':
+                if (popupsCurrentPage < totalPages) popupsCurrentPage++;
+                break;
+            case 'last':
+                popupsCurrentPage = totalPages;
+                break;
+        }
+        
+        renderPopupsTable();
+    }
+
+    function renderPopupsTable() {
+        const tb = document.getElementById('popupsTbody');
+        const totalPages = Math.ceil(filteredPopups.length / popupsPageSize);
+        
+        if (filteredPopups.length === 0) {
+            tb.innerHTML = `<tr><td colspan="11" class="empty-state">
+                <div class="empty-state-text">暂无弹窗</div>
+                <div class="empty-state-hint">点击"新建弹窗"按钮创建第一条弹窗</div>
+            </td></tr>`;
+            qs('#popupsPagination').style.display = 'none';
+            return;
+        }
+
+        const start = (popupsCurrentPage - 1) * popupsPageSize;
+        const end = start + popupsPageSize;
+        const pageData = filteredPopups.slice(start, end);
+
+        tb.innerHTML = pageData.map(p => {
+            const typeClass = `tag-${p.popup_type || 'info'}`;
+            const statusClass = p.is_active ? 'tag-active' : 'tag-inactive';
+            const statusText = p.is_active ? '启用' : '禁用';
+            const stats = popupStats[p.id] || { total_views: 0, total_dismissals: 0, dismissal_rate: 0 };
+            const dismissalRate = stats.total_views > 0 ? ((stats.dismissal_rate * 100).toFixed(1)) : 0;
+            
+            let priorityClass = 'priority-low';
+            if (p.priority >= 70) priorityClass = 'priority-high';
+            else if (p.priority >= 30) priorityClass = 'priority-medium';
+
+            return `<tr>
+                <td>${p.id}</td>
+                <td><span class="tag ${typeClass}">${POPUP_TYPE_LABELS[p.popup_type] || p.popup_type}</span></td>
+                <td><strong>${escapeHtml(p.title)}</strong></td>
+                <td class="content-preview" title="${escapeHtml(p.content)}" data-content="${escapeHtml(p.content).replace(/"/g, '&quot;')}" onclick="showContentPreview(this.dataset.content)">${escapeHtml(p.content)}</td>
+                <td><span class="priority-badge ${priorityClass}">${p.priority || 0}</span></td>
+                <td><span class="tag ${statusClass}">${statusText}</span></td>
+                <td class="muted">${stats.total_views || 0}</td>
+                <td class="muted">${stats.total_dismissals || 0}</td>
+                <td class="muted">${dismissalRate}%</td>
+                <td class="muted">${formatDate(p.created_at)}</td>
+                <td class="actions">
+                    <div class="action-menu-wrapper">
+                        <button class="btn-sm btn-action" onclick="togglePopupsActionMenu(${p.id}, event)" title="操作">操作</button>
+                        <div class="action-menu" id="popupsActionMenu_${p.id}">
+                            <button class="action-menu-item" onclick="openPopupEdit(${p.id}); closePopupsActionMenu(${p.id})">编辑</button>
+                            <button class="action-menu-item" onclick="togglePopupActive(${p.id}); closePopupsActionMenu(${p.id})">${p.is_active ? '禁用' : '启用'}</button>
+                            <div class="action-menu-divider"></div>
+                            <button class="action-menu-item danger" onclick="deletePopup(${p.id}); closePopupsActionMenu(${p.id})">删除</button>
+                        </div>
+                    </div>
+                </td>
+            </tr>`;
+        }).join('');
+
+        if (totalPages > 1) {
+            qs('#popupsPagination').style.display = 'flex';
+            qs('#popupsPageInfo').innerText = `第 ${popupsCurrentPage} 页 / 共 ${totalPages} 页 (共 ${filteredPopups.length} 条)`;
+            qs('#popupsBtnFirst').disabled = popupsCurrentPage === 1;
+            qs('#popupsBtnPrev').disabled = popupsCurrentPage === 1;
+            qs('#popupsBtnNext').disabled = popupsCurrentPage === totalPages;
+            qs('#popupsBtnLast').disabled = popupsCurrentPage === totalPages;
+        } else {
+            qs('#popupsPagination').style.display = 'none';
+        }
+    }
+
+    function selectPopupType(type) {
+        document.querySelectorAll('.popup-type-option').forEach(el => {
+            const input = el.querySelector('input');
+            if (input && input.value === type) {
+                el.classList.add('selected');
+                input.checked = true;
+            } else {
+                el.classList.remove('selected');
+                if (input) input.checked = false;
+            }
+        });
+    }
+
+    function openPopupCreate() {
+        qs('#popupDlgTitle').innerText = '新建弹窗';
+        qs('#popupEditId').value = '';
+        qs('#popupEditTitle').value = '';
+        qs('#popupEditContent').value = '';
+        qs('#popupEditPriority').value = '0';
+        qs('#popupEditActive').value = '1';
+        qs('#popupEditStartAt').value = '';
+        qs('#popupEditEndAt').value = '';
+        selectPopupType('info');
+        updateCharCount('popupEditTitle', 'popupTitleCount', 200);
+        updateCharCount('popupEditContent', 'popupContentCount', 1000);
+        qs('#popupDlgEdit').style.display = 'flex';
+    }
+
+    async function openPopupEdit(id) {
+        try {
+            const res = await fetch(`/admin/api/popups/${id}`);
+            const js = await res.json();
+            if (!res.ok || js.status !== 'success') {
+                alert(js.message || '获取弹窗失败');
+                return;
+            }
+
+            const p = js.popup;
+            qs('#popupDlgTitle').innerText = '编辑弹窗';
+            qs('#popupEditId').value = p.id;
+            qs('#popupEditTitle').value = p.title || '';
+            qs('#popupEditContent').value = p.content || '';
+            qs('#popupEditPriority').value = p.priority || 0;
+            qs('#popupEditActive').value = p.is_active ? '1' : '0';
+            qs('#popupEditStartAt').value = formatDateTimeLocal(p.start_at);
+            qs('#popupEditEndAt').value = formatDateTimeLocal(p.end_at);
+            selectPopupType(p.popup_type || 'info');
+            updateCharCount('popupEditTitle', 'popupTitleCount', 200);
+            updateCharCount('popupEditContent', 'popupContentCount', 1000);
+            qs('#popupDlgEdit').style.display = 'flex';
+        } catch (e) {
+            console.error('获取弹窗失败:', e);
+            alert('获取弹窗失败');
+        }
+    }
+
+    function closePopupEdit() {
+        qs('#popupDlgEdit').style.display = 'none';
+    }
+
+    async function savePopup() {
+        const id = qs('#popupEditId').value;
+        const title = getVal('popupEditTitle');
+        const content = getVal('popupEditContent');
+        const popup_type = qs('input[name="popup_type"]:checked').value;
+        const priority = parseInt(qs('#popupEditPriority').value) || 0;
+        const is_active = qs('#popupEditActive').value === '1';
+        const start_at = qs('#popupEditStartAt').value || null;
+        const end_at = qs('#popupEditEndAt').value || null;
+
+        if (!title) {
+            alert('⚠️ 请填写标题');
+            qs('#popupEditTitle').focus();
+            return;
+        }
+
+        if (!content) {
+            alert('⚠️ 请填写内容');
+            qs('#popupEditContent').focus();
+            return;
+        }
+
+        if (priority < 0 || priority > 100) {
+            alert('⚠️ 优先级必须在 0-100 之间');
+            qs('#popupEditPriority').focus();
+            return;
+        }
+
+        const data = { title, content, popup_type, priority, is_active, start_at, end_at };
+        const btnSave = qs('#popupBtnSave');
+        const originalText = btnSave.textContent;
+        btnSave.disabled = true;
+        btnSave.textContent = '保存中...';
+
+        try {
+            const url = id ? `/admin/api/popups/${id}` : '/admin/api/popups';
+            const method = id ? 'PUT' : 'POST';
+
+            const res = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            const js = await res.json();
+            if (!res.ok || js.status !== 'success') {
+                alert('❌ ' + (js.message || '保存失败'));
+                return;
+            }
+
+            alert('✅ ' + (js.message || '保存成功'));
+            closePopupEdit();
+            loadPopups();
+        } catch (e) {
+            console.error('保存弹窗失败:', e);
+            alert('❌ 保存弹窗失败');
+        } finally {
+            btnSave.disabled = false;
+            btnSave.textContent = originalText;
+        }
+    }
+
+    async function togglePopupActive(id) {
+        const popup = allPopups.find(p => p.id === id);
+        if (!popup) return;
+        
+        const newActive = !popup.is_active;
+        const data = { is_active: newActive };
+        
+        try {
+            const res = await fetch(`/admin/api/popups/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const js = await res.json();
+            if (!res.ok || js.status !== 'success') {
+                alert('❌ ' + (js.message || '操作失败'));
+                return;
+            }
+            loadPopups();
+        } catch (e) {
+            console.error('切换状态失败:', e);
+            alert('❌ 切换状态失败');
+        }
+    }
+
+    function togglePopupsActionMenu(popupId, event) {
+        event.stopPropagation();
+        const menuId = `popupsActionMenu_${popupId}`;
+        const menu = document.getElementById(menuId);
+        
+        // 关闭所有已打开的操作菜单（包括通知栏和弹窗管理的，但不包括用户管理页面的）
+        const allMenus = document.querySelectorAll('.action-menu.show');
+        allMenus.forEach(m => {
+            // 只处理通知管理页面的菜单，不影响用户管理页面（actionMenu_开头）
+            if (m.id && (m.id.startsWith('notificationsActionMenu_') || m.id.startsWith('popupsActionMenu_'))) {
+                if (m.id !== menuId) {
+                    m.classList.remove('show');
+                }
+            }
+        });
+        
+        if (menu) {
+            menu.classList.toggle('show');
+        }
+    }
+    
+    function closePopupsActionMenu(popupId) {
+        const menu = document.getElementById(`popupsActionMenu_${popupId}`);
+        if (menu) {
+            menu.classList.remove('show');
+        }
+    }
+
+    async function deletePopup(id) {
+        if (!confirm('⚠️ 确定要删除这条弹窗吗?\n\n删除后将无法恢复!')) return;
+
+        try {
+            const res = await fetch(`/admin/api/popups/${id}`, { method: 'DELETE' });
+            const js = await res.json();
+            if (!res.ok || js.status !== 'success') {
+                alert('❌ ' + (js.message || '删除失败'));
+                return;
+            }
+            alert('✅ ' + (js.message || '删除成功'));
+            loadPopups();
+        } catch (e) {
+            console.error('删除弹窗失败:', e);
+            alert('❌ 删除弹窗失败');
+        }
+    }
+
+    // ==================== 内容预览弹窗 ====================
+    function showContentPreview(content) {
+        const modal = document.getElementById('contentPreviewModal');
+        const previewContent = document.getElementById('previewContent');
+        if (modal && previewContent) {
+            // 解码 HTML 实体
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = content;
+            previewContent.textContent = tempDiv.textContent || tempDiv.innerText || content;
+            modal.style.display = 'flex';
+        }
+    }
+
+    function closeContentPreview() {
+        const modal = document.getElementById('contentPreviewModal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+
+    // 点击弹窗外部关闭预览弹窗
+    document.getElementById('contentPreviewModal')?.addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeContentPreview();
+        }
+    });
+
+    // ESC键关闭预览弹窗
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            const modal = document.getElementById('contentPreviewModal');
+            if (modal && modal.style.display === 'flex') {
+                closeContentPreview();
+            }
+        }
+    });
+
+    // 点击外部区域关闭所有操作菜单（仅限通知管理页面的菜单）
+    document.addEventListener('click', function(event) {
+        if (!event.target.closest('.action-menu-wrapper')) {
+            // 只关闭通知管理页面的菜单（通过ID前缀识别），不影响其他页面（如用户管理页面）
+            const allMenus = document.querySelectorAll('.action-menu.show');
+            allMenus.forEach(menu => {
+                // 只关闭通知管理和弹窗管理的菜单，不影响用户管理页面的菜单（actionMenu_开头）
+                if (menu.id && (menu.id.startsWith('notificationsActionMenu_') || menu.id.startsWith('popupsActionMenu_'))) {
+                    menu.classList.remove('show');
+                }
+            });
+        }
     });
 
     // 初始化

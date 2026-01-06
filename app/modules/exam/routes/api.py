@@ -2,17 +2,20 @@
 """考试API路由"""
 from flask import Blueprint, request, jsonify, session
 from app.core.utils.database import get_db
+from app.core.utils.decorators import auth_required, current_user_id
 from app.core.models.exam import Exam
+from app.core.utils.options_parser import parse_options
 
 exam_api_bp = Blueprint('exam_api', __name__)
 
 
 @exam_api_bp.route('/exams/create', methods=['POST'])
+@auth_required  # 支持session和JWT（小程序）
 def api_exams_create():
     """创建考试API（添加科目权限检查）"""
     from app.core.utils.subject_permissions import can_user_access_subject
     
-    uid = session.get('user_id')
+    uid = current_user_id()
     if not uid:
         return jsonify({'status': 'unauthorized', 'message': '请先登录'}), 401
 
@@ -43,9 +46,10 @@ def api_exams_create():
 
 
 @exam_api_bp.route('/exams/submit', methods=['POST'])
+@auth_required  # 支持session和JWT（小程序）
 def api_exams_submit():
     """提交考试API"""
-    uid = session.get('user_id')
+    uid = current_user_id()
     if not uid:
         return jsonify({'status': 'unauthorized', 'message': '请先登录'}), 401
 
@@ -67,29 +71,78 @@ def api_exams_submit():
     })
 
 
-@exam_api_bp.route('/exams/<int:exam_id>', methods=['DELETE'])
-def api_delete_exam(exam_id):
-    """删除考试"""
-    uid = session.get('user_id')
+@exam_api_bp.route('/exams/<int:exam_id>', methods=['GET', 'DELETE'])
+@auth_required  # 支持session和JWT（小程序）
+def api_exam_detail_or_delete(exam_id):
+    """获取/删除考试（JSON）"""
+    uid = current_user_id()
     if not uid:
         return jsonify({'status': 'unauthorized', 'message': '请先登录'}), 401
-    
-    conn = get_db()
-    ex = conn.execute('SELECT user_id FROM exams WHERE id=?', (exam_id,)).fetchone()
-    
-    if not ex or ex['user_id'] != uid:
-        return jsonify({'status':'error','message':'考试不存在或无权限'}), 403
-    
-    conn.execute('DELETE FROM exams WHERE id=?', (exam_id,))
-    conn.commit()
-    
-    return jsonify({'status':'success'})
+
+    if request.method == 'DELETE':
+        conn = get_db()
+        ex = conn.execute('SELECT user_id FROM exams WHERE id=?', (exam_id,)).fetchone()
+
+        if not ex or ex['user_id'] != uid:
+            return jsonify({'status': 'error', 'message': '考试不存在或无权限'}), 403
+
+        conn.execute('DELETE FROM exams WHERE id=?', (exam_id,))
+        conn.commit()
+
+        return jsonify({'status': 'success'})
+
+    # GET：返回考试详情（含题目）
+    data = Exam.get_by_id(exam_id, uid)
+    if not data:
+        return jsonify({'status': 'error', 'message': '考试不存在或无权限'}), 404
+
+    exam = data.get('exam') or {}
+    questions = data.get('questions') or []
+
+    formatted_questions = []
+    for q in questions:
+        q_type_val = q.get('q_type', '')
+        options = parse_options(q.get('options'))
+        if q_type_val == '判断题' and not options:
+            options = [
+                {'key': '正确', 'value': '正确'},
+                {'key': '错误', 'value': '错误'},
+            ]
+
+        formatted_questions.append({
+            'id': q.get('id'),
+            'content': q.get('content', ''),
+            'q_type': q_type_val,
+            'options': options,
+            'answer': q.get('answer', ''),
+            'explanation': q.get('explanation', ''),
+            'image_path': q.get('image_path'),
+            'subject': q.get('subject', ''),
+            'score_val': q.get('score_val', 1),
+            'order_index': q.get('order_index', 0),
+            'user_answer': q.get('user_answer', ''),
+            'is_correct': q.get('is_correct')
+        })
+
+    # 降噪返回（避免把 config_json 原封不动传太大）
+    exam_info = {
+        'id': exam.get('id'),
+        'subject': exam.get('subject'),
+        'duration_minutes': exam.get('duration_minutes'),
+        'status': exam.get('status'),
+        'started_at': exam.get('started_at'),
+        'submitted_at': exam.get('submitted_at'),
+        'total_score': exam.get('total_score', 0)
+    }
+
+    return jsonify({'status': 'success', 'data': {'exam': exam_info, 'questions': formatted_questions}})
 
 
 @exam_api_bp.route('/exams/save_draft', methods=['POST'])
+@auth_required  # 支持session和JWT（小程序）
 def api_save_exam_draft():
     """保存考试草稿"""
-    uid = session.get('user_id')
+    uid = current_user_id()
     if not uid:
         return jsonify({'status':'unauthorized','message':'请先登录'}), 401
     
@@ -125,9 +178,10 @@ def api_save_exam_draft():
 
 
 @exam_api_bp.route('/exams/<int:exam_id>/mistakes', methods=['POST'])
+@auth_required  # 支持session和JWT（小程序）
 def api_exam_to_mistakes(exam_id):
     """将考试错题加入错题本"""
-    uid = session.get('user_id')
+    uid = current_user_id()
     if not uid:
         return jsonify({'status':'unauthorized','message':'请先登录'}), 401
     
@@ -157,5 +211,4 @@ def api_exam_to_mistakes(exam_id):
     
     conn.commit()
     return jsonify({'status':'success','count': count})
-
 

@@ -1,0 +1,131 @@
+<!-- search.wxml - 题目搜索 -->
+<view class="page-root">
+  <navigation-bar title="题目搜索" back="{{true}}" color="black" background="#FFF"></navigation-bar>
+
+  <view class="page-container">
+    <scroll-view
+      class="content-area"
+      scroll-y
+      type="list"
+      bindscrolltolower="onReachBottom"
+      refresher-enabled="{{true}}"
+      bindrefresherrefresh="onPullDownRefresh"
+    >
+      <view class="container">
+        <view class="search-card">
+          <view class="subject-row" wx:if="{{subject}}">
+            <text class="subject-label">科目</text>
+            <text class="subject-value">{{subject}}</text>
+          </view>
+
+          <view class="search-bar">
+            <input
+              class="search-input"
+              placeholder="输入关键词搜索题目/解析/答案"
+              value="{{keyword}}"
+              bindinput="onKeywordInput"
+              confirm-type="search"
+              bindconfirm="onSearch"
+              maxlength="50"
+            />
+            <view class="search-btn {{keyword ? '' : 'disabled'}}" bindtap="onSearch">
+              <text>搜索</text>
+            </view>
+          </view>
+
+          <view class="tags-container tags-wrap">
+            <view
+              class="tag {{selectedType === 'all' ? 'active' : ''}}"
+              bindtap="onTypeTap"
+              data-type="all"
+            >
+              <text class="tag-text">全部</text>
+            </view>
+            <view
+              class="tag {{selectedType === '选择题' ? 'active' : ''}}"
+              bindtap="onTypeTap"
+              data-type="选择题"
+            >
+              <text class="tag-text">选择题</text>
+            </view>
+            <view
+              class="tag {{selectedType === '多选题' ? 'active' : ''}}"
+              bindtap="onTypeTap"
+              data-type="多选题"
+            >
+              <text class="tag-text">多选题</text>
+            </view>
+            <view
+              class="tag {{selectedType === '判断题' ? 'active' : ''}}"
+              bindtap="onTypeTap"
+              data-type="判断题"
+            >
+              <text class="tag-text">判断题</text>
+            </view>
+            <view
+              class="tag {{selectedType === '填空题' ? 'active' : ''}}"
+              bindtap="onTypeTap"
+              data-type="填空题"
+            >
+              <text class="tag-text">填空题</text>
+            </view>
+            <view
+              class="tag {{selectedType === '问答题' ? 'active' : ''}}"
+              bindtap="onTypeTap"
+              data-type="问答题"
+            >
+              <text class="tag-text">问答题</text>
+            </view>
+            <view
+              class="tag {{selectedType === '简答题' ? 'active' : ''}}"
+              bindtap="onTypeTap"
+              data-type="简答题"
+            >
+              <text class="tag-text">简答题</text>
+            </view>
+            <view
+              class="tag {{selectedType === '计算题' ? 'active' : ''}}"
+              bindtap="onTypeTap"
+              data-type="计算题"
+            >
+              <text class="tag-text">计算题</text>
+            </view>
+          </view>
+        </view>
+
+        <view class="list-header" wx:if="{{total > 0}}">
+          <text class="total-text">共 {{total}} 道结果</text>
+        </view>
+
+        <view class="result-list">
+          <view
+            class="result-item"
+            wx:for="{{questions}}"
+            wx:key="id"
+            bindtap="onResultTap"
+            data-id="{{item.id}}"
+          >
+            <view class="result-content">{{item.content_preview || item.content}}</view>
+            <view class="result-meta">
+              <text class="meta-pill">{{item.q_type}}</text>
+              <text class="meta-pill meta-fav" wx:if="{{item.is_fav}}">收藏</text>
+              <text class="meta-pill meta-mis" wx:if="{{item.is_mistake}}">错题</text>
+            </view>
+          </view>
+        </view>
+
+        <view class="loading" wx:if="{{loading}}">
+          <text>加载中...</text>
+        </view>
+
+        <view class="no-more" wx:if="{{!loading && !hasMore && questions.length > 0}}">
+          <text>没有更多了</text>
+        </view>
+
+        <view class="empty-state" wx:if="{{!loading && searched && questions.length === 0}}">
+          <text>暂无结果</text>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+</view>

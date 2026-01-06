@@ -414,6 +414,73 @@ def toggle_subject_admin(user_id):
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
+@admin_api_legacy_bp.route('/users/<int:user_id>/toggle_notification_admin', methods=['POST'])
+def toggle_notification_admin(user_id):
+    """切换通知管理员权限（向后兼容路径：/admin/users/<id>/toggle_notification_admin）"""
+    from flask import session, request, current_app
+    from app.core.utils.database import get_db
+    
+    if user_id == session.get('user_id'):
+        return jsonify({'status': 'error', 'message': '不能对自己进行操作'}), 400
+    
+    conn = get_db()
+    try:
+        # 检查 is_notification_admin 字段是否存在，如果不存在则自动添加
+        has_notification_admin_field = False
+        try:
+            user_cols = [r['name'] for r in conn.execute("PRAGMA table_info(users)").fetchall()]
+            has_notification_admin_field = 'is_notification_admin' in user_cols
+            
+            # 如果字段不存在，尝试添加
+            if not has_notification_admin_field:
+                try:
+                    conn.execute('ALTER TABLE users ADD COLUMN is_notification_admin INTEGER DEFAULT 0')
+                    conn.commit()
+                    has_notification_admin_field = True
+                    current_app.logger.info('已自动添加 is_notification_admin 字段')
+                except Exception as e:
+                    current_app.logger.warning(f'添加 is_notification_admin 字段失败（可能已存在）: {e}')
+                    try:
+                        test_row = conn.execute('SELECT is_notification_admin FROM users LIMIT 1').fetchone()
+                        has_notification_admin_field = True
+                    except Exception:
+                        has_notification_admin_field = False
+        except Exception as e:
+            current_app.logger.warning(f'检查 is_notification_admin 字段失败: {e}')
+            try:
+                test_row = conn.execute('SELECT is_notification_admin FROM users LIMIT 1').fetchone()
+                has_notification_admin_field = True
+            except Exception:
+                has_notification_admin_field = False
+        
+        # 根据字段是否存在构建查询
+        if has_notification_admin_field:
+            row = conn.execute('SELECT is_notification_admin, username FROM users WHERE id=?', (user_id,)).fetchone()
+        else:
+            row = conn.execute('SELECT username FROM users WHERE id=?', (user_id,)).fetchone()
+        
+        if not row:
+            return jsonify({'status': 'error', 'message': '用户不存在'}), 404
+        
+        # 如果字段存在，执行更新；否则先添加字段再设置
+        if has_notification_admin_field:
+            conn.execute('UPDATE users SET is_notification_admin = NOT is_notification_admin WHERE id = ?', (user_id,))
+        else:
+            # 字段不存在，先添加字段，然后设置为1（因为默认是0，所以切换后应该是1）
+            conn.execute('ALTER TABLE users ADD COLUMN is_notification_admin INTEGER DEFAULT 0')
+            conn.execute('UPDATE users SET is_notification_admin = 1 WHERE id = ?', (user_id,))
+        
+        conn.execute('UPDATE users SET session_version = COALESCE(session_version,0) + 1 WHERE id=?', (user_id,))
+        conn.commit()
+        
+        current_app.logger.info(f'通知管理员权限切换 - 目标用户: {row["username"]}, 操作者: {session.get("username")}, IP: {request.remote_addr}')
+        return jsonify({'status': 'success', 'message': '通知管理员权限已切换（已强制刷新目标用户会话）'})
+    except Exception as e:
+        import traceback
+        current_app.logger.error(f'切换通知管理员权限失败 - 用户ID: {user_id}, 错误: {str(e)}\n{traceback.format_exc()}')
+        return jsonify({'status': 'error', 'message': f'操作失败: {str(e)}'}), 500
+
+
 @admin_api_legacy_bp.route('/users/<int:user_id>/toggle_lock', methods=['POST'])
 def toggle_lock(user_id):
     """切换用户锁定状态（向后兼容路径：/admin/users/<id>/toggle_lock）"""
@@ -561,18 +628,55 @@ def delete_user(user_id):
             if admin_count <= 1:
                 return jsonify({'status': 'error', 'message': '不能删除最后一个管理员'}), 400
 
-        # 级联清理（仅清理我们明确知道的表；其余若还有外键引用，会被 IntegrityError 拦住）
+        # 级联清理所有关联数据（按依赖顺序删除，避免外键约束错误）
+        # 注意：即使某些表有 ON DELETE CASCADE，手动删除更可靠，因为可能数据库创建时外键未启用
+        
+        # 1. 删除考试相关数据（exams 表没有 CASCADE，必须先删除）
+        conn.execute('DELETE FROM exam_questions WHERE exam_id IN (SELECT id FROM exams WHERE user_id=?)', (user_id,))
+        conn.execute('DELETE FROM exams WHERE user_id=?', (user_id,))
+        
+        # 2. 删除用户基础数据
         conn.execute('DELETE FROM favorites WHERE user_id=?', (user_id,))
         conn.execute('DELETE FROM mistakes WHERE user_id=?', (user_id,))
         conn.execute('DELETE FROM user_answers WHERE user_id=?', (user_id,))
         conn.execute('DELETE FROM user_progress WHERE user_id=?', (user_id,))
+        
+        # 3. 删除聊天相关数据
+        conn.execute('DELETE FROM chat_messages WHERE sender_id=?', (user_id,))
+        conn.execute('DELETE FROM chat_members WHERE user_id=?', (user_id,))
+        conn.execute('DELETE FROM user_remarks WHERE owner_user_id=? OR target_user_id=?', (user_id, user_id))
+        
+        # 4. 删除通知相关数据
+        conn.execute('DELETE FROM notification_dismissals WHERE user_id=?', (user_id,))
+        
+        # 5. 删除编程相关数据
+        conn.execute('DELETE FROM code_submissions WHERE user_id=?', (user_id,))
+        conn.execute('DELETE FROM coding_statistics WHERE user_id=?', (user_id,))
+        conn.execute('DELETE FROM user_coding_stats WHERE user_id=?', (user_id,))
+        conn.execute('DELETE FROM code_drafts WHERE user_id=?', (user_id,))
+        
+        # 6. 删除其他用户数据
+        conn.execute('DELETE FROM user_subjects WHERE user_id=?', (user_id,))
+        conn.execute('DELETE FROM user_quiz_stats WHERE user_id=?', (user_id,))
+        conn.execute('DELETE FROM email_verification_codes WHERE user_id=?', (user_id,))
+        conn.execute('DELETE FROM popup_dismissals WHERE user_id=?', (user_id,))
+        
+        # 7. 更新引用该用户的字段（SET NULL 处理）
         conn.execute('UPDATE questions SET created_by=NULL WHERE created_by=?', (user_id,))
+        conn.execute('UPDATE notifications SET created_by=NULL WHERE created_by=?', (user_id,))
+        conn.execute('UPDATE popups SET created_by=NULL WHERE created_by=?', (user_id,))
+        conn.execute('UPDATE popup_views SET user_id=NULL WHERE user_id=?', (user_id,))
+        conn.execute('UPDATE system_config SET updated_by=NULL WHERE updated_by=?', (user_id,))
+        conn.execute('UPDATE user_subjects SET restricted_by=NULL WHERE restricted_by=?', (user_id,))
+        
+        # 8. 最后删除用户本身
         conn.execute('DELETE FROM users WHERE id=?', (user_id,))
         conn.commit()
 
         return jsonify({'status': 'success', 'message': '用户已删除'})
 
     except sqlite3.IntegrityError as e:
+        conn.rollback()
         # 外键约束失败：返回友好的错误信息
         msg = str(e)
         if 'FOREIGN KEY constraint failed' in msg:
@@ -583,6 +687,7 @@ def delete_user(user_id):
         return jsonify({'status': 'error', 'message': msg}), 400
 
     except Exception as e:
+        conn.rollback()
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 

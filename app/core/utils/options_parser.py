@@ -56,9 +56,13 @@ def parse_options(raw_options: Any) -> List[Dict[str, str]]:
     options_payload: List[Dict[str, str]] = []
     for item in opt_list:
         if isinstance(item, dict):
+            # 保留 value 中的换行符，只去掉首尾空白（空格、制表符），但保留换行符
+            value = str(item.get('value') or '')
+            # 去掉首尾的空白字符（空格、制表符），但保留换行符
+            value = value.rstrip(' \t').lstrip(' \t') if value else ''
             options_payload.append({
                 'key': str(item.get('key') or '').strip(),
-                'value': str(item.get('value') or '').strip(),
+                'value': value,
             })
             continue
 

@@ -1,0 +1,53 @@
+<!--题目列表页面-->
+<view class="page-root">
+  <navigation-bar title="{{subject === 'all' ? '全部题目' : subject}}" back="{{true}}" color="black" background="#FFF"></navigation-bar>
+  <view class="page-container">
+    <scroll-view
+      class="content-area"
+      scroll-y
+      type="list"
+      refresher-enabled="{{true}}"
+      bindrefresherrefresh="onPullDownRefresh"
+      bindscrolltolower="onReachBottom"
+    >
+      <view class="container">
+        <view class="list-header" wx:if="{{total > 0}}">
+          <text class="total-text">共 {{total}} 道题</text>
+        </view>
+
+        <!-- 题目列表 -->
+        <view class="question-list">
+          <view 
+            class="question-item" 
+            wx:for="{{questions}}" 
+            wx:key="id"
+            bindtap="onQuestionTap"
+            data-id="{{item.id}}"
+          >
+            <view class="question-content">{{item.content}}</view>
+            <view class="question-meta">
+              <text class="question-type">{{item.q_type || '选择题'}}</text>
+              <text class="question-subject" wx:if="{{item.subject}}">{{item.subject}}</text>
+            </view>
+          </view>
+        </view>
+
+        <!-- 加载更多 -->
+        <view class="loading-more" wx:if="{{loading && questions.length > 0}}">
+          <text>加载中...</text>
+        </view>
+
+        <!-- 没有更多 -->
+        <view class="no-more" wx:if="{{!hasMore && questions.length > 0}}">
+          <text>没有更多题目了</text>
+        </view>
+
+        <!-- 空状态 -->
+        <view class="empty-state" wx:if="{{!loading && questions.length === 0}}">
+          <text>暂无题目</text>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+</view>
+

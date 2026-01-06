@@ -1,0 +1,287 @@
+/* practice-setup.less - 练习设置页面样式 */
+page {
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.page-root {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.page-container {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  background: #f5f5f5;
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+/* 主卡片容器 */
+.main-card {
+  background: #fff;
+  border-radius: 0;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* 内容区域 */
+.content-area {
+  flex: 1;
+  height: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* 区域块 */
+.section-block {
+  padding: 20rpx 24rpx;
+  border-bottom: 1rpx solid #F0F0F0;
+  flex-shrink: 0;
+}
+
+.section-block:last-of-type {
+  border-bottom: none;
+}
+
+/* 标签容器 */
+.tags-container {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 12rpx;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.tags-wrap {
+  flex-wrap: wrap;
+}
+
+/* 标签样式 */
+.tag {
+  padding: 14rpx 28rpx;
+  height: 56rpx;
+  border-radius: 32rpx;
+  background: #fff;
+  border: 1.5rpx solid #E5E5EA;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+/* 题型过多时允许收缩并换行 */
+.tags-wrap .tag {
+  flex-shrink: 1;
+}
+
+.tag.active {
+  background: #007AFF;
+  border-color: #007AFF;
+}
+
+.tag-text {
+  font-size: 26rpx;
+  color: #8E8E93;
+  line-height: 1;
+}
+
+.tag.active .tag-text {
+  color: #FFFFFF;
+}
+
+/* 设置选项区域 */
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 64rpx;
+  padding: 12rpx 0;
+}
+
+.settings-row:not(:last-child) {
+  margin-bottom: 0;
+}
+
+.settings-label {
+  font-size: 28rpx;
+  color: #000000;
+  line-height: 1;
+}
+
+.settings-switch {
+  transform: scale(0.9);
+}
+
+/* 统计信息区域 */
+.stats-section {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 32rpx;
+  padding: 20rpx 24rpx;
+  flex-shrink: 0;
+}
+
+.stats-text {
+  font-size: 24rpx;
+  color: #8E8E93;
+  line-height: 1;
+}
+
+/* 操作按钮区域 */
+.action-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  padding: 24rpx;
+  padding-bottom: calc(48rpx + env(safe-area-inset-bottom));
+  flex-shrink: 0;
+  border-top: 1rpx solid #F0F0F0;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.action-button {
+  background: #F8F8F8;
+  border-radius: 16rpx;
+  padding: 0 24rpx;
+  height: 96rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.action-button.disabled {
+  opacity: 0.7;
+}
+
+.action-button.disabled:active {
+  transform: none;
+}
+
+.action-button.disabled::before {
+  display: none;
+}
+
+.action-button::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(0, 122, 255, 0.1);
+  transform: translate(-50%, -50%);
+  transition: width 0.3s, height 0.3s;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.action-button:active::before {
+  width: 200%;
+  height: 200%;
+}
+
+.action-button:active {
+  transform: scale(0.98);
+}
+
+.action-button.danger {
+  background: #FFF5F5;
+}
+
+.action-button.danger::before {
+  background: rgba(255, 59, 48, 0.1);
+}
+
+.action-button.danger .action-title {
+  color: #FF3B30;
+}
+
+.action-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #000000;
+  line-height: 1.2;
+  position: relative;
+  z-index: 1;
+}
+
+/* 加载提示 */
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 80rpx 40rpx;
+  color: #8E8E93;
+  font-size: 28rpx;
+}
+
+.loading text {
+  position: relative;
+  padding-left: 48rpx;
+}
+
+.loading text::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32rpx;
+  height: 32rpx;
+  border: 3rpx solid #E5E5EA;
+  border-top-color: #007AFF;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: translateY(-50%) rotate(360deg);
+  }
+}
+
+/* 空提示 */
+.empty-hint {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(420rpx + env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 24rpx;
+  pointer-events: none;
+}
+
+.empty-hint-text {
+  font-size: 26rpx;
+  color: #8E8E93;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 999rpx;
+  padding: 12rpx 20rpx;
+  border: 1rpx solid #F0F0F0;
+}

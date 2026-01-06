@@ -1,0 +1,55 @@
+<!-- mine.wxml - 我的 -->
+<view class="page-root">
+  <navigation-bar title="我的" back="{{false}}" color="black" background="#FFF"></navigation-bar>
+
+  <view class="page-container">
+    <scroll-view class="content-area" scroll-y type="list" bounces="{{false}}">
+      <view class="container">
+        <view class="profile-card">
+          <view class="profile-left">
+            <image
+              class="avatar"
+              src="{{(userInfo && (userInfo.avatar || userInfo.avatar_url)) || '/images/default-avatar.png'}}"
+              mode="aspectFill"
+            ></image>
+            <view class="profile-text">
+              <text class="name">{{(userInfo && (userInfo.username || userInfo.nickname)) || '用户'}}</text>
+              <text class="sub">账号信息与数据已同步云端</text>
+            </view>
+          </view>
+        </view>
+
+        <view class="bento-grid">
+          <view class="bento-card">
+            <text class="bento-value">{{stats.favorites || 0}}</text>
+            <text class="bento-label">收藏</text>
+          </view>
+          <view class="bento-card">
+            <text class="bento-value">{{stats.mistakes || 0}}</text>
+            <text class="bento-label">错题</text>
+          </view>
+          <view class="bento-card" bindtap="onGoSubjectsTap">
+            <text class="bento-action-title">科目</text>
+            <text class="bento-action-sub">进入科目页</text>
+          </view>
+          <view class="bento-card" bindtap="onOpenLogsTap">
+            <text class="bento-action-title">日志</text>
+            <text class="bento-action-sub">启动日志</text>
+          </view>
+        </view>
+
+        <view class="menu-card">
+          <view class="menu-item" bindtap="onLogoutTap">
+            <text class="menu-text danger">退出登录</text>
+            <text class="menu-arrow">›</text>
+          </view>
+        </view>
+
+        <view class="loading" wx:if="{{loading}}">
+          <text>加载中...</text>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+</view>
+

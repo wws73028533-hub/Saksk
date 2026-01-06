@@ -1,0 +1,49 @@
+<!-- subject-stats.wxml - 学习统计 -->
+<view class="page-root">
+  <navigation-bar title="学习统计" back="{{true}}" color="black" background="#FFF"></navigation-bar>
+
+  <view class="page-container">
+    <scroll-view class="content-area" scroll-y type="list">
+      <view class="container">
+        <view class="header-card">
+          <text class="subject-name">{{subject}}</text>
+          <text class="subtitle">统计数据会随做题/收藏/错题实时更新</text>
+        </view>
+
+        <view class="grid">
+          <view class="stat-card">
+            <text class="label">题目总数</text>
+            <text class="value">{{stats.totalCount}}</text>
+          </view>
+          <view class="stat-card">
+            <text class="label">已做</text>
+            <text class="value">{{stats.doneCount}}</text>
+          </view>
+          <view class="stat-card">
+            <text class="label">错题</text>
+            <text class="value error">{{stats.wrongCount}}</text>
+          </view>
+          <view class="stat-card">
+            <text class="label">收藏</text>
+            <text class="value">{{stats.favoriteCount}}</text>
+          </view>
+        </view>
+
+        <view class="detail-card">
+          <view class="detail-row">
+            <text class="detail-label">正确率（估算）</text>
+            <text class="detail-value">{{stats.accuracyText}}</text>
+          </view>
+          <view class="detail-row" wx:if="{{stats.lastActivity}}">
+            <text class="detail-label">最后活动</text>
+            <text class="detail-value">{{stats.lastActivity}}</text>
+          </view>
+        </view>
+
+        <view class="loading" wx:if="{{loading}}">
+          <text>加载中...</text>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+</view>

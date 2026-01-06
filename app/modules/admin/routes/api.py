@@ -351,6 +351,120 @@ def batch_tags():
         return jsonify({'status': 'error', 'message': f'批量操作标签失败: {str(e)}'}), 500
 
 
+@admin_api_bp.route('/questions/duplicate-check/start', methods=['POST'])
+def start_duplicate_check():
+    """启动查重并保存记录"""
+    from app.modules.admin.services.duplicate_check_service import DuplicateCheckService
+    
+    subject_id = request.args.get('subject_id', type=int)
+    similarity_threshold = request.args.get('similarity_threshold', 0.8, type=float)
+    
+    if not subject_id:
+        return jsonify({'status': 'error', 'message': '科目ID不能为空'}), 400
+    
+    try:
+        # 验证科目是否存在
+        conn = get_db()
+        subject = conn.execute('SELECT id FROM subjects WHERE id = ?', (subject_id,)).fetchone()
+        if not subject:
+            return jsonify({'status': 'error', 'message': '科目不存在'}), 404
+        
+        # 获取当前用户ID
+        user_id = session.get('user_id')
+        
+        # 执行查重并保存记录
+        result = DuplicateCheckService.perform_and_save_duplicate_check(
+            subject_id=subject_id,
+            similarity_threshold=similarity_threshold,
+            created_by=user_id
+        )
+        
+        return jsonify({
+            'status': 'success',
+            'message': '查重完成并已保存',
+            'data': result
+        })
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': f'启动查重失败: {str(e)}'}), 500
+
+
+@admin_api_bp.route('/questions/duplicate-check/results', methods=['GET'])
+def get_duplicate_check_results():
+    """获取查重结果（优先返回历史记录，如果没有则执行新查重）"""
+    from app.modules.admin.services.duplicate_check_service import DuplicateCheckService
+    
+    subject_id = request.args.get('subject_id', type=int)
+    min_similarity = request.args.get('min_similarity', type=float)
+    max_similarity = request.args.get('max_similarity', type=float)
+    force_new = request.args.get('force_new', 'false').lower() == 'true'  # 强制重新查重
+    
+    if not subject_id:
+        return jsonify({'status': 'error', 'message': '科目ID不能为空'}), 400
+    
+    try:
+        # 如果强制重新查重，或者没有历史记录，则执行新查重
+        if force_new:
+            # 执行新查重
+            user_id = session.get('user_id')
+            results = DuplicateCheckService.perform_and_save_duplicate_check(
+                subject_id=subject_id,
+                created_by=user_id
+            )
+            results['is_new'] = True
+        else:
+            # 尝试获取历史记录
+            latest_record = DuplicateCheckService.get_latest_duplicate_check_record(subject_id)
+            
+            if latest_record:
+                # 使用历史记录
+                duplicates = latest_record.get('duplicates', [])
+                
+                # 获取科目信息
+                conn = get_db()
+                subject = conn.execute(
+                    'SELECT id, name FROM subjects WHERE id = ?',
+                    (subject_id,)
+                ).fetchone()
+                subject_name = dict(subject).get('name', '') if subject else ''
+                
+                # 应用相似度筛选
+                if min_similarity is not None or max_similarity is not None:
+                    filtered_duplicates = []
+                    for dup in duplicates:
+                        sim = dup.get('similarity', 0)
+                        if min_similarity is not None and sim < min_similarity:
+                            continue
+                        if max_similarity is not None and sim > max_similarity:
+                            continue
+                        filtered_duplicates.append(dup)
+                    duplicates = filtered_duplicates
+                
+                results = {
+                    'record_id': latest_record.get('id'),
+                    'total_pairs': latest_record.get('total_pairs', 0),
+                    'duplicates': duplicates,
+                    'subject_id': subject_id,
+                    'subject_name': subject_name,
+                    'created_at': latest_record.get('created_at'),
+                    'is_new': False
+                }
+            else:
+                # 没有历史记录，执行新查重
+                user_id = session.get('user_id')
+                results = DuplicateCheckService.perform_and_save_duplicate_check(
+                    subject_id=subject_id,
+                    created_by=user_id
+                )
+                results['is_new'] = True
+        
+        return jsonify({
+            'status': 'success',
+            'data': results
+        })
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': f'获取查重结果失败: {str(e)}'}), 500
+
+
 @admin_api_bp.route('/subjects', methods=['POST'])
 def api_add_subject():
     """添加科目"""
@@ -483,11 +597,13 @@ def admin_api_users():
         
         total = conn.execute(f'SELECT COUNT(1) FROM users {where}', params).fetchone()[0]
         
-        # 检查 is_subject_admin 字段是否存在，如果不存在则自动添加
+        # 检查 is_subject_admin 和 is_notification_admin 字段是否存在，如果不存在则自动添加
         has_subject_admin_field = False
+        has_notification_admin_field = False
         try:
             user_cols = [r['name'] for r in conn.execute("PRAGMA table_info(users)").fetchall()]
             has_subject_admin_field = 'is_subject_admin' in user_cols
+            has_notification_admin_field = 'is_notification_admin' in user_cols
             
             # 如果字段不存在，尝试添加
             if not has_subject_admin_field:
@@ -504,27 +620,67 @@ def admin_api_users():
                         has_subject_admin_field = True
                     except Exception:
                         has_subject_admin_field = False
+            if not has_notification_admin_field:
+                try:
+                    conn.execute('ALTER TABLE users ADD COLUMN is_notification_admin INTEGER DEFAULT 0')
+                    conn.commit()
+                    has_notification_admin_field = True
+                    current_app.logger.info('已自动添加 is_notification_admin 字段')
+                except Exception as e:
+                    current_app.logger.warning(f'添加 is_notification_admin 字段失败（可能已存在）: {e}')
+                    try:
+                        test_row = conn.execute('SELECT is_notification_admin FROM users LIMIT 1').fetchone()
+                        has_notification_admin_field = True
+                    except Exception:
+                        has_notification_admin_field = False
         except Exception as e:
-            current_app.logger.warning(f'检查 is_subject_admin 字段失败: {e}')
+            current_app.logger.warning(f'检查用户字段失败: {e}')
             # 如果检查失败，尝试直接查询，如果失败则使用不包含该字段的查询
             try:
                 test_row = conn.execute('SELECT is_subject_admin FROM users LIMIT 1').fetchone()
                 has_subject_admin_field = True
             except Exception:
                 has_subject_admin_field = False
+            try:
+                test_row = conn.execute('SELECT is_notification_admin FROM users LIMIT 1').fetchone()
+                has_notification_admin_field = True
+            except Exception:
+                has_notification_admin_field = False
         
         # 根据字段是否存在构建查询（使用子查询避免GROUP BY复杂性）
+        select_fields = ['u.id', 'u.username', 'u.is_admin', 'u.is_locked', 'u.created_at', 'u.last_active']
         if has_subject_admin_field:
-            select_with_count = '''u.id, u.username, u.is_admin, u.is_subject_admin, u.is_locked, u.created_at, u.last_active,
-                COALESCE((SELECT COUNT(DISTINCT subject_id) FROM user_subjects WHERE user_id = u.id), 0) as restricted_subjects_count'''
-        else:
-            select_with_count = '''u.id, u.username, u.is_admin, u.is_locked, u.created_at, u.last_active,
-                COALESCE((SELECT COUNT(DISTINCT subject_id) FROM user_subjects WHERE user_id = u.id), 0) as restricted_subjects_count'''
+            select_fields.append('u.is_subject_admin')
+        if has_notification_admin_field:
+            select_fields.append('u.is_notification_admin')
+        select_fields.append('COALESCE((SELECT COUNT(DISTINCT subject_id) FROM user_subjects WHERE user_id = u.id), 0) as restricted_subjects_count')
+        select_with_count = ', '.join(select_fields)
         
         # 处理where子句：将条件中的字段引用改为u.前缀
         where_for_query = where.replace('username', 'u.username')
+        
+        # 权限管理页面：按权限优先级排序
+        # 检查是否是权限管理页面的请求（通过referrer或特殊参数）
+        is_permissions_page = request.referrer and '/admin/permissions' in request.referrer
+        use_priority_sort = request.args.get('priority_sort', '').lower() == 'true' or is_permissions_page
+        
+        if use_priority_sort:
+            # 权限优先级排序：管理员 > 通知管理员 > 科目管理员 > 普通用户
+            # 构建排序字段
+            priority_fields = ['u.is_admin DESC']
+            # 通知管理员排在科目管理员之前
+            if has_notification_admin_field:
+                priority_fields.append('u.is_notification_admin DESC')
+            if has_subject_admin_field:
+                priority_fields.append('u.is_subject_admin DESC')
+            priority_order = ', '.join(priority_fields)
+            # 先按权限优先级，再按其他字段排序
+            order_by = f'{priority_order}, u.{sort_map[sort]} {order}'
+        else:
+            order_by = f'u.{sort_map[sort]} {order}'
+        
         rows = conn.execute(
-            f'SELECT {select_with_count} FROM users u {where_for_query} ORDER BY u.{sort_map[sort]} {order} LIMIT ? OFFSET ?',
+            f'SELECT {select_with_count} FROM users u {where_for_query} ORDER BY {order_by} LIMIT ? OFFSET ?',
             params + [size, offset]
         ).fetchall()
         
@@ -552,6 +708,7 @@ def admin_api_users():
                 'username': r['username'],
                 'is_admin': bool(r['is_admin']) if 'is_admin' in r.keys() else False,
                 'is_subject_admin': bool(r['is_subject_admin']) if has_subject_admin_field and 'is_subject_admin' in r.keys() else False,
+                'is_notification_admin': bool(r['is_notification_admin']) if has_notification_admin_field and 'is_notification_admin' in r.keys() else False,
                 'is_locked': bool(r['is_locked']) if 'is_locked' in r.keys() else False,
                 'created_at': r['created_at'] if 'created_at' in r.keys() else '',
                 'is_online': is_online,
@@ -561,16 +718,19 @@ def admin_api_users():
         
         # 统计所有用户的全局数据（不受分页和搜索影响）
         # 获取所有用户的字段用于统计，根据字段是否存在决定查询字段
+        stats_fields = ['is_admin', 'is_locked', 'last_active']
         if has_subject_admin_field:
-            all_users_stats_query = 'SELECT is_admin, is_subject_admin, is_locked, last_active FROM users'
-        else:
-            all_users_stats_query = 'SELECT is_admin, is_locked, last_active FROM users'
+            stats_fields.append('is_subject_admin')
+        if has_notification_admin_field:
+            stats_fields.append('is_notification_admin')
+        all_users_stats_query = f'SELECT {", ".join(stats_fields)} FROM users'
         all_users_rows = conn.execute(all_users_stats_query).fetchall()
         
         # 统计全局数据
         online_count = 0
         admin_count = 0
         subject_admin_count = 0
+        notification_admin_count = 0
         locked_count = 0
         
         for user_row in all_users_rows:
@@ -580,6 +740,9 @@ def admin_api_users():
             # 统计科目管理员（不包括管理员）
             elif has_subject_admin_field and 'is_subject_admin' in user_row.keys() and user_row['is_subject_admin']:
                 subject_admin_count += 1
+            # 统计通知管理员（不包括管理员）
+            if has_notification_admin_field and 'is_notification_admin' in user_row.keys() and user_row['is_notification_admin']:
+                notification_admin_count += 1
             # 统计锁定用户
             if user_row['is_locked']:
                 locked_count += 1
@@ -603,6 +766,7 @@ def admin_api_users():
                 'online': online_count,
                 'admin': admin_count,
                 'subject_admin': subject_admin_count,
+                'notification_admin': notification_admin_count,
                 'locked': locked_count
             }
         })
@@ -666,6 +830,167 @@ def toggle_subject_admin_status(user_id):
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
+@admin_api_bp.route('/users/<int:user_id>/toggle_notification_admin', methods=['POST'])
+def toggle_notification_admin_status(user_id):
+    """切换通知管理员权限"""
+    if user_id == session.get('user_id'):
+        return jsonify({'status': 'error', 'message': '不能对自己进行操作'}), 400
+    
+    conn = get_db()
+    try:
+        # 检查 is_notification_admin 字段是否存在，如果不存在则自动添加
+        has_notification_admin_field = False
+        try:
+            user_cols = [r['name'] for r in conn.execute("PRAGMA table_info(users)").fetchall()]
+            has_notification_admin_field = 'is_notification_admin' in user_cols
+            
+            # 如果字段不存在，尝试添加
+            if not has_notification_admin_field:
+                try:
+                    conn.execute('ALTER TABLE users ADD COLUMN is_notification_admin INTEGER DEFAULT 0')
+                    conn.commit()
+                    has_notification_admin_field = True
+                    current_app.logger.info('已自动添加 is_notification_admin 字段')
+                except Exception as e:
+                    current_app.logger.warning(f'添加 is_notification_admin 字段失败（可能已存在）: {e}')
+                    # 即使添加失败，也尝试查询，可能字段已经存在
+                    try:
+                        test_row = conn.execute('SELECT is_notification_admin FROM users LIMIT 1').fetchone()
+                        has_notification_admin_field = True
+                    except Exception:
+                        has_notification_admin_field = False
+        except Exception as e:
+            current_app.logger.warning(f'检查 is_notification_admin 字段失败: {e}')
+            # 如果检查失败，尝试直接查询，如果失败则使用不包含该字段的查询
+            try:
+                test_row = conn.execute('SELECT is_notification_admin FROM users LIMIT 1').fetchone()
+                has_notification_admin_field = True
+            except Exception:
+                has_notification_admin_field = False
+        
+        # 根据字段是否存在构建查询
+        if has_notification_admin_field:
+            row = conn.execute('SELECT is_notification_admin, username FROM users WHERE id=?', (user_id,)).fetchone()
+        else:
+            row = conn.execute('SELECT username FROM users WHERE id=?', (user_id,)).fetchone()
+        
+        if not row:
+            return jsonify({'status': 'error', 'message': '用户不存在'}), 404
+        
+        # 如果字段存在，执行更新；否则先添加字段再设置
+        if has_notification_admin_field:
+            conn.execute('UPDATE users SET is_notification_admin = NOT is_notification_admin WHERE id = ?', (user_id,))
+        else:
+            # 字段不存在，先添加字段，然后设置为1（因为默认是0，所以切换后应该是1）
+            conn.execute('ALTER TABLE users ADD COLUMN is_notification_admin INTEGER DEFAULT 0')
+            conn.execute('UPDATE users SET is_notification_admin = 1 WHERE id = ?', (user_id,))
+        
+        conn.execute('UPDATE users SET session_version = COALESCE(session_version,0) + 1 WHERE id=?', (user_id,))
+        conn.commit()
+        
+        current_app.logger.info(f'通知管理员权限切换 - 目标用户: {row["username"]}, 操作者: {session.get("username")}, IP: {request.remote_addr}')
+        return jsonify({'status': 'success', 'message': '通知管理员权限已切换（已强制刷新目标用户会话）'})
+    except Exception as e:
+        import traceback
+        current_app.logger.error(f'切换通知管理员权限失败 - 用户ID: {user_id}, 错误: {str(e)}\n{traceback.format_exc()}')
+        return jsonify({'status': 'error', 'message': f'操作失败: {str(e)}'}), 500
+
+
+# ============== 权限管理 ==============
+
+@admin_api_bp.route('/permissions/batch', methods=['POST'])
+def batch_set_permissions():
+    """批量设置用户权限"""
+    data = request.json or {}
+    user_ids = data.get('user_ids', [])
+    permission_type = data.get('permission_type', '').strip()
+    enable = data.get('enable', True)
+    
+    if not user_ids or not isinstance(user_ids, list):
+        return jsonify({'status': 'error', 'message': '请选择要操作的用户'}), 400
+    
+    if permission_type not in ('subject_admin', 'notification_admin'):
+        return jsonify({'status': 'error', 'message': '无效的权限类型'}), 400
+    
+    current_user_id = session.get('user_id')
+    if current_user_id in user_ids:
+        return jsonify({'status': 'error', 'message': '不能对自己进行操作'}), 400
+    
+    conn = get_db()
+    try:
+        # 检查字段是否存在
+        user_cols = [r['name'] for r in conn.execute("PRAGMA table_info(users)").fetchall()]
+        has_subject_admin_field = 'is_subject_admin' in user_cols
+        has_notification_admin_field = 'is_notification_admin' in user_cols
+        
+        # 如果字段不存在，尝试添加
+        if permission_type == 'subject_admin' and not has_subject_admin_field:
+            try:
+                conn.execute('ALTER TABLE users ADD COLUMN is_subject_admin INTEGER DEFAULT 0')
+                conn.commit()
+                has_subject_admin_field = True
+            except Exception:
+                pass
+        
+        if permission_type == 'notification_admin' and not has_notification_admin_field:
+            try:
+                conn.execute('ALTER TABLE users ADD COLUMN is_notification_admin INTEGER DEFAULT 0')
+                conn.commit()
+                has_notification_admin_field = True
+            except Exception:
+                pass
+        
+        # 验证用户是否存在
+        placeholders = ','.join(['?'] * len(user_ids))
+        existing_users = conn.execute(
+            f'SELECT id, username FROM users WHERE id IN ({placeholders})',
+            user_ids
+        ).fetchall()
+        
+        if len(existing_users) != len(user_ids):
+            return jsonify({'status': 'error', 'message': '部分用户不存在'}), 400
+        
+        # 批量更新权限
+        value = 1 if enable else 0
+        if permission_type == 'subject_admin':
+            conn.execute(
+                f'UPDATE users SET is_subject_admin = ? WHERE id IN ({placeholders})',
+                [value] + user_ids
+            )
+        elif permission_type == 'notification_admin':
+            conn.execute(
+                f'UPDATE users SET is_notification_admin = ? WHERE id IN ({placeholders})',
+                [value] + user_ids
+            )
+        
+        # 更新所有受影响用户的session_version，强制刷新会话
+        conn.execute(
+            f'UPDATE users SET session_version = COALESCE(session_version,0) + 1 WHERE id IN ({placeholders})',
+            user_ids
+        )
+        
+        conn.commit()
+        
+        # 记录操作日志
+        action = '设为' if enable else '取消'
+        permission_name = '科目管理员' if permission_type == 'subject_admin' else '通知管理员'
+        usernames = [u['username'] for u in existing_users]
+        current_app.logger.info(
+            f'批量{action}{permission_name} - 用户: {", ".join(usernames)}, '
+            f'操作者: {session.get("username")}, IP: {request.remote_addr}'
+        )
+        
+        return jsonify({
+            'status': 'success',
+            'message': f'已{action}{permission_name}（已强制刷新目标用户会话）',
+            'affected_count': len(user_ids)
+        })
+    except Exception as e:
+        import traceback
+        current_app.logger.error(f'批量设置权限失败: {str(e)}\n{traceback.format_exc()}')
+        return jsonify({'status': 'error', 'message': f'操作失败: {str(e)}'}), 500
+
+
 @admin_api_bp.route('/users/<int:user_id>', methods=['DELETE'])
 def delete_user(user_id):
     """删除用户"""
@@ -686,6 +1011,14 @@ def delete_user(user_id):
             ('notification_dismissals', 'SELECT COUNT(1) FROM notification_dismissals WHERE user_id=?'),
             ('notifications(创建者)', 'SELECT COUNT(1) FROM notifications WHERE created_by=?'),
             ('questions(出题人)', 'SELECT COUNT(1) FROM questions WHERE created_by=?'),
+            ('code_submissions', 'SELECT COUNT(1) FROM code_submissions WHERE user_id=?'),
+            ('coding_statistics', 'SELECT COUNT(1) FROM coding_statistics WHERE user_id=?'),
+            ('user_coding_stats', 'SELECT COUNT(1) FROM user_coding_stats WHERE user_id=?'),
+            ('code_drafts', 'SELECT COUNT(1) FROM code_drafts WHERE user_id=?'),
+            ('user_subjects', 'SELECT COUNT(1) FROM user_subjects WHERE user_id=?'),
+            ('user_quiz_stats', 'SELECT COUNT(1) FROM user_quiz_stats WHERE user_id=?'),
+            ('email_verification_codes', 'SELECT COUNT(1) FROM email_verification_codes WHERE user_id=?'),
+            ('popup_dismissals', 'SELECT COUNT(1) FROM popup_dismissals WHERE user_id=?'),
         ]
         details = []
         for name, sql in checks:
@@ -713,18 +1046,55 @@ def delete_user(user_id):
             if admin_count <= 1:
                 return jsonify({'status': 'error', 'message': '不能删除最后一个管理员'}), 400
 
-        # 级联清理（仅清理我们明确知道的表；其余若还有外键引用，会被 IntegrityError 拦住）
+        # 级联清理所有关联数据（按依赖顺序删除，避免外键约束错误）
+        # 注意：即使某些表有 ON DELETE CASCADE，手动删除更可靠，因为可能数据库创建时外键未启用
+        
+        # 1. 删除考试相关数据（exams 表没有 CASCADE，必须先删除）
+        conn.execute('DELETE FROM exam_questions WHERE exam_id IN (SELECT id FROM exams WHERE user_id=?)', (user_id,))
+        conn.execute('DELETE FROM exams WHERE user_id=?', (user_id,))
+        
+        # 2. 删除用户基础数据
         conn.execute('DELETE FROM favorites WHERE user_id=?', (user_id,))
         conn.execute('DELETE FROM mistakes WHERE user_id=?', (user_id,))
         conn.execute('DELETE FROM user_answers WHERE user_id=?', (user_id,))
         conn.execute('DELETE FROM user_progress WHERE user_id=?', (user_id,))
+        
+        # 3. 删除聊天相关数据
+        conn.execute('DELETE FROM chat_messages WHERE sender_id=?', (user_id,))
+        conn.execute('DELETE FROM chat_members WHERE user_id=?', (user_id,))
+        conn.execute('DELETE FROM user_remarks WHERE owner_user_id=? OR target_user_id=?', (user_id, user_id))
+        
+        # 4. 删除通知相关数据
+        conn.execute('DELETE FROM notification_dismissals WHERE user_id=?', (user_id,))
+        
+        # 5. 删除编程相关数据
+        conn.execute('DELETE FROM code_submissions WHERE user_id=?', (user_id,))
+        conn.execute('DELETE FROM coding_statistics WHERE user_id=?', (user_id,))
+        conn.execute('DELETE FROM user_coding_stats WHERE user_id=?', (user_id,))
+        conn.execute('DELETE FROM code_drafts WHERE user_id=?', (user_id,))
+        
+        # 6. 删除其他用户数据
+        conn.execute('DELETE FROM user_subjects WHERE user_id=?', (user_id,))
+        conn.execute('DELETE FROM user_quiz_stats WHERE user_id=?', (user_id,))
+        conn.execute('DELETE FROM email_verification_codes WHERE user_id=?', (user_id,))
+        conn.execute('DELETE FROM popup_dismissals WHERE user_id=?', (user_id,))
+        
+        # 7. 更新引用该用户的字段（SET NULL 处理）
         conn.execute('UPDATE questions SET created_by=NULL WHERE created_by=?', (user_id,))
+        conn.execute('UPDATE notifications SET created_by=NULL WHERE created_by=?', (user_id,))
+        conn.execute('UPDATE popups SET created_by=NULL WHERE created_by=?', (user_id,))
+        conn.execute('UPDATE popup_views SET user_id=NULL WHERE user_id=?', (user_id,))
+        conn.execute('UPDATE system_config SET updated_by=NULL WHERE updated_by=?', (user_id,))
+        conn.execute('UPDATE user_subjects SET restricted_by=NULL WHERE restricted_by=?', (user_id,))
+        
+        # 8. 最后删除用户本身
         conn.execute('DELETE FROM users WHERE id=?', (user_id,))
         conn.commit()
 
         return jsonify({'status': 'success', 'message': '用户已删除'})
 
     except sqlite3.IntegrityError as e:
+        conn.rollback()
         # 外键约束失败：返回“哪些表还在引用”
         msg = str(e)
         if 'FOREIGN KEY constraint failed' in msg:
@@ -745,6 +1115,7 @@ def delete_user(user_id):
         return jsonify({'status': 'error', 'message': msg}), 400
 
     except Exception as e:
+        conn.rollback()
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
@@ -1136,7 +1507,10 @@ def admin_api_popups_create():
     from app.modules.popups.schemas import PopupCreateSchema
     from datetime import datetime
     
-    if not session.get('is_admin'):
+    # 允许管理员和通知管理员创建弹窗
+    is_admin_user = session.get('is_admin')
+    is_notification_admin_user = session.get('is_notification_admin')
+    if not (is_admin_user or is_notification_admin_user):
         return jsonify({'status': 'error', 'message': '权限不足'}), 403
     
     try:
@@ -1192,7 +1566,10 @@ def admin_api_popups_update(pid):
     """更新弹窗"""
     from app.modules.popups.schemas import PopupUpdateSchema
     
-    if not session.get('is_admin'):
+    # 允许管理员和通知管理员更新弹窗
+    is_admin_user = session.get('is_admin')
+    is_notification_admin_user = session.get('is_notification_admin')
+    if not (is_admin_user or is_notification_admin_user):
         return jsonify({'status': 'error', 'message': '权限不足'}), 403
     
     try:
@@ -1250,7 +1627,10 @@ def admin_api_popups_update(pid):
 @admin_api_bp.route('/popups/<int:pid>', methods=['DELETE'])
 def admin_api_popups_delete(pid):
     """删除弹窗"""
-    if not session.get('is_admin'):
+    # 允许管理员和通知管理员删除弹窗
+    is_admin_user = session.get('is_admin')
+    is_notification_admin_user = session.get('is_notification_admin')
+    if not (is_admin_user or is_notification_admin_user):
         return jsonify({'status': 'error', 'message': '权限不足'}), 403
     
     conn = get_db()
@@ -1276,7 +1656,10 @@ def admin_api_popups_stats():
     """获取所有弹窗的统计信息"""
     from app.modules.popups.services.popup_service import PopupService
     
-    if not session.get('is_admin'):
+    # 允许管理员和通知管理员查看统计信息
+    is_admin_user = session.get('is_admin')
+    is_notification_admin_user = session.get('is_notification_admin')
+    if not (is_admin_user or is_notification_admin_user):
         return jsonify({'status': 'error', 'message': '权限不足'}), 403
     
     try:
@@ -1296,7 +1679,10 @@ def admin_api_popup_stats(pid):
     """获取单个弹窗的统计信息"""
     from app.modules.popups.services.popup_service import PopupService
     
-    if not session.get('is_admin'):
+    # 允许管理员和通知管理员查看统计信息
+    is_admin_user = session.get('is_admin')
+    is_notification_admin_user = session.get('is_notification_admin')
+    if not (is_admin_user or is_notification_admin_user):
         return jsonify({'status': 'error', 'message': '权限不足'}), 403
     
     try:
@@ -1586,6 +1972,159 @@ def export_questions_to_excel():
         as_attachment=True,
         download_name=filename,
         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+
+
+@admin_api_bp.route('/questions/export/word', methods=['GET'])
+def export_questions_to_word():
+    """导出题目为Word文档"""
+    # 延迟导入，避免模块加载时出错
+    try:
+        from docx import Document
+        from docx.shared import Pt, RGBColor, Inches
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+    except ImportError as e:
+        return jsonify({'status': 'error', 'message': f'Word导出功能需要安装python-docx库: {str(e)}'}), 500
+    
+    subject_id = request.args.get('subject_id')
+    q_type = request.args.get('type', 'all')
+    
+    conn = get_db()
+    
+    # 构建查询SQL
+    sql = '''
+        SELECT q.*, s.name as subject_name
+        FROM questions q
+        LEFT JOIN subjects s ON q.subject_id = s.id
+        WHERE 1=1
+    '''
+    params = []
+    
+    if subject_id:
+        sql += ' AND q.subject_id = ?'
+        params.append(subject_id)
+    
+    if q_type and q_type != 'all':
+        sql += ' AND q.q_type = ?'
+        params.append(q_type)
+    
+    sql += ' ORDER BY q.id'
+    rows = conn.execute(sql, params).fetchall()
+    
+    if not rows:
+        return jsonify({'status': 'error', 'message': '没有可导出的题目'}), 400
+    
+    # 创建Word文档
+    doc = Document()
+    
+    # 设置文档标题样式
+    title = doc.add_heading('题目导出', 0)
+    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
+    # 添加科目信息
+    subject_name = "所有科目"
+    if subject_id:
+        subject_row = conn.execute('SELECT name FROM subjects WHERE id = ?', (subject_id,)).fetchone()
+        if subject_row:
+            subject_name = subject_row['name']
+    
+    info_para = doc.add_paragraph(f'科目：{subject_name}')
+    if q_type and q_type != 'all':
+        info_para.add_run(f' | 题型：{q_type}')
+    info_para.add_run(f' | 题目数量：{len(rows)}')
+    info_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
+    # 添加分隔线
+    doc.add_paragraph('_' * 50).alignment = WD_ALIGN_PARAGRAPH.CENTER
+    
+    # 遍历题目，添加到文档
+    for idx, row in enumerate(rows, 1):
+        question = dict(row)
+        q_type_val = question.get('q_type', '')
+        content = question.get('content', '')
+        answer = question.get('answer', '')
+        explanation = question.get('explanation', '')
+        
+        # 添加题号
+        q_num = doc.add_heading(f'题目 {idx}', level=2)
+        q_num_format = q_num.runs[0].font
+        q_num_format.size = Pt(14)
+        q_num_format.bold = True
+        
+        # 添加题型标签
+        type_para = doc.add_paragraph()
+        type_run = type_para.add_run(f'【{q_type_val}】')
+        type_run.font.bold = True
+        type_run.font.color.rgb = RGBColor(0, 102, 204)
+        
+        # 添加题干
+        content_para = doc.add_paragraph()
+        content_run = content_para.add_run('题干：')
+        content_run.font.bold = True
+        content_para.add_run(content)
+        
+        # 解析并添加选项（如果是选择题或多选题）
+        options = []
+        if question.get('options'):
+            try:
+                options = json.loads(question['options'])
+            except:
+                options = []
+        
+        if options:
+            options_para = doc.add_paragraph()
+            options_run = options_para.add_run('选项：')
+            options_run.font.bold = True
+            doc.add_paragraph()  # 空行
+            
+            for i, opt in enumerate(options):
+                opt_para = doc.add_paragraph(f'{chr(ord("A") + i)}. {opt}', style='List Bullet')
+                opt_para.paragraph_format.left_indent = Inches(0.5)
+        
+        # 添加答案
+        answer_para = doc.add_paragraph()
+        answer_run = answer_para.add_run('答案：')
+        answer_run.font.bold = True
+        answer_para.add_run(answer)
+        
+        # 如果是填空题，格式化显示答案
+        if q_type_val == '填空题' and answer:
+            blank_answers = answer.split(';;')
+            if len(blank_answers) > 1:
+                answer_para.clear()
+                answer_run = answer_para.add_run('答案：')
+                answer_run.font.bold = True
+                for i, blank in enumerate(blank_answers, 1):
+                    if i > 1:
+                        answer_para.add_run(' | ')
+                    answer_para.add_run(f'空{i}: {blank}')
+        
+        # 添加解析（如果有）
+        if explanation:
+            explanation_para = doc.add_paragraph()
+            explanation_run = explanation_para.add_run('解析：')
+            explanation_run.font.bold = True
+            explanation_para.add_run(explanation)
+        
+        # 添加分隔线
+        if idx < len(rows):
+            doc.add_paragraph('_' * 50).alignment = WD_ALIGN_PARAGRAPH.CENTER
+            doc.add_paragraph()  # 空行
+    
+    # 保存到内存
+    output = io.BytesIO()
+    doc.save(output)
+    output.seek(0)
+    
+    # 生成文件名
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"questions_export_{subject_name}_{timestamp}.docx"
+    
+    return send_file(
+        output,
+        as_attachment=True,
+        download_name=filename,
+        mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     )
 
 
@@ -2989,5 +3528,59 @@ def api_test_mail_config():
         return jsonify({
             'status': 'error',
             'message': f'测试失败: {str(e)}'
+        }), 500
+
+
+@admin_api_bp.route('/settings/mail/template-preview', methods=['POST'])
+def api_get_mail_template_preview():
+    """获取邮件模板预览"""
+    if not session.get('is_admin'):
+        return jsonify({'status': 'error', 'message': '权限不足'}), 403
+    
+    try:
+        data = request.get_json()
+        template_type = data.get('template_type', 'bind_code')
+        
+        # 验证模板类型
+        valid_types = ['bind_code', 'login_code', 'reset_password']
+        if template_type not in valid_types:
+            return jsonify({
+                'status': 'error',
+                'message': f'无效的模板类型，支持的类型: {", ".join(valid_types)}'
+            }), 400
+        
+        # 生成示例验证码
+        import secrets
+        import string
+        digits = string.digits
+        sample_code = ''.join(secrets.choice(digits) for _ in range(6))
+        sample_email = data.get('email', 'user@example.com')
+        
+        # 渲染模板
+        from app.core.utils.email_templates import render_template
+        try:
+            html_content = render_template(
+                template_type,
+                email=sample_email,
+                code=sample_code
+            )
+        except Exception as template_error:
+            current_app.logger.error(f'模板渲染失败: {str(template_error)}', exc_info=True)
+            return jsonify({
+                'status': 'error',
+                'message': f'模板渲染失败: {str(template_error)}'
+            }), 500
+        
+        return jsonify({
+            'status': 'success',
+            'html': html_content,
+            'template_type': template_type
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f'获取邮件模板预览失败: {str(e)}', exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': f'获取预览失败: {str(e)}'
         }), 500
 

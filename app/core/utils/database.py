@@ -33,6 +33,8 @@ def init_db():
         _create_tables(conn)
         # 创建索引
         _create_indexes(conn)
+        # 运行数据迁移
+        _run_migrations(conn)
         conn.commit()
         print('[OK] 数据库初始化完成')
     except Exception as e:
@@ -40,6 +42,29 @@ def init_db():
         conn.rollback()
     finally:
         conn.close()
+
+
+def _run_migrations(conn):
+    """运行数据库迁移"""
+    try:
+        # 检查has_password_set字段是否存在
+        cols = [r['name'] for r in conn.execute("PRAGMA table_info(users)").fetchall()]
+        if 'has_password_set' in cols:
+            # 字段存在，检查是否有需要更新的老用户
+            # 更新所有有password_hash但没有email的老用户（has_password_set=0或NULL）
+            result = conn.execute('''
+                UPDATE users 
+                SET has_password_set = 1 
+                WHERE password_hash IS NOT NULL 
+                AND password_hash != '' 
+                AND (email IS NULL OR email = '')
+                AND (has_password_set = 0 OR has_password_set IS NULL)
+            ''')
+            updated_count = result.rowcount
+            if updated_count > 0:
+                print(f'[迁移] 已为 {updated_count} 个老用户更新 has_password_set=1')
+    except Exception as e:
+        print(f'[WARN] 迁移has_password_set字段失败: {e}')
 
 
 def _create_tables(conn):
@@ -58,6 +83,7 @@ def _create_tables(conn):
             college TEXT,
             last_active DATETIME,
             is_subject_admin INTEGER DEFAULT 0,
+            is_notification_admin INTEGER DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     ''')
@@ -246,12 +272,33 @@ def _create_tables(conn):
                 cur.execute('ALTER TABLE users ADD COLUMN last_active DATETIME')
             if 'is_subject_admin' not in cols:
                 cur.execute('ALTER TABLE users ADD COLUMN is_subject_admin INTEGER DEFAULT 0')
+            if 'is_notification_admin' not in cols:
+                cur.execute('ALTER TABLE users ADD COLUMN is_notification_admin INTEGER DEFAULT 0')
             if 'email' not in cols:
                 cur.execute('ALTER TABLE users ADD COLUMN email TEXT')
             if 'email_verified' not in cols:
                 cur.execute('ALTER TABLE users ADD COLUMN email_verified INTEGER DEFAULT 0')
             if 'email_verified_at' not in cols:
                 cur.execute('ALTER TABLE users ADD COLUMN email_verified_at DATETIME')
+            if 'has_password_set' not in cols:
+                cur.execute('ALTER TABLE users ADD COLUMN has_password_set INTEGER DEFAULT 0')
+                # 为所有有password_hash但没有email的老用户设置has_password_set=1
+                # （老用户通过用户名注册，有真实密码）
+                try:
+                    cur.execute('''
+                        UPDATE users 
+                        SET has_password_set = 1 
+                        WHERE password_hash IS NOT NULL 
+                        AND password_hash != '' 
+                        AND (email IS NULL OR email = '')
+                    ''')
+                    updated_count = cur.rowcount
+                    if updated_count > 0:
+                        print(f'[迁移] 已为 {updated_count} 个老用户设置 has_password_set=1')
+                except Exception as e:
+                    print(f'[WARN] 迁移老用户has_password_set字段失败: {e}')
+            if 'openid' not in cols:
+                cur.execute('ALTER TABLE users ADD COLUMN openid TEXT')
             
             # 创建邮箱唯一索引（如果不存在）
             try:
@@ -262,8 +309,11 @@ def _create_tables(conn):
                 if 'idx_users_email_unique' not in indexes:
                     # SQLite中，UNIQUE约束通过唯一索引实现
                     cur.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users(email) WHERE email IS NOT NULL')
+                # 创建openid唯一索引（如果不存在）
+                if 'idx_users_openid' not in indexes:
+                    cur.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_openid ON users(openid) WHERE openid IS NOT NULL')
             except Exception as e:
-                print(f'[WARN] 创建邮箱唯一索引失败: {e}')
+                print(f'[WARN] 创建邮箱/openid唯一索引失败: {e}')
 
         # 添加 questions 表的字段（如果不存在）- 兼容旧数据库
         # 注意：questions 表只用于题库中心，不包含编程题字段
@@ -554,6 +604,21 @@ def _create_tables(conn):
         )
     ''')
     
+    # 查重记录表
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS duplicate_check_records (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            subject_id INTEGER NOT NULL,
+            total_pairs INTEGER DEFAULT 0,
+            duplicates_json TEXT NOT NULL,
+            similarity_threshold REAL DEFAULT 0.8,
+            created_by INTEGER,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(subject_id) REFERENCES subjects(id) ON DELETE CASCADE,
+            FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE SET NULL
+        )
+    ''')
+    
     # 初始化系统配置（如果不存在）
     default_configs = [
         ('quiz_limit_enabled', '0', '刷题数限制功能开关（0=关闭，1=开启）'),
@@ -599,6 +664,12 @@ def _create_indexes(conn):
             'CREATE INDEX IF NOT EXISTS idx_questions_subject ON questions(subject_id)',
             'CREATE INDEX IF NOT EXISTS idx_questions_type ON questions(q_type)',
             'CREATE INDEX IF NOT EXISTS idx_questions_subject_type ON questions(subject_id, q_type)',
+        ])
+    
+    # 查重记录相关索引
+    if 'duplicate_check_records' in existing_tables:
+        indexes.extend([
+            'CREATE INDEX IF NOT EXISTS idx_duplicate_check_subject ON duplicate_check_records(subject_id, created_at DESC)',
         ])
     
     # 考试相关索引（只对存在的表创建）

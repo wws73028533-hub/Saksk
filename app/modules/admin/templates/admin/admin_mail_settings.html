@@ -136,6 +136,48 @@
             <div class="form-message" id="formMessage"></div>
         </form>
     </div>
+
+    <!-- 邮件模板预览区域 -->
+    <div class="template-preview-container">
+        <div class="template-preview-header">
+            <h2>邮件模板预览</h2>
+            <p class="template-preview-description">预览不同邮件类型的模板效果</p>
+        </div>
+
+        <div class="template-selector">
+            <button class="template-tab active" data-template="bind_code">
+                <span class="template-icon" style="color: #34c759;">📧</span>
+                <span>邮箱绑定</span>
+            </button>
+            <button class="template-tab" data-template="login_code">
+                <span class="template-icon" style="color: #007aff;">🔐</span>
+                <span>登录验证</span>
+            </button>
+            <button class="template-tab" data-template="reset_password">
+                <span class="template-icon" style="color: #ff3b30;">🔒</span>
+                <span>密码重置</span>
+            </button>
+        </div>
+
+        <div class="template-preview-wrapper">
+            <div class="preview-controls">
+                <div class="preview-email-input">
+                    <label for="previewEmail">预览邮箱地址：</label>
+                    <input type="email" id="previewEmail" value="user@example.com" placeholder="user@example.com">
+                </div>
+                <button class="btn btn-secondary btn-sm" id="refreshPreviewBtn">刷新预览</button>
+            </div>
+            
+            <div class="preview-loading" id="previewLoading" style="display: none;">
+                <div class="loading-spinner"></div>
+                <p>加载中...</p>
+            </div>
+            
+            <div class="preview-iframe-container" id="previewContainer">
+                <iframe id="templatePreview" frameborder="0" scrolling="no"></iframe>
+            </div>
+        </div>
+    </div>
 </div>
 
 <style>
@@ -318,6 +360,191 @@
     color: var(--danger);
     border: 1px solid rgba(255, 59, 48, 0.3);
 }
+
+/* 模板预览区域样式 */
+.template-preview-container {
+    margin-top: 40px;
+    background: var(--card-bg);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    border: 0.5px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 32px;
+    box-shadow: var(--shadow);
+}
+
+.template-preview-header {
+    margin-bottom: 24px;
+}
+
+.template-preview-header h2 {
+    font-size: 24px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    letter-spacing: -0.3px;
+}
+
+.template-preview-description {
+    color: var(--text-sub);
+    font-size: 14px;
+}
+
+.template-selector {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+}
+
+.template-tab {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    background: var(--card-bg-solid);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-color);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.template-tab:hover {
+    background: rgba(142, 142, 147, 0.12);
+    border-color: var(--primary);
+}
+
+.template-tab.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.template-tab.active .template-icon {
+    filter: brightness(0) invert(1);
+}
+
+.template-icon {
+    font-size: 18px;
+    display: inline-block;
+}
+
+.template-preview-wrapper {
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: #f5f7fa;
+    padding: 20px;
+    min-height: 500px;
+}
+
+.preview-controls {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+.preview-email-input {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 200px;
+}
+
+.preview-email-input label {
+    font-size: 14px;
+    color: var(--text-color);
+    white-space: nowrap;
+}
+
+.preview-email-input input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--card-bg-solid);
+    color: var(--text-color);
+    font-size: 14px;
+    min-width: 200px;
+}
+
+.preview-email-input input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+.btn-sm {
+    padding: 8px 16px;
+    font-size: 14px;
+}
+
+.preview-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+    color: var(--text-sub);
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(0, 122, 255, 0.2);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-bottom: 16px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.preview-iframe-container {
+    background: white;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    min-height: 500px;
+}
+
+#templatePreview {
+    width: 100%;
+    min-height: 500px;
+    border: none;
+    display: block;
+}
+
+@media only screen and (max-width: 768px) {
+    .template-selector {
+        flex-direction: column;
+    }
+    
+    .template-tab {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .preview-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .preview-email-input {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .preview-email-input input {
+        width: 100%;
+    }
+}
 </style>
 
 <script>
@@ -446,6 +673,111 @@ document.addEventListener('DOMContentLoaded', function() {
             testBtn.textContent = '测试配置';
         }
     });
+
+    // 邮件模板预览功能
+    const templateTabs = document.querySelectorAll('.template-tab');
+    const previewContainer = document.getElementById('templatePreview');
+    const previewLoading = document.getElementById('previewLoading');
+    const previewEmailInput = document.getElementById('previewEmail');
+    const refreshPreviewBtn = document.getElementById('refreshPreviewBtn');
+    let currentTemplateType = 'bind_code';
+
+    // 切换模板类型
+    templateTabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            templateTabs.forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            currentTemplateType = this.dataset.template;
+            loadTemplatePreview();
+        });
+    });
+
+    // 加载模板预览
+    async function loadTemplatePreview() {
+        const email = previewEmailInput.value.trim() || 'user@example.com';
+        
+        previewLoading.style.display = 'flex';
+        previewContainer.style.display = 'none';
+        
+        try {
+            const response = await fetch('/admin/api/settings/mail/template-preview', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    template_type: currentTemplateType,
+                    email: email
+                })
+            });
+
+            let data;
+            try {
+                data = await response.json();
+            } catch (e) {
+                const text = await response.text();
+                throw new Error(`服务器响应格式错误 (${response.status}): ${text || '未知错误'}`);
+            }
+            
+            if (!response.ok) {
+                throw new Error(data.message || `请求失败 (${response.status})`);
+            }
+            
+            if (data.status === 'success') {
+                // 将HTML内容写入iframe
+                const iframe = previewContainer;
+                const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                
+                if (!iframeDoc) {
+                    throw new Error('无法访问iframe文档，可能是跨域问题');
+                }
+                
+                iframeDoc.open();
+                iframeDoc.write(data.html);
+                iframeDoc.close();
+                
+                // 等待内容加载后调整高度
+                setTimeout(() => {
+                    try {
+                        const height = Math.max(
+                            iframeDoc.body.scrollHeight,
+                            iframeDoc.body.offsetHeight,
+                            iframeDoc.documentElement.clientHeight,
+                            iframeDoc.documentElement.scrollHeight,
+                            iframeDoc.documentElement.offsetHeight
+                        );
+                        iframe.style.height = Math.max(height + 20, 500) + 'px';
+                    } catch (e) {
+                        console.warn('调整iframe高度失败:', e);
+                        iframe.style.height = '600px';
+                    }
+                }, 200);
+                
+                previewContainer.style.display = 'block';
+            } else {
+                throw new Error(data.message || '加载预览失败');
+            }
+        } catch (error) {
+            console.error('模板预览错误:', error);
+            showMessage('加载预览失败: ' + error.message, 'error');
+            previewContainer.style.display = 'none';
+        } finally {
+            previewLoading.style.display = 'none';
+        }
+    }
+
+    // 刷新预览
+    refreshPreviewBtn.addEventListener('click', loadTemplatePreview);
+
+    // 邮箱输入框回车刷新
+    previewEmailInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            loadTemplatePreview();
+        }
+    });
+
+    // 页面加载时自动加载第一个模板预览
+    loadTemplatePreview();
 });
 </script>
 {% endblock %}

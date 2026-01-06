@@ -292,6 +292,17 @@
                 <input type="checkbox" class="switch" id="toggleThemeSwitch" aria-label="切换深色模式" />
             </div>
 
+            <div class="setting-row">
+                <div>
+                    <div class="setting-name">答题布局主题</div>
+                    <div class="setting-desc">选择答题页面的布局样式：传统布局（紧凑列表）或卡片布局（分离式卡片）。</div>
+                </div>
+                <select class="btn" id="quizLayoutTheme" style="min-width: 120px;">
+                    <option value="traditional">传统布局</option>
+                    <option value="card">卡片布局</option>
+                </select>
+            </div>
+
             <div class="btn-row">
                 <button class="btn btn-danger" onclick="resetDefaults()">恢复默认</button>
                 <button class="btn btn-primary" onclick="saveSettings()">保存设置</button>
@@ -487,6 +498,7 @@
 
         const QUIZ_HOTKEYS_KEY = 'quiz_hotkeys_v1';
         const QUIZ_FAB_ENABLED_KEY = 'quiz_fab_enabled_v1';
+        const QUIZ_LAYOUT_THEME_KEY = 'quiz_layout_theme_v1';
 
         const DEFAULT_QUIZ_HOTKEYS = {
             // 导航
@@ -707,6 +719,13 @@
         function setQuizFabEnabled(on){
             localStorage.setItem(QUIZ_FAB_ENABLED_KEY, on ? '1' : '0');
         }
+        
+        function getQuizLayoutTheme(){
+            return localStorage.getItem(QUIZ_LAYOUT_THEME_KEY) || 'traditional';
+        }
+        function setQuizLayoutTheme(theme){
+            localStorage.setItem(QUIZ_LAYOUT_THEME_KEY, theme);
+        }
 
         function collectSettings(){
             return {
@@ -714,6 +733,7 @@
                 home_visible_subjects: getVisibleSubjects(),
                 quiz_hotkeys_v1: getHotkeys(),
                 quiz_fab_enabled_v1: isQuizFabEnabled(),
+                quiz_layout_theme_v1: getQuizLayoutTheme(),
                 updated_at: Date.now()
             };
         }
@@ -731,6 +751,19 @@
                     localStorage.setItem('settings_updated_at', String(ts));
                     await syncSettingsToServer();
                     showToast(fabToggle.checked ? '已开启悬浮球' : '已关闭悬浮球');
+                };
+            }
+            
+            // 布局主题选择
+            const layoutThemeSelect = document.getElementById('quizLayoutTheme');
+            if (layoutThemeSelect) {
+                layoutThemeSelect.value = getQuizLayoutTheme();
+                layoutThemeSelect.onchange = async function(){
+                    setQuizLayoutTheme(layoutThemeSelect.value);
+                    const ts = Date.now();
+                    localStorage.setItem('settings_updated_at', String(ts));
+                    await syncSettingsToServer();
+                    showToast(layoutThemeSelect.value === 'card' ? '已切换到卡片布局' : '已切换到传统布局');
                 };
             }
         }

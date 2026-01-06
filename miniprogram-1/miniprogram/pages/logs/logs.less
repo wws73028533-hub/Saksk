@@ -1,0 +1,32 @@
+page {
+  height: 100vh;
+  overflow: hidden;
+}
+
+.page-root {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.page-container {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.content-area {
+  flex: 1;
+  min-height: 0;
+  height: 0;
+}
+.log-item {
+  margin-top: 20rpx;
+  text-align: center;
+}
+.log-item:last-child {
+  padding-bottom: env(safe-area-inset-bottom);
+}

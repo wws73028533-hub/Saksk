@@ -489,12 +489,17 @@
                 </div>
             </a>
 
-            {% if is_admin or is_subject_admin %}
-            <a href="/admin{% if is_subject_admin and not is_admin %}/subjects{% endif %}" class="feature-card admin">
+            {% if is_admin or is_subject_admin or is_notification_admin %}
+            <a href="/admin{% if is_subject_admin and not is_admin %}/subjects{% elif is_notification_admin and not is_admin %}/notifications{% endif %}" class="feature-card admin">
                 <span class="icon">🛠️</span>
                 <div>
                     <div class="title">管理端</div>
-                    <div class="description">{% if is_admin %}管理系统用户、题库和考试设置{% else %}管理科目和题集{% endif %}</div>
+                    <div class="description">
+                        {% if is_admin %}管理系统用户、题库和考试设置
+                        {% elif is_subject_admin %}管理科目和题集
+                        {% else %}管理通知和公告
+                        {% endif %}
+                    </div>
                 </div>
             </a>
             {% endif %}

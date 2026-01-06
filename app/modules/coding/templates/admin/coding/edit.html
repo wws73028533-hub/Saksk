@@ -1,0 +1,881 @@
+{% extends "admin/admin_base.html" %}
+
+{% block title %}{% if question_id %}编辑题目{% else %}创建题目{% endif %}{% endblock %}
+
+{% block head %}
+<style>
+    .container {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(30px) saturate(180%);
+        -webkit-backdrop-filter: blur(30px) saturate(180%);
+        padding: 40px;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-soft);
+        border: 0.5px solid var(--border-color);
+        max-width: 900px;
+        margin: 0 auto;
+    }
+    
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 32px;
+        padding-bottom: 20px;
+        border-bottom: 0.5px solid var(--border-color);
+    }
+    
+    .page-title {
+        font-size: 24px;
+        font-weight: bold;
+        color: var(--text-color);
+    }
+    
+    .form-group {
+        margin-bottom: 24px;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 500;
+        color: var(--text-color);
+    }
+    
+    .form-group label.required::after {
+        content: ' *';
+        color: var(--danger);
+    }
+    
+    .form-group input[type="text"],
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        padding: 12px;
+        border: 0.5px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        background: var(--card-bg);
+        color: var(--text-color);
+        font-size: 14px;
+        font-family: inherit;
+    }
+    
+    .form-group input[type="text"]:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px var(--primary-light);
+    }
+    
+    .form-group textarea {
+        resize: vertical;
+        font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
+    }
+    
+    .form-group .form-hint {
+        margin-top: 6px;
+        font-size: 12px;
+        color: var(--text-sub);
+    }
+    
+    .form-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+        margin-top: 32px;
+        padding-top: 24px;
+        border-top: 0.5px solid var(--border-color);
+    }
+    
+    .btn {
+        padding: 12px 24px;
+        border: none;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        font-size: 15px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+    
+    .btn-cancel {
+        background: var(--card-bg);
+        color: var(--text-color);
+        border: 0.5px solid var(--border-color);
+    }
+    
+    .btn-cancel:hover {
+        background: rgba(142, 142, 147, 0.1);
+    }
+    
+    .btn-submit {
+        background: var(--primary);
+        color: white;
+    }
+    
+    .btn-submit:hover {
+        background: #0051d5;
+    }
+    
+    .btn-submit:disabled {
+        background: var(--text-sub);
+        cursor: not-allowed;
+    }
+    
+    /* 测试用例编辑器样式 */
+    .test-cases-tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 16px;
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .test-case-tab {
+        padding: 8px 16px;
+        background: transparent;
+        border: none;
+        border-bottom: 2px solid transparent;
+        color: var(--text-sub);
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        margin-bottom: -1px;
+    }
+    
+    .test-case-tab:hover {
+        color: var(--primary);
+    }
+    
+    .test-case-tab.active {
+        color: var(--primary);
+        border-bottom-color: var(--primary);
+    }
+    
+    .test-cases-container {
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        padding: 16px;
+        background: var(--card-bg);
+    }
+    
+    .test-cases-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+    
+    .test-cases-count {
+        font-size: 14px;
+        color: var(--text-sub);
+    }
+    
+    .btn-add-case {
+        padding: 6px 12px;
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: var(--radius-sm);
+        font-size: 14px;
+        cursor: pointer;
+        transition: background 0.2s ease;
+    }
+    
+    .btn-add-case:hover {
+        background: #0051d5;
+    }
+    
+    .test-cases-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .test-case-item {
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        padding: 16px;
+        background: rgba(255, 255, 255, 0.5);
+    }
+    
+    .test-case-item-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+    }
+    
+    .test-case-item-title {
+        font-weight: 500;
+        color: var(--text-color);
+        font-size: 14px;
+    }
+    
+    .btn-remove-case {
+        padding: 4px 8px;
+        background: var(--danger);
+        color: white;
+        border: none;
+        border-radius: 4px;
+        font-size: 12px;
+        cursor: pointer;
+        transition: background 0.2s ease;
+    }
+    
+    .btn-remove-case:hover {
+        background: #d32f2f;
+    }
+    
+    .test-case-input-group {
+        margin-bottom: 12px;
+    }
+    
+    .test-case-input-group:last-child {
+        margin-bottom: 0;
+    }
+    
+    .test-case-input-label {
+        display: block;
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--text-color);
+        margin-bottom: 6px;
+    }
+    
+    .test-case-input-field {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        background: white;
+        color: var(--text-color);
+        font-size: 13px;
+        font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
+        resize: vertical;
+        min-height: 60px;
+    }
+    
+    .test-case-input-field:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 2px var(--primary-light);
+    }
+    
+    body[data-theme="dark"] .test-case-item {
+        background: rgba(28, 28, 30, 0.5);
+    }
+    
+    body[data-theme="dark"] .test-case-input-field {
+        background: rgba(28, 28, 30, 0.8);
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+    
+    /* 题目描述预览功能 */
+    .description-editor-wrapper {
+        position: relative;
+    }
+    
+    .description-toolbar {
+        display: flex;
+        justify-content: flex-end;
+        margin-bottom: 8px;
+    }
+    
+    .btn-toggle-preview {
+        padding: 6px 12px;
+        background: var(--card-bg);
+        border: 0.5px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        font-size: 13px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        color: var(--text-color);
+    }
+    
+    .btn-toggle-preview:hover {
+        background: var(--primary-light);
+        border-color: var(--primary);
+    }
+    
+    .description-preview {
+        min-height: 200px;
+        padding: 12px;
+        border: 0.5px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        background: var(--card-bg);
+        display: none;
+    }
+    
+    .description-preview.active {
+        display: block;
+    }
+    
+    .description-textarea.hidden {
+        display: none;
+    }
+    
+    /* Markdown预览样式（与前台一致） */
+    .markdown-preview {
+        line-height: 1.8;
+        color: var(--text-color);
+        font-size: 15px;
+    }
+    
+    .markdown-preview h1,
+    .markdown-preview h2,
+    .markdown-preview h3,
+    .markdown-preview h4,
+    .markdown-preview h5,
+    .markdown-preview h6 {
+        font-weight: 600;
+        margin-top: 24px;
+        margin-bottom: 12px;
+        color: var(--text-color);
+    }
+    
+    .markdown-preview h1 {
+        font-size: 24px;
+    }
+    
+    .markdown-preview h2 {
+        font-size: 20px;
+    }
+    
+    .markdown-preview h3 {
+        font-size: 18px;
+    }
+    
+    .markdown-preview h4 {
+        font-size: 16px;
+    }
+    
+    .markdown-preview p {
+        margin: 12px 0;
+        color: var(--text-color);
+    }
+    
+    .markdown-preview strong {
+        font-weight: 600;
+        color: var(--text-color);
+    }
+    
+    .markdown-preview em {
+        font-style: italic;
+    }
+    
+    .markdown-preview code {
+        background: rgba(142, 142, 147, 0.15);
+        border: 0.5px solid var(--border-color);
+        border-radius: 4px;
+        padding: 2px 6px;
+        font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
+        font-size: 0.9em;
+        color: var(--text-color);
+    }
+    
+    .markdown-preview pre {
+        background: rgba(142, 142, 147, 0.15);
+        border: 0.5px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        padding: 16px;
+        overflow-x: auto;
+        margin: 16px 0;
+    }
+    
+    .markdown-preview pre code {
+        background: transparent;
+        border: none;
+        padding: 0;
+        font-size: 14px;
+        line-height: 1.6;
+    }
+    
+    .markdown-preview ul,
+    .markdown-preview ol {
+        margin: 12px 0;
+        padding-left: 24px;
+    }
+    
+    .markdown-preview li {
+        margin: 6px 0;
+        color: var(--text-color);
+    }
+    
+    .markdown-preview blockquote {
+        border-left: 3px solid var(--border-color);
+        padding-left: 16px;
+        margin: 16px 0;
+        color: var(--text-sub);
+        font-style: italic;
+    }
+    
+    .markdown-preview table {
+        border-collapse: collapse;
+        width: 100%;
+        margin: 16px 0;
+    }
+    
+    .markdown-preview table th,
+    .markdown-preview table td {
+        border: 0.5px solid var(--border-color);
+        padding: 8px 12px;
+        text-align: left;
+    }
+    
+    .markdown-preview table th {
+        background: rgba(142, 142, 147, 0.1);
+        font-weight: 600;
+    }
+    
+    .markdown-preview hr {
+        border: none;
+        border-top: 0.5px solid var(--border-color);
+        margin: 24px 0;
+    }
+</style>
+<!-- Marked.js for Markdown rendering -->
+<script src="https://cdn.jsdelivr.net/npm/marked@11/marked.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1 class="page-title" id="page-title">{% if question_id %}编辑题目{% else %}创建题目{% endif %}</h1>
+    </div>
+    
+    <form id="question-form">
+        <div class="form-group">
+            <label for="subject_id" class="required">题目集</label>
+            <select name="subject_id" id="subject_id" required>
+                <option value="">请选择题目集</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="q_type" class="required">题目类型</label>
+            <select name="q_type" id="q_type" required>
+                <option value="函数题">函数题</option>
+                <option value="编程题">编程题</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="title" class="required">题目标题</label>
+            <input type="text" name="title" id="title" required maxlength="200">
+        </div>
+        
+        <div class="form-group">
+            <label for="difficulty" class="required">难度</label>
+            <select name="difficulty" id="difficulty" required>
+                <option value="easy">简单</option>
+                <option value="medium">中等</option>
+                <option value="hard">困难</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="description" class="required">题目描述</label>
+            <div class="description-editor-wrapper">
+                <div class="description-toolbar">
+                    <button type="button" class="btn-toggle-preview" id="toggle-preview-btn" onclick="togglePreview()">预览</button>
+                </div>
+                <textarea name="description" id="description" class="description-textarea" rows="8" required></textarea>
+                <div class="description-preview markdown-preview" id="description-preview"></div>
+            </div>
+            <div class="form-hint">支持 Markdown 格式，点击"预览"按钮查看渲染效果</div>
+        </div>
+        
+        <div class="form-group">
+            <label for="code_template">代码模板</label>
+            <textarea name="code_template" id="code_template" rows="10"></textarea>
+            <div class="form-hint">代码模板，留空则用户需要从头编写</div>
+        </div>
+        
+        <div class="form-group">
+            <label class="required">测试用例</label>
+            
+            <!-- 测试用例标签页 -->
+            <div class="test-cases-tabs">
+                <button type="button" class="test-case-tab active" onclick="switchTestCaseTab('public', this)">公开测试用例</button>
+                <button type="button" class="test-case-tab" onclick="switchTestCaseTab('hidden', this)">隐藏测试用例</button>
+            </div>
+            
+            <!-- 公开测试用例区域 -->
+            <div id="public-test-cases" class="test-cases-container">
+                <div class="test-cases-header">
+                    <span class="test-cases-count">已添加 <span id="public-count">0</span> 个测试用例</span>
+                    <button type="button" class="btn-add-case" onclick="addTestCase('public')">+ 添加测试用例</button>
+                </div>
+                <div id="public-cases-list" class="test-cases-list"></div>
+            </div>
+            
+            <!-- 隐藏测试用例区域 -->
+            <div id="hidden-test-cases" class="test-cases-container" style="display: none;">
+                <div class="test-cases-header">
+                    <span class="test-cases-count">已添加 <span id="hidden-count">0</span> 个测试用例</span>
+                    <button type="button" class="btn-add-case" onclick="addTestCase('hidden')">+ 添加测试用例</button>
+                </div>
+                <div id="hidden-cases-list" class="test-cases-list"></div>
+            </div>
+            
+            <!-- 隐藏的JSON字段，用于提交 -->
+            <textarea name="test_cases_json" id="test_cases_json" style="display: none;" required></textarea>
+            <div class="form-hint">公开测试用例：用户可以看到输入输出，用于调试。隐藏测试用例：用户看不到，用于最终判定。</div>
+        </div>
+        
+        <div class="form-actions">
+            <button type="button" class="btn btn-cancel" onclick="handleCancel()">取消</button>
+            <button type="submit" class="btn btn-submit" id="submit-btn">保存</button>
+        </div>
+    </form>
+</div>
+
+<script>
+const questionId = {{ question_id if question_id else 'null' }};
+const subjectId = {{ subject_id }};
+let subjects = [];
+
+// 加载题目集列表
+async function loadSubjects() {
+    try {
+        const res = await fetch('/admin/coding/api/subjects');
+        const result = await res.json();
+        
+        if (result.status === 'success') {
+            subjects = result.data.subjects;
+            const select = document.getElementById('subject_id');
+            
+            subjects.forEach(subject => {
+                const option = document.createElement('option');
+                option.value = subject.id;
+                option.textContent = subject.name;
+                select.appendChild(option);
+            });
+            
+            // 如果有subject_id参数，自动选中
+            if (subjectId) {
+                select.value = subjectId;
+            }
+        }
+    } catch (error) {
+        console.error('加载题目集失败:', error);
+        alert('加载题目集失败');
+    }
+}
+
+// 加载题目详情（编辑模式）
+async function loadQuestion() {
+    if (!questionId) return;
+    
+    try {
+        const res = await fetch(`/coding/api/questions/${questionId}`);
+        const result = await res.json();
+        
+        if (result.status === 'success') {
+            const q = result.data;
+            // 支持subject_id和coding_subject_id两种字段名
+            document.getElementById('subject_id').value = q.subject_id || q.coding_subject_id || '';
+            document.getElementById('q_type').value = q.q_type || '编程题';
+            document.getElementById('title').value = q.title || '';
+            document.getElementById('difficulty').value = q.difficulty || 'easy';
+            document.getElementById('description').value = q.description || '';
+            document.getElementById('code_template').value = q.code_template || '';
+            
+            // 处理测试用例
+            let testCasesData = { test_cases: [], hidden_cases: [] };
+            if (q.test_cases_json) {
+                if (typeof q.test_cases_json === 'string') {
+                    try {
+                        testCasesData = JSON.parse(q.test_cases_json);
+                    } catch (e) {
+                        console.error('解析测试用例JSON失败:', e);
+                    }
+                } else {
+                    testCasesData = q.test_cases_json;
+                }
+            }
+            renderTestCases(testCasesData);
+        } else {
+            alert('加载题目失败: ' + result.message);
+            window.location.href = '/admin/coding/questions';
+        }
+    } catch (error) {
+        console.error('加载题目失败:', error);
+        alert('加载题目失败');
+        window.location.href = '/admin/coding/questions';
+    }
+}
+
+// 保存题目
+async function saveQuestion(event) {
+    event.preventDefault();
+    
+    const submitBtn = document.getElementById('submit-btn');
+    submitBtn.disabled = true;
+    submitBtn.textContent = '保存中...';
+    
+    try {
+        const formData = new FormData(event.target);
+        
+        // 收集测试用例数据并转换为JSON
+        const testCasesJson = collectTestCasesToJson();
+        if (!testCasesJson) {
+            alert('请至少添加一个测试用例');
+            submitBtn.disabled = false;
+            submitBtn.textContent = '保存';
+            return;
+        }
+        
+        const data = {
+            title: formData.get('title'),
+            subject_id: formData.get('subject_id') ? parseInt(formData.get('subject_id')) : null,
+            q_type: formData.get('q_type'),
+            difficulty: formData.get('difficulty'),
+            description: formData.get('description'),
+            code_template: formData.get('code_template') || '',
+            test_cases_json: testCasesJson,
+            programming_language: 'python',
+            time_limit: 5,
+            memory_limit: 128,
+            is_enabled: true
+        };
+        
+        const url = questionId 
+            ? `/admin/coding/api/questions/${questionId}`
+            : '/admin/coding/api/questions';
+        const method = questionId ? 'PUT' : 'POST';
+        
+        const res = await fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await res.json();
+        
+        if (result.status === 'success') {
+            alert(result.message);
+            // 返回题目列表页面，如果有subject参数则带上
+            const returnUrl = subjectId 
+                ? `/admin/coding/questions?subject=${subjectId}`
+                : '/admin/coding/questions';
+            window.location.href = returnUrl;
+        } else {
+            alert('保存失败: ' + result.message);
+            submitBtn.disabled = false;
+            submitBtn.textContent = '保存';
+        }
+    } catch (error) {
+        console.error('保存失败:', error);
+        alert('保存失败');
+        submitBtn.disabled = false;
+        submitBtn.textContent = '保存';
+    }
+}
+
+// 取消
+function handleCancel() {
+    const returnUrl = subjectId 
+        ? `/admin/coding/questions?subject=${subjectId}`
+        : '/admin/coding/questions';
+    window.location.href = returnUrl;
+}
+
+// 测试用例管理
+let testCases = {
+    public: [],
+    hidden: []
+};
+
+// 切换测试用例标签页
+function switchTestCaseTab(type, element) {
+    document.querySelectorAll('.test-case-tab').forEach(tab => tab.classList.remove('active'));
+    document.getElementById('public-test-cases').style.display = type === 'public' ? 'block' : 'none';
+    document.getElementById('hidden-test-cases').style.display = type === 'hidden' ? 'block' : 'none';
+    if (element) {
+        element.classList.add('active');
+    } else {
+        document.querySelectorAll('.test-case-tab').forEach(tab => {
+            if (tab.textContent.includes(type === 'public' ? '公开' : '隐藏')) {
+                tab.classList.add('active');
+            }
+        });
+    }
+}
+
+// 添加测试用例
+function addTestCase(type) {
+    const id = Date.now() + Math.random();
+    testCases[type].push({ id, input: '', output: '' });
+    renderTestCasesList(type);
+    updateTestCaseCount(type);
+}
+
+// 删除测试用例
+function removeTestCase(type, id) {
+    // 将字符串ID转换为数字（如果可能）
+    const numId = typeof id === 'string' ? parseFloat(id) : id;
+    testCases[type] = testCases[type].filter(c => c.id != numId);
+    renderTestCasesList(type);
+    updateTestCaseCount(type);
+}
+
+// 更新测试用例输入
+function updateTestCase(type, id, field, value) {
+    // 将字符串ID转换为数字（如果可能）
+    const numId = typeof id === 'string' ? parseFloat(id) : id;
+    const testCase = testCases[type].find(c => c.id == numId);
+    if (testCase) {
+        testCase[field] = value;
+    }
+}
+
+// 渲染测试用例列表
+function renderTestCasesList(type) {
+    const container = document.getElementById(`${type}-cases-list`);
+    container.innerHTML = '';
+    
+    if (testCases[type].length === 0) {
+        container.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-sub); font-size: 14px;">暂无测试用例，点击上方按钮添加</div>';
+        return;
+    }
+    
+    testCases[type].forEach((testCase, index) => {
+        const item = document.createElement('div');
+        item.className = 'test-case-item';
+        item.innerHTML = `
+            <div class="test-case-item-header">
+                <span class="test-case-item-title">测试用例 #${index + 1}</span>
+                <button type="button" class="btn-remove-case" onclick="removeTestCase('${type}', ${testCase.id})">删除</button>
+            </div>
+            <div class="test-case-input-group">
+                <label class="test-case-input-label">输入</label>
+                <textarea 
+                    class="test-case-input-field" 
+                    placeholder="输入测试数据（可以是多行）"
+                    oninput="updateTestCase('${type}', ${testCase.id}, 'input', this.value)">${escapeHtml(testCase.input)}</textarea>
+            </div>
+            <div class="test-case-input-group">
+                <label class="test-case-input-label">输出</label>
+                <textarea 
+                    class="test-case-input-field" 
+                    placeholder="期望的输出结果（可以是多行）"
+                    oninput="updateTestCase('${type}', ${testCase.id}, 'output', this.value)">${escapeHtml(testCase.output)}</textarea>
+            </div>
+        `;
+        container.appendChild(item);
+    });
+}
+
+// 更新测试用例计数
+function updateTestCaseCount(type) {
+    const count = testCases[type].length;
+    document.getElementById(`${type}-count`).textContent = count;
+}
+
+// 渲染所有测试用例
+function renderTestCases(data) {
+    testCases.public = (data.test_cases || []).map((tc, idx) => ({
+        id: Date.now() + idx,
+        input: tc.input || '',
+        output: tc.output || ''
+    }));
+    testCases.hidden = (data.hidden_cases || []).map((tc, idx) => ({
+        id: Date.now() + 1000 + idx,
+        input: tc.input || '',
+        output: tc.output || ''
+    }));
+    
+    renderTestCasesList('public');
+    renderTestCasesList('hidden');
+    updateTestCaseCount('public');
+    updateTestCaseCount('hidden');
+}
+
+// 收集测试用例为JSON
+function collectTestCasesToJson() {
+    const publicCases = testCases.public
+        .filter(tc => tc.input.trim() || tc.output.trim())
+        .map(tc => ({
+            input: tc.input.trim(),
+            output: tc.output.trim()
+        }));
+    
+    const hiddenCases = testCases.hidden
+        .filter(tc => tc.input.trim() || tc.output.trim())
+        .map(tc => ({
+            input: tc.input.trim(),
+            output: tc.output.trim()
+        }));
+    
+    if (publicCases.length === 0 && hiddenCases.length === 0) {
+        return null;
+    }
+    
+    return JSON.stringify({
+        test_cases: publicCases,
+        hidden_cases: hiddenCases
+    }, null, 2);
+}
+
+// HTML转义函数
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// 预览功能
+let isPreviewMode = false;
+
+function togglePreview() {
+    const textarea = document.getElementById('description');
+    const preview = document.getElementById('description-preview');
+    const toggleBtn = document.getElementById('toggle-preview-btn');
+    
+    isPreviewMode = !isPreviewMode;
+    
+    if (isPreviewMode) {
+        // 切换到预览模式
+        const markdownText = textarea.value;
+        try {
+            if (typeof marked !== 'undefined') {
+                const html = marked.parse(markdownText);
+                preview.innerHTML = html;
+                textarea.classList.add('hidden');
+                preview.classList.add('active');
+                toggleBtn.textContent = '编辑';
+            } else {
+                alert('Markdown渲染库加载失败，请刷新页面重试');
+                isPreviewMode = false;
+            }
+        } catch (e) {
+            console.error('Markdown解析失败:', e);
+            preview.innerHTML = '<div style="color: var(--danger);">Markdown解析失败: ' + escapeHtml(e.message) + '</div>';
+            textarea.classList.add('hidden');
+            preview.classList.add('active');
+            toggleBtn.textContent = '编辑';
+        }
+    } else {
+        // 切换到编辑模式
+        textarea.classList.remove('hidden');
+        preview.classList.remove('active');
+        toggleBtn.textContent = '预览';
+    }
+}
+
+// 初始化
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadSubjects();
+    await loadQuestion();
+    document.getElementById('question-form').addEventListener('submit', saveQuestion);
+    
+    // 如果没有测试用例，添加一个空的公开测试用例
+    if (testCases.public.length === 0 && testCases.hidden.length === 0) {
+        addTestCase('public');
+    }
+});
+</script>
+{% endblock %}
+

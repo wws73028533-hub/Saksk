@@ -99,6 +99,42 @@
         align-items: center;
         flex-wrap: wrap;
     }
+    /* 统一工具栏按钮和选择框的宽度和高度 */
+    .toolbar .btn,
+    .toolbar .btn-primary,
+    .toolbar .btn-secondary,
+    .toolbar .btn-danger,
+    .toolbar .btn-outline,
+    .toolbar select {
+        width: 120px;
+        height: 44px;
+        min-width: 120px;
+        min-height: 44px;
+        max-width: 120px;
+        max-height: 44px;
+        padding: 10px 12px;
+        font-size: 14px;
+        font-weight: 500;
+        box-sizing: border-box;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        text-overflow: ellipsis;
+        overflow: hidden;
+        white-space: nowrap;
+    }
+    .toolbar select {
+        text-align: left;
+        justify-content: flex-start;
+    }
+    .toolbar .btn,
+    .toolbar .btn-primary,
+    .toolbar .btn-secondary,
+    .toolbar .btn-danger,
+    .toolbar .btn-outline {
+        text-align: center;
+        justify-content: center;
+    }
 
     .btn, .btn-primary, .btn-secondary, .btn-danger, .btn-outline {
         padding: 10px 16px;
@@ -122,55 +158,95 @@
     }
 
     .btn-primary {
-        background-color: rgba(0, 122, 255, 0.7); /* 半透明蓝色 */
+        background-color: rgba(0, 122, 255, 0.4); /* 更透明的蓝色 */
         color: white;
-        border-color: rgba(0, 122, 255, 0.3);
+        border: 1.5px solid rgba(0, 122, 255, 0.6);
+        box-shadow: 0 0 0 1px rgba(0, 122, 255, 0.3) inset,
+                    0 2px 8px rgba(0, 122, 255, 0.2),
+                    0 0 20px rgba(0, 122, 255, 0.15);
     }
     .btn-primary:hover {
-        background-color: rgba(0, 122, 255, 0.85);
-        border-color: rgba(0, 122, 255, 0.4);
+        background-color: rgba(0, 122, 255, 0.5);
+        border-color: rgba(0, 122, 255, 0.8);
         transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
+        box-shadow: 0 0 0 1px rgba(0, 122, 255, 0.4) inset,
+                    0 4px 16px rgba(0, 122, 255, 0.3),
+                    0 0 30px rgba(0, 122, 255, 0.25);
     }
     .btn-primary:active {
         transform: translateY(0);
-        box-shadow: 0 2px 6px rgba(0, 122, 255, 0.2);
+        box-shadow: 0 0 0 1px rgba(0, 122, 255, 0.3) inset,
+                    0 2px 8px rgba(0, 122, 255, 0.2),
+                    0 0 15px rgba(0, 122, 255, 0.15);
     }
 
     .btn-danger {
-        background-color: rgba(255, 59, 48, 0.7); /* 半透明红色 */
+        background-color: rgba(255, 59, 48, 0.4); /* 更透明的红色 */
         color: white;
-        border-color: rgba(255, 59, 48, 0.3);
+        border: 1.5px solid rgba(255, 59, 48, 0.6);
+        box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.3) inset,
+                    0 2px 8px rgba(255, 59, 48, 0.2),
+                    0 0 20px rgba(255, 59, 48, 0.15);
     }
     .btn-danger:hover {
-        background-color: rgba(255, 59, 48, 0.85);
-        border-color: rgba(255, 59, 48, 0.4);
+        background-color: rgba(255, 59, 48, 0.5);
+        border-color: rgba(255, 59, 48, 0.8);
         transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(255, 59, 48, 0.3);
+        box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.4) inset,
+                    0 4px 16px rgba(255, 59, 48, 0.3),
+                    0 0 30px rgba(255, 59, 48, 0.25);
     }
     .btn-danger:active {
         transform: translateY(0);
-        box-shadow: 0 2px 6px rgba(255, 59, 48, 0.2);
+        box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.3) inset,
+                    0 2px 8px rgba(255, 59, 48, 0.2),
+                    0 0 15px rgba(255, 59, 48, 0.15);
     }
     
     /* 暗色模式下的主要按钮 */
     [data-theme="dark"] .btn-primary {
-        background-color: rgba(0, 122, 255, 0.6);
-        border-color: rgba(0, 122, 255, 0.3);
+        background-color: rgba(0, 122, 255, 0.35);
+        border: 1.5px solid rgba(0, 122, 255, 0.6);
+        color: white;
+        box-shadow: 0 0 0 1px rgba(0, 122, 255, 0.3) inset,
+                    0 2px 8px rgba(0, 122, 255, 0.25),
+                    0 0 20px rgba(0, 122, 255, 0.2);
     }
     [data-theme="dark"] .btn-primary:hover {
-        background-color: rgba(0, 122, 255, 0.75);
-        border-color: rgba(0, 122, 255, 0.4);
-        box-shadow: 0 4px 12px rgba(0, 122, 255, 0.4);
+        background-color: rgba(0, 122, 255, 0.45);
+        border-color: rgba(0, 122, 255, 0.8);
+        box-shadow: 0 0 0 1px rgba(0, 122, 255, 0.4) inset,
+                    0 4px 16px rgba(0, 122, 255, 0.35),
+                    0 0 30px rgba(0, 122, 255, 0.3);
+        transform: translateY(-1px);
+    }
+    [data-theme="dark"] .btn-primary:active {
+        transform: translateY(0);
+        box-shadow: 0 0 0 1px rgba(0, 122, 255, 0.3) inset,
+                    0 2px 8px rgba(0, 122, 255, 0.25),
+                    0 0 15px rgba(0, 122, 255, 0.2);
     }
     [data-theme="dark"] .btn-danger {
-        background-color: rgba(255, 59, 48, 0.6);
-        border-color: rgba(255, 59, 48, 0.3);
+        background-color: rgba(255, 59, 48, 0.35);
+        border: 1.5px solid rgba(255, 59, 48, 0.6);
+        color: white;
+        box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.3) inset,
+                    0 2px 8px rgba(255, 59, 48, 0.25),
+                    0 0 20px rgba(255, 59, 48, 0.2);
     }
     [data-theme="dark"] .btn-danger:hover {
-        background-color: rgba(255, 59, 48, 0.75);
-        border-color: rgba(255, 59, 48, 0.4);
-        box-shadow: 0 4px 12px rgba(255, 59, 48, 0.4);
+        background-color: rgba(255, 59, 48, 0.45);
+        border-color: rgba(255, 59, 48, 0.8);
+        box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.4) inset,
+                    0 4px 16px rgba(255, 59, 48, 0.35),
+                    0 0 30px rgba(255, 59, 48, 0.3);
+        transform: translateY(-1px);
+    }
+    [data-theme="dark"] .btn-danger:active {
+        transform: translateY(0);
+        box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.3) inset,
+                    0 2px 8px rgba(255, 59, 48, 0.25),
+                    0 0 15px rgba(255, 59, 48, 0.2);
     }
 
     .btn-secondary, .btn-outline {
@@ -286,6 +362,41 @@
     }
     .dropdown-menu label input {
         margin-right: 8px;
+    }
+    [data-theme="dark"] .dropdown-menu {
+        background: rgba(28, 28, 30, 0.95);
+        backdrop-filter: blur(20px) saturate(180%);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
+        border-color: rgba(255, 255, 255, 0.15);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+    [data-theme="dark"] .dropdown-menu label {
+        color: var(--text-color);
+    }
+    [data-theme="dark"] .dropdown-menu label:hover {
+        background: rgba(255, 255, 255, 0.1);
+    }
+    
+    /* 批量菜单按钮黑夜模式样式 */
+    [data-theme="dark"] #batch-menu .btn {
+        background-color: rgba(255, 255, 255, 0.1);
+        color: var(--text-color);
+        border-color: rgba(255, 255, 255, 0.15);
+        transition: all 0.2s;
+    }
+    
+    [data-theme="dark"] #batch-menu .btn:hover {
+        background-color: rgba(255, 255, 255, 0.15);
+        border-color: rgba(255, 255, 255, 0.25);
+        color: var(--text-color);
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+    
+    [data-theme="dark"] #batch-menu .btn:active {
+        transform: translateY(0);
+        background-color: rgba(255, 255, 255, 0.12);
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
     }
     
     /* 新增题目按钮下拉箭头 */
@@ -454,6 +565,16 @@
     [data-theme="dark"] select:focus {
         background-color: rgba(255, 255, 255, 0.15);
         border-color: rgba(255, 255, 255, 0.2);
+        box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.2);
+    }
+    [data-theme="dark"] select option {
+        background-color: rgba(28, 28, 30, 0.95);
+        color: var(--text-color);
+    }
+    [data-theme="dark"] select option:checked,
+    [data-theme="dark"] select option:hover {
+        background-color: rgba(0, 122, 255, 0.3);
+        color: white;
     }
 
     /* 表格优化 - iOS 18风格 */
@@ -589,12 +710,30 @@
     .btn-edit:hover {
         background-color: #dee2e6;
     }
+    [data-theme="dark"] .btn-edit {
+        background-color: rgba(255, 255, 255, 0.12);
+        color: var(--text-color);
+        border-color: rgba(255, 255, 255, 0.15);
+    }
+    [data-theme="dark"] .btn-edit:hover {
+        background-color: rgba(255, 255, 255, 0.18);
+        border-color: rgba(255, 255, 255, 0.2);
+    }
     .btn-delete {
         background-color: #ffeef0;
         color: #ff3b30;
     }
     .btn-delete:hover {
         background-color: #ffdcdf;
+    }
+    [data-theme="dark"] .btn-delete {
+        background-color: rgba(255, 59, 48, 0.15);
+        color: #ff6b6b;
+        border-color: rgba(255, 59, 48, 0.25);
+    }
+    [data-theme="dark"] .btn-delete:hover {
+        background-color: rgba(255, 59, 48, 0.22);
+        border-color: rgba(255, 59, 48, 0.3);
     }
 
     /* 抽屉优化 */
@@ -980,7 +1119,39 @@
                     </button>
                 </div>
             </div>
-            <button class="btn-danger" id="batchDeleteBtn" onclick="batchDeleteQuestions()">批量删除</button>
+            <div class="dropdown">
+                <button class="btn-primary" onclick="toggleDropdown('export-menu')">导出本科目</button>
+                <div id="export-menu" class="dropdown-menu add-menu">
+                    <button class="dropdown-item" onclick="exportSubject(); toggleDropdown('export-menu');">
+                       
+                        <span class="item-content">
+                            <span class="item-text">导出json</span>
+                          
+                        </span>
+                    </button>
+                    <button class="dropdown-item" onclick="exportToExcel(); toggleDropdown('export-menu');">
+                      
+                        <span class="item-content">
+                            <span class="item-text">导出Excel</span>
+                            
+                        </span>
+                    </button>
+                    <button class="dropdown-item" onclick="exportToWord(); toggleDropdown('export-menu');">
+                      
+                        <span class="item-content">
+                            <span class="item-text">导出Word</span>
+                            
+                        </span>
+                    </button>
+                    <button class="dropdown-item" onclick="exportPackage(); toggleDropdown('export-menu');">
+                      
+                        <span class="item-content">
+                            <span class="item-text">导出题目包</span>
+                           
+                        </span>
+                    </button>
+                </div>
+            </div>
             <div class="dropdown">
                 <button class="btn-outline" onclick="toggleDropdown('batch-menu')">批量操作</button>
                 <div id="batch-menu" class="dropdown-menu">
@@ -990,14 +1161,13 @@
                     <button class="btn" onclick="openBatchTags()">修改标签</button>
                 </div>
             </div>
+            <button class="btn-secondary" onclick="startDuplicateCheck()">查重去重</button>
         </div>
         <div class="toolbar-right">
-            <button class="btn-outline" onclick="exportSubject()">导出本科目</button>
-            <button class="btn-outline" onclick="exportToExcel()">导出Excel</button>
-            <button class="btn-primary" onclick="exportPackage()">导出题目包</button>
+            <button class="btn-danger" id="batchDeleteBtn" onclick="batchDeleteQuestions()">批量删除</button>
             <input type="file" id="importPackageFile" style="display: none;" accept=".zip" onchange="uploadPackage()">
             <select id="typeFilter" onchange="loadQuestions()">
-                <option value="all">📋 全部题型</option>
+                <option value="all">全部题型</option>
             </select>
             <div class="dropdown">
                 <button class="btn-outline" onclick="toggleDropdown('col-menu')">显示列</button>
@@ -1114,7 +1284,15 @@
         <div class="form-group"><label>难度 (1-5)</label><input type="number" id="qDifficulty" min="1" max="5" value="1"></div>
         <div class="form-group"><label>标签 (逗号分隔)</label><input type="text" id="qTags" placeholder="例如: 计算机网络, TCP/IP"></div>
         <div class="form-group"><label>题干</label><textarea id="qContent" rows="5" oninput="updatePreview()"></textarea></div>
-        <div class="form-group"><label>选项 (每行一个)</label><textarea id="qOptions" rows="4" oninput="updatePreview()"></textarea></div>
+        <div class="form-group" id="optionsGroup">
+            <label>选项</label>
+            <div id="optionsContainer" style="display: flex; flex-direction: column; gap: 12px;">
+                <!-- 选项列表将动态生成在这里 -->
+            </div>
+            <button type="button" class="btn-secondary" onclick="addOption()" style="margin-top: 12px; width: 100%;">
+                + 添加选项
+            </button>
+        </div>
                 <div class="form-group">
             <label>答案</label>
             <div id="answer-container">
@@ -1435,12 +1613,125 @@
 
     function handleQuestionTypeChange() {
         rebuildAnswerInput(); // Rebuild based on new type
-        const optionsGroup = document.getElementById('qOptions').parentElement;
+        const optionsGroup = document.getElementById('optionsGroup');
         const qType = document.getElementById('qType').value;
         if (qType === '选择题' || qType === '多选题') {
             optionsGroup.style.display = 'block';
+            // 如果没有选项，自动添加4个空选项
+            if (document.querySelectorAll('.option-item').length === 0) {
+                for (let i = 0; i < 4; i++) {
+                    addOption();
+                }
+            }
         } else {
             optionsGroup.style.display = 'none';
+        }
+    }
+    
+    // 添加选项
+    function addOption() {
+        const container = document.getElementById('optionsContainer');
+        const optionIndex = container.querySelectorAll('.option-item').length;
+        const optionKey = String.fromCharCode(65 + optionIndex); // A, B, C, D...
+        
+        const optionItem = document.createElement('div');
+        optionItem.className = 'option-item';
+        optionItem.style.cssText = 'display: flex; align-items: flex-start; gap: 12px; padding: 12px; background: rgba(142, 142, 147, 0.06); border-radius: 8px; border: 1px solid rgba(0,0,0,0.1);';
+        
+        const label = document.createElement('div');
+        label.style.cssText = 'flex: 0 0 auto; width: 32px; padding-top: 8px; font-weight: 600; color: #333;';
+        label.textContent = optionKey + '.';
+        
+        const textarea = document.createElement('textarea');
+        textarea.className = 'option-textarea';
+        textarea.style.cssText = 'flex: 1; min-height: 60px; padding: 8px 12px; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px; font-size: 14px; line-height: 1.5; resize: vertical; font-family: inherit;';
+        textarea.rows = 2;
+        textarea.placeholder = '输入选项内容（支持多行）';
+        textarea.oninput = updatePreview;
+        
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.className = 'btn-delete-option';
+        deleteBtn.style.cssText = 'flex: 0 0 auto; padding: 8px 12px; background: rgba(255, 59, 48, 0.1); color: #ff3b30; border: 1px solid rgba(255, 59, 48, 0.2); border-radius: 6px; cursor: pointer; font-size: 13px; white-space: nowrap;';
+        deleteBtn.textContent = '删除';
+        deleteBtn.onclick = function() {
+            optionItem.remove();
+            updateOptionLabels();
+            updatePreview();
+        };
+        
+        optionItem.appendChild(label);
+        optionItem.appendChild(textarea);
+        optionItem.appendChild(deleteBtn);
+        container.appendChild(optionItem);
+        
+        updatePreview();
+        textarea.focus();
+    }
+    
+    // 更新选项标签（A, B, C, D...）
+    function updateOptionLabels() {
+        const items = document.querySelectorAll('.option-item');
+        items.forEach((item, index) => {
+            const label = item.querySelector('div');
+            const optionKey = String.fromCharCode(65 + index);
+            label.textContent = optionKey + '.';
+        });
+    }
+    
+    // 获取所有选项内容（保留换行符）
+    function getOptions() {
+        const items = document.querySelectorAll('.option-item');
+        return Array.from(items).map(item => {
+            const textarea = item.querySelector('.option-textarea');
+            if (!textarea) return '';
+            // 保留换行符，只去掉首尾空白（不包含换行符）
+            const value = textarea.value;
+            // 去掉首尾的空白字符（空格、制表符），但保留换行符
+            return value.replace(/^[\s\t]+|[\s\t]+$/g, '');
+        }).filter(Boolean);
+    }
+    
+    // 设置选项内容
+    function setOptions(options) {
+        const container = document.getElementById('optionsContainer');
+        container.innerHTML = '';
+        
+        if (options && options.length > 0) {
+            options.forEach((opt, index) => {
+                const optionItem = document.createElement('div');
+                optionItem.className = 'option-item';
+                optionItem.style.cssText = 'display: flex; align-items: flex-start; gap: 12px; padding: 12px; background: rgba(142, 142, 147, 0.06); border-radius: 8px; border: 1px solid rgba(0,0,0,0.1);';
+                
+                const optionKey = String.fromCharCode(65 + index);
+                const label = document.createElement('div');
+                label.style.cssText = 'flex: 0 0 auto; width: 32px; padding-top: 8px; font-weight: 600; color: #333;';
+                label.textContent = optionKey + '.';
+                
+                const textarea = document.createElement('textarea');
+                textarea.className = 'option-textarea';
+                textarea.style.cssText = 'flex: 1; min-height: 60px; padding: 8px 12px; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px; font-size: 14px; line-height: 1.5; resize: vertical; font-family: inherit;';
+                textarea.rows = 2;
+                textarea.value = opt;
+                textarea.placeholder = '输入选项内容（支持多行）';
+                textarea.oninput = updatePreview;
+                
+                const deleteBtn = document.createElement('button');
+                deleteBtn.type = 'button';
+                deleteBtn.className = 'btn-delete-option';
+                deleteBtn.style.cssText = 'flex: 0 0 auto; padding: 8px 12px; background: rgba(255, 59, 48, 0.1); color: #ff3b30; border: 1px solid rgba(255, 59, 48, 0.2); border-radius: 6px; cursor: pointer; font-size: 13px; white-space: nowrap;';
+                deleteBtn.textContent = '删除';
+                deleteBtn.onclick = function() {
+                    optionItem.remove();
+                    updateOptionLabels();
+                    updatePreview();
+                };
+                
+                optionItem.appendChild(label);
+                optionItem.appendChild(textarea);
+                optionItem.appendChild(deleteBtn);
+                container.appendChild(optionItem);
+            });
         }
     }
 
@@ -1460,7 +1751,20 @@
                 document.getElementById('qDifficulty').value = full_q.difficulty || 1;
                 document.getElementById('qTags').value = full_q.tags || '';
                 document.getElementById('qContent').value = full_q.content;
-                document.getElementById('qOptions').value = (full_q.options && JSON.parse(full_q.options).join('\n')) || '';
+                
+                // 设置选项（支持多行）
+                if (full_q.options) {
+                    try {
+                        const options = JSON.parse(full_q.options);
+                        setOptions(options);
+                    } catch(e) {
+                        // 兼容旧格式：如果是字符串数组
+                        const options = Array.isArray(full_q.options) ? full_q.options : [];
+                        setOptions(options);
+                    }
+                } else {
+                    setOptions([]);
+                }
                 
                 // Set answer value on the newly created element
                 // 填空题：用结构化编辑器回填
@@ -1486,7 +1790,8 @@
         } else {
             document.getElementById('drawer-title').textContent = '新增题目';
             // Reset all fields
-            ['qDifficulty', 'qTags', 'qContent', 'qOptions', 'qExplanation'].forEach(elId => document.getElementById(elId).value = '');
+            ['qDifficulty', 'qTags', 'qContent', 'qExplanation'].forEach(elId => document.getElementById(elId).value = '');
+            setOptions([]);
             document.getElementById('qDifficulty').value = 1;
             document.getElementById('qType').selectedIndex = 0; // Reset to first type
             handleQuestionTypeChange(); // Build UI for default type
@@ -1519,7 +1824,7 @@
             return;
         }
         
-        const options = document.getElementById('qOptions').value.trim().split('\n').filter(Boolean);
+        const options = getOptions();
         const payload = {
             subject_id: subjectId,
             q_type: document.getElementById('qType').value,
@@ -1601,8 +1906,12 @@
 
     function updatePreview() {
         document.getElementById('previewContent').innerHTML = document.getElementById('qContent').value.replace(/\n/g, '<br>');
-        const opts = document.getElementById('qOptions').value.trim().split('\n').filter(Boolean);
-        const optsHtml = opts.map(o => `<label>${o}</label>`).join('');
+        const opts = getOptions();
+        const optsHtml = opts.map((o, index) => {
+            const optionKey = String.fromCharCode(65 + index);
+            const optText = o.replace(/\n/g, '<br>');
+            return `<label><strong>${optionKey}.</strong> ${optText}</label>`;
+        }).join('');
         document.getElementById('previewOptions').innerHTML = optsHtml;
     }
 
@@ -1726,6 +2035,15 @@
         window.open(url, '_blank');
     }
 
+    function exportToWord() {
+        const type = document.getElementById('typeFilter').value;
+        let url = `/admin/api/questions/export/word?subject_id=${subjectId}`;
+        if (type && type !== 'all') {
+            url += `&type=${type}`;
+        }
+        window.open(url, '_blank');
+    }
+
     function exportPackage() {
         const type = document.getElementById('typeFilter').value;
         let url = `/admin/questions/export_package?subject_id=${subjectId}`;
@@ -1733,6 +2051,17 @@
             url += `&type=${type}`;
         }
         window.open(url, '_blank');
+    }
+
+    // 启动查重功能
+    async function startDuplicateCheck() {
+        if (!subjectId) {
+            showError('无法获取科目ID');
+            return;
+        }
+        
+        // 直接跳转到查重结果页面，页面会自动加载历史记录或执行新查重
+        window.location.href = `/admin/subjects/${subjectId}/questions/duplicate-check`;
     }
 
     async function uploadPackage() {

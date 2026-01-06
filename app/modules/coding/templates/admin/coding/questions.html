@@ -108,7 +108,7 @@
             <h1 class="page-title" id="page-title">题目管理</h1>
             <div id="subject-info" style="margin-top: 8px; color: var(--text-sub); font-size: 14px;"></div>
         </div>
-        <button class="btn-create" onclick="showCreateModal()">创建题目</button>
+        <button class="btn-create" onclick="goToCreatePage()">创建题目</button>
     </div>
     
     <!-- 筛选器 -->
@@ -315,7 +315,7 @@ function renderTable(questions) {
                 <td>${q.total_submissions || 0}</td>
                 <td>
                     <div class="actions">
-                        <button class="btn-action" onclick="editQuestion(${q.id})">编辑</button>
+                        <button class="btn-action" onclick="window.location.href='/admin/coding/questions/edit/${q.id}' + (currentSubjectId ? '?subject=' + currentSubjectId : '')">编辑</button>
                         <button class="btn-action" onclick="deleteQuestion(${q.id})" style="color: var(--danger);">删除</button>
                     </div>
                 </td>
@@ -327,42 +327,25 @@ function renderTable(questions) {
     container.innerHTML = html;
 }
 
-// 显示创建模态框
-function showCreateModal() {
-    currentEditId = null;
-    document.getElementById('modal-title').textContent = '创建题目';
-    document.getElementById('question-form').reset();
-    
-    // 如果从题目集页面进入，自动设置题目集
-    if (currentSubjectId) {
-        document.getElementById('form-subject-id').value = currentSubjectId;
-    }
-    
-    document.getElementById('modal').style.display = 'flex';
+// 跳转到创建题目页面
+function goToCreatePage() {
+    const url = currentSubjectId
+        ? `/admin/coding/questions/edit?subject=${currentSubjectId}`
+        : '/admin/coding/questions/edit';
+    window.location.href = url;
 }
 
-// 编辑题目
-async function editQuestion(id) {
-    try {
-        const res = await fetch(`/coding/api/questions/${id}`);
-        const result = await res.json();
-        
-        if (result.status === 'success') {
-            currentEditId = id;
-            const q = result.data;
-            document.getElementById('modal-title').textContent = '编辑题目';
-            document.querySelector('[name="subject_id"]').value = q.subject_id || '';
-            document.querySelector('[name="q_type"]').value = q.q_type || '编程题';
-            document.querySelector('[name="title"]').value = q.title || q.content || '';
-            document.querySelector('[name="difficulty"]').value = q.difficulty || 'easy';
-            document.querySelector('[name="description"]').value = q.description || '';
-            document.querySelector('[name="code_template"]').value = q.code_template || '';
-            document.querySelector('[name="test_cases_json"]').value = q.test_cases_json || '{"test_cases":[],"hidden_cases":[]}';
-            document.getElementById('modal').style.display = 'flex';
-        }
-    } catch (error) {
-        alert('加载题目失败');
-    }
+// 显示创建模态框（已废弃，保留用于向后兼容）
+function showCreateModal() {
+    goToCreatePage();
+}
+
+// 编辑题目（跳转到编辑页面）
+function editQuestion(id) {
+    const url = currentSubjectId
+        ? `/admin/coding/questions/edit/${id}?subject=${currentSubjectId}`
+        : `/admin/coding/questions/edit/${id}`;
+    window.location.href = url;
 }
 
 // 保存题目

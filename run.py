@@ -3,6 +3,11 @@
 应用启动文件 - 新版模块化结构
 """
 import os
+from dotenv import load_dotenv
+
+# 加载环境变量
+load_dotenv()
+
 from app import create_app
 
 # 从环境变量获取配置名称

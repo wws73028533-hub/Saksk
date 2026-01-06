@@ -1,0 +1,120 @@
+<!--subject-detail.wxml-->
+<view class="page-root">
+  <navigation-bar title="{{subject}}" back="{{true}}" color="black" background="#FFF"></navigation-bar>
+
+  <view class="page-container">
+    <scroll-view class="content-area" scroll-y type="list">
+      <view class="container">
+        <!-- 科目信息卡片（包含按钮区域） -->
+        <view class="info-card">
+          <view class="subject-name-wrapper">
+            <text class="subject-name">{{subject}}</text>
+          </view>
+          
+          <!-- 基本信息 -->
+          <view class="info-section">
+            <view class="info-item">
+              <text class="info-label">题目总数</text>
+              <text class="info-value">{{subjectInfo.totalCount}}</text>
+            </view>
+            <view class="info-item" wx:if="{{subjectInfo.author}}">
+              <text class="info-label">作者</text>
+              <text class="info-value">{{subjectInfo.author}}</text>
+            </view>
+          </view>
+          
+          <!-- 学习进度 -->
+          <view class="progress-section">
+            <view class="progress-item">
+              <text class="progress-label">已做</text>
+              <text class="progress-value">{{subjectInfo.doneCount}}</text>
+            </view>
+            <view class="progress-divider"></view>
+            <view class="progress-item">
+              <text class="progress-label">错题</text>
+              <text class="progress-value error">{{subjectInfo.wrongCount}}</text>
+            </view>
+            <view class="progress-divider"></view>
+            <view class="progress-item">
+              <text class="progress-label">收藏</text>
+              <text class="progress-value">{{subjectInfo.favoriteCount}}</text>
+            </view>
+            <view class="progress-divider"></view>
+            <view class="progress-item">
+              <text class="progress-label">笔记</text>
+              <text class="progress-value">{{subjectInfo.noteCount}}</text>
+            </view>
+          </view>
+          
+          <!-- 最后活动时间 -->
+          <view class="activity-row" wx:if="{{subjectInfo.lastActivity}}">
+            <text class="activity-text">最后活动: {{subjectInfo.lastActivity}}</text>
+          </view>
+          
+          <!-- 操作按钮网格 -->
+          <view class="buttons-section">
+            <view class="buttons-grid">
+              <view 
+                class="button-item" 
+                bindtap="onButtonTap"
+                data-action="practice"
+              >
+                <text class="button-text">刷题</text>
+              </view>
+              <view 
+                class="button-item" 
+                bindtap="onButtonTap"
+                data-action="exam"
+              >
+                <text class="button-text">考试</text>
+              </view>
+              <view 
+                class="button-item" 
+                bindtap="onButtonTap"
+                data-action="search"
+              >
+                <text class="button-text">搜索</text>
+              </view>
+              <view 
+                class="button-item" 
+                bindtap="onButtonTap"
+                data-action="update"
+              >
+                <text class="button-text">更新</text>
+              </view>
+              <view 
+                class="button-item" 
+                bindtap="onButtonTap"
+                data-action="favorites"
+              >
+                <text class="button-text">收藏</text>
+              </view>
+              <view 
+                class="button-item" 
+                bindtap="onButtonTap"
+                data-action="mistakes"
+              >
+                <text class="button-text">错题</text>
+              </view>
+              <view 
+                class="button-item" 
+                bindtap="onButtonTap"
+                data-action="stats"
+              >
+                <text class="button-text">统计</text>
+              </view>
+              <button class="button-item" open-type="share">
+                <text class="button-text">分享</text>
+              </button>
+            </view>
+          </view>
+        </view>
+
+        <!-- 加载提示 -->
+        <view class="loading" wx:if="{{loading}}">
+          <text>加载中...</text>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+</view>

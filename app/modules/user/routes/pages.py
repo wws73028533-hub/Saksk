@@ -27,6 +27,7 @@ def user_hub():
                          logged_in=True,
                          username=session.get('username'),
                          is_admin=session.get('is_admin', False),
-                         is_subject_admin=session.get('is_subject_admin', False))
+                         is_subject_admin=session.get('is_subject_admin', False),
+                         is_notification_admin=session.get('is_notification_admin', False))
 
 

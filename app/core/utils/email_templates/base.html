@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>{% block title %}系统通知{% endblock %}</title>
+    <style>
+        :root {
+            --accent-color: #007aff;
+            --icon-bg: #007aff;
+            --code-color: #007aff;
+        }
+        /* iOS 18风格邮件样式 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf0 100%);
+            color: #1d1d1f;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            padding: 20px;
+        }
+        
+        .email-wrapper {
+            max-width: 600px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+        
+        .email-header {
+            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+            padding: 40px 32px 32px;
+            text-align: center;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            position: relative;
+        }
+        
+        .email-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--accent-color, #007aff);
+        }
+        
+        .email-header-icon {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 20px;
+            background: var(--icon-bg, #007aff);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0, 122, 255, 0.25);
+        }
+        
+        .email-header-icon svg {
+            width: 36px;
+            height: 36px;
+            fill: #ffffff;
+        }
+        
+        .email-header h1 {
+            font-size: 28px;
+            font-weight: 600;
+            color: #1d1d1f;
+            letter-spacing: -0.5px;
+            margin-bottom: 8px;
+        }
+        
+        .email-header p {
+            font-size: 15px;
+            color: #86868b;
+            font-weight: 400;
+        }
+        
+        .email-content {
+            padding: 40px 32px;
+            background: #ffffff;
+        }
+        
+        .email-content p {
+            font-size: 16px;
+            color: #1d1d1f;
+            margin-bottom: 16px;
+            line-height: 1.6;
+        }
+        
+        .email-content p:last-child {
+            margin-bottom: 0;
+        }
+        
+        .code-container {
+            margin: 32px 0;
+            text-align: center;
+        }
+        
+        .code-box {
+            display: inline-block;
+            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+            border: 2px solid rgba(0, 122, 255, 0.15);
+            border-radius: 16px;
+            padding: 24px 40px;
+            margin: 20px 0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        
+        .code {
+            font-size: 36px;
+            font-weight: 600;
+            color: var(--code-color, #007aff);
+            letter-spacing: 8px;
+            font-variant-numeric: tabular-nums;
+            font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
+        }
+        
+        .info-box {
+            background: rgba(0, 122, 255, 0.05);
+            border-left: 3px solid var(--accent-color, #007aff);
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin: 24px 0;
+        }
+        
+        .info-box p {
+            font-size: 14px;
+            color: #515154;
+            margin: 0;
+            line-height: 1.5;
+        }
+        
+        .warning-box {
+            background: rgba(255, 149, 0, 0.08);
+            border-left: 3px solid #ff9500;
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin: 24px 0;
+        }
+        
+        .warning-box p {
+            font-size: 14px;
+            color: #8e5a00;
+            margin: 0;
+            line-height: 1.5;
+            font-weight: 500;
+        }
+        
+        .email-footer {
+            background: #f8f9fa;
+            padding: 24px 32px;
+            text-align: center;
+            border-top: 1px solid rgba(0, 0, 0, 0.05);
+        }
+        
+        .email-footer p {
+            font-size: 13px;
+            color: #86868b;
+            margin: 0;
+            line-height: 1.5;
+        }
+        
+        .divider {
+            height: 1px;
+            background: linear-gradient(to right, transparent, rgba(0, 0, 0, 0.1), transparent);
+            margin: 24px 0;
+        }
+        
+        /* 响应式设计 */
+        @media only screen and (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+            
+            .email-wrapper {
+                border-radius: 16px;
+            }
+            
+            .email-header {
+                padding: 32px 24px 24px;
+            }
+            
+            .email-header h1 {
+                font-size: 24px;
+            }
+            
+            .email-content {
+                padding: 32px 24px;
+            }
+            
+            .code {
+                font-size: 28px;
+                letter-spacing: 6px;
+            }
+            
+            .code-box {
+                padding: 20px 32px;
+            }
+        }
+    </style>
+    {% block extra_styles %}{% endblock %}
+</head>
+<body>
+    <div class="email-wrapper">
+        <div class="email-header">
+            <div class="email-header-icon">
+                {% block header_icon %}
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+                </svg>
+                {% endblock %}
+            </div>
+            <h1>{% block header_title %}系统通知{% endblock %}</h1>
+            <p>{% block header_subtitle %}{% endblock %}</p>
+        </div>
+        
+        <div class="email-content">
+            {% block content %}{% endblock %}
+        </div>
+        
+        <div class="email-footer">
+            <p>此邮件由系统自动发送，请勿回复。</p>
+            <p style="margin-top: 8px; font-size: 12px; color: #a1a1a6;">{% block footer_extra %}{% endblock %}</p>
+        </div>
+    </div>
+</body>
+</html>
+

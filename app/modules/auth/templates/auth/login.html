@@ -303,6 +303,52 @@
     .login-form.active {
       display: block;
     }
+
+    /* 扫码登录 */
+    .qr-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+    }
+    .qr-box {
+      width: 220px;
+      height: 220px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.9);
+      border: 0.5px solid rgba(0, 0, 0, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .qr-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    .qr-status {
+      font-size: 13px;
+      color: var(--text-sub);
+      line-height: 1.6;
+      text-align: center;
+    }
+    .qr-actions {
+      width: 100%;
+      display: flex;
+      gap: 10px;
+    }
+    .btn-secondary {
+      width: 100%;
+      padding: 14px;
+      border-radius: 12px;
+      border: 0.5px solid rgba(0, 0, 0, 0.08);
+      background: rgba(255, 255, 255, 0.9);
+      color: var(--text-color);
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 500;
+    }
     /* 验证码输入框和发送按钮 */
     .code-field {
       display: flex;
@@ -349,6 +395,83 @@
       opacity: 0.7;
       text-decoration: underline;
     }
+    /* 忘记密码模态框样式 */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(8px);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      animation: fadeIn 0.3s ease;
+    }
+    .modal-overlay.active {
+      display: flex;
+    }
+    .modal-content {
+      background: var(--card-bg);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      border: 0.5px solid var(--border-color);
+      padding: 32px;
+      width: 90%;
+      max-width: 420px;
+      position: relative;
+      animation: slideUp 0.3s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    .modal-close {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      font-size: 24px;
+      color: var(--text-sub);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      transition: all 0.2s;
+    }
+    .modal-close:hover {
+      background: rgba(0, 0, 0, 0.05);
+      color: var(--text-color);
+    }
+    .modal-title {
+      font-size: 24px;
+      font-weight: 600;
+      margin: 0 0 8px 0;
+    }
+    .modal-subtitle {
+      color: var(--text-sub);
+      font-size: 14px;
+      margin: 0 0 24px 0;
+      line-height: 1.5;
+    }
   </style>
 </head>
 <body>
@@ -365,6 +488,7 @@
       <div class="login-tabs">
         <button class="login-tab active" onclick="switchLoginMode('password')">密码登录</button>
         <button class="login-tab" onclick="switchLoginMode('code')">验证码登录</button>
+        <button class="login-tab" onclick="switchLoginMode('qr')">扫码登录</button>
       </div>
 
       <!-- 密码登录表单 -->
@@ -377,6 +501,9 @@
         <div class="field">
           <label>密码</label>
           <input id="password" type="password" autocomplete="current-password" />
+          <div style="text-align: right; margin-top: 8px;">
+            <a href="#" onclick="event.preventDefault(); showForgotPasswordModal();" style="font-size: 13px; color: var(--primary); text-decoration: none;">忘记密码？</a>
+          </div>
         </div>
         <div class="field" style="margin-top: 6px; margin-bottom: 12px;">
           <label style="text-transform:none; letter-spacing:0; display:flex; align-items:center; gap:10px; cursor:pointer; user-select:none;">
@@ -429,6 +556,20 @@
         <button class="btn" onclick="doEmailLogin(this)">登录</button>
       </div>
 
+      <!-- 扫码登录表单 -->
+      <div id="qr-form" class="login-form">
+        <div class="qr-wrap">
+          <div class="qr-box">
+            <img id="qr-image" alt="扫码登录二维码" style="display:none;" />
+            <div id="qr-placeholder" style="color: var(--text-sub); font-size: 14px;">正在加载…</div>
+          </div>
+          <div class="qr-status" id="qr-status">请使用小程序扫码，并在手机上点击“确认登录”。</div>
+          <div class="qr-actions">
+            <button class="btn-secondary" onclick="refreshQrLogin()">刷新二维码</button>
+          </div>
+        </div>
+      </div>
+
       <div style="text-align: center; margin-top: 16px; padding: 12px; background: rgba(0, 122, 255, 0.08); border-radius: 12px; font-size: 14px; color: var(--text-sub); line-height: 1.6;">
         <div style="font-weight: 500; color: var(--primary); margin-bottom: 4px;">💡 新用户提示</div>
         <div>使用<strong style="color: var(--primary);">验证码登录</strong>，如果邮箱未注册，系统将自动为您创建账户</div>
@@ -436,6 +577,44 @@
     {% endif %}
 
     <a class="link" href="/">返回首页</a>
+  </div>
+
+  <!-- 忘记密码模态框 -->
+  <div id="forgot-password-modal" class="modal-overlay" onclick="if(event.target === this) closeForgotPasswordModal()">
+    <div class="modal-content">
+      <button class="modal-close" onclick="closeForgotPasswordModal()">×</button>
+      <h2 class="modal-title">忘记密码</h2>
+      <p class="modal-subtitle">请输入您的邮箱地址，我们将发送验证码到您的邮箱</p>
+      
+      <div class="field">
+        <label>邮箱地址</label>
+        <input id="forgot-email" type="email" placeholder="请输入已绑定的邮箱" autocomplete="email" />
+        <div class="hint-text">请输入您账户绑定的邮箱地址</div>
+      </div>
+      
+      <div class="field">
+        <label>验证码</label>
+        <div class="code-field">
+          <input id="forgot-code" type="text" placeholder="6位数字验证码" maxlength="6" autocomplete="one-time-code" />
+          <button class="code-send-btn" id="forgot-send-code-btn" onclick="sendForgotPasswordCode()">发送验证码</button>
+        </div>
+        <div class="hint-text" id="forgot-code-hint">验证码将发送到您的邮箱，有效期10分钟</div>
+      </div>
+      
+      <div class="field">
+        <label>新密码</label>
+        <input id="forgot-password" type="password" placeholder="请输入新密码" autocomplete="new-password" />
+        <div class="hint-text">密码长度至少8位，建议包含字母和数字</div>
+      </div>
+      
+      <div class="field">
+        <label>确认密码</label>
+        <input id="forgot-password-confirm" type="password" placeholder="请再次输入新密码" autocomplete="new-password" />
+      </div>
+      
+      <div class="err" id="err-forgot"></div>
+      <button class="btn" onclick="resetPassword(this)">重置密码</button>
+    </div>
   </div>
 
   <script>
@@ -460,10 +639,114 @@
       // 切换表单显示
       document.getElementById('password-form').classList.toggle('active', mode === 'password');
       document.getElementById('code-form').classList.toggle('active', mode === 'code');
+      document.getElementById('qr-form').classList.toggle('active', mode === 'qr');
       
       // 清空错误信息
       setErr('', 'password');
       setErr('', 'code');
+
+      if (mode === 'qr') {
+        startQrLogin();
+      } else {
+        stopQrLogin();
+      }
+    }
+
+    // === 扫码登录 ===
+    let _qrSid = null;
+    let _qrPollTimer = null;
+    let _qrBusy = false;
+
+    function setQrStatus(msg) {
+      const el = document.getElementById('qr-status');
+      if (el) el.innerText = msg || '';
+    }
+
+    function setQrImage(url) {
+      const img = document.getElementById('qr-image');
+      const ph = document.getElementById('qr-placeholder');
+      if (!img || !ph) return;
+      if (!url) {
+        img.style.display = 'none';
+        ph.style.display = 'block';
+        return;
+      }
+      img.src = url;
+      img.style.display = 'block';
+      ph.style.display = 'none';
+    }
+
+    async function refreshQrLogin() {
+      stopQrLogin();
+      await startQrLogin();
+    }
+
+    async function startQrLogin() {
+      if (_qrBusy) return;
+      _qrBusy = true;
+      try {
+        setQrStatus('正在生成二维码…');
+        setQrImage(null);
+        const res = await fetch('/api/web_login/qrcode', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({})
+        });
+        const payload = await res.json();
+        if (!res.ok || payload.status !== 'success') {
+          throw new Error(payload.message || '生成二维码失败');
+        }
+        _qrSid = payload.data.sid;
+        setQrImage(payload.data.qrcode_url);
+        setQrStatus('请使用小程序扫码，并在手机上点击“确认登录”。');
+        _qrPollTimer = setInterval(pollQrLogin, 1500);
+      } catch (e) {
+        setQrStatus((e && e.message) ? e.message : '二维码加载失败');
+      } finally {
+        _qrBusy = false;
+      }
+    }
+
+    function stopQrLogin() {
+      if (_qrPollTimer) {
+        clearInterval(_qrPollTimer);
+        _qrPollTimer = null;
+      }
+      _qrSid = null;
+    }
+
+    async function pollQrLogin() {
+      if (!_qrSid) return;
+      try {
+        const res = await fetch(`/api/web_login/sessions/${encodeURIComponent(_qrSid)}`, { method: 'GET' });
+        const payload = await res.json();
+        if (!res.ok || payload.status !== 'success') return;
+        const state = payload.data.state;
+
+        if (state === 'expired') {
+          setQrStatus('二维码已过期，请刷新二维码。');
+          stopQrLogin();
+          return;
+        }
+
+        if (state === 'confirmed' && payload.data.token) {
+          setQrStatus('已确认，正在登录…');
+          stopQrLogin();
+          const ex = await fetch('/api/web_login/exchange', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: payload.data.token })
+          });
+          const exData = await ex.json();
+          if (!ex.ok || exData.status !== 'success') {
+            throw new Error(exData.message || '登录失败');
+          }
+          const redirectUrl = new URLSearchParams(window.location.search).get('redirect') || '/';
+          location.href = redirectUrl || '/';
+        }
+      } catch (e) {
+        // 轮询失败不打断，减少闪动
+      }
     }
 
     // 密码登录
@@ -503,6 +786,12 @@
         if(!res.ok || data.status!=='success') {
           setErr(data.message || '登录失败', 'password');
           return;
+        }
+        
+        // 如果用户需要设置密码，保存标记到sessionStorage
+        if (data.needs_password_set) {
+          sessionStorage.setItem('needs_password_set', 'true');
+          sessionStorage.removeItem('password_set_modal_shown'); // 清除已显示标记，确保显示弹窗
         }
         
         // 登录成功后跳转
@@ -585,6 +874,171 @@
       }, 1000);
     }
 
+    // 显示忘记密码模态框
+    function showForgotPasswordModal() {
+      document.getElementById('forgot-password-modal').classList.add('active');
+      // 清空表单
+      document.getElementById('forgot-email').value = '';
+      document.getElementById('forgot-code').value = '';
+      document.getElementById('forgot-password').value = '';
+      document.getElementById('forgot-password-confirm').value = '';
+      setErr('', 'forgot');
+      // 重置发送验证码按钮
+      const btn = document.getElementById('forgot-send-code-btn');
+      btn.disabled = false;
+      btn.textContent = '发送验证码';
+      if(forgotCodeTimer) {
+        clearInterval(forgotCodeTimer);
+        forgotCodeTimer = null;
+      }
+      forgotCodeCountdown = 0;
+    }
+    
+    // 关闭忘记密码模态框
+    function closeForgotPasswordModal() {
+      document.getElementById('forgot-password-modal').classList.remove('active');
+    }
+    
+    // 忘记密码验证码倒计时
+    let forgotCodeCountdown = 0;
+    let forgotCodeTimer = null;
+    
+    // 发送忘记密码验证码
+    async function sendForgotPasswordCode() {
+      const email = document.getElementById('forgot-email').value.trim();
+      if(!email) {
+        setErr('请输入邮箱地址', 'forgot');
+        return;
+      }
+      
+      // 简单的邮箱格式验证
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if(!emailRegex.test(email)) {
+        setErr('请输入有效的邮箱地址', 'forgot');
+        return;
+      }
+      
+      const btn = document.getElementById('forgot-send-code-btn');
+      if(forgotCodeCountdown > 0) return; // 倒计时中不允许重复发送
+      
+      btn.setAttribute('data-loading', 'true');
+      setErr('', 'forgot');
+      
+      try {
+        const res = await fetch('/api/forgot-password/send-code', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ email: email })
+        });
+        const data = await res.json();
+        
+        if(data.status === 'success') {
+          // 开始倒计时
+          forgotCodeCountdown = 60;
+          startForgotCodeCountdown();
+          setErr('验证码已发送，请查收邮件', 'forgot');
+          document.getElementById('forgot-code-hint').textContent = '验证码已发送，请查收邮件（60秒后可重新发送）';
+        } else {
+          setErr(data.message || '发送验证码失败', 'forgot');
+        }
+      } catch(error) {
+        setErr('网络错误，请稍后重试', 'forgot');
+      } finally {
+        btn.removeAttribute('data-loading');
+      }
+    }
+    
+    // 忘记密码验证码倒计时
+    function startForgotCodeCountdown() {
+      const btn = document.getElementById('forgot-send-code-btn');
+      const hint = document.getElementById('forgot-code-hint');
+      
+      if(forgotCodeTimer) clearInterval(forgotCodeTimer);
+      
+      forgotCodeTimer = setInterval(() => {
+        forgotCodeCountdown--;
+        if(forgotCodeCountdown > 0) {
+          btn.disabled = true;
+          btn.textContent = `${forgotCodeCountdown}秒后重发`;
+          hint.textContent = `验证码已发送，${forgotCodeCountdown}秒后可重新发送`;
+        } else {
+          btn.disabled = false;
+          btn.textContent = '发送验证码';
+          hint.textContent = '验证码将发送到您的邮箱，有效期10分钟';
+          clearInterval(forgotCodeTimer);
+          forgotCodeTimer = null;
+        }
+      }, 1000);
+    }
+    
+    // 重置密码
+    async function resetPassword(btn) {
+      setErr('', 'forgot');
+      const email = document.getElementById('forgot-email').value.trim();
+      const code = document.getElementById('forgot-code').value.trim();
+      const password = document.getElementById('forgot-password').value;
+      const passwordConfirm = document.getElementById('forgot-password-confirm').value;
+      
+      if(!email) {
+        setErr('请输入邮箱地址', 'forgot');
+        return;
+      }
+      if(!code) {
+        setErr('请输入验证码', 'forgot');
+        return;
+      }
+      if(code.length !== 6 || !/^\d{6}$/.test(code)) {
+        setErr('验证码为6位数字', 'forgot');
+        return;
+      }
+      if(!password) {
+        setErr('请输入新密码', 'forgot');
+        return;
+      }
+      if(password.length < 8) {
+        setErr('密码长度至少8位', 'forgot');
+        return;
+      }
+      if(password !== passwordConfirm) {
+        setErr('两次输入的密码不一致', 'forgot');
+        return;
+      }
+      
+      btn.setAttribute('data-loading', 'true');
+      
+      try {
+        const res = await fetch('/api/forgot-password/reset', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ 
+            email: email, 
+            code: code,
+            new_password: password
+          })
+        });
+        const data = await res.json();
+        
+        if(!res.ok || data.status !== 'success') {
+          setErr(data.message || '重置密码失败', 'forgot');
+          return;
+        }
+        
+        // 重置密码成功
+        setErr('密码重置成功，请使用新密码登录', 'forgot');
+        setTimeout(() => {
+          closeForgotPasswordModal();
+          // 切换到密码登录表单
+          switchLoginMode('password');
+          // 自动填充邮箱
+          document.getElementById('username').value = email;
+        }, 1500);
+      } catch(error) {
+        setErr('网络错误，请稍后重试', 'forgot');
+      } finally {
+        btn.removeAttribute('data-loading');
+      }
+    }
+
     // 验证码登录
     async function doEmailLogin(btn){
       setErr('', 'code');
@@ -629,6 +1083,12 @@
         if(!res.ok || data.status !== 'success') {
           setErr(data.message || '登录失败', 'code');
           return;
+        }
+        
+        // 如果用户需要设置密码，保存标记到sessionStorage
+        if (data.needs_password_set) {
+          sessionStorage.setItem('needs_password_set', 'true');
+          sessionStorage.removeItem('password_set_modal_shown'); // 清除已显示标记，确保显示弹窗
         }
         
         // 登录成功后跳转
@@ -680,4 +1140,3 @@
   </script>
 </body>
 </html>
-

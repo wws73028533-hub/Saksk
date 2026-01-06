@@ -1,0 +1,27 @@
+---
+alwaysApply: true
+description: Best practices for this repo's Flask Blueprints API style (not Flask-RESTful). Keep changes compatible with existing modules.
+globs: app/**/*.py
+---
+# Flask Blueprints API Rules (Repo-specific)
+
+## Architecture
+- Keep using the existing module layout: `app/modules/<domain>/routes/{api.py,pages.py}` + services/utils as needed.
+- Prefer small, focused functions; avoid adding large monolith files.
+
+## Auth compatibility
+- Mini program uses JWT `Authorization: Bearer <token>`.
+- Web uses session.
+- For shared endpoints, prefer existing helpers (`auth_required`, `current_user_id`, etc.) so both clients work.
+
+## JSON contract
+- Keep response shapes backward compatible.
+- Prefer consistent envelope: `{ "status": "success", "data": ... }` when the endpoint already uses it.
+- Avoid breaking changes; add fields instead of renaming/removing.
+
+## DB
+- Default: do not change schema unless explicitly asked. If required, propose a no-migration alternative first.
+
+## Error handling
+- Return meaningful `message` on errors.
+- Log exceptions server-side; do not leak sensitive details to clients.
