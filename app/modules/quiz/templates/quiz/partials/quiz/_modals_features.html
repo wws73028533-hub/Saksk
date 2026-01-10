@@ -1,0 +1,35 @@
+{# Quiz feature sheet (replaces floating Fab menu) #}
+<div class="overlay" id="featureOverlay" style="z-index: 2200; display:none;" onclick="closeFeatureModal(event)">
+  <div class="card-container score-modal feature-modal" style="width:min(92vw,520px); min-height:auto;" onclick="event.stopPropagation()">
+    <div class="feature-modal-header">
+      <div>
+        <div class="feature-modal-title">设置</div>
+        <div class="feature-modal-subtitle">快捷功能</div>
+      </div>
+      <button class="feature-modal-close" type="button" onclick="closeFeatureModal()">×</button>
+    </div>
+
+    <div class="feature-list">
+      <div class="feature-item">
+        <div class="feature-text">
+          <div class="feature-title">答对自动切题</div>
+          <div class="feature-desc">答对后自动跳到下一题</div>
+        </div>
+        <label class="feature-switch" aria-label="答对自动切题">
+          <input type="checkbox" id="featureAutoNextSwitch" onchange="onFeatureAutoNextToggle(this.checked)">
+          <span class="feature-switch-slider" aria-hidden="true"></span>
+        </label>
+      </div>
+
+      <div class="feature-actions">
+        <button class="feature-action-btn" type="button" onclick="toggleCurrentFavorite(); closeFeatureModal();">收藏 / 取消收藏</button>
+        <button class="feature-action-btn" type="button" onclick="clearCurrentQuestionProgress(); closeFeatureModal();">清除本题进度</button>
+        {% if is_admin or is_subject_admin %}
+          <button class="feature-action-btn" type="button" onclick="openEditQuestionModal(); closeFeatureModal();">编辑题目</button>
+        {% endif %}
+        <button class="feature-action-btn secondary" type="button" onclick="goToShortcutSettings()">更多设置</button>
+      </div>
+    </div>
+  </div>
+</div>
+

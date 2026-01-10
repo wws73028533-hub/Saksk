@@ -1,14 +1,27 @@
-{# Footer navigation buttons #}
+{# 底部固定栏：提交按钮 + 上/下一题（对齐小程序布局） #}
 <div class="footer">
-    <button class="btn btn-nav" onclick="prevQuestion()" id="btn-prev">← 上一题</button>
-    
-    {% if mode == 'exam' %}
-        <button class="btn btn-submit" id="btn-submit-exam" onclick="submitExam()">交卷</button>
-        <button class="btn btn-nav" id="btn-next-exam" onclick="nextQuestion()">下一题 →</button>
-    {% else %}
-        <button class="btn btn-check" onclick="checkAnswer(true)" id="btn-check" 
-                style="display: {{ 'none' if mode == 'memo' else 'block' }}">👀 查看结果</button>
-        <button class="btn btn-next-green" onclick="nextQuestion()" id="btn-next" 
-                style="display: {{ 'block' if mode == 'memo' else 'none' }}">下一题 →</button>
-    {% endif %}
+  {% if mode != 'exam' %}
+    <div class="submit-btn-wrapper" id="submit-wrapper" style="display:none;">
+      <button class="submit-btn" onclick="checkAnswer(true)" id="btn-check" disabled>提交答案</button>
+    </div>
+  {% endif %}
+
+  <div class="bottom-actions">
+    <div class="bottom-col left">
+      <button class="nav-btn prev-btn" onclick="prevQuestion()" id="btn-prev">上一题</button>
+      {% if mode != 'exam' %}
+        <button class="mini-action-btn" type="button" id="btn-settings" onclick="openFeatureModal()">设置</button>
+      {% endif %}
+    </div>
+
+    <div class="bottom-col right">
+      {% if mode == 'exam' %}
+        <button class="nav-btn next-btn" id="btn-next-exam" onclick="nextQuestion()">下一题</button>
+        <button class="mini-action-btn" id="btn-submit-exam" onclick="submitExam()">交卷</button>
+      {% else %}
+        <button class="nav-btn next-btn" onclick="nextQuestion()" id="btn-next">下一题</button>
+        <button class="mini-action-btn ai" type="button" id="btn-ai" onclick="toggleAIExplain()">AI</button>
+      {% endif %}
+    </div>
+  </div>
 </div>

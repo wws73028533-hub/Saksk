@@ -6,7 +6,7 @@
 
   {% include 'quiz/partials/quiz/_head_meta.html' %}
 </head>
-<body class="{{ 'memo-mode' if mode == 'memo' else ('exam-mode' if mode == 'exam' else '') }}">
+<body class="quiz-layout-card {{ 'memo-mode' if mode == 'memo' else ('exam-mode' if mode == 'exam' else '') }}">
   <div class="app-container">
     {% include 'quiz/partials/quiz/_sidebar.html' %}
     {% include 'quiz/partials/quiz/_main_layout.html' %}
@@ -15,6 +15,7 @@
   {% include 'quiz/partials/quiz/_modals_forward.html' %}
   {% include 'quiz/partials/quiz/_modals_score.html' %}
   {% include 'quiz/partials/quiz/_modals_tags.html' %}
+  {% include 'quiz/partials/quiz/_modals_features.html' %}
   {% include 'quiz/partials/quiz/_modals_edit_question.html' %}
 
   {# 悬浮球功能提示横幅 - 放在 script 之前确保 DOM 已存在 #}

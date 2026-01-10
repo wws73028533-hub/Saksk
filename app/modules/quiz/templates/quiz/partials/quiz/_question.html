@@ -110,26 +110,43 @@
 
   {# ========== 卡片布局（新样式） ========== #}
   <div class="question-layout-card">
+    {% set is_subjective = (q.q_type == '问答题' or q.q_type == '简答题' or q.q_type == '计算题') %}
+    {% if is_subjective %}
+      <div class="subjective-split">
+        <div class="subjective-left">
+    {% endif %}
+
     {# 题干卡片 #}
     <div class="question-stem-card">
       <div class="question-stem-header">
-        <span class="q-type-label">{{ q.q_type }}</span>
-        {% if mode == 'exam' %}<span class="question-score">({{ q.score_val }}分)</span>{% endif %}
-        {% if mode != 'exam' and logged_in %}
-          <div class="fav-btn {{ 'active' if q.is_fav else '' }}" onclick="toggleStar(this, {{ q.id }})" title="收藏" aria-label="收藏">
-            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-          </div>
-          <div class="tag-btn tag-btn-inline" onclick="openTagModal()" title="标签" aria-label="标签">
-            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
-          </div>
-        {% elif mode != 'exam' and not logged_in %}
-          <div class="fav-btn" style="opacity:0.4; cursor:not-allowed;" title="登录后可收藏" aria-label="登录后可收藏">
-            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-          </div>
-          <div class="tag-btn tag-btn-inline" style="opacity:0.4; cursor:not-allowed;" title="登录后可打标签" aria-label="登录后可打标签">
-            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
-          </div>
-        {% endif %}
+        <div class="question-header-left">
+          <span class="q-type-label">{{ q.q_type }}</span>
+          {% if mode == 'exam' %}<span class="question-score">({{ q.score_val }}分)</span>{% endif %}
+        </div>
+
+        <div class="question-header-right">
+          {% if (is_admin or is_subject_admin) %}
+            <button type="button" class="q-action-btn edit" onclick="openEditQuestionModal()" title="编辑题目" aria-label="编辑题目">
+              <span class="q-action-icon">✎</span>
+            </button>
+          {% endif %}
+
+          {% if mode != 'exam' and logged_in %}
+            <button type="button" class="q-action-btn tag-btn tag-btn-inline" onclick="openTagModal()" title="标签" aria-label="标签">
+              <span class="q-action-icon">#</span>
+            </button>
+            <button type="button" class="q-action-btn fav-btn {{ 'active' if q.is_fav else '' }}" onclick="toggleStar(this, {{ q.id }})" title="收藏" aria-label="收藏">
+              <span class="q-action-icon">{{ '♥' if q.is_fav else '♡' }}</span>
+            </button>
+          {% elif mode != 'exam' and not logged_in %}
+            <button type="button" class="q-action-btn tag-btn tag-btn-inline" style="opacity:0.4; cursor:not-allowed;" title="登录后可打标签" aria-label="登录后可打标签" disabled>
+              <span class="q-action-icon">#</span>
+            </button>
+            <button type="button" class="q-action-btn fav-btn" style="opacity:0.4; cursor:not-allowed;" title="登录后可收藏" aria-label="登录后可收藏" disabled>
+              <span class="q-action-icon">♡</span>
+            </button>
+          {% endif %}
+        </div>
       </div>
       <div class="question-stem-content">
         <div class="q-content">{{ q.content|e }}</div>
@@ -146,6 +163,11 @@
       </div>
     </div>
 
+    {% if is_subjective %}
+        </div>
+        <div class="subjective-right">
+    {% endif %}
+
     {# 选项容器 #}
     <div class="options-container {% if q.q_type == '判断题' %}tf-options-container{% endif %}">
       {% if q.q_type == '选择题' or q.q_type == '多选题' %}
@@ -153,29 +175,37 @@
           {% set option_key = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'][loop.index0] %}
           <div class="option-card" data-option="{{ option_key }}">
             <label data-opt="{{ option_key }}">
-              {% if q.q_type == '多选题' or q.answer|length > 1 %}
-                <input type="checkbox" value="{{ option_key }}" onchange="{{ 'markAnswered(' ~ loop.index0 ~ ')' if mode == 'exam' else ('' if q.q_type == '多选题' else 'autoCheck()') }}">
+              {% if mode == 'exam' %}
+                <input type="checkbox" value="{{ option_key }}" onchange="markAnswered({{ loop.index0 }})">
+              {% elif q.q_type == '选择题' and q.answer|length <= 1 %}
+                <input type="checkbox" value="{{ option_key }}" onchange="autoCheck()">
               {% else %}
-                <input type="checkbox" value="{{ option_key }}" onchange="{{ 'markAnswered(' ~ loop.index0 ~ ')' if mode == 'exam' else 'autoCheck()' }}">
+                <input type="checkbox" value="{{ option_key }}">
               {% endif %}
-              <span class="option-label">{{ option_key }}</span>
+              <span class="option-label option-key">{{ option_key }}.</span>
               <span class="option-text" data-opt-text>{{ opt.value }}</span>
+              <span class="correct-mark" aria-hidden="true">✓</span>
+              <span class="wrong-mark" aria-hidden="true">✕</span>
             </label>
           </div>
         {% endfor %}
       {% elif q.q_type == '判断题' %}
         <div class="option-card tf-option-card" data-option="correct">
-          <label data-opt="✓">
+          <label data-opt="A">
             <input type="radio" name="rad-card-{{ loop.index0 }}" value="正确" onchange="{{ 'markAnswered(' ~ loop.index0 ~ ')' if mode == 'exam' else 'autoCheck()' }}">
-            <span class="option-icon">✓</span>
+            <span class="option-label option-key">A.</span>
             <span class="option-text" data-opt-text>正确</span>
+            <span class="correct-mark" aria-hidden="true">✓</span>
+            <span class="wrong-mark" aria-hidden="true">✕</span>
           </label>
         </div>
         <div class="option-card tf-option-card" data-option="wrong">
-          <label data-opt="✕">
+          <label data-opt="B">
             <input type="radio" name="rad-card-{{ loop.index0 }}" value="错误" onchange="{{ 'markAnswered(' ~ loop.index0 ~ ')' if mode == 'exam' else 'autoCheck()' }}">
-            <span class="option-icon">✕</span>
+            <span class="option-label option-key">B.</span>
             <span class="option-text" data-opt-text>错误</span>
+            <span class="correct-mark" aria-hidden="true">✓</span>
+            <span class="wrong-mark" aria-hidden="true">✕</span>
           </label>
         </div>
       {% elif q.q_type == '填空题' %}
@@ -192,12 +222,32 @@
             <input type="text" class="main-input" placeholder="输入答案" oninput="{{ 'markAnswered(' ~ loop.index0 ~ ')' if mode == 'exam' else '' }}">
           {% endif %}
         </div>
-      {% elif q.q_type == '问答题' %}
+      {% elif q.q_type == '问答题' or q.q_type == '简答题' or q.q_type == '计算题' %}
         <div class="essay-card">
-          <textarea class="main-input" rows="4" placeholder="请作答..." oninput="{{ 'markAnswered(' ~ loop.index0 ~ ')' if mode == 'exam' else '' }}"></textarea>
+          <textarea class="main-input subjective-textarea" rows="8" placeholder="请输入你的答案..." oninput="{{ 'markAnswered(' ~ loop.index0 ~ ')' if mode == 'exam' else '' }}"></textarea>
+          {% if mode != 'exam' and mode != 'memo' %}
+            <button type="button" class="subjective-submit-btn" data-action="submitSubjective">提交答案</button>
+          {% endif %}
         </div>
       {% endif %}
     </div>
+
+    {% if q.q_type == '多选题' and mode != 'exam' and mode != 'memo' %}
+      <div class="inline-submit-wrapper multi-submit-wrapper">
+        <button type="button" class="submit-btn multi-submit-btn" disabled>提交答案</button>
+      </div>
+    {% endif %}
+
+    <div class="answer-explain-inline">
+      <div class="answer-inline-host" style="display:none;"></div>
+      <div class="explain-inline-host" style="display:none;"></div>
+      <div class="ai-inline-host" style="display:none;"></div>
+    </div>
+
+    {% if is_subjective %}
+        </div>
+      </div>
+    {% endif %}
   </div>
 
   <!-- 答案与解析卡片，默认隐藏，由 JS 移动到外部容器显示 -->
