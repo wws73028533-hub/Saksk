@@ -11,6 +11,7 @@ function progressKey(){
     const subject = params.get('subject') || 'all';
     const type = params.get('type') || 'all';
     const currentMode = params.get('mode') || mode || 'quiz';
+    const tag = (params.get('tag') || '').trim();
     
     // 考试模式使用exam_id作为唯一标识
     if (currentMode === 'exam') {
@@ -32,7 +33,8 @@ function progressKey(){
     // 其他模式使用标准化的科目+题型+模式+data_scope+打乱设置
     const shuffleQ = params.get('shuffle_questions') === '1' ? '1' : '0';
     const shuffleO = params.get('shuffle_options') === '1' ? '1' : '0';
-    return `quiz_progress_${USER_KEY}_${currentMode}_${subject}_${type}_${dataScope}_q${shuffleQ}_o${shuffleO}`;
+    const tagPart = (tag && tag.toLowerCase() !== 'all') ? `_tag${tag}` : '';
+    return `quiz_progress_${USER_KEY}_${currentMode}_${subject}_${type}_${dataScope}${tagPart}_q${shuffleQ}_o${shuffleO}`;
 }
 let questions = document.querySelectorAll('.question-box');
 const EXAM_ID = (function(){ const el = document.getElementById('mainCard'); return el ? (el.dataset.examId || '') : ''; })();
@@ -185,6 +187,457 @@ async function forwardToUser(peerUserId){
     }
 }
 
+// ===== 题目编辑（管理员/科目管理员） =====
+function closeEditQuestionModal(e){
+    if (e) {
+        // 点击遮罩关闭
+        if (e.target && e.target.id !== 'editQuestionOverlay') return;
+    }
+    const ov = document.getElementById('editQuestionOverlay');
+    if (!ov) return;
+    if (ov.dataset && ov.dataset.saving === '1') return;
+    ov.style.display = 'none';
+}
+
+function getEditOptionKeysFromQuestion(qEl){
+    const keys = [];
+    try {
+        qEl.querySelectorAll('.options-container .option-card label[data-opt]').forEach(label => {
+            const k = (label.getAttribute('data-opt') || '').trim();
+            if (k && !keys.includes(k)) keys.push(k);
+        });
+        // 兜底：传统布局
+        if (!keys.length) {
+            qEl.querySelectorAll('.options.mc-options label[data-opt]').forEach(label => {
+                const k = (label.getAttribute('data-opt') || '').trim();
+                if (k && !keys.includes(k)) keys.push(k);
+            });
+        }
+    } catch(e) {}
+    return keys;
+}
+
+function buildEditOptionsText(qEl, keys){
+    try {
+        return (keys || []).map(k => {
+            const el =
+                qEl.querySelector(`.options-container label[data-opt="${k}"] [data-opt-text]`) ||
+                qEl.querySelector(`label[data-opt="${k}"] [data-opt-text]`);
+            const val = el ? ((el.innerText || el.textContent || '').trim()) : '';
+            return `${k}. ${val}`.trim();
+        }).join('\n');
+    } catch(e) {
+        return '';
+    }
+}
+
+function setEditQuestionSaving(on){
+    const ov = document.getElementById('editQuestionOverlay');
+    if (ov && ov.dataset) ov.dataset.saving = on ? '1' : '0';
+    const btn = document.getElementById('editQuestionSaveBtn');
+    if (btn) {
+        btn.disabled = !!on;
+        btn.textContent = on ? '保存中...' : '保存';
+    }
+}
+
+function openEditQuestionModal(){
+    const ov = document.getElementById('editQuestionOverlay');
+    if (!ov) { showToast('编辑弹窗未加载'); return; }
+    const q = questions[currentIndex];
+    if (!q) { showToast('未找到当前题目'); return; }
+
+    const qid = (q.getAttribute('data-id') || '').toString().trim();
+    const qtype = (q.getAttribute('data-type') || '').toString().trim();
+    if (!qid) { showToast('题目ID获取失败'); return; }
+
+    ov.dataset.qid = qid;
+    ov.dataset.qtype = qtype;
+
+    const meta = document.getElementById('editQuestionMeta');
+    if (meta) meta.textContent = `ID: ${qid} · 题型: ${qtype} · 第 ${currentIndex + 1} 题 / ${totalQuestions}`;
+
+    const contentTa = document.getElementById('editQuestionContent');
+    if (contentTa) {
+        const el = q.querySelector('.question-layout-traditional .q-content') || q.querySelector('.q-content');
+        contentTa.value = el ? ((el.innerText || el.textContent || '').trim()) : '';
+    }
+
+    const ansInp = document.getElementById('editQuestionAnswer');
+    if (ansInp) ansInp.value = (q.getAttribute('data-answer') || '').toString();
+
+    const expTa = document.getElementById('editQuestionExplanation');
+    if (expTa) {
+        const el = q.querySelector('.quiz-card.card-explain .answer');
+        expTa.value = el ? ((el.innerText || el.textContent || '').toString()) : '';
+    }
+
+    const optWrap = document.getElementById('editQuestionOptionsWrap');
+    const optTa = document.getElementById('editQuestionOptions');
+    if (optWrap && optTa) {
+        const show = (qtype === '选择题' || qtype === '多选题');
+        optWrap.style.display = show ? 'flex' : 'none';
+        if (show) {
+            const keys = getEditOptionKeysFromQuestion(q);
+            ov.dataset.optionKeys = keys.join(',');
+            optTa.value = buildEditOptionsText(q, keys);
+        } else {
+            ov.dataset.optionKeys = '';
+            optTa.value = '';
+        }
+    }
+
+    setEditQuestionSaving(false);
+    ov.style.display = 'flex';
+    try { if (contentTa) contentTa.focus(); } catch(e) {}
+}
+
+function parseOptionsTextForEdit(optionsText){
+    const lines = (optionsText || '').toString().split('\n').map(x => x.trim()).filter(Boolean);
+    const options = [];
+    for (const line of lines) {
+        const m = line.match(/^([A-Za-z0-9]{1,3})\s*[、.．:：]\s*(.+)$/);
+        if (m) {
+            const key = (m[1] || '').trim().slice(0, 1).toUpperCase();
+            const value = (m[2] || '').trim();
+            if (key || value) options.push({ key, value });
+            continue;
+        }
+        const first = line.slice(0, 1).toUpperCase();
+        if (first && 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.includes(first)) {
+            const rest = line.slice(1).replace(/^[\s:：.,、]+/, '').trim();
+            options.push({ key: first, value: rest || line });
+            continue;
+        }
+        options.push({ key: '', value: line });
+    }
+
+    // 补齐缺失 key（仅兜底）
+    if (options.some(x => !(x.key || '').trim())) {
+        const used = new Set(options.map(x => (x.key || '').trim().toUpperCase()).filter(Boolean));
+        const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        let p = 0;
+        options.forEach(x => {
+            if ((x.key || '').trim()) return;
+            while (p < letters.length && used.has(letters[p])) p += 1;
+            const nextKey = letters[p] || '';
+            if (nextKey) {
+                x.key = nextKey;
+                used.add(nextKey);
+                p += 1;
+            }
+        });
+    }
+
+    return options;
+}
+
+function applyUpdatedQuestionToDom(qid, updated){
+    const qEl = document.querySelector(`.question-box[data-id="${qid}"]`);
+    if (!qEl) return;
+
+    try {
+        if (updated && typeof updated.q_type === 'string' && updated.q_type) {
+            qEl.setAttribute('data-type', updated.q_type);
+        }
+        if (updated && updated.answer != null) {
+            qEl.setAttribute('data-answer', String(updated.answer));
+        }
+        if (updated && updated.content != null) {
+            qEl.querySelectorAll('.q-content').forEach(el => { el.textContent = String(updated.content); });
+        }
+
+        // 更新选项文本（仅支持保持原有 A/B/C... 数量不变的编辑）
+        const qType = (updated && updated.q_type) ? updated.q_type : (qEl.getAttribute('data-type') || '');
+        if ((qType === '选择题' || qType === '多选题') && Array.isArray(updated && updated.options)) {
+            (updated.options || []).forEach(opt => {
+                const key = (opt && opt.key != null) ? String(opt.key).trim() : '';
+                const val = (opt && opt.value != null) ? String(opt.value) : '';
+                if (!key) return;
+                qEl.querySelectorAll(`label[data-opt="${key}"] [data-opt-text]`).forEach(span => {
+                    span.textContent = val;
+                });
+            });
+        }
+
+        // 题内答案/解析卡片（用于 dock 渲染）
+        const ansSpan = qEl.querySelector('.quiz-card.card-answer .answer.correct');
+        if (ansSpan) ansSpan.textContent = String((updated && updated.answer) || '');
+
+        const explainText = ((updated && updated.explanation) || '').toString();
+        let explainCard = qEl.querySelector('.quiz-card.card-explain');
+        if (explainText.trim()) {
+            if (!explainCard) {
+                const div = document.createElement('div');
+                div.className = 'quiz-card card-explain';
+                div.style.display = 'none';
+                div.innerHTML = `
+                    <div class="analysis-title">
+                        <span class="dot" aria-hidden="true"></span>
+                        <strong>解析</strong>
+                    </div>
+                    <p><span class="answer"></span></p>
+                `;
+                qEl.appendChild(div);
+                explainCard = div;
+            }
+            const exSpan = explainCard.querySelector('.answer');
+            if (exSpan) exSpan.textContent = explainText;
+        } else if (explainCard) {
+            explainCard.remove();
+        }
+
+        // 如果当前正在展示 dock，刷新内容
+        try { renderAnswerExplainFromQuestion(qEl); } catch(e) {}
+    } catch(e) {}
+}
+
+async function submitEditQuestion(){
+    const ov = document.getElementById('editQuestionOverlay');
+    if (!ov) return;
+    if (ov.dataset && ov.dataset.saving === '1') return;
+
+    const qid = Number((ov.dataset && ov.dataset.qid) ? ov.dataset.qid : 0);
+    const qtype = (ov.dataset && ov.dataset.qtype) ? ov.dataset.qtype : '';
+    if (!qid) { showToast('题目ID异常'); return; }
+
+    const contentTa = document.getElementById('editQuestionContent');
+    const content = contentTa ? (contentTa.value || '').toString().trim() : '';
+    if (!content) { showToast('题干不能为空'); return; }
+
+    const ansInp = document.getElementById('editQuestionAnswer');
+    const answer = ansInp ? (ansInp.value || '').toString().trim() : '';
+    const expTa = document.getElementById('editQuestionExplanation');
+    const explanation = expTa ? (expTa.value || '').toString() : '';
+
+    let options = undefined;
+    if (qtype === '选择题' || qtype === '多选题') {
+        const optTa = document.getElementById('editQuestionOptions');
+        const optionsText = optTa ? (optTa.value || '').toString() : '';
+        const parsed = parseOptionsTextForEdit(optionsText);
+        if (!parsed.length) { showToast('请填写选项'); return; }
+
+        // 为了避免重建 DOM，这里要求选项 key 集合保持不变（数量不变）
+        const allowedKeys = (ov.dataset && ov.dataset.optionKeys) ? ov.dataset.optionKeys.split(',').map(x => x.trim()).filter(Boolean) : [];
+        if (allowedKeys.length) {
+            const setA = new Set(allowedKeys);
+            const setB = new Set(parsed.map(x => (x.key || '').trim()).filter(Boolean));
+            let mismatch = (setA.size !== setB.size);
+            if (!mismatch) {
+                for (const k of setA) { if (!setB.has(k)) { mismatch = true; break; } }
+            }
+            if (mismatch) {
+                showToast('选项数量/标记需保持不变（可在题库管理中新增/删除选项）');
+                return;
+            }
+        }
+        options = parsed;
+    }
+
+    setEditQuestionSaving(true);
+    try {
+        const res = await fetch(`/api/quiz/questions/${qid}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content, q_type: qtype, options, answer, explanation })
+        });
+        const js = await res.json();
+        if (!res.ok || !js || js.status !== 'success') {
+            showToast((js && js.message) || '保存失败');
+            setEditQuestionSaving(false);
+            return;
+        }
+
+        applyUpdatedQuestionToDom(qid, js.data);
+        setEditQuestionSaving(false);
+        showToast('已保存');
+        closeEditQuestionModal();
+    } catch(e) {
+        setEditQuestionSaving(false);
+        showToast('保存失败');
+    }
+}
+
+// ===== 题目标签（用户私有） =====
+const tagModalState = {
+    open: false,
+    qid: null,
+    allTags: [],
+    selected: [],
+    saving: false
+};
+
+function getCurrentQuestionId(){
+    try {
+        const q = questions[currentIndex];
+        const qid = q ? (q.getAttribute('data-id') || '') : '';
+        return qid ? String(qid) : '';
+    } catch(e) { return ''; }
+}
+
+function closeTagModal(e){
+    if (e) {
+        // 点击遮罩关闭
+        if (e.target && e.target.id !== 'tagOverlay') return;
+    }
+    const ov = document.getElementById('tagOverlay');
+    if (ov) ov.style.display = 'none';
+    tagModalState.open = false;
+    tagModalState.qid = null;
+    tagModalState.selected = [];
+    tagModalState.allTags = [];
+}
+
+async function openTagModal(){
+    if (!LOGGED_IN) { showToast('请先登录后再使用标签'); return; }
+    const qid = getCurrentQuestionId();
+    if (!qid) { showToast('题目ID获取失败'); return; }
+
+    const ov = document.getElementById('tagOverlay');
+    if (!ov) return;
+    ov.style.display = 'flex';
+    tagModalState.open = true;
+    tagModalState.qid = qid;
+
+    const inp = document.getElementById('tagNewInput');
+    if (inp) inp.value = '';
+
+    await refreshTagModalData();
+
+    try { if (inp) inp.focus(); } catch(e) {}
+}
+
+async function refreshTagModalData(){
+    const qid = tagModalState.qid;
+    if (!qid) return;
+
+    const list = document.getElementById('tagChipList');
+    if (list) list.innerHTML = `<div style="padding:10px 6px; color:var(--text-sub);">加载中...</div>`;
+
+    try {
+        const [tRes, qRes] = await Promise.all([
+            fetch('/api/quiz/tags'),
+            fetch(`/api/quiz/questions/${encodeURIComponent(qid)}/tags`)
+        ]);
+        const tJs = await tRes.json();
+        const qJs = await qRes.json();
+
+        const allTags = (tRes.ok && tJs && tJs.status === 'success' && tJs.data && Array.isArray(tJs.data.tags))
+            ? tJs.data.tags.map(x => x && x.name ? String(x.name) : '').filter(Boolean)
+            : [];
+        const selected = (qRes.ok && qJs && qJs.status === 'success' && qJs.data && Array.isArray(qJs.data.tags))
+            ? qJs.data.tags.map(x => String(x)).filter(Boolean)
+            : [];
+
+        tagModalState.allTags = allTags;
+        tagModalState.selected = selected;
+        renderTagChips();
+    } catch(e) {
+        if (list) list.innerHTML = `<div style="padding:10px 6px; color:var(--text-sub);">加载失败</div>`;
+    }
+}
+
+function renderTagChips(){
+    const list = document.getElementById('tagChipList');
+    if (!list) return;
+    const tags = Array.isArray(tagModalState.allTags) ? tagModalState.allTags : [];
+    const selected = Array.isArray(tagModalState.selected) ? tagModalState.selected : [];
+
+    if (!tags.length) {
+        list.innerHTML = `<div style="padding:10px 6px; color:var(--text-sub);">暂无标签，可在上方输入新建</div>`;
+        return;
+    }
+
+    list.innerHTML = tags.map(name => {
+        const on = selected.includes(name);
+        return `<span class="tag-chip ${on ? 'active' : ''}" data-tag="${encodeURIComponent(name)}" onclick="toggleTagChip(this)">${on ? '<span class="tag-chip-check">✓</span>' : ''}${escapeHtml(name)}</span>`;
+    }).join('');
+}
+
+async function toggleTagChip(el){
+    const raw = el && el.dataset ? (el.dataset.tag || '') : '';
+    let tag = '';
+    try { tag = decodeURIComponent(String(raw || '')); } catch(e) { tag = String(raw || ''); }
+    tag = tag.trim();
+    if (!tag) return;
+
+    const selected = Array.isArray(tagModalState.selected) ? tagModalState.selected.slice() : [];
+    const idx = selected.indexOf(tag);
+    if (idx >= 0) selected.splice(idx, 1);
+    else selected.push(tag);
+
+    tagModalState.selected = selected;
+    renderTagChips();
+    await saveQuestionTagsFromModal();
+}
+
+async function saveQuestionTagsFromModal(){
+    const qid = tagModalState.qid;
+    if (!qid) return;
+    if (tagModalState.saving) return;
+
+    tagModalState.saving = true;
+    try {
+        const res = await fetch(`/api/quiz/questions/${encodeURIComponent(qid)}/tags`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ tags: tagModalState.selected || [] })
+        });
+        const js = await res.json();
+        if (!res.ok || !js || js.status !== 'success') {
+            showToast((js && (js.message || js.msg)) || '保存失败');
+            return;
+        }
+        const next = (js.data && Array.isArray(js.data.tags)) ? js.data.tags.map(x => String(x)).filter(Boolean) : [];
+        tagModalState.selected = next;
+        renderTagChips();
+    } catch(e) {
+        showToast('网络错误，请重试');
+    } finally {
+        tagModalState.saving = false;
+    }
+}
+
+function onTagNewKey(e){
+    if (e && e.key === 'Enter') {
+        e.preventDefault();
+        createTagFromModal();
+    }
+}
+
+async function createTagFromModal(){
+    if (!LOGGED_IN) { showToast('请先登录'); return; }
+    const inp = document.getElementById('tagNewInput');
+    const name = (inp && inp.value) ? inp.value.trim() : '';
+    if (!name) { showToast('请输入标签名'); return; }
+
+    try {
+        const res = await fetch('/api/quiz/tags', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ name })
+        });
+        const js = await res.json();
+        if (!res.ok || !js || js.status !== 'success') {
+            showToast((js && (js.message || js.msg)) || '创建失败');
+            return;
+        }
+        const tags = (js.data && Array.isArray(js.data.tags)) ? js.data.tags.map(x => x && x.name ? String(x.name) : '').filter(Boolean) : [];
+        tagModalState.allTags = tags;
+
+        const created = (js.data && js.data.tag) ? String(js.data.tag) : name;
+        if (!tagModalState.selected.includes(created)) {
+            tagModalState.selected = (tagModalState.selected || []).concat([created]);
+        }
+
+        if (inp) inp.value = '';
+        renderTagChips();
+        await saveQuestionTagsFromModal();
+    } catch(e) {
+        showToast('网络错误，请重试');
+    }
+}
+
 const totalQuestions = {{ questions|length }};
 let currentIndex = 0;
 let isWholeView = false;
@@ -232,6 +685,45 @@ function isFabAutoNextEnabled(){
 }
 function setFabAutoNextEnabled(on){
     localStorage.setItem(FAB_AUTO_NEXT_KEY, on ? '1' : '0');
+}
+
+// ===== 错题本刷题：答对是否清除（移出错题本） =====
+const CLEAR_MISTAKE_ON_CORRECT_KEY = 'quiz_clear_mistake_on_correct_v1'; // '1' | '0'（默认 1）
+
+function isMistakesScope(){
+    const params = new URLSearchParams(window.location.search);
+    const sourceParam = (params.get('source') || '').toLowerCase();
+    const m = String(mode || '').toLowerCase();
+    return sourceParam === 'mistakes' || m === 'mistakes';
+}
+
+function isClearMistakeOnCorrectEnabled(){
+    try { return localStorage.getItem(CLEAR_MISTAKE_ON_CORRECT_KEY) !== '0'; } catch(e) { return true; }
+}
+
+function setClearMistakeOnCorrectEnabled(on){
+    try { localStorage.setItem(CLEAR_MISTAKE_ON_CORRECT_KEY, on ? '1' : '0'); } catch(e) {}
+}
+
+function getClearMistakeOnCorrectForRequest(){
+    return isMistakesScope() ? isClearMistakeOnCorrectEnabled() : true;
+}
+
+function updateMistakeClearOnCorrectUI(){
+    const btn = document.getElementById('btnMistakeClearOnCorrect');
+    if (!btn) return;
+    const on = getClearMistakeOnCorrectForRequest();
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    btn.title = on ? '答对将从错题本移除' : '答对将保留在错题本';
+    btn.textContent = on ? '答对移出' : '答对保留';
+}
+
+function toggleMistakeClearOnCorrect(){
+    if (!isMistakesScope()) return;
+    const next = !isClearMistakeOnCorrectEnabled();
+    setClearMistakeOnCorrectEnabled(next);
+    updateMistakeClearOnCorrectUI();
+    showToast(next ? '已开启：答对移出错题本' : '已关闭：答对移出错题本');
 }
 
 function saveFabPos(left, top){
@@ -766,6 +1258,14 @@ function bindFab(){
                 toggleFab(false);
                 return;
             }
+
+            if (action === 'editQuestion') {
+                const q = questions[currentIndex];
+                if (!q) { showToast('未找到当前题目'); toggleFab(false); return; }
+                openEditQuestionModal();
+                toggleFab(false);
+                return;
+            }
         });
     });
 
@@ -791,6 +1291,7 @@ function bindFab(){
 
 async function init() {
     if (localStorage.getItem('theme') === 'dark') document.body.classList.add('dark-mode');
+    updateMistakeClearOnCorrectUI();
     
     // 布局主题切换：根据用户设置切换传统布局或卡片布局
     const layoutTheme = localStorage.getItem('quiz_layout_theme_v1') || 'traditional';
@@ -1529,7 +2030,11 @@ async function checkAnswer(isManualClick) {
             const res = await fetch('/api/record_result', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ question_id: qId, is_correct: isCorrect })
+                body: JSON.stringify({
+                    question_id: qId,
+                    is_correct: isCorrect,
+                    clear_mistake_on_correct: getClearMistakeOnCorrectForRequest()
+                })
             });
             const data = await res.json();
             
@@ -2425,18 +2930,18 @@ function scheduleAutoSave(){
     }, 5000);
 }
 
-// Mobile swipe gesture for next/prev question
-const mainCard = document.getElementById('mainCard');
-if (mainCard) {
+// Mobile swipe gesture for next/prev question（仅用于切题；页面横向滚动已在 CSS 中禁用）
+const __mainCardSwipeHost = document.getElementById('mainCard');
+if (__mainCardSwipeHost) {
     let touchStartX = 0;
     let touchStartY = 0;
 
-    mainCard.addEventListener('touchstart', e => {
+    __mainCardSwipeHost.addEventListener('touchstart', e => {
         touchStartX = e.changedTouches[0].screenX;
         touchStartY = e.changedTouches[0].screenY;
     }, { passive: true });
 
-    mainCard.addEventListener('touchend', e => {
+    __mainCardSwipeHost.addEventListener('touchend', e => {
         const touchEndX = e.changedTouches[0].screenX;
         const touchEndY = e.changedTouches[0].screenY;
         handleSwipe(touchStartX, touchStartY, touchEndX, touchEndY);
@@ -2448,7 +2953,7 @@ function handleSwipe(startX, startY, endX, endY) {
     const diffY = endY - startY;
 
     // Only trigger if horizontal swipe is significant and vertical swipe is not
-    if (Math.abs(diffX) > 200 && Math.abs(diffY) < 200) {
+    if (Math.abs(diffX) > 100 && Math.abs(diffY) < 100) {
         if (diffX < 0) {
             // Swiped left
             nextQuestion();

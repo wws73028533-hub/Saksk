@@ -1,0 +1,45 @@
+{# Edit question modal (admin / subject admin) #}
+{% if is_admin or is_subject_admin %}
+<div class="overlay" id="editQuestionOverlay" style="z-index: 2200; display:none;" onclick="closeEditQuestionModal(event)">
+  <div class="card-container score-modal" style="width:min(92vw,720px); min-height:auto;" onclick="event.stopPropagation()">
+    <h2 style="margin-top:0;">编辑题目</h2>
+    <div id="editQuestionMeta" style="color:var(--text-sub); font-size:13px; margin-top:-6px;"></div>
+
+    <div style="margin-top:14px; display:flex; flex-direction:column; gap:12px;">
+      <label style="display:flex; flex-direction:column; gap:6px;">
+        <span style="font-size:12px; color:var(--text-sub);">题干</span>
+        <textarea id="editQuestionContent" rows="5"
+          style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background: var(--card-bg-solid); color: var(--text-color); outline:none; resize:vertical;"
+          placeholder="请输入题干"></textarea>
+      </label>
+
+      <label id="editQuestionOptionsWrap" style="display:none; flex-direction:column; gap:6px;">
+        <span style="font-size:12px; color:var(--text-sub);">选项（每行一个，例如：A. 选项A）</span>
+        <textarea id="editQuestionOptions" rows="5"
+          style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background: var(--card-bg-solid); color: var(--text-color); outline:none; resize:vertical; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;"
+          placeholder="A. 选项A&#10;B. 选项B&#10;C. 选项C"></textarea>
+      </label>
+
+      <label style="display:flex; flex-direction:column; gap:6px;">
+        <span style="font-size:12px; color:var(--text-sub);">答案</span>
+        <input id="editQuestionAnswer"
+          style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background: var(--card-bg-solid); color: var(--text-color); outline:none;"
+          placeholder="请输入答案" />
+      </label>
+
+      <label style="display:flex; flex-direction:column; gap:6px;">
+        <span style="font-size:12px; color:var(--text-sub);">解析（可选）</span>
+        <textarea id="editQuestionExplanation" rows="5"
+          style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background: var(--card-bg-solid); color: var(--text-color); outline:none; resize:vertical;"
+          placeholder="请输入解析（可选）"></textarea>
+      </label>
+    </div>
+
+    <div style="margin-top:16px; display:flex; justify-content:flex-end; gap:10px;">
+      <button class="btn btn-nav" onclick="closeEditQuestionModal()">取消</button>
+      <button class="btn" id="editQuestionSaveBtn" onclick="submitEditQuestion()">保存</button>
+    </div>
+  </div>
+</div>
+{% endif %}
+

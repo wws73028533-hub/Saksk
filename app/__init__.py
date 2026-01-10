@@ -39,6 +39,9 @@ def create_app(config_name=None):
     
     # 加载配置
     app.config.from_object(config[config_name])
+
+    # 响应压缩（减少 HTML/CSS/JS/JSON 体积，提升移动端加载体验）
+    _setup_response_compression(app)
     
     # 确保必要的目录存在
     _ensure_directories(app)
@@ -74,6 +77,24 @@ def create_app(config_name=None):
     app.logger.info('应用启动完成')
     
     return app
+
+
+def _setup_response_compression(app: Flask) -> None:
+    """启用可选的 Gzip 压缩（直连 Flask 场景尤为重要）。"""
+    if app.testing:
+        return
+
+    if not app.config.get('ENABLE_GZIP', True):
+        return
+
+    try:
+        from .core.utils.gzip_middleware import GzipMiddleware
+
+        minimum_size = int(app.config.get('GZIP_MINIMUM_SIZE', 500) or 500)
+        app.wsgi_app = GzipMiddleware(app.wsgi_app, compresslevel=6, minimum_size=minimum_size)
+        app.logger.info('GzipMiddleware 已启用 (minimum_size=%s)', minimum_size)
+    except Exception as e:
+        app.logger.warning('GzipMiddleware 启用失败：%s', e)
 
 
 def _ensure_directories(app):

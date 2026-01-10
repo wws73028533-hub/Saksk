@@ -22,6 +22,7 @@ def quiz_page():
     q_type = request.args.get('type', 'all')
     mode = request.args.get('mode', 'quiz').lower()
     source = request.args.get('source', '').lower()  # 兼容背题来源（收藏/错题）
+    tag = (request.args.get('tag') or '').strip()
     exam_id = request.args.get('exam_id', type=int)
     
     # 获取打乱设置
@@ -47,6 +48,8 @@ def quiz_page():
                                  logged_in=bool(uid),
                                  user_id=uid,
                                  username=session.get('username'),
+                                 is_admin=bool(session.get('is_admin')),
+                                 is_subject_admin=bool(session.get('is_subject_admin')),
                                  duration=0,
                                  submitted=False)
     
@@ -96,6 +99,15 @@ def quiz_page():
             params.append(q_type)
         
         rows = conn.execute(sql, params).fetchall()
+
+    # 标签筛选（仅对当前用户生效）
+    if tag and str(tag).lower() != 'all' and uid and uid != -1 and mode != 'exam':
+        from app.modules.quiz.services.question_tags_service import get_question_ids_by_tag
+        tag_ids = get_question_ids_by_tag(conn, uid, tag)
+        if not tag_ids:
+            rows = []
+        else:
+            rows = [r for r in rows if int(r['id']) in tag_ids]
     elif target == 'mistakes':
         # 错题模式（过滤掉锁定科目和被限制科目的题目）
         sql = """
@@ -169,10 +181,11 @@ def quiz_page():
             subject,
             q_type,
             data_scope,
+            f"tag{tag}" if tag and str(tag).lower() != 'all' else None,
             f"q{1 if shuffle_questions else 0}",
             f"o{1 if shuffle_options else 0}"
         ]
-        p_key = "_".join(key_parts)
+        p_key = "_".join([p for p in key_parts if p])
         try:
             saved = conn.execute('SELECT data FROM user_progress WHERE user_id=? AND p_key=?', (uid, p_key)).fetchone()
             if saved and saved['data']:
@@ -264,10 +277,11 @@ def quiz_page():
                     subject,
                     q_type,
                     data_scope,
+                    f"tag{tag}" if tag and str(tag).lower() != 'all' else None,
                     f"q{1 if shuffle_questions else 0}",
                     f"o{1 if shuffle_options else 0}"
                 ]
-                p_key = "_".join(key_parts)
+                p_key = "_".join([p for p in key_parts if p])
                 # 尝试获取现有进度数据
                 try:
                     existing_data = conn.execute('SELECT data FROM user_progress WHERE user_id=? AND p_key=?', (uid, p_key)).fetchone()
@@ -345,6 +359,7 @@ def quiz_page():
                          logged_in=bool(uid),
                          user_id=uid,
                          username=session.get('username'),
+                         is_admin=bool(session.get('is_admin')),
+                         is_subject_admin=bool(session.get('is_subject_admin')),
                          duration=duration,
                          submitted=submitted)
-

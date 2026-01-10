@@ -210,12 +210,14 @@
         .quiz-fab-menu.open .quiz-fab-item:nth-child(3) { transform: translate(-50%, -50%) translate(-78px, 0); }
         .quiz-fab-menu.open .quiz-fab-item:nth-child(4) { transform: translate(-50%, -50%) translate(-58px, 58px); }
         .quiz-fab-menu.open .quiz-fab-item:nth-child(5) { transform: translate(-50%, -50%) translate(0, 78px); }
+        .quiz-fab-menu.open .quiz-fab-item:nth-child(6) { transform: translate(-50%, -50%) translate(-78px, 78px); }
 
         /* 悬浮球贴左时：菜单向右展开，避免出屏 */
         .quiz-fab-menu.open.edge-left .quiz-fab-item:nth-child(2) { transform: translate(-50%, -50%) translate(58px, -58px); }
         .quiz-fab-menu.open.edge-left .quiz-fab-item:nth-child(3) { transform: translate(-50%, -50%) translate(78px, 0); }
         .quiz-fab-menu.open.edge-left .quiz-fab-item:nth-child(4) { transform: translate(-50%, -50%) translate(58px, 58px); }
         .quiz-fab-menu.open.edge-left .quiz-fab-item:nth-child(5) { transform: translate(-50%, -50%) translate(0, 78px); }
+        .quiz-fab-menu.open.edge-left .quiz-fab-item:nth-child(6) { transform: translate(-50%, -50%) translate(78px, 78px); }
 
         /* 顶部主题切换图标：浅色=太阳，深色=月亮 */
         .btn-theme .theme-icon {
@@ -597,6 +599,70 @@
         .fav-btn.active { 
             color: var(--warning); 
             transform: scale(1.1); 
+        }
+
+        .tag-btn {
+            position: absolute;
+            top: 44px;
+            right: 0;
+            color: var(--text-sub);
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 10;
+            padding: 8px;
+            border-radius: 50%;
+        }
+        .tag-btn:hover { background: var(--hover-bg); }
+        .tag-btn.tag-btn-inline {
+            position: static;
+            margin-left: 8px;
+        }
+
+        .tag-chip-list {
+            margin-top: 14px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            max-height: 44vh;
+            overflow: auto;
+            padding-top: 6px;
+        }
+        .tag-chip {
+            border: 0.5px solid var(--border-color);
+            background: rgba(142, 142, 147, 0.08);
+            color: var(--text-color);
+            padding: 8px 12px;
+            border-radius: 999px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .tag-chip:hover { background: rgba(142, 142, 147, 0.12); }
+        .tag-chip.active {
+            background: rgba(0, 0, 0, 0.88);
+            border-color: rgba(0, 0, 0, 0.88);
+            color: #fff;
+        }
+        .tag-chip-check {
+            font-size: 12px;
+            line-height: 1;
+            color: inherit;
+        }
+        body.dark-mode .tag-chip {
+            background: rgba(142, 142, 147, 0.10);
+            border-color: rgba(255, 255, 255, 0.12);
+        }
+        body.dark-mode .tag-chip:hover { background: rgba(142, 142, 147, 0.16); }
+        body.dark-mode .tag-chip.active {
+            background: rgba(255, 255, 255, 0.16);
+            border-color: rgba(255, 255, 255, 0.22);
+            color: #fff;
         }
         
         .q-type-label { 
@@ -1279,9 +1345,10 @@
         /* 移动端适配 */
         @media (max-width: 768px) {
             :root { --card-side-gap: 20px; }
+            html, body { overflow-x: hidden; }
             .sidebar { width: 80vw; left: -80vw; }
             .sidebar.open { left: 0; }
-            .main-area { padding: 12px; }
+            .main-area { padding: 12px; overflow-x: hidden; touch-action: pan-y; overscroll-behavior-x: none; }
             .card-container { padding: 16px; margin: 10px; min-height: auto; }
             .header { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; }
             /* 中间模式徽标置中 */
@@ -2640,6 +2707,3 @@
                 gap: 10px;
             }
         }
-
-
-

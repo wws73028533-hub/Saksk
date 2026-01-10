@@ -279,28 +279,31 @@ def auth_required(f):
         debug_enabled = bool(current_app.config.get('DEBUG'))
         
         if token:
+            raw_token = token.strip()
+            if raw_token.startswith('Bearer '):
+                raw_token = raw_token[7:].strip()
+
+            payload = None
             try:
-                if token.startswith('Bearer '):
-                    token = token[7:]
-                payload = decode_jwt_token(token)
-                if payload:
-                    ok, err = _validate_jwt_user(payload)
-                    if not ok:
-                        return jsonify({'status': 'unauthorized', 'message': err or 'token无效或已过期'}), 401
-                    user_id = payload.get('user_id')
-                    if user_id:
-                        g.current_user_id = user_id
-                        g.current_user_openid = payload.get('openid')
-                        if debug_enabled and request.path == '/api/quiz/subjects':
-                            current_app.logger.debug("JWT token验证成功: user_id=%s", user_id)
-                        return f(*args, **kwargs)
-                else:
-                    if debug_enabled and request.path == '/api/quiz/subjects':
-                        current_app.logger.debug("JWT token验证失败: payload为空")
+                payload = decode_jwt_token(raw_token)
             except Exception as e:
                 if debug_enabled and request.path == '/api/quiz/subjects':
                     current_app.logger.debug("JWT token验证异常: %s", str(e), exc_info=True)
-                pass
+
+            if payload:
+                ok, err = _validate_jwt_user(payload)
+                if not ok:
+                    return jsonify({'status': 'unauthorized', 'message': err or 'token无效或已过期'}), 401
+                user_id = payload.get('user_id')
+                if user_id:
+                    g.current_user_id = user_id
+                    g.current_user_openid = payload.get('openid')
+                    if debug_enabled and request.path == '/api/quiz/subjects':
+                        current_app.logger.debug("JWT token验证成功: user_id=%s", user_id)
+                    return f(*args, **kwargs)
+            else:
+                if debug_enabled and request.path == '/api/quiz/subjects':
+                    current_app.logger.debug("JWT token验证失败: payload为空")
         
         # 再尝试session（Web）
         user_id = session.get('user_id')

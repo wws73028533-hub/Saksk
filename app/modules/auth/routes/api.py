@@ -467,7 +467,10 @@ def api_wechat_login():
                     'id': user['id'],
                     'username': user.get('username'),
                     'avatar': user.get('avatar'),
-                    'is_new_user': user.get('is_new_user', False)
+                    'is_new_user': user.get('is_new_user', False),
+                    'wechat_bound': bool(openid),
+                    'is_admin': bool(user.get('is_admin', 0)),
+                    'is_subject_admin': bool(user.get('is_subject_admin', 0))
                 }
             }
         }), 200
@@ -515,7 +518,10 @@ def api_wechat_create_from_temp():
                     'id': user['id'],
                     'username': user.get('username'),
                     'avatar': user.get('avatar'),
-                    'is_new_user': user.get('is_new_user', False)
+                    'is_new_user': user.get('is_new_user', False),
+                    'wechat_bound': bool(user.get('openid')),
+                    'is_admin': bool(user.get('is_admin', 0)),
+                    'is_subject_admin': bool(user.get('is_subject_admin', 0))
                 }
             }
         }), 200
@@ -915,7 +921,9 @@ def api_mini_password_login():
                     'username': user.get('username'),
                     'avatar': user.get('avatar'),
                     'is_new_user': False,
-                    'wechat_bound': bool(openid)
+                    'wechat_bound': bool(openid),
+                    'is_admin': bool(user.get('is_admin', 0)),
+                    'is_subject_admin': bool(user.get('is_subject_admin', 0))
                 }
             }
         }), 200
@@ -971,7 +979,9 @@ def api_mini_email_login():
                     'username': user_data.get('username'),
                     'avatar': user_data.get('avatar'),
                     'is_new_user': bool(user_data.get('is_new_user', False)),
-                    'wechat_bound': bool(openid)
+                    'wechat_bound': bool(openid),
+                    'is_admin': bool(user_data.get('is_admin', 0)),
+                    'is_subject_admin': bool(user_data.get('is_subject_admin', 0))
                 }
             }
         }), 200
@@ -1006,8 +1016,16 @@ def api_mini_wechat_bind():
 
     conn = get_db()
     try:
+        # 兼容部分旧库可能缺少 is_subject_admin 字段
+        try:
+            user_cols = [r['name'] for r in conn.execute("PRAGMA table_info(users)").fetchall()]
+        except Exception:
+            user_cols = []
+        select_fields = ['id', 'username', 'avatar', 'is_locked', 'session_version', 'openid', 'is_admin']
+        if 'is_subject_admin' in user_cols:
+            select_fields.append('is_subject_admin')
         row = conn.execute(
-            'SELECT id, username, avatar, is_locked, session_version, openid FROM users WHERE id = ?',
+            f'SELECT {", ".join(select_fields)} FROM users WHERE id = ?',
             (uid,)
         ).fetchone()
         if not row:
@@ -1033,6 +1051,8 @@ def api_mini_wechat_bind():
                         'username': user.get('username'),
                         'avatar': user.get('avatar'),
                         'wechat_bound': True,
+                        'is_admin': bool(user.get('is_admin', 0)),
+                        'is_subject_admin': bool(user.get('is_subject_admin', 0)),
                     }
                 }
             }), 200
@@ -1061,6 +1081,8 @@ def api_mini_wechat_bind():
                     'username': refreshed.get('username'),
                     'avatar': refreshed.get('avatar'),
                     'wechat_bound': True,
+                    'is_admin': bool(refreshed.get('is_admin', 0)),
+                    'is_subject_admin': bool(refreshed.get('is_subject_admin', 0)),
                 }
             }
         }), 200

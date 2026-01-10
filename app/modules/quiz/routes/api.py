@@ -67,13 +67,31 @@ def record_result():
         get_quiz_limit_count
     )
     
-    data = request.json
+    data = request.json or {}
     q_id = data.get('question_id')
     is_correct = data.get('is_correct')
+    clear_mistake_on_correct = data.get('clear_mistake_on_correct', True)
     uid = current_user_id()
     
     if not q_id or is_correct is None:
         return jsonify({'status': 'error', 'message': '参数不完整'}), 400
+
+    # 兼容 clear_mistake_on_correct 可能为 string/int/bool；默认 True（保持旧行为）
+    try:
+        if isinstance(clear_mistake_on_correct, str):
+            v = clear_mistake_on_correct.strip().lower()
+            if v in ('0', 'false', 'no', 'off'):
+                clear_mistake_on_correct = False
+            elif v in ('1', 'true', 'yes', 'on'):
+                clear_mistake_on_correct = True
+            else:
+                clear_mistake_on_correct = True
+        elif isinstance(clear_mistake_on_correct, (int, float)):
+            clear_mistake_on_correct = bool(clear_mistake_on_correct)
+        else:
+            clear_mistake_on_correct = bool(clear_mistake_on_correct)
+    except Exception:
+        clear_mistake_on_correct = True
     
     # 检查刷题限制
     is_limited, limit_message = check_quiz_limit(uid)
@@ -99,9 +117,13 @@ def record_result():
             )
             action = "added_mistake"
         else:
-            # 答对了，从错题本中移除
-            conn.execute("DELETE FROM mistakes WHERE user_id = ? AND question_id = ?", (uid, q_id))
-            action = "removed_mistake"
+            if clear_mistake_on_correct:
+                # 答对了，从错题本中移除（默认行为）
+                conn.execute("DELETE FROM mistakes WHERE user_id = ? AND question_id = ?", (uid, q_id))
+                action = "removed_mistake"
+            else:
+                # 答对但不清除：保留在错题本
+                action = "kept_mistake"
         
         # 记录答题历史（每次答题都记录，用于统计）
         # 先删除旧记录，再插入新记录，确保每个用户对每道题只保留最新的一条记录
@@ -131,11 +153,13 @@ def record_result():
 def api_questions_count():
     """获取题目数量（添加权限过滤）"""
     from app.core.utils.subject_permissions import get_user_accessible_subjects
+    from app.modules.quiz.services.question_tags_service import get_question_ids_by_tag
     
     subject = request.args.get('subject', 'all')
     q_type = request.args.get('type', 'all')
     mode = request.args.get('mode', '').lower()
     source = request.args.get('source', '').lower()  # 兼容背题模式下的来源
+    tag = (request.args.get('tag') or '').strip()
     uid = _get_uid_from_request()
     
     conn = get_db()
@@ -178,11 +202,29 @@ def api_questions_count():
     if q_type != 'all':
         base_sql += " AND q.q_type = ?"
         params.append(q_type)
-    
+
+    # 标签筛选：无登录 / 无命中直接返回 0（标签是用户私有）
+    if tag and str(tag).lower() != 'all':
+        if not uid:
+            return jsonify({'status': 'success', 'count': 0})
+        tag_ids = get_question_ids_by_tag(conn, uid, tag)
+        if not tag_ids:
+            return jsonify({'status': 'success', 'count': 0})
+
+        # 变量过多时避免 IN 触发 SQLite 参数上限：回退为取ID后求交集
+        if len(tag_ids) > 900:
+            id_rows = conn.execute("SELECT q.id " + base_sql, params).fetchall()
+            base_ids = {int(r[0]) for r in id_rows if r and r[0] is not None}
+            return jsonify({'status': 'success', 'count': len(base_ids & set(tag_ids))})
+
+        placeholders = ','.join(['?'] * len(tag_ids))
+        sql = "SELECT COUNT(1) " + base_sql + f" AND q.id IN ({placeholders})"
+        cnt = conn.execute(sql, params + list(tag_ids)).fetchone()[0]
+        return jsonify({'status': 'success', 'count': cnt})
+
     sql = "SELECT COUNT(1) " + base_sql
     cnt = conn.execute(sql, params).fetchone()[0]
-    
-    return jsonify({'status':'success','count': cnt})
+    return jsonify({'status': 'success', 'count': cnt})
 
 
 @quiz_api_bp.route('/questions/user_counts')
@@ -329,6 +371,103 @@ def progress_api():
         except Exception as e:
             conn.rollback()
             return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+@quiz_api_bp.route('/tags', methods=['GET', 'POST', 'DELETE'])
+@auth_required  # 支持session和JWT
+@limiter.exempt
+def tags_api():
+    """用户题目标签（存储于 user_progress，不改DB结构）"""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({'status': 'unauthorized', 'message': '请先登录'}), 401
+
+    from app.modules.quiz.services.question_tags_service import (
+        list_user_tags,
+        create_user_tag,
+        delete_user_tag,
+    )
+
+    conn = get_db()
+
+    if request.method == 'GET':
+        tags = list_user_tags(conn, uid)
+        return jsonify({'status': 'success', 'data': {'tags': tags}})
+
+    data = request.json or {}
+    name = data.get('name') or data.get('tag') or data.get('tag_name')
+
+    if request.method == 'POST':
+        ok, msg, tag = create_user_tag(conn, uid, name)
+        if not ok:
+            conn.rollback()
+            return jsonify({'status': 'error', 'message': msg}), 400
+        conn.commit()
+        tags = list_user_tags(conn, uid)
+        return jsonify({'status': 'success', 'data': {'tag': tag, 'tags': tags}})
+
+    if request.method == 'DELETE':
+        ok, msg = delete_user_tag(conn, uid, name)
+        if not ok:
+            conn.rollback()
+            return jsonify({'status': 'error', 'message': msg}), 400
+        conn.commit()
+        tags = list_user_tags(conn, uid)
+        return jsonify({'status': 'success', 'data': {'tags': tags}})
+
+    return jsonify({'status': 'error', 'message': '不支持的请求方式'}), 405
+
+
+@quiz_api_bp.route('/questions/<int:question_id>/tags', methods=['GET', 'POST'])
+@auth_required  # 支持session和JWT
+@limiter.exempt
+def question_tags_api(question_id: int):
+    """题目标签管理（对当前用户生效）"""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({'status': 'unauthorized', 'message': '请先登录'}), 401
+
+    # 校验题目存在 + 权限
+    question = Question.get_by_id(question_id)
+    if not question:
+        return jsonify({'status': 'error', 'message': '题目不存在'}), 404
+
+    from app.core.utils.subject_permissions import can_user_access_subject
+    if question.get('subject_id') and not can_user_access_subject(uid, question['subject_id']):
+        return jsonify({'status': 'error', 'message': '无权限访问该题目'}), 403
+
+    from app.modules.quiz.services.question_tags_service import (
+        get_question_tags,
+        set_question_tags,
+        update_question_tags,
+    )
+
+    conn = get_db()
+
+    if request.method == 'GET':
+        tags = get_question_tags(conn, uid, question_id)
+        return jsonify({'status': 'success', 'data': {'question_id': question_id, 'tags': tags}})
+
+    data = request.json or {}
+    try:
+        if 'tags' in data:
+            ok, msg, tags = set_question_tags(conn, uid, question_id, data.get('tags'))
+        else:
+            ok, msg, tags = update_question_tags(
+                conn,
+                uid,
+                question_id,
+                add=data.get('add'),
+                remove=data.get('remove'),
+            )
+        if not ok:
+            conn.rollback()
+            return jsonify({'status': 'error', 'message': msg}), 400
+        conn.commit()
+        return jsonify({'status': 'success', 'data': {'question_id': question_id, 'tags': tags}})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
 @quiz_api_bp.route('/notifications_legacy', methods=['GET'])
@@ -804,6 +943,7 @@ def api_get_questions():
         subject = request.args.get('subject', 'all')
         q_type = request.args.get('q_type', 'all')
         mode = request.args.get('mode', 'quiz')
+        tag = (request.args.get('tag') or '').strip()
         shuffle_options = request.args.get('shuffle_options', '0') in ('1', 'true', 'True')
         page = request.args.get('page', 1, type=int)
         # 小程序刷题页支持一次性加载较多题目（用于离线/顺滑切题）
@@ -819,6 +959,16 @@ def api_get_questions():
             mode=mode,
             user_id=user_id
         )
+
+        # 标签筛选（用户私有）
+        if tag and str(tag).lower() != 'all':
+            from app.modules.quiz.services.question_tags_service import get_question_ids_by_tag
+            conn = get_db()
+            tag_ids = get_question_ids_by_tag(conn, user_id, tag)
+            if not tag_ids:
+                questions = []
+            else:
+                questions = [q for q in questions if int(q.get('id') or 0) in tag_ids]
         
         # 分页处理
         total = len(questions)
@@ -999,3 +1149,173 @@ def api_get_question_detail(question_id):
             'status': 'error',
             'message': f'获取题目详情失败: {str(e)}'
         }), 500
+
+
+@quiz_api_bp.route('/questions/<int:question_id>', methods=['PUT'])
+@auth_required  # 支持 session 和 JWT
+@limiter.exempt
+def api_update_question(question_id: int):
+    """编辑题目（管理员/科目管理员：答题页内弹窗编辑）"""
+    uid = current_user_id()
+    if not uid:
+        return jsonify({'status': 'unauthorized', 'message': '请先登录'}), 401
+
+    data = request.json or {}
+    content = data.get('content')
+    q_type = data.get('q_type')
+    answer = data.get('answer')
+    explanation = data.get('explanation')
+    options_in = data.get('options', None)
+
+    # 基础校验
+    if content is not None and not isinstance(content, str):
+        return jsonify({'status': 'error', 'message': 'content 必须为字符串'}), 400
+    if q_type is not None and not isinstance(q_type, str):
+        return jsonify({'status': 'error', 'message': 'q_type 必须为字符串'}), 400
+    if answer is not None and not isinstance(answer, str):
+        return jsonify({'status': 'error', 'message': 'answer 必须为字符串'}), 400
+    if explanation is not None and not isinstance(explanation, str):
+        return jsonify({'status': 'error', 'message': 'explanation 必须为字符串'}), 400
+
+    conn = get_db()
+
+    # 权限：管理员/科目管理员
+    try:
+        user_cols = [r['name'] for r in conn.execute("PRAGMA table_info(users)").fetchall()]
+    except Exception:
+        user_cols = []
+    role_fields = ['is_admin']
+    if 'is_subject_admin' in user_cols:
+        role_fields.append('is_subject_admin')
+    role_row = conn.execute(
+        f"SELECT {', '.join(role_fields)} FROM users WHERE id = ?",
+        (int(uid),)
+    ).fetchone()
+    if not role_row:
+        return jsonify({'status': 'error', 'message': '用户不存在'}), 404
+    role_row = dict(role_row)
+    can_edit = bool(role_row.get('is_admin')) or bool(role_row.get('is_subject_admin'))
+    if not can_edit:
+        return jsonify({'status': 'forbidden', 'message': '需要管理员或科目管理员权限'}), 403
+
+    # 读取旧题目（用于默认值/不存在校验）
+    old_row = conn.execute(
+        'SELECT id, subject_id, q_type, content, options, answer, explanation, image_path FROM questions WHERE id = ?',
+        (int(question_id),)
+    ).fetchone()
+    if not old_row:
+        return jsonify({'status': 'error', 'message': '题目不存在'}), 404
+    old = dict(old_row)
+
+    next_q_type = (q_type if q_type is not None else (old.get('q_type') or '')).strip()
+    next_content = (content if content is not None else (old.get('content') or '')).strip()
+    next_answer = (answer if answer is not None else (old.get('answer') or '')).strip()
+    next_explanation = (explanation if explanation is not None else (old.get('explanation') or '')).strip()
+
+    # options：允许数组/对象（前端结构化）或字符串（JSON/纯文本）
+    options_str = None
+    options_list = None
+    if options_in is None:
+        options_str = old.get('options')
+        options_list = old.get('options')
+    else:
+        if isinstance(options_in, str):
+            options_str = options_in
+            options_list = options_in
+        else:
+            try:
+                import json
+                options_str = json.dumps(options_in, ensure_ascii=False)
+                options_list = options_in
+            except Exception:
+                return jsonify({'status': 'error', 'message': 'options 格式错误'}), 400
+
+    # 多选题校验：答案至少两个选项，且必须在选项范围内
+    if next_q_type == '多选题':
+        if len(next_answer) < 2:
+            return jsonify({'status': 'error', 'message': '多选题答案至少需要两个选项，例如：AB 或 ABC'}), 400
+        try:
+            import json
+            options_parsed = options_list
+            if isinstance(options_parsed, str):
+                options_parsed = json.loads(options_parsed) if options_parsed.strip() else []
+            parsed_options = parse_options(options_parsed)
+            valid_keys = {opt.get('key') for opt in parsed_options if opt.get('key')}
+            answer_keys = set(next_answer.upper())
+            invalid_keys = answer_keys - valid_keys
+            if invalid_keys:
+                return jsonify({
+                    'status': 'error',
+                    'message': f'多选题答案中包含无效选项：{", ".join(sorted(invalid_keys))}。有效选项为：{", ".join(sorted(valid_keys))}'
+                }), 400
+        except Exception:
+            # 解析失败时不阻塞（保持兼容旧数据），由题库管理页进一步校验
+            pass
+
+    try:
+        conn.execute(
+            '''
+            UPDATE questions SET
+                q_type = ?,
+                content = ?,
+                options = ?,
+                answer = ?,
+                explanation = ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            ''',
+            (next_q_type, next_content, options_str, next_answer, next_explanation, int(question_id))
+        )
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'status': 'error', 'message': f'保存失败: {str(e)}'}), 500
+
+    # 返回更新后的题目（沿用小程序详情接口格式）
+    try:
+        row = conn.execute(
+            '''
+            SELECT q.*, s.name as subject
+            FROM questions q
+            LEFT JOIN subjects s ON q.subject_id = s.id
+            WHERE q.id = ?
+            ''',
+            (int(question_id),)
+        ).fetchone()
+        if not row:
+            return jsonify({'status': 'error', 'message': '题目不存在'}), 404
+        q = dict(row)
+
+        fav_row = conn.execute(
+            'SELECT id FROM favorites WHERE user_id = ? AND question_id = ?',
+            (int(uid), int(question_id))
+        ).fetchone()
+        mistake_row = conn.execute(
+            'SELECT id FROM mistakes WHERE user_id = ? AND question_id = ?',
+            (int(uid), int(question_id))
+        ).fetchone()
+
+        q_type_val = q.get('q_type', '')
+        options = parse_options(q.get('options'))
+        if q_type_val == '判断题' and not options:
+            options = [
+                {'key': '正确', 'value': '正确'},
+                {'key': '错误', 'value': '错误'},
+            ]
+
+        formatted_question = {
+            'id': q.get('id'),
+            'content': q.get('content', ''),
+            'q_type': q_type_val,
+            'options': options,
+            'answer': q.get('answer', '') or '',
+            'explanation': q.get('explanation', ''),
+            'image_path': q.get('image_path'),
+            'subject': q.get('subject', '') or '',
+            'is_fav': 1 if fav_row else 0,
+            'is_mistake': 1 if mistake_row else 0
+        }
+
+        return jsonify({'status': 'success', 'data': formatted_question}), 200
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': f'题目更新成功但返回数据失败: {str(e)}'}), 500

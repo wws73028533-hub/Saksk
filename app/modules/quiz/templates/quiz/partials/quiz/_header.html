@@ -32,6 +32,11 @@
   {% endif %}
 
   <div style="display:flex; align-items:center; gap:10px;">
+    {% if is_mis_scope and mode != 'memo' and mode != 'exam' %}
+      <button id="btnMistakeClearOnCorrect" class="btn-menu" onclick="toggleMistakeClearOnCorrect()" aria-pressed="true" title="答对将从错题本移除">
+        答对移出
+      </button>
+    {% endif %}
     <button class="btn-menu btn-theme" onclick="toggleTheme()" aria-label="切换深色模式">
       <span class="theme-icon" aria-hidden="true">
         <img src="/static/icons/theme-sun.svg" class="icon-sun" alt="" onerror="this.style.display='none'">

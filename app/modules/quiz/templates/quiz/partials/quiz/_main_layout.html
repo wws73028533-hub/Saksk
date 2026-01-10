@@ -28,5 +28,10 @@
     <button class="quiz-fab-item" data-action="clearCurrent" title="清除本题进度" aria-label="清除本题进度">
       <span class="quiz-fab-icon">↺</span>
     </button>
+    {% if is_admin or is_subject_admin %}
+      <button class="quiz-fab-item" data-action="editQuestion" title="编辑题目" aria-label="编辑题目">
+        <span class="quiz-fab-icon">✎</span>
+      </button>
+    {% endif %}
   </div>
 </div>

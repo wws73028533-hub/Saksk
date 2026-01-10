@@ -129,6 +129,15 @@ def index():
     except Exception:
         # 如果获取配置失败，使用默认值True（保持向后兼容）
         pass
+
+    # 用户题目标签（私有，存储在 user_progress）
+    user_tags = []
+    if uid:
+        try:
+            from app.modules.quiz.services.question_tags_service import list_user_tags
+            user_tags = list_user_tags(conn, uid)
+        except Exception:
+            user_tags = []
     
     return render_template('main/index.html',
                          quiz_count=quiz_count,
@@ -137,6 +146,7 @@ def index():
                          subjects=subjects,
                          q_types=q_types,
                          subject_q_types_json=json.dumps(subject_q_types, ensure_ascii=False),
+                         user_tags=user_tags,
                          logged_in=bool(uid),
                          username=session.get('username'),
                          is_admin=session.get('is_admin', False),
@@ -424,4 +434,3 @@ def about_page():
         username=session.get('username'),
         is_admin=session.get('is_admin', False),
     )
-

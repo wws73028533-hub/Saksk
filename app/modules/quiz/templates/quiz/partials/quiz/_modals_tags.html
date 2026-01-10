@@ -1,0 +1,21 @@
+{# Question tags modal #}
+<div class="overlay" id="tagOverlay" style="z-index: 2100; display:none;" onclick="closeTagModal(event)">
+    <div class="card-container score-modal tag-modal" style="width:min(92vw,520px); min-height:auto;" onclick="event.stopPropagation()">
+        <h2 style="margin-top:0;">题目标签</h2>
+        <div style="color:var(--text-sub); font-size:13px; margin-top:-6px;">为当前题目添加/移除标签</div>
+
+        <div style="margin-top:14px; display:flex; gap:10px;">
+            <input id="tagNewInput" placeholder="新建标签（回车添加）"
+                   style="flex:1; padding:10px 12px; border-radius:12px; border:1px solid var(--border-color); background: var(--card-bg-solid); color: var(--text-color); outline:none;"
+                   onkeydown="onTagNewKey(event)" />
+            <button class="btn btn-nav" onclick="createTagFromModal()" style="white-space:nowrap;">添加</button>
+        </div>
+
+        <div id="tagChipList" class="tag-chip-list"></div>
+
+        <div style="margin-top:16px; display:flex; justify-content:flex-end; gap:10px;">
+            <button class="btn btn-nav" onclick="closeTagModal()">完成</button>
+        </div>
+    </div>
+</div>
+

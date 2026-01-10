@@ -32,6 +32,10 @@ class Config:
     # Flask配置
     JSON_AS_ASCII = False
     JSONIFY_MIMETYPE = 'application/json; charset=utf-8'
+
+    # 响应压缩（可由反向代理/Nginx 接管；直连 Flask 时可显著减少 HTML/CSS/JS/JSON 体积）
+    ENABLE_GZIP = os.environ.get('ENABLE_GZIP', 'true').lower() in ['true', 'on', '1']
+    GZIP_MINIMUM_SIZE = int(os.environ.get('GZIP_MINIMUM_SIZE', '500') or 500)
     
     # 会话配置：启用永久会话，默认 7 天
     PERMANENT_SESSION_LIFETIME = 60 * 60 * 24 * 7  # 7 天（秒）

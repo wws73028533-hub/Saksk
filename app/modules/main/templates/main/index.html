@@ -115,8 +115,8 @@
             opacity: 0.02;
             mix-blend-mode: overlay;
         }
-        /* 移动端禁用噪点纹理层以提升性能 */
-        @media (max-width: 768px) {
+        /* 触摸设备/移动端禁用噪点纹理层以提升性能（含横屏/折叠屏） */
+        @media (max-width: 768px), (hover: none) and (pointer: coarse) {
             .noise-layer {
                 display: none;
             }
@@ -154,17 +154,19 @@
             -webkit-backdrop-filter: blur(60px) saturate(180%);
             border-color: rgba(255, 255, 255, 0.12);
         }
-        /* 移动端禁用 backdrop-filter，使用更不透明的背景 */
-        @media (max-width: 768px) {
+        /* 触摸设备/移动端禁用 backdrop-filter（含横屏/折叠屏） */
+        @media (max-width: 768px), (hover: none) and (pointer: coarse) {
             .search-input {
                 background: rgba(255, 255, 255, 0.95);
                 backdrop-filter: none;
                 -webkit-backdrop-filter: none;
+                transform: none;
             }
             body.dark-mode .search-input {
                 background: rgba(28, 28, 30, 0.95);
                 backdrop-filter: none;
                 -webkit-backdrop-filter: none;
+                transform: none;
             }
         }
         .search-input::before {
@@ -230,6 +232,17 @@
             overflow-x: hidden;
             /* GPU 加速优化 */
             transform: translateZ(0);
+        }
+
+        /* 触摸设备减少强制合成层（含横屏/折叠屏），降低低端机掉帧风险 */
+        @media (hover: none) and (pointer: coarse) {
+            body {
+                transform: none;
+            }
+            body::after,
+            body::before {
+                transform: none;
+            }
         }
 
         /* 柔和的浅灰到白色渐变背景 - 苹果风格 */
@@ -318,8 +331,8 @@
             animation: moveGlow3 34s infinite alternate;
         }
         
-        /* 移动端禁用光晕动画以提升性能 */
-        @media (max-width: 768px) {
+        /* 触摸设备/移动端禁用光晕动画以提升性能（含横屏/折叠屏） */
+        @media (max-width: 768px), (hover: none) and (pointer: coarse) {
             .glow-container {
                 display: none;
             }
@@ -410,17 +423,21 @@
             transform: translateZ(0);
             will-change: transform;
         }
-        /* 移动端禁用 backdrop-filter */
-        @media (max-width: 768px) {
+        /* 触摸设备/移动端禁用 backdrop-filter（含横屏/折叠屏） */
+        @media (max-width: 768px), (hover: none) and (pointer: coarse) {
             .theme-toggle {
                 background: rgba(255, 255, 255, 0.95);
                 backdrop-filter: none;
                 -webkit-backdrop-filter: none;
+                transform: none;
+                will-change: auto;
             }
             body.dark-mode .theme-toggle {
                 background: rgba(28, 28, 30, 0.95);
                 backdrop-filter: none;
                 -webkit-backdrop-filter: none;
+                transform: none;
+                will-change: auto;
             }
         }
                 .theme-toggle .theme-icon {
@@ -487,17 +504,19 @@
             /* GPU 加速 */
             transform: translateZ(0);
         }
-        /* 移动端禁用 backdrop-filter */
-        @media (max-width: 768px) {
+        /* 触摸设备/移动端禁用 backdrop-filter（含横屏/折叠屏） */
+        @media (max-width: 768px), (hover: none) and (pointer: coarse) {
             .menu-btn {
                 background: rgba(255, 255, 255, 0.95);
                 backdrop-filter: none;
                 -webkit-backdrop-filter: none;
+                transform: none;
             }
             body.dark-mode .menu-btn {
                 background: rgba(28, 28, 30, 0.95);
                 backdrop-filter: none;
                 -webkit-backdrop-filter: none;
+                transform: none;
             }
         }
         .menu-btn:hover { 
@@ -574,17 +593,19 @@
             border: 0.5px solid rgba(255, 255, 255, 0.10);
             box-shadow: 0 12px 54px rgba(0,0,0,0.35);
         }
-        /* 移动端禁用 backdrop-filter，使用更不透明的背景 */
-        @media (max-width: 768px) {
+        /* 触摸设备/移动端禁用 backdrop-filter（含横屏/折叠屏） */
+        @media (max-width: 768px), (hover: none) and (pointer: coarse) {
             .card {
                 background: rgba(255, 255, 255, 0.95);
                 backdrop-filter: none;
                 -webkit-backdrop-filter: none;
+                transform: none;
             }
             body.dark-mode .card {
                 background: rgba(28, 28, 30, 0.95);
                 backdrop-filter: none;
                 -webkit-backdrop-filter: none;
+                transform: none;
             }
         }
 
@@ -633,8 +654,8 @@
                 transparent 100%
             );
         }
-        /* 移动端简化伪元素以提升性能 */
-        @media (max-width: 768px) {
+        /* 触摸设备/移动端简化伪元素以提升性能（含横屏/折叠屏） */
+        @media (max-width: 768px), (hover: none) and (pointer: coarse) {
             .card::before,
             .card::after {
                 display: none;
@@ -748,17 +769,19 @@
             /* GPU 加速 */
             transform: translateZ(0);
         }
-        /* 移动端禁用 backdrop-filter */
-        @media (max-width: 768px) {
+        /* 触摸设备/移动端禁用 backdrop-filter（含横屏/折叠屏） */
+        @media (max-width: 768px), (hover: none) and (pointer: coarse) {
             .chip {
                 background: rgba(255, 255, 255, 0.9);
                 backdrop-filter: none;
                 -webkit-backdrop-filter: none;
+                transform: none;
             }
             body.dark-mode .chip {
                 background: rgba(28, 28, 30, 0.9);
                 backdrop-filter: none;
                 -webkit-backdrop-filter: none;
+                transform: none;
             }
         }
         .chip:hover {
@@ -778,8 +801,8 @@
                 0 1px 2px rgba(0, 122, 255, 0.08),
                 0 0 0 0.5px rgba(255, 255, 255, 0.9) inset;
         }
-        /* 移动端禁用 backdrop-filter */
-        @media (max-width: 768px) {
+        /* 触摸设备/移动端禁用 backdrop-filter（含横屏/折叠屏） */
+        @media (max-width: 768px), (hover: none) and (pointer: coarse) {
             .chip.active {
                 background: rgba(0, 122, 255, 0.12);
                 backdrop-filter: none;
@@ -885,8 +908,8 @@
             overflow: hidden;
             font-weight: 500;
         }
-        /* 移动端禁用 backdrop-filter */
-        @media (max-width: 768px) {
+        /* 触摸设备/移动端禁用 backdrop-filter（含横屏/折叠屏） */
+        @media (max-width: 768px), (hover: none) and (pointer: coarse) {
             .btn-primary {
                 background: rgba(0, 122, 255, 0.12);
                 backdrop-filter: none;
@@ -939,8 +962,8 @@
                 0 0 0 0.5px rgba(255, 255, 255, 0.9) inset;
             font-weight: 500;
         }
-        /* 移动端禁用 backdrop-filter */
-        @media (max-width: 768px) {
+        /* 触摸设备/移动端禁用 backdrop-filter（含横屏/折叠屏） */
+        @media (max-width: 768px), (hover: none) and (pointer: coarse) {
             .btn-secondary {
                 background: rgba(255, 255, 255, 0.9);
                 backdrop-filter: none;
@@ -1751,17 +1774,21 @@
             -webkit-backdrop-filter: blur(60px) saturate(180%);
             border-color: rgba(255, 255, 255, 0.12);
         }
-        /* 移动端禁用 backdrop-filter */
-        @media (max-width: 768px) {
+        /* 触摸设备/移动端禁用 backdrop-filter（含横屏/折叠屏） */
+        @media (max-width: 768px), (hover: none) and (pointer: coarse) {
             .notification-banner {
                 background: rgba(255, 255, 255, 0.95);
                 backdrop-filter: none;
                 -webkit-backdrop-filter: none;
+                transform: none;
+                will-change: auto;
             }
             body.dark-mode .notification-banner {
                 background: rgba(28, 28, 30, 0.95);
                 backdrop-filter: none;
                 -webkit-backdrop-filter: none;
+                transform: none;
+                will-change: auto;
             }
         }
         .notification-banner::before {
@@ -2114,6 +2141,28 @@
             display: flex;
             flex-direction: column;
         }
+
+        /* 触摸设备/移动端禁用遮罩/弹窗的 backdrop-filter（含横屏/折叠屏） */
+        @media (max-width: 768px), (hover: none) and (pointer: coarse) {
+            .modal-overlay,
+            .popup-overlay {
+                backdrop-filter: none;
+                -webkit-backdrop-filter: none;
+            }
+
+            .modal,
+            .popup-modal {
+                backdrop-filter: none;
+                -webkit-backdrop-filter: none;
+            }
+
+            .modal {
+                background: rgba(255, 255, 255, 0.95);
+            }
+            body.dark-mode .modal {
+                background: rgba(28, 28, 30, 0.95);
+            }
+        }
         
         @keyframes slideUp {
             from {
@@ -2345,6 +2394,20 @@
                         {% endfor %}
                     </div>
                 </div>
+                {% if logged_in %}
+                <div class="config-group">
+                    <label class="config-label">选择标签</label>
+                    <div class="chips-scroll" id="chipsTag">
+                        <span class="chip" data-val="all" onclick="selectChip('tag', this)">全部标签</span>
+                        {% for tg in user_tags %}
+                        <span class="chip" data-val="{{ tg.name|e }}" onclick="selectChip('tag', this)" title="{{ tg.count }}题">{{ tg.name }}</span>
+                        {% endfor %}
+                    </div>
+                    <div style="margin-top:8px; color:var(--text-sub); font-size:12px;">
+                        没有标签？可在答题页给题目打标签
+                    </div>
+                </div>
+                {% endif %}
                 <div class="config-group">
                     <label class="config-label">练习选项</label>
                     <div style="display: flex; gap: 16px; flex-wrap: wrap;">
@@ -2461,6 +2524,7 @@
             misBadge: null,
             chipsSubject: null,
             chipsType: null,
+            chipsTag: null,
             headerAvatar: null,
             headerAvatarText: null,
             notificationContainer: null,
@@ -2472,6 +2536,7 @@
                 this.misBadge = document.getElementById('misBadge');
                 this.chipsSubject = document.getElementById('chipsSubject');
                 this.chipsType = document.getElementById('chipsType');
+                this.chipsTag = document.getElementById('chipsTag');
                 this.headerAvatar = document.getElementById('headerAvatar');
                 this.headerAvatarText = document.getElementById('headerAvatarText');
                 this.notificationContainer = document.getElementById('notificationContainer');
@@ -2547,7 +2612,6 @@
         
         document.addEventListener('click', function(){ closeUserMenu(); });
         document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeUserMenu(); });
-        window.addEventListener('scroll', closeUserMenu, { passive: true });
         // 优化：resize 事件防抖，减少频繁触发
         window.addEventListener('resize', debounce(closeUserMenu, 150), { passive: true });
         window.addEventListener('orientationchange', closeUserMenu);
@@ -2559,6 +2623,7 @@
 
         const SUBJECT_KEY = 'home_subject';
         const TYPE_KEY = 'home_type';
+        const TAG_KEY = 'home_tag';
         const SHUFFLE_QUESTIONS_KEY = 'shuffle_questions';
         const SHUFFLE_OPTIONS_KEY = 'shuffle_options';
         const HOME_VISIBLE_SUBJECTS_KEY = 'home_visible_subjects';
@@ -2601,6 +2666,9 @@
         function currentType(){
             return localStorage.getItem(TYPE_KEY) || 'all';
         }
+        function currentTag(){
+            return localStorage.getItem(TAG_KEY) || 'all';
+        }
         function getFirstChipValue(containerId){
             const c = document.getElementById(containerId);
             const first = c ? c.querySelector('.chip') : null;
@@ -2642,7 +2710,11 @@
 
         function selectChip(kind, el, isInternalCall = false){
             const val = el.dataset.val;
-            const box = kind === 'subject' ? DOMCache.chipsSubject : DOMCache.chipsType;
+            const box =
+              kind === 'subject' ? DOMCache.chipsSubject :
+              kind === 'type' ? DOMCache.chipsType :
+              kind === 'tag' ? DOMCache.chipsTag :
+              null;
             if (!box) return;
             box.querySelectorAll('.chip').forEach(x=>x.classList.remove('active'));
             el.classList.add('active');
@@ -2653,7 +2725,7 @@
                 if (!isInternalCall) {
                     updateQuestionTypes(val);
                 }
-            } else {
+            } else if (kind === 'type') {
                 localStorage.setItem(TYPE_KEY, val);
                 const shuffleOptionsCheckbox = document.getElementById('shuffleOptions');
                 const shuffleOptionsLabel = shuffleOptionsCheckbox.parentElement;
@@ -2670,6 +2742,8 @@
                     shuffleOptionsLabel.style.cursor = 'not-allowed';
                     saveShuffleSettings();
                 }
+            } else if (kind === 'tag') {
+                localStorage.setItem(TAG_KEY, val);
             }
             updateCount();
         }
@@ -2692,8 +2766,10 @@
             if (!badge) { await updateUserCounts(); return; }
             const s = currentSubject();
             const t = currentType();
+            const tag = LOGGED_IN ? currentTag() : 'all';
+            const tagParam = (tag && tag !== 'all') ? `&tag=${encodeURIComponent(tag)}` : '';
             try {
-                const res = await fetch(`/api/questions/count?subject=${encodeURIComponent(s)}&type=${encodeURIComponent(t)}`);
+                const res = await fetch(`/api/questions/count?subject=${encodeURIComponent(s)}&type=${encodeURIComponent(t)}${tagParam}`);
                 const js = await res.json();
                 if (res.ok && js && js.status === 'success') {
                     badge.textContent = `${js.count} 题`;
@@ -2747,6 +2823,27 @@
             if (activeSubject) {
                 updateQuestionTypes(activeSubject);
             }
+
+            // 4) 标签 chips（若存在）应用本地选择
+            const tb = DOMCache.chipsTag;
+            if (tb) {
+                const cur = currentTag();
+                let matchedTag = false;
+                tb.querySelectorAll('.chip').forEach(x => {
+                    x.classList.remove('active');
+                    if (x.dataset.val === cur) {
+                        x.classList.add('active');
+                        matchedTag = true;
+                    }
+                });
+                if (!matchedTag) {
+                    const allChip = tb.querySelector('.chip[data-val="all"]');
+                    if (allChip) {
+                        allChip.classList.add('active');
+                        localStorage.setItem(TAG_KEY, 'all');
+                    }
+                }
+            }
         }
 
         function setLoading(el, state=true){ if(!el) return; el.dataset.loading = state ? 'true' : 'false'; el.setAttribute('aria-busy', state ? 'true' : 'false'); el.disabled = !!state; }
@@ -2767,10 +2864,12 @@
             const countMode = (opts.countMode || dataset || mode);
             const s = currentSubject();
             const t = currentType();
+            const tag = LOGGED_IN ? currentTag() : 'all';
+            const tagParam = (tag && tag !== 'all') ? `&tag=${encodeURIComponent(tag)}` : '';
             // 刷题/背题/收藏/错题 进入前做一次实时校验；失败则放行
             if (['quiz','memo','favorites','mistakes'].includes(mode)) {
                 try {
-                    const res = await fetch(`/api/questions/count?subject=${encodeURIComponent(s)}&type=${encodeURIComponent(t)}&mode=${encodeURIComponent(countMode)}${dataset ? `&source=${encodeURIComponent(dataset)}` : ''}`);
+                    const res = await fetch(`/api/questions/count?subject=${encodeURIComponent(s)}&type=${encodeURIComponent(t)}&mode=${encodeURIComponent(countMode)}${dataset ? `&source=${encodeURIComponent(dataset)}` : ''}${tagParam}`);
                     const js = await res.json();
                     if (res.ok && js && js.status === 'success' && Number(js.count) === 0) {
                         alert('没有题目，请重新选择科目和题型');
@@ -2790,6 +2889,7 @@
                 shuffle_options: shuffleO
             });
             if (dataset) params.append('source', dataset);
+            if (tag && tag !== 'all') params.append('tag', tag);
             const url = `/quiz?${params.toString()}`;
             setTimeout(()=>{ window.location.href = url; }, 50);
         }
@@ -3396,6 +3496,12 @@
             background: rgba(0, 0, 0, 0.6);
             backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
+        }
+        @media (max-width: 768px), (hover: none) and (pointer: coarse) {
+            .email-bind-modal-overlay {
+                backdrop-filter: none;
+                -webkit-backdrop-filter: none;
+            }
         }
         .email-bind-modal-content {
             position: relative;
@@ -4576,6 +4682,19 @@
             animation: passwordModalSlideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
             font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
         }
+
+        @media (max-width: 768px), (hover: none) and (pointer: coarse) {
+            .password-set-modal-overlay {
+                background: rgba(0, 0, 0, 0.55);
+                backdrop-filter: none;
+                -webkit-backdrop-filter: none;
+            }
+
+            .password-set-modal-content {
+                backdrop-filter: none;
+                -webkit-backdrop-filter: none;
+            }
+        }
         
         body.dark-mode .password-set-modal-content {
             background: rgba(28, 28, 30, 0.85);
@@ -4913,8 +5032,3 @@
     {% endif %}
 </body>
 </html>
-
-
-
-
-
