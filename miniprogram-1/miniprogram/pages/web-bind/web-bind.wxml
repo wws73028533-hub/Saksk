@@ -1,4 +1,4 @@
-<view class="page">
+<view class="page {{themeClass}}">
   <view class="card">
     <view class="title">绑定微信</view>
     <view class="sub">确认后，将把当前微信绑定到网页账号</view>
@@ -16,4 +16,3 @@
     </view>
   </view>
 </view>
-

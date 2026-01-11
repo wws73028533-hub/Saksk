@@ -1,0 +1,434 @@
+{% extends "user_bank/base.html" %}
+
+{% block title %}刷题{% endblock %}
+
+{% block content %}
+<a href="/user/banks" class="nav-back">← 返回</a>
+
+<div class="page-header">
+    <h1 class="page-title" id="pageTitle">刷题</h1>
+    <div class="header-actions">
+        <select id="modeSelect" class="form-input form-select" style="width: 120px;">
+            <option value="all">顺序刷题</option>
+            <option value="random">随机刷题</option>
+            <option value="wrong">错题复习</option>
+        </select>
+    </div>
+</div>
+
+<!-- 进度 -->
+<div class="card" id="progressCard">
+    <div class="progress-info">
+        <span id="progressText">0 / 0</span>
+        <span id="accuracyText">正确率: --%</span>
+    </div>
+    <div class="progress-bar">
+        <div class="progress-fill" id="progressFill" style="width: 0%;"></div>
+    </div>
+</div>
+
+<!-- 题目 -->
+<div class="card" id="questionCard">
+    <div class="loading"></div>
+</div>
+
+<!-- 操作按钮 -->
+<div class="action-bar" id="actionBar" style="display: none;">
+    <button class="btn btn-secondary" id="prevBtn" onclick="prevQuestion()" disabled>上一题</button>
+    <button class="btn btn-primary" id="submitBtn" onclick="submitAnswer()">确认答案</button>
+    <button class="btn btn-primary" id="nextBtn" onclick="nextQuestion()" style="display: none;">下一题</button>
+</div>
+{% endblock %}
+
+{% block head %}
+<style>
+    .progress-info {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        font-size: 14px;
+        color: var(--text-sub);
+    }
+    .progress-bar {
+        height: 6px;
+        background: var(--border-color);
+        border-radius: 3px;
+        overflow: hidden;
+    }
+    .progress-fill {
+        height: 100%;
+        background: var(--primary);
+        border-radius: 3px;
+        transition: width 0.3s ease;
+    }
+
+    .question-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+    .question-number {
+        font-size: 14px;
+        color: var(--text-sub);
+    }
+
+    .question-content {
+        font-size: 17px;
+        line-height: 1.8;
+        margin-bottom: 24px;
+    }
+
+    .options {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .option {
+        padding: 14px 16px;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    .option:hover { background: var(--primary-light); }
+    .option.selected { border-color: var(--primary); background: var(--primary-light); }
+    .option.correct { border-color: var(--success); background: rgba(52, 199, 89, 0.15); }
+    .option.wrong { border-color: var(--danger); background: rgba(255, 59, 48, 0.15); }
+    .option.disabled { pointer-events: none; }
+
+    .option-label {
+        font-weight: 600;
+        color: var(--primary);
+    }
+
+    .answer-input {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        font-size: 16px;
+    }
+
+    .explanation {
+        margin-top: 20px;
+        padding: 16px;
+        background: rgba(0, 122, 255, 0.06);
+        border-radius: var(--radius-md);
+        display: none;
+    }
+    .explanation.show { display: block; }
+    .explanation-title {
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: var(--primary);
+    }
+
+    .action-bar {
+        display: flex;
+        justify-content: center;
+        gap: 16px;
+        margin-top: 24px;
+    }
+
+    .result-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 100px;
+        font-size: 14px;
+        font-weight: 500;
+    }
+    .result-badge.correct { background: rgba(52, 199, 89, 0.15); color: var(--success); }
+    .result-badge.wrong { background: rgba(255, 59, 48, 0.15); color: var(--danger); }
+
+    /* ========== 黑夜模式适配 ========== */
+    [data-theme="dark"] .progress-bar {
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    [data-theme="dark"] .option {
+        border-color: rgba(255, 255, 255, 0.15);
+        background: rgba(28, 28, 30, 0.6);
+    }
+    [data-theme="dark"] .option:hover {
+        background: rgba(0, 122, 255, 0.15);
+    }
+    [data-theme="dark"] .option.selected {
+        border-color: var(--primary);
+        background: rgba(0, 122, 255, 0.2);
+    }
+    [data-theme="dark"] .option.correct {
+        border-color: var(--success);
+        background: rgba(52, 199, 89, 0.2);
+    }
+    [data-theme="dark"] .option.wrong {
+        border-color: var(--danger);
+        background: rgba(255, 59, 48, 0.2);
+    }
+
+    [data-theme="dark"] .answer-input {
+        background: rgba(28, 28, 30, 0.8);
+        border-color: rgba(255, 255, 255, 0.15);
+        color: var(--text-color);
+    }
+    [data-theme="dark"] .answer-input:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.2);
+    }
+
+    [data-theme="dark"] .explanation {
+        background: rgba(0, 122, 255, 0.1);
+        border: 0.5px solid rgba(0, 122, 255, 0.2);
+    }
+
+    [data-theme="dark"] .result-badge.correct {
+        background: rgba(52, 199, 89, 0.2);
+    }
+    [data-theme="dark"] .result-badge.wrong {
+        background: rgba(255, 59, 48, 0.2);
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const bankId = {{ bank_id }};
+    let questions = [];
+    let currentIndex = 0;
+    let userAnswers = {};
+    let correctCount = 0;
+    let answeredCount = 0;
+    let answered = false;
+
+    async function loadBank() {
+        try {
+            const res = await api(`/user/banks/api/${bankId}`);
+            document.getElementById('pageTitle').textContent = res.data.name;
+        } catch (e) {
+            showToast(e.message, 'error');
+        }
+    }
+
+    async function loadQuestions() {
+        const mode = document.getElementById('modeSelect').value;
+
+        try {
+            const res = await api(`/user/banks/api/${bankId}/quiz?mode=${mode}&limit=50`);
+            questions = res.data.questions || [];
+
+            if (questions.length === 0) {
+                document.getElementById('questionCard').innerHTML = `
+                    <div class="empty-state">
+                        <p>暂无题目</p>
+                    </div>
+                `;
+                document.getElementById('actionBar').style.display = 'none';
+                return;
+            }
+
+            currentIndex = 0;
+            userAnswers = {};
+            correctCount = 0;
+            answeredCount = 0;
+            renderQuestion();
+            document.getElementById('actionBar').style.display = 'flex';
+        } catch (e) {
+            showToast(e.message, 'error');
+        }
+    }
+
+    function renderQuestion() {
+        const q = questions[currentIndex];
+        if (!q) return;
+
+        answered = userAnswers[q.id] !== undefined;
+
+        let optionsHtml = '';
+        let options = [];
+        try {
+            options = q.options ? JSON.parse(q.options) : [];
+        } catch (e) {
+            options = [];
+        }
+
+        const labels = 'ABCDEFGHIJ';
+
+        if (q.q_type === '选择题' || q.q_type === '多选题') {
+            optionsHtml = `<div class="options">
+                ${options.map((opt, i) => {
+                    const label = labels[i];
+                    const isSelected = userAnswers[q.id] && userAnswers[q.id].includes(label);
+                    const isCorrect = answered && q.answer && q.answer.includes(label);
+                    const isWrong = answered && isSelected && !isCorrect;
+
+                    let className = 'option';
+                    if (answered) className += ' disabled';
+                    if (isSelected) className += ' selected';
+                    if (answered && isCorrect) className += ' correct';
+                    if (isWrong) className += ' wrong';
+
+                    return `<div class="${className}" onclick="selectOption('${label}')">
+                        <span class="option-label">${label}.</span>
+                        <span>${escapeHtml(opt)}</span>
+                    </div>`;
+                }).join('')}
+            </div>`;
+        } else if (q.q_type === '判断题') {
+            optionsHtml = `<div class="options">
+                ${['对', '错'].map(opt => {
+                    const isSelected = userAnswers[q.id] === opt;
+                    const isCorrect = answered && q.answer === opt;
+                    const isWrong = answered && isSelected && !isCorrect;
+
+                    let className = 'option';
+                    if (answered) className += ' disabled';
+                    if (isSelected) className += ' selected';
+                    if (answered && isCorrect) className += ' correct';
+                    if (isWrong) className += ' wrong';
+
+                    return `<div class="${className}" onclick="selectOption('${opt}')">
+                        <span>${opt}</span>
+                    </div>`;
+                }).join('')}
+            </div>`;
+        } else {
+            optionsHtml = `<input type="text" class="answer-input" id="answerInput" placeholder="请输入答案" value="${userAnswers[q.id] || ''}" ${answered ? 'disabled' : ''}>`;
+        }
+
+        let resultHtml = '';
+        if (answered) {
+            const isCorrect = checkAnswer(q, userAnswers[q.id]);
+            resultHtml = `<span class="result-badge ${isCorrect ? 'correct' : 'wrong'}">${isCorrect ? '回答正确' : '回答错误'}</span>`;
+        }
+
+        document.getElementById('questionCard').innerHTML = `
+            <div class="question-header">
+                <span class="question-number">第 ${currentIndex + 1} / ${questions.length} 题</span>
+                <span class="badge badge-primary">${q.q_type}</span>
+                ${resultHtml}
+            </div>
+            <div class="question-content">${escapeHtml(q.content)}</div>
+            ${optionsHtml}
+            <div class="explanation ${answered ? 'show' : ''}" id="explanation">
+                <div class="explanation-title">答案解析</div>
+                <div><strong>正确答案：</strong>${escapeHtml(q.answer)}</div>
+                ${q.explanation ? `<div style="margin-top: 8px;">${escapeHtml(q.explanation)}</div>` : ''}
+            </div>
+        `;
+
+        updateProgress();
+        updateButtons();
+    }
+
+    function selectOption(value) {
+        if (answered) return;
+
+        const q = questions[currentIndex];
+        if (q.q_type === '多选题') {
+            let current = userAnswers[q.id] || '';
+            if (current.includes(value)) {
+                current = current.replace(value, '').replace(',,', ',').replace(/^,|,$/g, '');
+            } else {
+                current = current ? current + ',' + value : value;
+            }
+            userAnswers[q.id] = current;
+        } else {
+            userAnswers[q.id] = value;
+        }
+        renderQuestion();
+    }
+
+    function submitAnswer() {
+        const q = questions[currentIndex];
+        let answer = userAnswers[q.id];
+
+        if (q.q_type === '填空题' || q.q_type === '简答题') {
+            answer = document.getElementById('answerInput').value.trim();
+            userAnswers[q.id] = answer;
+        }
+
+        if (!answer) {
+            showToast('请先作答', 'error');
+            return;
+        }
+
+        answered = true;
+        answeredCount++;
+
+        const isCorrect = checkAnswer(q, answer);
+        if (isCorrect) correctCount++;
+
+        // 记录到服务器
+        api(`/user/banks/api/${bankId}/quiz/record`, {
+            method: 'POST',
+            body: JSON.stringify({
+                question_id: q.id,
+                user_answer: answer,
+                is_correct: isCorrect
+            })
+        }).catch(e => console.error(e));
+
+        renderQuestion();
+    }
+
+    function checkAnswer(q, userAnswer) {
+        if (!userAnswer || !q.answer) return false;
+
+        if (q.q_type === '多选题') {
+            const correct = q.answer.split(',').sort().join(',');
+            const user = userAnswer.split(',').sort().join(',');
+            return correct === user;
+        }
+
+        return userAnswer.trim().toLowerCase() === q.answer.trim().toLowerCase();
+    }
+
+    function prevQuestion() {
+        if (currentIndex > 0) {
+            currentIndex--;
+            answered = userAnswers[questions[currentIndex].id] !== undefined;
+            renderQuestion();
+        }
+    }
+
+    function nextQuestion() {
+        if (currentIndex < questions.length - 1) {
+            currentIndex++;
+            answered = userAnswers[questions[currentIndex].id] !== undefined;
+            renderQuestion();
+        }
+    }
+
+    function updateProgress() {
+        const percent = questions.length > 0 ? (answeredCount / questions.length * 100) : 0;
+        const accuracy = answeredCount > 0 ? (correctCount / answeredCount * 100).toFixed(1) : '--';
+
+        document.getElementById('progressText').textContent = `${answeredCount} / ${questions.length}`;
+        document.getElementById('accuracyText').textContent = `正确率: ${accuracy}%`;
+        document.getElementById('progressFill').style.width = percent + '%';
+    }
+
+    function updateButtons() {
+        document.getElementById('prevBtn').disabled = currentIndex === 0;
+        document.getElementById('submitBtn').style.display = answered ? 'none' : 'inline-flex';
+        document.getElementById('nextBtn').style.display = answered ? 'inline-flex' : 'none';
+        document.getElementById('nextBtn').disabled = currentIndex >= questions.length - 1;
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text || '';
+        return div.innerHTML;
+    }
+
+    document.getElementById('modeSelect').addEventListener('change', loadQuestions);
+
+    // 初始化
+    loadBank();
+    loadQuestions();
+</script>
+{% endblock %}

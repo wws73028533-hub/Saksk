@@ -31,6 +31,7 @@ def register_all_modules(app: Flask):
     _init_module('app.modules.notifications', 'init_notifications_module', 'notifications')
     _init_module('app.modules.popups', 'init_popups_module', 'popups')
     _init_module('app.modules.coding', 'init_coding_module', 'coding')
+    _init_module('app.modules.user_bank', 'init_user_bank_module', 'user_bank')
     _init_module('app.modules.admin', 'init_admin_module', 'admin')
 
     app.logger.info('模块注册完成')

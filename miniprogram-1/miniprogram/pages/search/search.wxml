@@ -1,6 +1,6 @@
-<!-- search.wxml - 题目搜索 -->
-<view class="page-root">
-  <navigation-bar title="题目搜索" back="{{true}}" color="black" background="#FFF"></navigation-bar>
+<!-- search.wxml - 题目搜索（支持公有题库和个人题库双数据源） -->
+<view class="page-root {{themeClass}}">
+  <navigation-bar title="题目搜索" back="{{true}}" color="var(--app-nav-fg)" background="var(--app-nav-bg)"></navigation-bar>
 
   <view class="page-container">
     <scroll-view
@@ -13,9 +13,9 @@
     >
       <view class="container">
         <view class="search-card">
-          <view class="subject-row" wx:if="{{subject}}">
-            <text class="subject-label">科目</text>
-            <text class="subject-value">{{subject}}</text>
+          <view class="subject-row" wx:if="{{displayName}}">
+            <text class="subject-label">题库</text>
+            <text class="subject-value">{{displayName}}</text>
           </view>
 
           <view class="search-bar">

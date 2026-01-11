@@ -1,0 +1,89 @@
+<!-- bank-exam-setup.wxml - 个人题库考试设置 -->
+<view class="page-root {{themeClass}}">
+  <navigation-bar title="考试设置" back="{{true}}" color="var(--app-nav-fg)" background="var(--app-nav-bg)"></navigation-bar>
+
+  <view class="page-container">
+    <scroll-view class="content-area" scroll-y type="list">
+      <view class="container">
+        <view class="card">
+          <view class="row">
+            <text class="label">题库</text>
+            <text class="value">{{bankName}}</text>
+          </view>
+          <view class="row">
+            <text class="label">可用题目</text>
+            <text class="value">{{totalQuestions}} 道</text>
+          </view>
+        </view>
+
+        <view class="card">
+          <view class="section-title">考试设置</view>
+          <view class="row">
+            <text class="label">考试时长（分钟）</text>
+            <input
+              class="input"
+              type="number"
+              value="{{duration}}"
+              bindinput="onDurationInput"
+              maxlength="4"
+            />
+          </view>
+          <view class="row">
+            <text class="label">题目数量</text>
+            <input
+              class="input"
+              type="number"
+              value="{{questionCount}}"
+              bindinput="onQuestionCountInput"
+              maxlength="4"
+            />
+          </view>
+          <view class="row">
+            <text class="label">每题分值</text>
+            <input
+              class="input"
+              type="digit"
+              value="{{scorePerQuestion}}"
+              bindinput="onScoreInput"
+              maxlength="4"
+            />
+          </view>
+          <view class="row summary-row">
+            <text class="label">总分</text>
+            <text class="value">{{totalScore}} 分</text>
+          </view>
+        </view>
+
+        <view class="card">
+          <view class="section-title">题目顺序</view>
+          <view class="settings-row">
+            <text class="settings-label">随机抽题</text>
+            <switch
+              class="settings-switch"
+              checked="{{shuffleQuestions}}"
+              bindchange="onShuffleChange"
+              color="#007AFF"
+            />
+          </view>
+        </view>
+
+        <view class="loading" wx:if="{{loading}}">
+          <text>加载中...</text>
+        </view>
+      </view>
+    </scroll-view>
+
+    <view class="action-bar">
+      <button
+        class="primary-btn {{(loading || creating || totalQuestions <= 0) ? 'disabled' : ''}}"
+        bindtap="onStartExam"
+        disabled="{{loading || creating || totalQuestions <= 0}}"
+      >
+        {{creating ? '创建中...' : '开始考试'}}
+      </button>
+      <view class="sub-hint" wx:if="{{warnText}}">
+        <text>{{warnText}}</text>
+      </view>
+    </view>
+  </view>
+</view>

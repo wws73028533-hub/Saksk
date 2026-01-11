@@ -9,7 +9,7 @@ page {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: #F2F2F7;
+  background: var(--app-bg);
 }
 
 .page-container {
@@ -36,8 +36,8 @@ page {
 .search-card {
   width: 100%;
   padding: 16rpx 16rpx;
-  background: rgba(255, 255, 255, 0.72);
-  border: 1rpx solid rgba(0, 0, 0, 0.06);
+  background: var(--app-surface-glass);
+  border: 1rpx solid var(--app-border);
   border-radius: 22rpx;
   box-sizing: border-box;
   backdrop-filter: blur(18rpx);
@@ -57,27 +57,27 @@ page {
   flex: 1;
   height: 76rpx;
   border-radius: 18rpx;
-  background: rgba(60, 60, 67, 0.08);
-  border: 1rpx solid rgba(0, 0, 0, 0.05);
+  background: var(--app-fill);
+  border: 1rpx solid var(--app-border-weak);
   padding: 0 18rpx;
   font-size: 28rpx;
   box-sizing: border-box;
   min-width: 0;
-  color: #111111;
+  color: var(--app-text);
 }
 
 .clear-btn {
   height: 76rpx;
   padding: 0 18rpx;
   border-radius: 18rpx;
-  background: rgba(60, 60, 67, 0.08);
-  border: 1rpx solid rgba(0, 0, 0, 0.05);
+  background: var(--app-fill);
+  border: 1rpx solid var(--app-border-weak);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 26rpx;
   font-weight: 600;
-  color: #111111;
+  color: var(--app-text);
   flex-shrink: 0;
 }
 
@@ -94,9 +94,9 @@ page {
 }
 
 .subject-card {
-  background: rgba(255, 255, 255, 0.86);
+  background: var(--app-surface);
   border-radius: 22rpx;
-  border: 1rpx solid rgba(0, 0, 0, 0.06);
+  border: 1rpx solid var(--app-border);
   box-sizing: border-box;
   padding: 18rpx 18rpx;
   min-height: 150rpx;
@@ -115,7 +115,7 @@ page {
 .subject-name {
   font-size: 30rpx;
   font-weight: 800;
-  color: #111111;
+  color: var(--app-text);
   line-height: 1.3;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -127,7 +127,7 @@ page {
 .subject-enter {
   margin-top: 10rpx;
   font-size: 24rpx;
-  color: rgba(60, 60, 67, 0.6);
+  color: var(--app-text-secondary);
 }
 
 .empty-state,
@@ -136,12 +136,11 @@ page {
   align-items: center;
   justify-content: center;
   padding: 80rpx 24rpx;
-  color: rgba(60, 60, 67, 0.6);
+  color: var(--app-text-secondary);
   font-size: 26rpx;
 }
 
 .empty-text {
-  color: rgba(60, 60, 67, 0.6);
+  color: var(--app-text-secondary);
   font-size: 26rpx;
 }
-

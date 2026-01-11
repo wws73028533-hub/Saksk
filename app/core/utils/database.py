@@ -619,6 +619,173 @@ def _create_tables(conn):
         )
     ''')
     
+    # ============================================
+    # 用户私人题库功能相关表
+    # ============================================
+
+    # 用户题库分类表
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS user_bank_categories (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            description TEXT,
+            sort_order INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, name),
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    ''')
+
+    # 用户题库表
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS user_question_banks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            category_id INTEGER,
+            name TEXT NOT NULL,
+            description TEXT,
+            cover_image TEXT,
+            is_public INTEGER DEFAULT 0,
+            public_description TEXT,
+            allow_copy INTEGER DEFAULT 1,
+            public_at DATETIME,
+            question_count INTEGER DEFAULT 0,
+            share_count INTEGER DEFAULT 0,
+            public_use_count INTEGER DEFAULT 0,
+            status INTEGER DEFAULT 1,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY(category_id) REFERENCES user_bank_categories(id) ON DELETE SET NULL
+        )
+    ''')
+
+    # 用户题库题目表
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS user_bank_questions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            bank_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            content TEXT NOT NULL,
+            q_type TEXT NOT NULL,
+            options TEXT,
+            answer TEXT,
+            explanation TEXT,
+            difficulty INTEGER DEFAULT 1,
+            image_path TEXT,
+            source_type TEXT DEFAULT 'custom',
+            source_question_id INTEGER,
+            sort_order INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(bank_id) REFERENCES user_question_banks(id) ON DELETE CASCADE,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    ''')
+
+    # 题库分享表
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS bank_shares (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            bank_id INTEGER NOT NULL,
+            owner_id INTEGER NOT NULL,
+            share_code TEXT UNIQUE,
+            share_token TEXT UNIQUE,
+            permission TEXT DEFAULT 'read',
+            expires_at DATETIME,
+            max_uses INTEGER,
+            current_uses INTEGER DEFAULT 0,
+            is_active INTEGER DEFAULT 1,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(bank_id) REFERENCES user_question_banks(id) ON DELETE CASCADE,
+            FOREIGN KEY(owner_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    ''')
+
+    # 分享记录表
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS bank_share_records (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            share_id INTEGER NOT NULL,
+            bank_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            status INTEGER DEFAULT 1,
+            last_access_at DATETIME,
+            access_count INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(share_id, user_id),
+            FOREIGN KEY(share_id) REFERENCES bank_shares(id) ON DELETE CASCADE,
+            FOREIGN KEY(bank_id) REFERENCES user_question_banks(id) ON DELETE CASCADE,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    ''')
+
+    # 用户题库答题记录表
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS user_bank_answers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            bank_id INTEGER NOT NULL,
+            question_id INTEGER NOT NULL,
+            user_answer TEXT,
+            is_correct INTEGER,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, question_id),
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY(bank_id) REFERENCES user_question_banks(id) ON DELETE CASCADE,
+            FOREIGN KEY(question_id) REFERENCES user_bank_questions(id) ON DELETE CASCADE
+        )
+    ''')
+
+    # 用户题库错题表
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS user_bank_mistakes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            bank_id INTEGER NOT NULL,
+            question_id INTEGER NOT NULL,
+            wrong_count INTEGER DEFAULT 1,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, question_id),
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY(bank_id) REFERENCES user_question_banks(id) ON DELETE CASCADE,
+            FOREIGN KEY(question_id) REFERENCES user_bank_questions(id) ON DELETE CASCADE
+        )
+    ''')
+
+    # 公开题库使用记录表
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS public_bank_users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            bank_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            last_access_at DATETIME,
+            access_count INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(bank_id, user_id),
+            FOREIGN KEY(bank_id) REFERENCES user_question_banks(id) ON DELETE CASCADE,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    ''')
+
+    # 用户题库收藏表
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS user_bank_favorites (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            bank_id INTEGER NOT NULL,
+            question_id INTEGER NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, question_id),
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY(bank_id) REFERENCES user_question_banks(id) ON DELETE CASCADE,
+            FOREIGN KEY(question_id) REFERENCES user_bank_questions(id) ON DELETE CASCADE
+        )
+    ''')
+
     # 初始化系统配置（如果不存在）
     default_configs = [
         ('quiz_limit_enabled', '0', '刷题数限制功能开关（0=关闭，1=开启）'),
@@ -754,65 +921,65 @@ def _create_indexes(conn):
             'CREATE INDEX IF NOT EXISTS idx_email_codes_expires ON email_verification_codes(expires_at)',
             'CREATE INDEX IF NOT EXISTS idx_email_codes_user ON email_verification_codes(user_id)',
         ])
-    
-    for index_sql in indexes:
-        conn.execute(index_sql)
 
+    # ============================================
+    # 用户私人题库功能相关索引
+    # ============================================
 
-    if 'notifications' in existing_tables:
+    # 用户题库分类表索引
+    if 'user_bank_categories' in existing_tables:
+        indexes.append('CREATE INDEX IF NOT EXISTS idx_ubc_user_id ON user_bank_categories(user_id)')
+
+    # 用户题库表索引
+    if 'user_question_banks' in existing_tables:
         indexes.extend([
-            'CREATE INDEX IF NOT EXISTS idx_notifications_active ON notifications(is_active, priority DESC)',
-            'CREATE INDEX IF NOT EXISTS idx_notifications_time ON notifications(start_at, end_at)',
+            'CREATE INDEX IF NOT EXISTS idx_uqb_user_id ON user_question_banks(user_id)',
+            'CREATE INDEX IF NOT EXISTS idx_uqb_category_id ON user_question_banks(category_id)',
+            'CREATE INDEX IF NOT EXISTS idx_uqb_status ON user_question_banks(status)',
+            'CREATE INDEX IF NOT EXISTS idx_uqb_is_public ON user_question_banks(is_public, status)',
         ])
-    if 'notification_dismissals' in existing_tables:
-        indexes.append('CREATE INDEX IF NOT EXISTS idx_notification_dismissals_user ON notification_dismissals(user_id, notification_id)')
-    
-    # 弹窗相关索引（只对存在的表创建）
-    if 'popups' in existing_tables:
+
+    # 用户题库题目表索引
+    if 'user_bank_questions' in existing_tables:
         indexes.extend([
-            'CREATE INDEX IF NOT EXISTS idx_popups_active ON popups(is_active, priority DESC)',
-            'CREATE INDEX IF NOT EXISTS idx_popups_time ON popups(start_at, end_at)',
-            'CREATE INDEX IF NOT EXISTS idx_popups_type ON popups(popup_type)',
+            'CREATE INDEX IF NOT EXISTS idx_ubq_bank_id ON user_bank_questions(bank_id)',
+            'CREATE INDEX IF NOT EXISTS idx_ubq_user_id ON user_bank_questions(user_id)',
+            'CREATE INDEX IF NOT EXISTS idx_ubq_source ON user_bank_questions(source_type, source_question_id)',
+            'CREATE INDEX IF NOT EXISTS idx_ubq_q_type ON user_bank_questions(q_type)',
         ])
-    if 'popup_dismissals' in existing_tables:
-        indexes.append('CREATE INDEX IF NOT EXISTS idx_popup_dismissals_user ON popup_dismissals(user_id, popup_id)')
-    if 'popup_views' in existing_tables:
+
+    # 题库分享表索引
+    if 'bank_shares' in existing_tables:
         indexes.extend([
-            'CREATE INDEX IF NOT EXISTS idx_popup_views_popup ON popup_views(popup_id, viewed_at)',
-            'CREATE INDEX IF NOT EXISTS idx_popup_views_user ON popup_views(user_id, viewed_at)',
+            'CREATE INDEX IF NOT EXISTS idx_bs_bank_id ON bank_shares(bank_id)',
+            'CREATE INDEX IF NOT EXISTS idx_bs_owner_id ON bank_shares(owner_id)',
         ])
-    
-    # 代码提交相关索引（只对存在的表创建）
-    if 'code_submissions' in existing_tables:
-        indexes.append('CREATE INDEX IF NOT EXISTS idx_code_submissions_user_question ON code_submissions(user_id, question_id, submitted_at DESC)')
-    
-    # 代码草稿相关索引
-    if 'code_drafts' in existing_tables:
-        indexes.append('CREATE INDEX IF NOT EXISTS idx_code_drafts_user_question ON code_drafts(user_id, question_id)')
-    
-    # 用户-科目限制表索引
-    if 'user_subjects' in existing_tables:
+
+    # 分享记录表索引
+    if 'bank_share_records' in existing_tables:
         indexes.extend([
-            'CREATE INDEX IF NOT EXISTS idx_user_subjects_user_id ON user_subjects(user_id)',
-            'CREATE INDEX IF NOT EXISTS idx_user_subjects_subject_id ON user_subjects(subject_id)'
+            'CREATE INDEX IF NOT EXISTS idx_bsr_user_id ON bank_share_records(user_id, status)',
+            'CREATE INDEX IF NOT EXISTS idx_bsr_bank_id ON bank_share_records(bank_id)',
         ])
-    
-    # 系统配置表索引
-    if 'system_config' in existing_tables:
-        indexes.append('CREATE INDEX IF NOT EXISTS idx_system_config_key ON system_config(config_key)')
-    
-    # 用户刷题统计表索引
-    if 'user_quiz_stats' in existing_tables:
-        indexes.append('CREATE INDEX IF NOT EXISTS idx_user_quiz_stats_user_id ON user_quiz_stats(user_id)')
-    
-    # 邮箱验证码表索引
-    if 'email_verification_codes' in existing_tables:
+
+    # 用户题库答题记录表索引
+    if 'user_bank_answers' in existing_tables:
         indexes.extend([
-            'CREATE INDEX IF NOT EXISTS idx_email_codes_email ON email_verification_codes(email, code_type, is_used)',
-            'CREATE INDEX IF NOT EXISTS idx_email_codes_expires ON email_verification_codes(expires_at)',
-            'CREATE INDEX IF NOT EXISTS idx_email_codes_user ON email_verification_codes(user_id)',
+            'CREATE INDEX IF NOT EXISTS idx_uba_user_bank ON user_bank_answers(user_id, bank_id)',
+            'CREATE INDEX IF NOT EXISTS idx_uba_user_question ON user_bank_answers(user_id, question_id)',
         ])
-    
+
+    # 用户题库错题表索引
+    if 'user_bank_mistakes' in existing_tables:
+        indexes.append('CREATE INDEX IF NOT EXISTS idx_ubm_user_bank ON user_bank_mistakes(user_id, bank_id)')
+
+    # 公开题库使用记录表索引
+    if 'public_bank_users' in existing_tables:
+        indexes.extend([
+            'CREATE INDEX IF NOT EXISTS idx_pbu_bank_id ON public_bank_users(bank_id)',
+            'CREATE INDEX IF NOT EXISTS idx_pbu_user_id ON public_bank_users(user_id)',
+        ])
+
     for index_sql in indexes:
         conn.execute(index_sql)
 

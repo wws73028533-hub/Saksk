@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/Administrator/**)",
+      "Bash(more:*)",
+      "Bash(curl:*)",
+      "Bash(tasklist:*)",
+      "Bash(findstr:*)",
+      "Bash(ipconfig:*)",
+      "Bash(python:*)",
+      "Bash(timeout 8 python:*)",
+      "Bash(find:*)",
+      "Bash(git checkout:*)"
+    ]
+  }
+}

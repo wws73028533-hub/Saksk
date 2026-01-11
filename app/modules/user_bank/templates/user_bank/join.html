@@ -1,0 +1,112 @@
+{% extends "user_bank/base.html" %}
+
+{% block title %}加入题库{% endblock %}
+
+{% block content %}
+<div style="max-width: 400px; margin: 80px auto; text-align: center;">
+    <div class="card">
+        <h2 style="margin-bottom: 24px;">加入题库</h2>
+
+        {% if token %}
+        <div id="autoJoin">
+            <div class="loading"></div>
+            <p style="margin-top: 16px; color: var(--text-sub);">正在验证分享链接...</p>
+        </div>
+        {% else %}
+        <div class="form-group">
+            <label class="form-label">请输入分享码</label>
+            <input type="text" id="shareCode" class="form-input" placeholder="6位分享码" maxlength="6"
+                   style="text-transform: uppercase; letter-spacing: 4px; font-size: 24px; text-align: center; padding: 16px;">
+        </div>
+        <button class="btn btn-primary" style="width: 100%; margin-top: 16px;" onclick="joinByCode()">加入题库</button>
+        {% endif %}
+    </div>
+
+    <div id="resultCard" class="card" style="display: none; margin-top: 24px;">
+        <div id="resultContent"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const token = '{{ token }}';
+
+    async function joinByToken() {
+        if (!token) return;
+
+        try {
+            const res = await api('/user/banks/api/join', {
+                method: 'POST',
+                body: JSON.stringify({ token: token })
+            });
+
+            showResult(true, res.data);
+        } catch (e) {
+            showResult(false, { message: e.message });
+        }
+    }
+
+    async function joinByCode() {
+        const code = document.getElementById('shareCode').value.trim().toUpperCase();
+
+        if (!code || code.length !== 6) {
+            showToast('请输入6位分享码', 'error');
+            return;
+        }
+
+        try {
+            const res = await api('/user/banks/api/join', {
+                method: 'POST',
+                body: JSON.stringify({ share_code: code })
+            });
+
+            showResult(true, res.data);
+        } catch (e) {
+            showResult(false, { message: e.message });
+        }
+    }
+
+    function showResult(success, data) {
+        document.getElementById('autoJoin')?.remove();
+
+        const resultCard = document.getElementById('resultCard');
+        resultCard.style.display = 'block';
+
+        if (success) {
+            resultCard.innerHTML = `
+                <div style="text-align: center;">
+                    <div style="font-size: 48px; margin-bottom: 16px;">✅</div>
+                    <h3 style="margin-bottom: 8px;">成功加入题库</h3>
+                    <p style="color: var(--text-sub); margin-bottom: 20px;">
+                        「${escapeHtml(data.bank_name)}」<br>
+                        来自 ${escapeHtml(data.owner_nickname)} · ${data.question_count} 道题
+                    </p>
+                    <a href="/user/banks/${data.bank_id}/quiz" class="btn btn-primary">开始刷题</a>
+                    <a href="/user/banks/shared" class="btn btn-secondary" style="margin-left: 8px;">查看分享</a>
+                </div>
+            `;
+        } else {
+            resultCard.innerHTML = `
+                <div style="text-align: center;">
+                    <div style="font-size: 48px; margin-bottom: 16px;">❌</div>
+                    <h3 style="margin-bottom: 8px;">加入失败</h3>
+                    <p style="color: var(--text-sub); margin-bottom: 20px;">${escapeHtml(data.message)}</p>
+                    <a href="/user/banks/shared" class="btn btn-secondary">返回</a>
+                </div>
+            `;
+        }
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text || '';
+        return div.innerHTML;
+    }
+
+    // 如果有token，自动加入
+    if (token) {
+        joinByToken();
+    }
+</script>
+{% endblock %}

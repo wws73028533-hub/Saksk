@@ -12,7 +12,7 @@ page {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: #f5f5f5;
+  background: var(--app-bg);
 }
 
 .page-container {
@@ -27,7 +27,7 @@ page {
   flex: 1;
   min-height: 0;
   height: 0;
-  background: #f5f5f5;
+  background: var(--app-bg);
 }
 
 .container {
@@ -37,7 +37,7 @@ page {
 }
 
 .header-card {
-  background: #fff;
+  background: var(--app-surface-solid);
   border-radius: 20rpx;
   padding: 28rpx 24rpx;
   margin-bottom: 20rpx;
@@ -48,7 +48,7 @@ page {
 .subject-name {
   font-size: 34rpx;
   font-weight: 700;
-  color: #000;
+  color: var(--app-text);
   line-height: 1.3;
   display: block;
 }
@@ -56,7 +56,7 @@ page {
 .subtitle {
   margin-top: 10rpx;
   font-size: 24rpx;
-  color: #8E8E93;
+  color: var(--app-text-secondary);
   display: block;
 }
 
@@ -69,16 +69,16 @@ page {
 }
 
 .stat-card {
-  background: #fff;
+  background: var(--app-surface-solid);
   border-radius: 20rpx;
   padding: 22rpx 24rpx;
-  border: 1rpx solid #F0F0F0;
+  border: 1rpx solid var(--app-divider);
   box-sizing: border-box;
 }
 
 .label {
   font-size: 24rpx;
-  color: #8E8E93;
+  color: var(--app-text-secondary);
   display: block;
 }
 
@@ -95,10 +95,10 @@ page {
 }
 
 .detail-card {
-  background: #fff;
+  background: var(--app-surface-solid);
   border-radius: 20rpx;
   padding: 8rpx 24rpx;
-  border: 1rpx solid #F0F0F0;
+  border: 1rpx solid var(--app-divider);
   width: 100%;
   box-sizing: border-box;
 }
@@ -111,17 +111,17 @@ page {
 }
 
 .detail-row + .detail-row {
-  border-top: 1rpx solid #F0F0F0;
+  border-top: 1rpx solid var(--app-divider);
 }
 
 .detail-label {
   font-size: 26rpx;
-  color: #000;
+  color: var(--app-text);
 }
 
 .detail-value {
   font-size: 26rpx;
-  color: #8E8E93;
+  color: var(--app-text-secondary);
 }
 
 .loading {
@@ -129,6 +129,6 @@ page {
   align-items: center;
   justify-content: center;
   padding: 80rpx 24rpx;
-  color: #8E8E93;
+  color: var(--app-text-secondary);
   font-size: 28rpx;
 }

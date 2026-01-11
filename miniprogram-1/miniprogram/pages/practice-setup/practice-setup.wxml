@@ -1,6 +1,6 @@
 <!--practice-setup.wxml - 练习设置页面-->
-<view class="page-root">
-  <navigation-bar title="{{subject}}" back="{{true}}" color="black" background="#FFF"></navigation-bar>
+<view class="page-root {{themeClass}}">
+  <navigation-bar title="{{subject}}" back="{{true}}" color="var(--app-nav-fg)" background="var(--app-nav-bg)"></navigation-bar>
   <view class="page-container">
     <!-- 主卡片容器 -->
     <view class="main-card">
@@ -52,6 +52,32 @@
             >
               <text class="tag-text">{{item}}</text>
             </view>
+          </view>
+        </view>
+
+        <!-- 标签筛选区域（题目自定义标签） -->
+        <view class="section-block">
+          <text class="section-label">标签</text>
+          <view class="tags-container tags-wrap">
+            <view
+              class="tag {{selectedTag === 'all' ? 'active' : ''}}"
+              bindtap="onTagTap"
+              data-tag="all"
+            >
+              <text class="tag-text">全部</text>
+            </view>
+            <view
+              class="tag {{selectedTag === item.name ? 'active' : ''}}"
+              wx:for="{{availableTags}}"
+              wx:key="name"
+              bindtap="onTagTap"
+              data-tag="{{item.name}}"
+            >
+              <text class="tag-text">{{item.name}}</text>
+            </view>
+          </view>
+          <view wx:if="{{availableTags.length === 0}}" class="tag-empty">
+            <text class="tag-empty-text">暂无标签，可在题目页点击“标签”添加</text>
           </view>
         </view>
 

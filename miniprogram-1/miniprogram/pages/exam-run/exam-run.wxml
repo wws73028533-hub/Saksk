@@ -1,10 +1,10 @@
 <!-- exam-run.wxml - 模拟考试 -->
-<view class="page-root">
+<view class="page-root {{themeClass}}">
   <navigation-bar
     title="第 {{currentIndex + 1}} / {{questions.length}} 题"
     back="{{true}}"
-    color="black"
-    background="#FFF"
+    color="var(--app-nav-fg)"
+    background="var(--app-nav-bg)"
   >
     <view slot="right" class="nav-right">
       <view class="nav-action-btn" bindtap="onOpenQuestionList">

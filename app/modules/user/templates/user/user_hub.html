@@ -347,6 +347,12 @@
         .feature-card.admin::before { background: var(--danger); }
         .feature-card.admin .icon { color: var(--danger); }
 
+        .feature-card.banks::before { background: var(--primary); }
+        .feature-card.banks .icon { color: var(--primary); }
+
+        .feature-card.plaza::before { background: var(--info); }
+        .feature-card.plaza .icon { color: var(--info); }
+
         /* 退出按钮 */
         .logout-section {
             text-align: center;
@@ -486,6 +492,22 @@
                 <div>
                     <div class="title">历史通知</div>
                     <div class="description">查看系统公告和重要通知</div>
+                </div>
+            </a>
+
+            <a href="/user/banks" class="feature-card banks">
+                <span class="icon">📚</span>
+                <div>
+                    <div class="title">我的题库</div>
+                    <div class="description">创建和管理您的私人题库</div>
+                </div>
+            </a>
+
+            <a href="/public/banks" class="feature-card plaza">
+                <span class="icon">🏛️</span>
+                <div>
+                    <div class="title">题库广场</div>
+                    <div class="description">浏览公开题库，获取更多学习资源</div>
                 </div>
             </a>
 

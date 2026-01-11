@@ -1043,6 +1043,18 @@ function getAIExplainHost(){
     return document.getElementById('aiExplainCard') || document.getElementById('explainCard');
 }
 
+function syncAnswerAiButtonState(){
+    try {
+        const q = questions[currentIndex];
+        if (!q) return;
+        const btn = q.querySelector('.answer-ai-btn');
+        if (!btn) return;
+        const open = !!aiExplainState.open;
+        btn.classList.toggle('active', open);
+        btn.setAttribute('aria-pressed', open ? 'true' : 'false');
+    } catch(e) {}
+}
+
 function renderAIExplainCard({ loading, explainText }){
     const host = getAIExplainHost();
     if (!host) return;
@@ -1093,6 +1105,7 @@ function hideAIExplainCard({ clear = false } = {}){
     host.classList.remove('show');
     if (clear) host.innerHTML = '';
     aiExplainState.open = false;
+    syncAnswerAiButtonState();
     updateDockEmptyState();
 }
 
@@ -1102,6 +1115,7 @@ function showAIExplainCard(){
     host.style.display = 'block';
     host.classList.add('show');
     aiExplainState.open = true;
+    syncAnswerAiButtonState();
     updateDockEmptyState();
 }
 
@@ -1649,7 +1663,7 @@ function showQuestion(index) {
             const pf = document.getElementById('progress-fill');
             if (pf) pf.style.width = ((currentIndex + 1) / totalQuestions * 100) + '%';
             const topTitle = document.getElementById('topbar-title');
-            if (topTitle) topTitle.innerText = `第${currentIndex + 1}题 / 共${totalQuestions}题`;
+            if (topTitle) topTitle.innerText = `${currentIndex + 1}/${totalQuestions}`;
             return;
         }
 
@@ -1702,7 +1716,7 @@ function showQuestion(index) {
     if (pf) pf.style.width = ((currentIndex + 1) / totalQuestions * 100) + '%';
 
     const topTitle = document.getElementById('topbar-title');
-    if (topTitle) topTitle.innerText = `第${currentIndex + 1}题 / 共${totalQuestions}题`;
+    if (topTitle) topTitle.innerText = `${currentIndex + 1}/${totalQuestions}`;
     
     // 保存进度：考试模式（未交卷）也保存，已交卷不再写进度
     if (mode !== 'exam' || (mode === 'exam' && !isSubmitted)) saveState();
@@ -2015,6 +2029,7 @@ function renderAnswerExplainFromQuestion(qEl, resultState = null) {
 
     const isSubjective = isSubjectiveType(type);
     const judgable = isJudgableType(type) && !isSubjective;
+    const showAiBtn = (mode !== 'exam');
 
     let state = resultState;
     if (state === null && judgable) {
@@ -2030,7 +2045,10 @@ function renderAnswerExplainFromQuestion(qEl, resultState = null) {
             : '请对照答案巩固记忆';
         answerHost.innerHTML = `
             <div class="answer-display-card">
-              <div class="answer-title">正确答案：${escapeHtmlWithBreaks(correctRaw)}</div>
+              <div class="answer-card-toprow">
+                <div class="answer-title">正确答案：${escapeHtmlWithBreaks(correctRaw)}</div>
+                ${showAiBtn ? `<button type="button" class="answer-ai-btn" aria-label="AI解析" title="AI解析" onclick="toggleAIExplain()">AI</button>` : ``}
+              </div>
               <div class="answer-divider"></div>
               <div class="answer-tip">${tip}</div>
             </div>
@@ -2054,9 +2072,12 @@ function renderAnswerExplainFromQuestion(qEl, resultState = null) {
         const showUserAnswer = (!judgable) || (state === false) || (state === 'pending');
         answerHost.innerHTML = `
             <div class="answer-result-card">
-              <div class="result-header ${headerClass}">
-                <span class="result-icon">${icon}</span>
-                <span class="result-text">${headerText}</span>
+              <div class="answer-card-toprow">
+                <div class="result-header ${headerClass}">
+                  <span class="result-icon">${icon}</span>
+                  <span class="result-text">${headerText}</span>
+                </div>
+                ${showAiBtn ? `<button type="button" class="answer-ai-btn" aria-label="AI解析" title="AI解析" onclick="toggleAIExplain()">AI</button>` : ``}
               </div>
               <div class="correct-answer">
                 <span class="answer-label">正确答案：</span>
@@ -2071,6 +2092,8 @@ function renderAnswerExplainFromQuestion(qEl, resultState = null) {
         `;
         answerHost.style.display = 'block';
     }
+
+    try { syncAnswerAiButtonState(); } catch(e) {}
 
     const explainSpan = qEl.querySelector('.quiz-card.card-explain .answer');
     const explainRaw = explainSpan ? (explainSpan.textContent || explainSpan.innerText || '') : '';
@@ -2104,6 +2127,7 @@ function hideAnswerExplainDock(qEl = null) {
     if (explainHost) { explainHost.style.display = 'none'; explainHost.innerHTML = ''; explainHost.classList.remove('show'); }
     if (aiHost) { aiHost.style.display = 'none'; aiHost.innerHTML = ''; aiHost.classList.remove('show'); }
     try { aiExplainState.open = false; } catch(e) {}
+    try { syncAnswerAiButtonState(); } catch(e) {}
     setAnswerResultBadge(null);
     updateDockEmptyState();
 }

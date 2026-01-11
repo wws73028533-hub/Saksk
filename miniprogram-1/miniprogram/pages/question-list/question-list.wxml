@@ -1,6 +1,6 @@
 <!--题目列表页面-->
-<view class="page-root">
-  <navigation-bar title="{{subject === 'all' ? '全部题目' : subject}}" back="{{true}}" color="black" background="#FFF"></navigation-bar>
+<view class="page-root {{themeClass}}">
+  <navigation-bar title="{{subject === 'all' ? '全部题目' : subject}}" back="{{true}}" color="var(--app-nav-fg)" background="var(--app-nav-bg)"></navigation-bar>
   <view class="page-container">
     <scroll-view
       class="content-area"

@@ -1,6 +1,6 @@
 <!--logs.wxml-->
-<view class="page-root">
-  <navigation-bar title="查看启动日志" back="{{true}}" color="black" background="#FFF"></navigation-bar>
+<view class="page-root {{themeClass}}">
+  <navigation-bar title="查看启动日志" back="{{true}}" color="var(--app-nav-fg)" background="var(--app-nav-bg)"></navigation-bar>
   <view class="page-container">
     <scroll-view class="content-area" scroll-y type="list">
       <block wx:for="{{logs}}" wx:key="timeStamp" wx:for-item="log">

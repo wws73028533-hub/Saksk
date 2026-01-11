@@ -1,0 +1,143 @@
+<!--bank-share.wxml - 个人题库分享设置页面-->
+<view class="page-root {{themeClass}}">
+  <navigation-bar title="分享设置" back="{{true}}" color="var(--app-nav-fg)" background="var(--app-nav-bg)"></navigation-bar>
+  <view class="page-container">
+    <scroll-view class="content-area" scroll-y type="list">
+      <view class="container">
+        <!-- 题库信息 -->
+        <view class="bank-info-card">
+          <text class="bank-name">{{bankInfo.name}}</text>
+          <text class="bank-count">{{bankInfo.question_count}} 道题</text>
+        </view>
+
+        <!-- 创建分享区域 -->
+        <view class="section-card">
+          <view class="section-header">
+            <text class="section-title">创建新分享</text>
+          </view>
+
+          <!-- 权限选择 -->
+          <view class="option-row">
+            <text class="option-label">权限设置</text>
+            <view class="option-tags">
+              <view
+                class="option-tag {{newShare.permission === 'read' ? 'active' : ''}}"
+                bindtap="onPermissionTap"
+                data-permission="read"
+              >
+                <text>仅查看</text>
+              </view>
+              <view
+                class="option-tag {{newShare.permission === 'copy' ? 'active' : ''}}"
+                bindtap="onPermissionTap"
+                data-permission="copy"
+              >
+                <text>可复制</text>
+              </view>
+            </view>
+          </view>
+
+          <!-- 有效期选择 -->
+          <view class="option-row">
+            <text class="option-label">有效期</text>
+            <view class="option-tags">
+              <view
+                class="option-tag {{newShare.expiresIn === 0 ? 'active' : ''}}"
+                bindtap="onExpiresTap"
+                data-expires="0"
+              >
+                <text>永久</text>
+              </view>
+              <view
+                class="option-tag {{newShare.expiresIn === 7 ? 'active' : ''}}"
+                bindtap="onExpiresTap"
+                data-expires="7"
+              >
+                <text>7天</text>
+              </view>
+              <view
+                class="option-tag {{newShare.expiresIn === 30 ? 'active' : ''}}"
+                bindtap="onExpiresTap"
+                data-expires="30"
+              >
+                <text>30天</text>
+              </view>
+            </view>
+          </view>
+
+          <!-- 创建按钮 -->
+          <view class="create-buttons">
+            <view class="create-btn" bindtap="onCreateShare" data-type="code">
+              <text class="create-btn-text">生成分享码</text>
+            </view>
+            <button class="create-btn wechat-btn" open-type="share">
+              <text class="create-btn-text">微信分享</text>
+            </button>
+          </view>
+        </view>
+
+        <!-- 现有分享列表 -->
+        <view class="section-card" wx:if="{{shares.length > 0}}">
+          <view class="section-header">
+            <text class="section-title">分享记录</text>
+            <text class="section-count">{{shares.length}}个</text>
+          </view>
+
+          <view class="share-list">
+            <view class="share-item" wx:for="{{shares}}" wx:key="id">
+              <view class="share-main">
+                <view class="share-code-row">
+                  <text class="share-code">{{item.share_code || '链接分享'}}</text>
+                  <text class="share-permission {{item.permission}}">{{item.permission === 'copy' ? '可复制' : '仅查看'}}</text>
+                </view>
+                <view class="share-meta">
+                  <text class="meta-text">使用 {{item.current_uses || 0}} 次</text>
+                  <text class="meta-text" wx:if="{{item.expires_at}}">有效期至 {{item.expires_at_display}}</text>
+                  <text class="meta-text" wx:else>永久有效</text>
+                </view>
+              </view>
+              <view class="share-actions">
+                <view class="action-btn copy" bindtap="onCopyCode" data-code="{{item.share_code}}">
+                  <text>复制</text>
+                </view>
+                <view class="action-btn delete" bindtap="onDeleteShare" data-id="{{item.id}}">
+                  <text>撤销</text>
+                </view>
+              </view>
+            </view>
+          </view>
+        </view>
+
+        <!-- 空状态 -->
+        <view class="empty-state" wx:if="{{!loading && shares.length === 0}}">
+          <text class="empty-text">暂无分享记录</text>
+          <text class="empty-hint">创建分享码让好友加入题库</text>
+        </view>
+
+        <!-- 加载提示 -->
+        <view class="loading" wx:if="{{loading}}">
+          <text>加载中...</text>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- 分享码弹窗 -->
+  <view class="modal-overlay" wx:if="{{showCodeModal}}" bindtap="onCloseCodeModal">
+    <view class="modal-content" catchtap="">
+      <view class="modal-header">
+        <text class="modal-title">分享码已生成</text>
+        <view class="modal-close" bindtap="onCloseCodeModal">×</view>
+      </view>
+      <view class="modal-body">
+        <view class="code-display">
+          <text class="code-value">{{generatedCode}}</text>
+        </view>
+        <text class="code-hint">好友可通过此分享码加入题库</text>
+      </view>
+      <view class="modal-footer">
+        <view class="modal-btn primary" bindtap="onCopyGeneratedCode">复制分享码</view>
+      </view>
+    </view>
+  </view>
+</view>

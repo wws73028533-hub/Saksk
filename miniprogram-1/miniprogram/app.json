@@ -2,6 +2,7 @@
   "pages": [
     "pages/index/index",
     "pages/subjects/subjects",
+    "pages/my-banks/my-banks",
     "pages/mine/mine",
     "pages/login/login",
     "pages/wechat-bind/wechat-bind",
@@ -16,18 +17,21 @@
     "pages/exam-setup/exam-setup",
     "pages/exam-run/exam-run",
     "pages/quiz/quiz",
+    "pages/bank-detail/bank-detail",
+    "pages/bank-share/bank-share",
+    "pages/bank-exam-setup/bank-exam-setup",
     "pages/logs/logs"
   ],
   "window": {
     "navigationBarTextStyle": "black",
     "navigationStyle": "custom",
-    "backgroundColor": "#f5f5f5"
+    "backgroundColor": "#F2F2F7"
   },
   "tabBar": {
-    "color": "#7A7E83",
-    "selectedColor": "#007AFF",
-    "borderStyle": "black",
-    "backgroundColor": "#ffffff",
+    "color": "@tabBarColor",
+    "selectedColor": "@tabBarSelectedColor",
+    "borderStyle": "@tabBarBorderStyle",
+    "backgroundColor": "@tabBarBackgroundColor",
     "list": [
       {
         "pagePath": "pages/index/index",
@@ -42,6 +46,12 @@
         "text": "科目"
       },
       {
+        "pagePath": "pages/my-banks/my-banks",
+        "iconPath": "images/tabbar/practice.png",
+        "selectedIconPath": "images/tabbar/practice-active.png",
+        "text": "题库"
+      },
+      {
         "pagePath": "pages/mine/mine",
         "iconPath": "images/tabbar/mine.png",
         "selectedIconPath": "images/tabbar/mine-active.png",
@@ -50,6 +60,8 @@
     ]
   },
   "style": "v2",
+  "darkmode": true,
+  "themeLocation": "theme.json",
   "rendererOptions": {
     "skyline": {
       "defaultDisplayBlock": true,

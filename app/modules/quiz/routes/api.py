@@ -36,9 +36,14 @@ def _get_uid_from_request():
 @limiter.exempt  # 收藏接口不限流
 def toggle_favorite():
     """切换收藏状态"""
-    data = request.json
+    data = request.get_json(silent=True) or {}
     q_id = data.get('question_id')
     uid = current_user_id()
+
+    try:
+        q_id = int(q_id)
+    except (TypeError, ValueError):
+        return jsonify({'status': 'error', 'message': 'question_id 参数错误'}), 400
     
     conn = get_db()
     exists = conn.execute(
@@ -48,11 +53,18 @@ def toggle_favorite():
     
     if exists:
         conn.execute("DELETE FROM favorites WHERE user_id = ? AND question_id = ?", (uid, q_id))
+        is_favorite = False
     else:
-        conn.execute("INSERT INTO favorites (user_id, question_id) VALUES (?, ?)", (uid, q_id))
+        try:
+            conn.execute("INSERT INTO favorites (user_id, question_id) VALUES (?, ?)", (uid, q_id))
+        except Exception:
+            # 兜底处理：题目不存在 / 外键约束失败 / 并发插入等
+            conn.rollback()
+            return jsonify({'status': 'error', 'message': '收藏失败：题目不存在或不可收藏'}), 400
+        is_favorite = True
     
     conn.commit()
-    return jsonify({"status": "success"})
+    return jsonify({"status": "success", "data": {"is_favorite": is_favorite}})
 
 
 @quiz_api_bp.route('/record_result', methods=['POST'])
@@ -233,6 +245,7 @@ def api_user_counts():
     """获取用户的收藏和错题数量"""
     subject = request.args.get('subject', 'all')
     q_type = request.args.get('type', 'all')
+    tag = (request.args.get('tag') or '').strip()
     uid = _get_uid_from_request()
     
     if not uid:
@@ -269,6 +282,42 @@ def api_user_counts():
         mis_sql += " AND q.q_type = ?"
         fav_params.append(q_type)
         mis_params.append(q_type)
+
+    # 标签筛选：标签为用户私有（存储在 user_progress）
+    if tag and str(tag).lower() != 'all':
+        from app.modules.quiz.services.question_tags_service import get_question_ids_by_tag
+
+        tag_ids = get_question_ids_by_tag(conn, uid, tag)
+        if not tag_ids:
+            return jsonify({'status': 'success', 'favorites': 0, 'mistakes': 0})
+
+        # 变量过多时避免 IN 触发 SQLite 参数上限：回退为取ID后求交集
+        if len(tag_ids) > 900:
+            tag_set = set(tag_ids)
+
+            fav_id_rows = conn.execute(
+                fav_sql.replace('SELECT COUNT(1)', 'SELECT q.id'),
+                fav_params,
+            ).fetchall()
+            mis_id_rows = conn.execute(
+                mis_sql.replace('SELECT COUNT(1)', 'SELECT q.id'),
+                mis_params,
+            ).fetchall()
+
+            fav_ids = {int(r[0]) for r in fav_id_rows if r and r[0] is not None}
+            mis_ids = {int(r[0]) for r in mis_id_rows if r and r[0] is not None}
+
+            return jsonify({
+                'status': 'success',
+                'favorites': len(fav_ids & tag_set),
+                'mistakes': len(mis_ids & tag_set),
+            })
+
+        placeholders = ','.join(['?'] * len(tag_ids))
+        fav_sql += f" AND q.id IN ({placeholders})"
+        mis_sql += f" AND q.id IN ({placeholders})"
+        fav_params.extend(list(tag_ids))
+        mis_params.extend(list(tag_ids))
     
     fav_cnt = conn.execute(fav_sql, fav_params).fetchone()[0]
     mis_cnt = conn.execute(mis_sql, mis_params).fetchone()[0]
@@ -942,7 +991,8 @@ def api_get_questions():
         # 获取查询参数
         subject = request.args.get('subject', 'all')
         q_type = request.args.get('q_type', 'all')
-        mode = request.args.get('mode', 'quiz')
+        mode = (request.args.get('mode', 'quiz') or 'quiz').lower()
+        source = (request.args.get('source') or '').strip().lower()
         tag = (request.args.get('tag') or '').strip()
         shuffle_options = request.args.get('shuffle_options', '0') in ('1', 'true', 'True')
         page = request.args.get('page', 1, type=int)
@@ -953,10 +1003,14 @@ def api_get_questions():
         user_id = g.current_user_id
         
         # 获取题目列表
+        # 兼容：小程序用 source=all/favorites/mistakes；旧逻辑也允许 mode=favorites/mistakes
+        query_mode = mode
+        if mode not in ('favorites', 'mistakes') and source in ('favorites', 'mistakes'):
+            query_mode = source
         questions = Question.get_list(
             subject=subject,
             q_type=q_type,
-            mode=mode,
+            mode=query_mode,
             user_id=user_id
         )
 

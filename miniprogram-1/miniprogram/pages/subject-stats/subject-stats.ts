@@ -1,10 +1,17 @@
 // subject-stats.ts - 学习统计
-import { api } from '../../utils/api';
+// 支持公有题库（subject参数）和个人题库（bank_id参数）双数据源
 import { checkLogin } from '../../utils/auth';
+import { createSourceFromOptions, IQuizSource } from '../../utils/quiz-source';
+
+// 数据源实例（页面级别）
+let quizSource: IQuizSource | null = null;
 
 Page({
   data: {
-    subject: '',
+    // 数据源信息
+    sourceType: '' as 'public' | 'bank' | '',
+    sourceId: '' as string | number,
+    displayName: '',
     loading: false,
     stats: {
       totalCount: 0,
@@ -22,39 +29,55 @@ Page({
       return;
     }
 
-    let subject = options.subject || '';
-    if (!subject) {
-      wx.showToast({ title: '科目参数缺失', icon: 'none' });
+    // 使用工厂函数创建数据源
+    quizSource = createSourceFromOptions(options);
+
+    if (!quizSource) {
+      console.error('数据源参数缺失（需要 subject 或 bank_id）');
+      wx.showToast({ title: '参数缺失', icon: 'none' });
       setTimeout(() => wx.navigateBack(), 1200);
       return;
     }
-    try {
-      subject = decodeURIComponent(subject);
-    } catch (e) {}
-    this.setData({ subject });
+
+    console.log('统计页面数据源类型:', quizSource.sourceType, '标识:', quizSource.sourceId);
+
+    this.setData({
+      sourceType: quizSource.sourceType,
+      sourceId: quizSource.sourceId,
+      displayName: quizSource.displayName || String(quizSource.sourceId)
+    });
+
     this.loadStats();
   },
 
   onShow() {
     // 返回该页时刷新一次（例如从收藏/错题返回）
-    if (this.data.subject) {
+    if (quizSource) {
       this.loadStats();
     }
   },
 
   async loadStats() {
-    if (this.data.loading) return;
+    if (this.data.loading || !quizSource) return;
     this.setData({ loading: true });
-    try {
-      const res: any = await api.getSubjectInfo(this.data.subject);
-      // utils/api.ts 已经把 {status,data} 解包为 data，这里兼容两种返回结构
-      const data = (res && (res as any).data) ? (res as any).data : (res || {});
-      const user = data.user_stats || {};
 
-      const totalCount = data.total_count || 0;
-      const doneCount = user.done_count || 0;
-      const wrongCount = user.wrong_count || 0;
-      const favoriteCount = user.favorite_count || 0;
+    try {
+      // 获取基础信息
+      const info = await quizSource.getInfo();
+      const totalCount = info.question_count || 0;
+
+      // 更新显示名称
+      if (info.name) {
+        this.setData({ displayName: info.name });
+      }
+
+      // 获取用户统计
+      const userCounts = await quizSource.getUserCounts();
+      const myStats = await quizSource.getMyStats();
+
+      const doneCount = myStats.total_answered || 0;
+      const wrongCount = userCounts.mistakes || myStats.wrong_count || 0;
+      const favoriteCount = userCounts.favorites || 0;
 
       const accuracy = doneCount > 0 ? Math.max(0, (doneCount - wrongCount) / doneCount) : 0;
       const accuracyText = `${Math.round(accuracy * 100)}%`;
@@ -65,7 +88,7 @@ Page({
           doneCount,
           wrongCount,
           favoriteCount,
-          lastActivity: this.formatDateTime(user.last_activity || ''),
+          lastActivity: '',  // 数据源适配器暂未提供此字段
           accuracyText
         },
         loading: false

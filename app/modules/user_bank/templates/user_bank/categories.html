@@ -1,0 +1,203 @@
+{% extends "user_bank/base.html" %}
+
+{% block title %}分类管理{% endblock %}
+
+{% block content %}
+<a href="/user/banks" class="nav-back">← 返回我的题库</a>
+
+<div class="page-header">
+    <h1 class="page-title">分类管理</h1>
+</div>
+
+<!-- 添加分类 -->
+<div class="card add-card">
+    <h3 class="card-title">添加分类</h3>
+    <form id="addForm" class="add-form">
+        <input type="text" id="newName" class="form-input" placeholder="分类名称" maxlength="20">
+        <button type="submit" class="btn btn-primary">添加</button>
+    </form>
+</div>
+
+<!-- 分类列表 -->
+<div class="card list-card">
+    <h3 class="card-title">我的分类</h3>
+    <div id="categoryList">
+        <div class="loading"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block head %}
+<style>
+    .add-card, .list-card {
+        max-width: 500px;
+    }
+
+    .add-form {
+        display: flex;
+        gap: 12px;
+    }
+
+    .add-form input {
+        flex: 1;
+    }
+
+    .category-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px 0;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .category-item:last-child {
+        border-bottom: none;
+    }
+
+    .category-info {
+        flex: 1;
+    }
+
+    .category-name {
+        font-size: 15px;
+        font-weight: 500;
+        color: var(--text-color);
+        margin-bottom: 4px;
+    }
+
+    .category-count {
+        font-size: 13px;
+        color: var(--text-sub);
+    }
+
+    .category-actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    .empty-hint {
+        color: var(--text-sub);
+        text-align: center;
+        padding: 24px;
+    }
+
+    /* ========== 黑夜模式适配 ========== */
+    [data-theme="dark"] .category-item {
+        border-bottom-color: rgba(255, 255, 255, 0.1);
+    }
+
+    [data-theme="dark"] .btn-edit {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.15);
+        color: var(--text-color);
+    }
+    [data-theme="dark"] .btn-edit:hover {
+        background: rgba(255, 255, 255, 0.15);
+    }
+
+    [data-theme="dark"] .btn-delete {
+        background: rgba(255, 59, 48, 0.15);
+        color: #ff6b6b;
+        border-color: rgba(255, 59, 48, 0.25);
+    }
+    [data-theme="dark"] .btn-delete:hover {
+        background: rgba(255, 59, 48, 0.22);
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let categories = [];
+
+    async function loadCategories() {
+        try {
+            const res = await api('/user/banks/api/categories');
+            categories = res.data.categories || [];
+            renderCategories();
+        } catch (e) {
+            showToast(e.message, 'error');
+        }
+    }
+
+    function renderCategories() {
+        const container = document.getElementById('categoryList');
+
+        if (categories.length === 0) {
+            container.innerHTML = '<p class="empty-hint">暂无分类</p>';
+            return;
+        }
+
+        container.innerHTML = categories.map(cat => `
+            <div class="category-item">
+                <div class="category-info">
+                    <div class="category-name">${escapeHtml(cat.name)}</div>
+                    <div class="category-count">${cat.bank_count || 0} 个题库</div>
+                </div>
+                <div class="category-actions">
+                    <button class="btn btn-sm btn-edit" onclick="editCategory(${cat.id}, '${escapeHtml(cat.name).replace(/'/g, "\\'")}')">编辑</button>
+                    <button class="btn btn-sm btn-delete" onclick="deleteCategory(${cat.id}, '${escapeHtml(cat.name).replace(/'/g, "\\'")}', ${cat.bank_count || 0})">删除</button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    document.getElementById('addForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = document.getElementById('newName').value.trim();
+
+        if (!name) {
+            showToast('请输入分类名称', 'error');
+            return;
+        }
+
+        try {
+            await api('/user/banks/api/categories', {
+                method: 'POST',
+                body: JSON.stringify({ name })
+            });
+            showToast('添加成功');
+            document.getElementById('newName').value = '';
+            loadCategories();
+        } catch (e) {
+            showToast(e.message, 'error');
+        }
+    });
+
+    async function editCategory(id, currentName) {
+        const newName = prompt('请输入新的分类名称：', currentName);
+        if (!newName || newName.trim() === currentName) return;
+
+        try {
+            await api(`/user/banks/api/categories/${id}`, {
+                method: 'PUT',
+                body: JSON.stringify({ name: newName.trim() })
+            });
+            showToast('更新成功');
+            loadCategories();
+        } catch (e) {
+            showToast(e.message, 'error');
+        }
+    }
+
+    async function deleteCategory(id, name, bankCount) {
+        if (bankCount > 0) {
+            showToast(`该分类下还有${bankCount}个题库，请先移除`, 'error');
+            return;
+        }
+
+        if (!confirmAction(`确定要删除分类「${name}」吗？`)) return;
+
+        try {
+            await api(`/user/banks/api/categories/${id}`, { method: 'DELETE' });
+            showToast('删除成功');
+            loadCategories();
+        } catch (e) {
+            showToast(e.message, 'error');
+        }
+    }
+
+    // 初始化
+    loadCategories();
+</script>
+{% endblock %}

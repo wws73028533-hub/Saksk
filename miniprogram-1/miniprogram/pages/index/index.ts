@@ -1,13 +1,16 @@
 // index.ts
 import { api } from '../../utils/api';
 import { checkLogin } from '../../utils/auth';
+import { themeManager } from '../../utils/theme';
 
 function parseQuery(raw: string): Record<string, string> {
   const out: Record<string, string> = {};
   if (!raw) return out;
   const parts = raw.split('&');
   for (const part of parts) {
-    const [k, v] = part.split('=');
+    const kv = part.split('=');
+    const k = kv[0];
+    const v = kv[1];
     if (!k) continue;
     out[decodeURIComponent(k)] = decodeURIComponent(v || '');
   }
@@ -100,10 +103,13 @@ Page({
     
     this.setData({ loading: true });
     try {
-      const [countData, userCounts] = await Promise.all([
+      const results = await Promise.all([
         api.getQuestionsCount({ subject: 'all' }),
         api.getUserCounts({ subject: 'all' })
       ]);
+
+      const countData = results[0];
+      const userCounts = results[1];
 
       const total = (countData && (countData as any).count) ? (countData as any).count : 0;
       const favorites = (userCounts && (userCounts as any).favorites) ? (userCounts as any).favorites : 0;
@@ -235,6 +241,11 @@ Page({
 
   onGoSubjectsTap() {
     wx.switchTab({ url: '/pages/subjects/subjects' });
+  },
+
+  onToggleThemeTap() {
+    themeManager.cycleMode();
+    wx.showToast({ title: `主题：${themeManager.getModeName()}`, icon: 'none' });
   },
 
   // 下拉刷新

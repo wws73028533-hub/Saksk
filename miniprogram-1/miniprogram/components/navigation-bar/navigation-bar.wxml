@@ -34,9 +34,7 @@
           </view>
         </block>
       </block>
-      <block wx:else>
-        <slot name="left"></slot>
-      </block>
+      <slot name="left"></slot>
     </view>
 
     <!-- 标题 -->

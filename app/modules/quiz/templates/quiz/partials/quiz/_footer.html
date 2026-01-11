@@ -9,9 +9,6 @@
   <div class="bottom-actions">
     <div class="bottom-col left">
       <button class="nav-btn prev-btn" onclick="prevQuestion()" id="btn-prev">上一题</button>
-      {% if mode != 'exam' %}
-        <button class="mini-action-btn" type="button" id="btn-settings" onclick="openFeatureModal()">设置</button>
-      {% endif %}
     </div>
 
     <div class="bottom-col right">
@@ -20,7 +17,6 @@
         <button class="mini-action-btn" id="btn-submit-exam" onclick="submitExam()">交卷</button>
       {% else %}
         <button class="nav-btn next-btn" onclick="nextQuestion()" id="btn-next">下一题</button>
-        <button class="mini-action-btn ai" type="button" id="btn-ai" onclick="toggleAIExplain()">AI</button>
       {% endif %}
     </div>
   </div>

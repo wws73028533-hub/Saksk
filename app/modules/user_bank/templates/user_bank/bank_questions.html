@@ -1,0 +1,2156 @@
+{% extends "user_bank/base.html" %}
+
+{% block title %}题目管理{% endblock %}
+
+{% block head %}
+<style>
+    body {
+        background-color: var(--bg-color);
+    }
+    .container {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(30px) saturate(180%);
+        -webkit-backdrop-filter: blur(30px) saturate(180%);
+        padding: 40px;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-soft);
+        border: 0.5px solid var(--border-color);
+    }
+    [data-theme="dark"] .container {
+        background: rgba(28, 28, 30, 0.7);
+    }
+
+    /* 页面标题 */
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        padding-bottom: 0;
+        border-bottom: none;
+    }
+    .page-title {
+        font-size: 24px;
+        font-weight: bold;
+        color: var(--text-color);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .page-title-icon {
+        display: none;
+    }
+    .bank-badge {
+        display: inline-block;
+        padding: 6px 14px;
+        background-color: var(--primary-light);
+        color: var(--text-color);
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: 500;
+    }
+
+    /* 统计卡片（优化大小） */
+    .stats-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+    .stat-card {
+        padding: 20px;
+        border-radius: var(--radius-lg);
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(30px) saturate(180%);
+        -webkit-backdrop-filter: blur(30px) saturate(180%);
+        border: 0.5px solid var(--border-color);
+        color: var(--text-color);
+        box-shadow: var(--shadow-soft);
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        text-align: center;
+    }
+    [data-theme="dark"] .stat-card {
+        background: rgba(28, 28, 30, 0.7);
+    }
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow);
+        border-color: var(--border-color);
+    }
+    .stat-card-label {
+        font-size: 13px;
+        color: var(--text-sub);
+        margin-bottom: 8px;
+    }
+    .stat-card-value {
+        font-size: 28px;
+        font-weight: 600;
+        line-height: 1.2;
+        color: var(--text-color);
+        letter-spacing: -0.5px;
+    }
+
+    /* 工具栏和按钮 */
+    .toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+    .toolbar-left, .toolbar-right {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    /* 统一工具栏按钮和选择框的宽度和高度 */
+    .toolbar .btn,
+    .toolbar .btn-primary,
+    .toolbar .btn-secondary,
+    .toolbar .btn-danger,
+    .toolbar .btn-outline,
+    .toolbar select {
+        width: 120px;
+        height: 44px;
+        min-width: 120px;
+        min-height: 44px;
+        max-width: 120px;
+        max-height: 44px;
+        padding: 10px 12px;
+        font-size: 14px;
+        font-weight: 500;
+        box-sizing: border-box;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        text-overflow: ellipsis;
+        overflow: hidden;
+        white-space: nowrap;
+    }
+    .toolbar select {
+        text-align: left;
+        justify-content: flex-start;
+    }
+    .toolbar .btn,
+    .toolbar .btn-primary,
+    .toolbar .btn-secondary,
+    .toolbar .btn-danger,
+    .toolbar .btn-outline {
+        text-align: center;
+        justify-content: center;
+    }
+
+    .btn, .btn-primary, .btn-secondary, .btn-danger, .btn-outline {
+        padding: 10px 16px;
+        font-size: 14px;
+        font-weight: 500;
+        border-radius: 8px;
+        border: 1px solid transparent;
+        cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        min-height: 44px;
+        min-width: 100px;
+        box-sizing: border-box;
+        white-space: nowrap;
+        backdrop-filter: blur(20px) saturate(180%);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
+    }
+
+    .btn-primary {
+        background-color: rgba(0, 122, 255, 0.4);
+        color: white;
+        border: 1.5px solid rgba(0, 122, 255, 0.6);
+        box-shadow: 0 0 0 1px rgba(0, 122, 255, 0.3) inset,
+                    0 2px 8px rgba(0, 122, 255, 0.2),
+                    0 0 20px rgba(0, 122, 255, 0.15);
+    }
+    .btn-primary:hover {
+        background-color: rgba(0, 122, 255, 0.5);
+        border-color: rgba(0, 122, 255, 0.8);
+        transform: translateY(-1px);
+        box-shadow: 0 0 0 1px rgba(0, 122, 255, 0.4) inset,
+                    0 4px 16px rgba(0, 122, 255, 0.3),
+                    0 0 30px rgba(0, 122, 255, 0.25);
+    }
+    .btn-primary:active {
+        transform: translateY(0);
+        box-shadow: 0 0 0 1px rgba(0, 122, 255, 0.3) inset,
+                    0 2px 8px rgba(0, 122, 255, 0.2),
+                    0 0 15px rgba(0, 122, 255, 0.15);
+    }
+
+    .btn-danger {
+        background-color: rgba(255, 59, 48, 0.4);
+        color: white;
+        border: 1.5px solid rgba(255, 59, 48, 0.6);
+        box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.3) inset,
+                    0 2px 8px rgba(255, 59, 48, 0.2),
+                    0 0 20px rgba(255, 59, 48, 0.15);
+    }
+    .btn-danger:hover {
+        background-color: rgba(255, 59, 48, 0.5);
+        border-color: rgba(255, 59, 48, 0.8);
+        transform: translateY(-1px);
+        box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.4) inset,
+                    0 4px 16px rgba(255, 59, 48, 0.3),
+                    0 0 30px rgba(255, 59, 48, 0.25);
+    }
+    .btn-danger:active {
+        transform: translateY(0);
+        box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.3) inset,
+                    0 2px 8px rgba(255, 59, 48, 0.2),
+                    0 0 15px rgba(255, 59, 48, 0.15);
+    }
+
+    /* 暗色模式下的主要按钮 */
+    [data-theme="dark"] .btn-primary {
+        background-color: rgba(0, 122, 255, 0.35);
+        border: 1.5px solid rgba(0, 122, 255, 0.6);
+        color: white;
+        box-shadow: 0 0 0 1px rgba(0, 122, 255, 0.3) inset,
+                    0 2px 8px rgba(0, 122, 255, 0.25),
+                    0 0 20px rgba(0, 122, 255, 0.2);
+    }
+    [data-theme="dark"] .btn-primary:hover {
+        background-color: rgba(0, 122, 255, 0.45);
+        border-color: rgba(0, 122, 255, 0.8);
+        box-shadow: 0 0 0 1px rgba(0, 122, 255, 0.4) inset,
+                    0 4px 16px rgba(0, 122, 255, 0.35),
+                    0 0 30px rgba(0, 122, 255, 0.3);
+        transform: translateY(-1px);
+    }
+    [data-theme="dark"] .btn-primary:active {
+        transform: translateY(0);
+        box-shadow: 0 0 0 1px rgba(0, 122, 255, 0.3) inset,
+                    0 2px 8px rgba(0, 122, 255, 0.25),
+                    0 0 15px rgba(0, 122, 255, 0.2);
+    }
+    [data-theme="dark"] .btn-danger {
+        background-color: rgba(255, 59, 48, 0.35);
+        border: 1.5px solid rgba(255, 59, 48, 0.6);
+        color: white;
+        box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.3) inset,
+                    0 2px 8px rgba(255, 59, 48, 0.25),
+                    0 0 20px rgba(255, 59, 48, 0.2);
+    }
+    [data-theme="dark"] .btn-danger:hover {
+        background-color: rgba(255, 59, 48, 0.45);
+        border-color: rgba(255, 59, 48, 0.8);
+        box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.4) inset,
+                    0 4px 16px rgba(255, 59, 48, 0.35),
+                    0 0 30px rgba(255, 59, 48, 0.3);
+        transform: translateY(-1px);
+    }
+    [data-theme="dark"] .btn-danger:active {
+        transform: translateY(0);
+        box-shadow: 0 0 0 1px rgba(255, 59, 48, 0.3) inset,
+                    0 2px 8px rgba(255, 59, 48, 0.25),
+                    0 0 15px rgba(255, 59, 48, 0.2);
+    }
+
+    .btn-secondary, .btn-outline {
+        background-color: rgba(248, 249, 250, 0.7);
+        color: var(--text-color);
+        border-color: rgba(222, 226, 230, 0.5);
+    }
+    .btn-secondary:hover, .btn-outline:hover {
+        background-color: rgba(233, 236, 239, 0.85);
+        border-color: rgba(206, 212, 218, 0.6);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    .btn-secondary:active, .btn-outline:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    }
+    [data-theme="dark"] .btn-secondary,
+    [data-theme="dark"] .btn-outline {
+        background-color: rgba(255, 255, 255, 0.1);
+        color: var(--text-color);
+        border-color: rgba(255, 255, 255, 0.15);
+    }
+    [data-theme="dark"] .btn-secondary:hover,
+    [data-theme="dark"] .btn-outline:hover {
+        background-color: rgba(255, 255, 255, 0.15);
+        border-color: rgba(255, 255, 255, 0.2);
+        color: var(--text-color);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+    [data-theme="dark"] .btn-secondary:active,
+    [data-theme="dark"] .btn-outline:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    }
+
+    /* 搜索框优化 */
+    .search-box {
+        position: relative;
+        display: inline-block;
+    }
+    .search-box input {
+        padding-left: 14px;
+        width: 220px;
+        min-width: 220px;
+        min-height: 44px;
+        transition: width 0.3s, border-color 0.3s;
+    }
+    .search-box input:focus {
+        width: 280px;
+        min-width: 280px;
+        border-color: var(--primary);
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+    }
+    .search-icon {
+        display: none;
+    }
+
+    /* 下拉菜单优化 */
+    .dropdown { position: relative; display: inline-block; }
+    .dropdown-menu {
+        display: none;
+        position: absolute;
+        left: 0;
+        top: 100%;
+        margin-top: 8px;
+        background: #fff;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 8px;
+        z-index: 10;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        animation: slideDown 0.2s ease;
+    }
+    @keyframes slideDown {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    #batch-menu { min-width: auto; white-space: nowrap; width: max-content; height: auto; }
+    .dropdown-menu.open { display: block; }
+    #batch-menu.open {
+        display: flex;
+        flex-wrap: nowrap;
+        align-items: center;
+        gap: 8px;
+        white-space: nowrap;
+    }
+    #batch-menu[style*="display: block"] {
+        display: flex !important;
+        flex-wrap: nowrap;
+        align-items: center;
+        gap: 8px;
+        white-space: nowrap;
+    }
+    #batch-menu .btn {
+        display: inline-flex;
+        width: auto;
+        white-space: nowrap;
+        padding: 6px 12px;
+        font-size: 13px;
+    }
+    .dropdown-menu label {
+        display: block;
+        margin-bottom: 8px;
+        padding: 6px 10px;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    .dropdown-menu label:hover {
+        background: #f8f9fa;
+    }
+    .dropdown-menu label input {
+        margin-right: 8px;
+    }
+    [data-theme="dark"] .dropdown-menu {
+        background: rgba(28, 28, 30, 0.95);
+        backdrop-filter: blur(20px) saturate(180%);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
+        border-color: rgba(255, 255, 255, 0.15);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+    [data-theme="dark"] .dropdown-menu label {
+        color: var(--text-color);
+    }
+    [data-theme="dark"] .dropdown-menu label:hover {
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    /* 批量菜单按钮黑夜模式样式 */
+    [data-theme="dark"] #batch-menu .btn {
+        background-color: rgba(255, 255, 255, 0.1);
+        color: var(--text-color);
+        border-color: rgba(255, 255, 255, 0.15);
+        transition: all 0.2s;
+    }
+
+    [data-theme="dark"] #batch-menu .btn:hover {
+        background-color: rgba(255, 255, 255, 0.15);
+        border-color: rgba(255, 255, 255, 0.25);
+        color: var(--text-color);
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    [data-theme="dark"] #batch-menu .btn:active {
+        transform: translateY(0);
+        background-color: rgba(255, 255, 255, 0.12);
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+    }
+
+    /* 新增题目按钮下拉箭头 */
+    .dropdown > .btn-primary::after {
+        content: ' ▼';
+        font-size: 12px;
+        opacity: 0.8;
+        margin-left: 4px;
+    }
+
+    /* 新增题目下拉菜单 - 列表化样式 */
+    .add-menu {
+        min-width: 280px;
+        padding: 4px 0;
+        display: none;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px) saturate(180%);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
+        border: 0.5px solid var(--border-color);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        margin-top: 6px;
+    }
+    [data-theme="dark"] .add-menu {
+        background: rgba(28, 28, 30, 0.95);
+        border-color: rgba(255, 255, 255, 0.15);
+    }
+    .add-menu.open {
+        display: block;
+    }
+    /* 下拉菜单项 - 使用更具体的选择器覆盖按钮样式 */
+    .add-menu .dropdown-item,
+    .add-menu button.dropdown-item {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 16px 18px;
+        width: 100%;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        text-align: left;
+        font-size: 14px;
+        color: var(--text-color);
+        border-radius: 0;
+        min-height: auto;
+        min-width: auto;
+        white-space: normal;
+        position: relative;
+        box-sizing: border-box;
+        margin: 0;
+        justify-content: flex-start;
+        font-weight: normal;
+        text-decoration: none;
+    }
+    .add-menu .dropdown-item:hover,
+    .add-menu button.dropdown-item:hover {
+        background-color: rgba(0, 122, 255, 0.08);
+    }
+    [data-theme="dark"] .add-menu .dropdown-item:hover,
+    [data-theme="dark"] .add-menu button.dropdown-item:hover {
+        background-color: rgba(0, 122, 255, 0.15);
+    }
+    .add-menu .dropdown-item:active,
+    .add-menu button.dropdown-item:active {
+        background-color: rgba(0, 122, 255, 0.12);
+        transform: scale(0.98);
+    }
+    [data-theme="dark"] .add-menu .dropdown-item:active,
+    [data-theme="dark"] .add-menu button.dropdown-item:active {
+        background-color: rgba(0, 122, 255, 0.2);
+    }
+    .add-menu .dropdown-item:first-child {
+        border-top-left-radius: 8px;
+        border-top-right-radius: 8px;
+    }
+    .add-menu .dropdown-item:last-child {
+        border-bottom-left-radius: 8px;
+        border-bottom-right-radius: 8px;
+    }
+    .add-menu .dropdown-item:not(:last-child) {
+        border-bottom: 0.5px solid rgba(0, 0, 0, 0.05);
+    }
+    [data-theme="dark"] .add-menu .dropdown-item:not(:last-child) {
+        border-bottom-color: rgba(255, 255, 255, 0.1);
+    }
+    .add-menu .item-icon {
+        font-size: 20px;
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        line-height: 1;
+        background: rgba(0, 122, 255, 0.1);
+        border-radius: 10px;
+        margin-top: 0;
+        transition: all 0.2s;
+    }
+    .add-menu .dropdown-item:hover .item-icon {
+        background: rgba(0, 122, 255, 0.15);
+        transform: scale(1.05);
+    }
+    [data-theme="dark"] .add-menu .item-icon {
+        background: rgba(0, 122, 255, 0.2);
+    }
+    [data-theme="dark"] .add-menu .dropdown-item:hover .item-icon {
+        background: rgba(0, 122, 255, 0.25);
+    }
+    .add-menu .item-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        min-width: 0;
+    }
+    .add-menu .item-text {
+        font-weight: 600;
+        line-height: 1.5;
+        font-size: 15px;
+        color: var(--text-color);
+        letter-spacing: -0.01em;
+    }
+    .add-menu .item-desc {
+        font-size: 13px;
+        color: var(--text-sub);
+        opacity: 0.75;
+        line-height: 1.5;
+        font-weight: 400;
+    }
+
+    /* 输入框和选择框优化 */
+    input[type="text"],
+    input[type="number"],
+    select {
+        padding: 10px 16px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
+        min-height: 44px;
+        min-width: 100px;
+        box-sizing: border-box;
+        background-color: #f8f9fa;
+        color: var(--text-color);
+    }
+    input[type="text"]:focus,
+    input[type="number"]:focus,
+    select:focus {
+        border-color: #667eea;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        background-color: #fff;
+    }
+    [data-theme="dark"] input[type="text"],
+    [data-theme="dark"] input[type="number"],
+    [data-theme="dark"] select {
+        background-color: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.15);
+        color: var(--text-color);
+    }
+    [data-theme="dark"] input[type="text"]:focus,
+    [data-theme="dark"] input[type="number"]:focus,
+    [data-theme="dark"] select:focus {
+        background-color: rgba(255, 255, 255, 0.15);
+        border-color: rgba(255, 255, 255, 0.2);
+        box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.2);
+    }
+    [data-theme="dark"] select option {
+        background-color: rgba(28, 28, 30, 0.95);
+        color: var(--text-color);
+    }
+    [data-theme="dark"] select option:checked,
+    [data-theme="dark"] select option:hover {
+        background-color: rgba(0, 122, 255, 0.3);
+        color: white;
+    }
+
+    /* 表格优化 - iOS 18风格 */
+    .table-wrapper {
+        overflow-x: auto;
+        border-radius: var(--radius-lg);
+        border: 0.5px solid var(--border-color);
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(30px) saturate(180%);
+        -webkit-backdrop-filter: blur(30px) saturate(180%);
+        box-shadow: var(--shadow-soft);
+    }
+    [data-theme="dark"] .table-wrapper {
+        background: rgba(28, 28, 30, 0.7);
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    th, td {
+        border-bottom: 1px solid var(--border-color);
+        padding: 20px 16px;
+        text-align: left;
+        white-space: nowrap;
+        vertical-align: middle;
+    }
+    [data-theme="dark"] th,
+    [data-theme="dark"] td {
+        border-bottom-color: rgba(255, 255, 255, 0.1);
+    }
+    tbody td.col-content {
+        white-space: normal;
+    }
+    tbody tr:last-child td {
+        border-bottom: none;
+    }
+    thead {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+    }
+    th {
+        background: rgba(142, 142, 147, 0.06);
+        font-weight: 600;
+        color: var(--text-color);
+        font-size: 13px;
+        text-transform: none;
+        letter-spacing: -0.01em;
+    }
+    [data-theme="dark"] th {
+        background: rgba(255, 255, 255, 0.05);
+    }
+    tbody tr {
+        transition: background-color 0.15s ease-in-out;
+        height: 80px;
+    }
+    tbody tr:hover {
+        background-color: rgba(142, 142, 147, 0.06);
+    }
+    [data-theme="dark"] tbody tr:hover {
+        background-color: rgba(255, 255, 255, 0.05);
+    }
+    tbody td {
+        padding: 20px 16px;
+        vertical-align: middle;
+        height: 80px;
+        box-sizing: border-box;
+    }
+    .col-content {
+        min-width: 300px;
+        max-width: 500px;
+        padding: 20px 16px;
+        vertical-align: middle;
+        height: 80px;
+        box-sizing: border-box;
+    }
+    .col-content .content-text {
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        line-height: 1.6;
+        max-height: calc(1.6em * 2);
+        word-break: break-word;
+    }
+
+    /* 题型标签 */
+    .type-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+    .type-badge.choice { background: #d4edda; color: #155724; }
+    .type-badge.blank { background: #fff3cd; color: #856404; }
+    .type-badge.judge { background: #cce5ff; color: #004085; }
+    .type-badge.other { background: #f8d7da; color: #721c24; }
+    [data-theme="dark"] .type-badge.choice { background: rgba(52, 199, 89, 0.2); color: #30d158; }
+    [data-theme="dark"] .type-badge.blank { background: rgba(255, 159, 10, 0.2); color: #ff9f0a; }
+    [data-theme="dark"] .type-badge.judge { background: rgba(10, 132, 255, 0.2); color: #0a84ff; }
+    [data-theme="dark"] .type-badge.other { background: rgba(255, 69, 58, 0.2); color: #ff453a; }
+
+    /* 难度显示 */
+    .difficulty-stars {
+        color: #ffc107;
+        font-size: 14px;
+    }
+
+    /* 操作按钮优化 */
+    .action-btns {
+        display: flex;
+        gap: 8px;
+        flex-wrap: nowrap;
+    }
+    .btn-sm {
+        padding: 8px 16px;
+        min-height: 36px;
+        font-size: 14px;
+        border-radius: var(--radius-md);
+        border: 0.5px solid transparent;
+        cursor: pointer;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        white-space: nowrap;
+    }
+    .btn-sm:hover {
+        transform: none;
+        box-shadow: none;
+    }
+    .btn-edit {
+        background-color: #e9ecef;
+        color: #343a40;
+    }
+    .btn-edit:hover {
+        background-color: #dee2e6;
+    }
+    [data-theme="dark"] .btn-edit {
+        background-color: rgba(255, 255, 255, 0.12);
+        color: var(--text-color);
+        border-color: rgba(255, 255, 255, 0.15);
+    }
+    [data-theme="dark"] .btn-edit:hover {
+        background-color: rgba(255, 255, 255, 0.18);
+        border-color: rgba(255, 255, 255, 0.2);
+    }
+    .btn-delete {
+        background-color: #ffeef0;
+        color: #ff3b30;
+    }
+    .btn-delete:hover {
+        background-color: #ffdcdf;
+    }
+    [data-theme="dark"] .btn-delete {
+        background-color: rgba(255, 59, 48, 0.15);
+        color: #ff6b6b;
+        border-color: rgba(255, 59, 48, 0.25);
+    }
+    [data-theme="dark"] .btn-delete:hover {
+        background-color: rgba(255, 59, 48, 0.22);
+        border-color: rgba(255, 59, 48, 0.3);
+    }
+
+    /* 抽屉优化 */
+    .drawer {
+        position: fixed;
+        top: 0;
+        right: 0;
+        width: 520px;
+        height: 100%;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(40px) saturate(180%);
+        -webkit-backdrop-filter: blur(40px) saturate(180%);
+        box-shadow: -4px 0 30px rgba(0,0,0,0.1);
+        border-left: 0.5px solid var(--border-color);
+        transform: translateX(100%);
+        transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+        z-index: 100;
+        display: flex;
+        flex-direction: column;
+    }
+    .drawer.open {
+        transform: translateX(0);
+    }
+    .drawer-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.4);
+        z-index: 99;
+        display: none;
+        opacity: 0;
+        transition: opacity 0.4s ease;
+    }
+    .drawer-overlay.show {
+        display: block;
+        opacity: 1;
+    }
+    [data-theme="dark"] .drawer-overlay {
+        background: rgba(0, 0, 0, 0.6);
+    }
+    .drawer-header {
+        padding: 16px 24px;
+        border-bottom: 1px solid #e5e5e5;
+        font-size: 18px;
+        font-weight: 600;
+        background-color: #fff;
+        color: #212529;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-shrink: 0;
+    }
+    .drawer-close {
+        background: #e9ecef;
+        border: none;
+        color: #6c757d;
+        font-size: 20px;
+        font-weight: bold;
+        cursor: pointer;
+        padding: 0;
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        transition: background-color 0.2s, color 0.2s;
+    }
+    .drawer-close:hover {
+        background: #dee2e6;
+        color: #212529;
+    }
+    .drawer-body {
+        flex: 1;
+        padding: 24px;
+        overflow-y: auto;
+        background-color: #fff;
+    }
+    .form-group {
+        margin-bottom: 20px;
+    }
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        color: #495057;
+    }
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        padding: 10px 14px;
+        border: 1px solid #ced4da;
+        border-radius: 8px;
+        box-sizing: border-box;
+        font-size: 14px;
+        background-color: #fff;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+        border-color: #007aff;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.2);
+    }
+    .drawer-footer {
+        padding: 16px 24px;
+        border-top: 1px solid #e5e5e5;
+        text-align: right;
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        background-color: #f8f9fa;
+        flex-shrink: 0;
+    }
+
+    /* 暗色模式 - 抽屉样式 */
+    [data-theme="dark"] .drawer {
+        background: rgba(28, 28, 30, 0.95);
+        backdrop-filter: blur(40px) saturate(180%);
+        -webkit-backdrop-filter: blur(40px) saturate(180%);
+        box-shadow: -4px 0 30px rgba(0, 0, 0, 0.5);
+        border-left: 0.5px solid rgba(255, 255, 255, 0.15);
+    }
+    [data-theme="dark"] .drawer-header {
+        background-color: rgba(28, 28, 30, 0.95);
+        color: var(--text-color);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    [data-theme="dark"] .drawer-body {
+        background-color: rgba(28, 28, 30, 0.95);
+    }
+    [data-theme="dark"] .drawer-footer {
+        background-color: rgba(28, 28, 30, 0.95);
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    [data-theme="dark"] .drawer-close {
+        background: rgba(255, 255, 255, 0.1);
+        color: var(--text-color);
+    }
+    [data-theme="dark"] .drawer-close:hover {
+        background: rgba(255, 255, 255, 0.15);
+        color: var(--text-color);
+    }
+    [data-theme="dark"] .form-group label {
+        color: var(--text-color);
+    }
+    [data-theme="dark"] .form-group input,
+    [data-theme="dark"] .form-group select,
+    [data-theme="dark"] .form-group textarea {
+        background-color: rgba(28, 28, 30, 0.8);
+        color: var(--text-color);
+        border-color: rgba(255, 255, 255, 0.15);
+    }
+    [data-theme="dark"] .form-group input:focus,
+    [data-theme="dark"] .form-group select:focus,
+    [data-theme="dark"] .form-group textarea:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.2);
+    }
+    [data-theme="dark"] .form-group input::placeholder,
+    [data-theme="dark"] .form-group textarea::placeholder {
+        color: var(--text-sub);
+        opacity: 0.6;
+    }
+    [data-theme="dark"] .form-group input[type="file"]::-webkit-file-upload-button {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.15);
+        color: var(--text-color);
+    }
+    [data-theme="dark"] .form-group input[type="file"]::-webkit-file-upload-button:hover {
+        background: rgba(255, 255, 255, 0.15);
+    }
+    [data-theme="dark"] .form-group input[type="file"]::file-selector-button {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.15);
+        color: var(--text-color);
+    }
+    [data-theme="dark"] .form-group input[type="file"]::file-selector-button:hover {
+        background: rgba(255, 255, 255, 0.15);
+    }
+    [data-theme="dark"] .form-group small {
+        color: var(--text-sub);
+    }
+
+    /* 预览框优化 */
+    .preview-box {
+        margin-top: 20px;
+        padding: 20px;
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        border-radius: 12px;
+        border: 1px solid #dee2e6;
+    }
+    .preview-box h4 {
+        margin: 0 0 16px 0;
+        color: #495057;
+        font-size: 16px;
+    }
+    .preview-box .q-content {
+        font-size: 15px;
+        font-weight: 500;
+        margin-bottom: 16px;
+        color: #212529;
+        line-height: 1.6;
+    }
+    .preview-box .options label {
+        display: block;
+        padding: 12px 16px;
+        margin-bottom: 10px;
+        background: white;
+        border: 2px solid #dee2e6;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .preview-box .options label:hover {
+        border-color: #667eea;
+        background: #f8f9fa;
+    }
+    [data-theme="dark"] .preview-box {
+        background: rgba(28, 28, 30, 0.6);
+        border-color: rgba(255, 255, 255, 0.15);
+    }
+    [data-theme="dark"] .preview-box h4 {
+        color: var(--text-color);
+    }
+    [data-theme="dark"] .preview-box .options label {
+        background: rgba(28, 28, 30, 0.8);
+        border-color: rgba(255, 255, 255, 0.15);
+        color: var(--text-color);
+    }
+    [data-theme="dark"] .preview-box .options label:hover {
+        border-color: var(--primary);
+        background: rgba(28, 28, 30, 0.9);
+    }
+    [data-theme="dark"] .preview-box .q-content {
+        color: var(--text-color);
+    }
+
+    /* 模态框优化 */
+    .modal-drawer {
+        position: fixed;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        z-index: 101;
+        display: none;
+        max-width: 90vw;
+        max-height: 90vh;
+        overflow: hidden;
+        animation: modalSlideIn 0.3s ease;
+    }
+    @keyframes modalSlideIn {
+        from { opacity: 0; transform: translate(-50%, -45%); }
+        to { opacity: 1; transform: translate(-50%, -50%); }
+    }
+    .modal-drawer.show {
+        display: flex;
+        flex-direction: column;
+    }
+    [data-theme="dark"] .modal-drawer {
+        background: rgba(28, 28, 30, 0.95);
+        border: 0.5px solid rgba(255, 255, 255, 0.15);
+    }
+
+    /* 导入预览 */
+    #importPreview {
+        max-height: 300px;
+        overflow: auto;
+        background: #f8f9fa;
+        padding: 12px;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+    }
+    #importPreview > div {
+        padding: 8px;
+        border-bottom: 1px solid #dee2e6;
+        font-size: 13px;
+    }
+    #importPreview > div:last-child {
+        border-bottom: none;
+    }
+    [data-theme="dark"] #importPreview {
+        background: rgba(28, 28, 30, 0.6) !important;
+        color: var(--text-color);
+        border-color: rgba(255, 255, 255, 0.15);
+    }
+    [data-theme="dark"] #importPreview > div {
+        border-bottom-color: rgba(255, 255, 255, 0.1);
+    }
+
+    /* 空状态 */
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #6c757d;
+    }
+    .empty-state-icon {
+        display: none;
+    }
+    .empty-state-text {
+        font-size: 16px;
+        margin-bottom: 8px;
+    }
+    .empty-state-hint {
+        font-size: 14px;
+        color: #adb5bd;
+    }
+    [data-theme="dark"] .empty-state {
+        color: var(--text-sub);
+    }
+    [data-theme="dark"] .empty-state-hint {
+        color: var(--text-sub);
+        opacity: 0.7;
+    }
+
+    /* 加载状态 */
+    .loading-row {
+        text-align: center;
+        padding: 40px;
+        color: #6c757d;
+    }
+    .loading-spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #667eea;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-right: 10px;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    [data-theme="dark"] .loading-row {
+        color: var(--text-sub);
+    }
+    [data-theme="dark"] .loading-spinner {
+        border-color: rgba(255, 255, 255, 0.1);
+        border-top-color: var(--primary);
+    }
+
+    /* 选项项目暗色模式 */
+    [data-theme="dark"] .option-item {
+        background: rgba(255, 255, 255, 0.05) !important;
+        border-color: rgba(255, 255, 255, 0.1) !important;
+    }
+    [data-theme="dark"] .option-item div {
+        color: var(--text-color) !important;
+    }
+    [data-theme="dark"] .option-item textarea {
+        background: rgba(28, 28, 30, 0.8) !important;
+        color: var(--text-color) !important;
+        border-color: rgba(255, 255, 255, 0.15) !important;
+    }
+    [data-theme="dark"] .option-item button {
+        background: rgba(255, 59, 48, 0.15) !important;
+        color: #ff6b6b !important;
+        border-color: rgba(255, 59, 48, 0.25) !important;
+    }
+    [data-theme="dark"] .option-item button:hover {
+        background: rgba(255, 59, 48, 0.22) !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- 页面标题 -->
+    <div class="page-header">
+        <div class="page-title">
+            <span>题目管理</span>
+            <span class="bank-badge" id="bankName">题库</span>
+        </div>
+        <button class="btn-secondary" onclick="window.location.href='/user/banks'">← 返回题库列表</button>
+    </div>
+
+    <!-- 统计卡片 -->
+    <div class="stats-row">
+        <div class="stat-card total">
+            <div class="stat-card-label">总题目数</div>
+            <div class="stat-card-value" id="statTotal">0</div>
+        </div>
+        <div class="stat-card choice">
+            <div class="stat-card-label">选择题</div>
+            <div class="stat-card-value" id="statChoice">0</div>
+        </div>
+        <div class="stat-card blank">
+            <div class="stat-card-label">填空题</div>
+            <div class="stat-card-value" id="statBlank">0</div>
+        </div>
+        <div class="stat-card judge">
+            <div class="stat-card-label">判断题</div>
+            <div class="stat-card-value" id="statJudge">0</div>
+        </div>
+    </div>
+
+    <!-- 工具栏 -->
+    <div class="toolbar">
+        <div class="toolbar-left">
+            <div class="dropdown">
+                <button class="btn-primary" onclick="toggleDropdown('add-menu')">新增题目</button>
+                <div id="add-menu" class="dropdown-menu add-menu">
+                    <button class="dropdown-item" onclick="openDrawer(); toggleDropdown('add-menu');">
+                        <span class="item-icon">➕</span>
+                        <span class="item-content">
+                            <span class="item-text">新增题目</span>
+                            <span class="item-desc">手动创建新题目</span>
+                        </span>
+                    </button>
+                    <button class="dropdown-item" onclick="openImportModal(); toggleDropdown('add-menu');">
+                        <span class="item-icon">📥</span>
+                        <span class="item-content">
+                            <span class="item-text">导入JSON</span>
+                            <span class="item-desc">从JSON文件或文本导入</span>
+                        </span>
+                    </button>
+                    <button class="dropdown-item" onclick="openImportExcelModal(); toggleDropdown('add-menu');">
+                        <span class="item-icon">📊</span>
+                        <span class="item-content">
+                            <span class="item-text">导入Excel</span>
+                            <span class="item-desc">从.xlsx文件导入</span>
+                        </span>
+                    </button>
+                    <button class="dropdown-item" onclick="openImportPackageModal(); toggleDropdown('add-menu');">
+                        <span class="item-icon">📦</span>
+                        <span class="item-content">
+                            <span class="item-text">导入题库包</span>
+                            <span class="item-desc">从ZIP文件导入</span>
+                        </span>
+                    </button>
+                </div>
+            </div>
+            <div class="dropdown">
+                <button class="btn-primary" onclick="toggleDropdown('export-menu')">导出题库</button>
+                <div id="export-menu" class="dropdown-menu add-menu">
+                    <button class="dropdown-item" onclick="exportExcel(); toggleDropdown('export-menu');">
+                        <span class="item-icon">📊</span>
+                        <span class="item-content">
+                            <span class="item-text">导出Excel</span>
+                            <span class="item-desc">导出为.xlsx格式</span>
+                        </span>
+                    </button>
+                    <button class="dropdown-item" onclick="exportPackage(); toggleDropdown('export-menu');">
+                        <span class="item-icon">📦</span>
+                        <span class="item-content">
+                            <span class="item-text">导出题库包</span>
+                            <span class="item-desc">导出为ZIP格式（含图片）</span>
+                        </span>
+                    </button>
+                    <button class="dropdown-item" onclick="exportQuestions(); toggleDropdown('export-menu');">
+                        <span class="item-icon">📄</span>
+                        <span class="item-content">
+                            <span class="item-text">导出JSON</span>
+                            <span class="item-desc">导出为JSON格式</span>
+                        </span>
+                    </button>
+                </div>
+            </div>
+            <div class="dropdown">
+                <button class="btn-outline" onclick="toggleDropdown('batch-menu')">批量操作</button>
+                <div id="batch-menu" class="dropdown-menu">
+                    <button class="btn" onclick="openBatchTypeChange()">修改题型</button>
+                    <button class="btn" onclick="openBatchDifficulty()">设置难度</button>
+                </div>
+            </div>
+        </div>
+        <div class="toolbar-right">
+            <button class="btn-danger" id="batchDeleteBtn" onclick="batchDeleteQuestions()" style="display: none;">批量删除</button>
+            <select id="typeFilter" onchange="loadQuestions()" title="题型筛选">
+                <option value="all">全部题型</option>
+                <option value="选择题">选择题</option>
+                <option value="多选题">多选题</option>
+                <option value="填空题">填空题</option>
+                <option value="判断题">判断题</option>
+                <option value="简答题">简答题</option>
+            </select>
+            <div class="search-box">
+                <span class="search-icon"></span>
+                <input type="text" id="searchInput" placeholder="搜索题干内容..." oninput="searchQuestions()">
+            </div>
+        </div>
+    </div>
+
+    <!-- 表格 -->
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:50px;"><input type="checkbox" id="selectAll" title="全选"></th>
+                    <th style="width:80px;">序号</th>
+                    <th style="width:100px;">题型</th>
+                    <th class="col-content">题干</th>
+                    <th style="width:100px;">难度</th>
+                    <th style="width:180px;">操作</th>
+                </tr>
+            </thead>
+            <tbody id="questionTableBody">
+                <tr>
+                    <td colspan="6" class="loading-row">
+                        <span class="loading-spinner"></span>
+                        <span>加载中...</span>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- 抽屉遮罩 -->
+<div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+
+<!-- 批量修改题型模态框 -->
+<div id="modalTypeChange" class="drawer" style="right:auto; left:50%; transform: translateX(-50%); width: 420px; height:auto; top: 15%; display:none;">
+    <div class="drawer-header">批量修改题型</div>
+    <div class="drawer-body">
+        <div class="form-group">
+            <label>目标题型</label>
+            <select id="typeChangeTarget" title="目标题型">
+                <option value="选择题">选择题</option>
+                <option value="多选题">多选题</option>
+                <option value="填空题">填空题</option>
+                <option value="判断题">判断题</option>
+                <option value="简答题">简答题</option>
+            </select>
+        </div>
+        <div class="form-group"><small>将把已勾选的题目修改为所选题型。</small></div>
+    </div>
+    <div class="drawer-footer">
+        <button class="btn-secondary" onclick="closeModal('modalTypeChange')">取消</button>
+        <button class="btn-primary" onclick="doBatchTypeChange()">确定</button>
+    </div>
+</div>
+
+<!-- 批量设置难度模态框 -->
+<div id="modalDifficulty" class="drawer" style="right:auto; left:50%; transform: translateX(-50%); width: 420px; height:auto; top: 20%; display:none;">
+    <div class="drawer-header">批量设置难度</div>
+    <div class="drawer-body">
+        <div class="form-group">
+            <label>难度 (1-5)</label>
+            <input type="number" id="diffValue" min="1" max="5" value="3" title="难度">
+        </div>
+    </div>
+    <div class="drawer-footer">
+        <button class="btn-secondary" onclick="closeModal('modalDifficulty')">取消</button>
+        <button class="btn-primary" onclick="doBatchDifficulty()">确定</button>
+    </div>
+</div>
+
+<!-- 导入模态框 -->
+<div id="modalImport" class="drawer" style="right:auto; left:50%; transform: translateX(-50%); width: 620px; height: 70%; top: 10%; display:none;">
+    <div class="drawer-header">导入题库（JSON预览）</div>
+    <div class="drawer-body">
+        <div class="form-group">
+            <label>粘贴JSON数组</label>
+            <textarea id="importText" rows="8" placeholder='[{"题型":"选择题","题干":"...","选项":["A","B"],"答案":"A","解析":"..."}]'></textarea>
+        </div>
+        <div class="form-group">
+            <label>或 选择JSON文件</label>
+            <input type="file" id="importFile" accept="application/json">
+        </div>
+        <div class="form-group">
+            <button class="btn-outline" onclick="renderImportPreview()">预览</button>
+        </div>
+        <div class="form-group">
+            <div id="importPreview" style="max-height:220px; overflow:auto; background:#f8f9fa; padding:10px; border-radius:6px; border:1px solid var(--border-color);"></div>
+        </div>
+    </div>
+    <div class="drawer-footer">
+        <button class="btn-secondary" onclick="closeModal('modalImport')">取消</button>
+        <button class="btn-primary" onclick="confirmImport()">确认导入</button>
+    </div>
+</div>
+
+<!-- 导入Excel模态框 -->
+<div id="modalImportExcel" class="drawer" style="right:auto; left:50%; transform: translateX(-50%); width: 520px; height: auto; top: 20%; display:none;">
+    <div class="drawer-header">导入Excel文件</div>
+    <div class="drawer-body">
+        <div class="form-group">
+            <label>选择Excel文件 (.xlsx)</label>
+            <input type="file" id="importExcelFile" accept=".xlsx">
+        </div>
+        <div class="form-group">
+            <small style="color: var(--text-sub); line-height: 1.6;">
+                Excel文件格式要求：<br>
+                - 必需列：q_type（题型）、content（题干）<br>
+                - 可选列：option_1、option_2...（选项）、answer（答案）、explanation（解析）、difficulty（难度1-5）<br>
+                - 选择题/多选题至少需要2个选项
+            </small>
+        </div>
+        <div id="importExcelResult" style="margin-top: 12px;"></div>
+    </div>
+    <div class="drawer-footer">
+        <button class="btn-secondary" onclick="closeModal('modalImportExcel')">取消</button>
+        <button class="btn-primary" onclick="confirmImportExcel()">确认导入</button>
+    </div>
+</div>
+
+<!-- 导入题库包模态框 -->
+<div id="modalImportPackage" class="drawer" style="right:auto; left:50%; transform: translateX(-50%); width: 520px; height: auto; top: 20%; display:none;">
+    <div class="drawer-header">导入题库包</div>
+    <div class="drawer-body">
+        <div class="form-group">
+            <label>选择ZIP文件</label>
+            <input type="file" id="importPackageFile" accept=".zip">
+        </div>
+        <div class="form-group">
+            <small style="color: var(--text-sub); line-height: 1.6;">
+                ZIP文件格式要求：<br>
+                - 包含data.json文件（题目数据）<br>
+                - 可包含images文件夹（图片资源）<br>
+                - 推荐使用本系统导出的题库包
+            </small>
+        </div>
+        <div id="importPackageResult" style="margin-top: 12px;"></div>
+    </div>
+    <div class="drawer-footer">
+        <button class="btn-secondary" onclick="closeModal('modalImportPackage')">取消</button>
+        <button class="btn-primary" onclick="confirmImportPackage()">确认导入</button>
+    </div>
+</div>
+
+<!-- Edit/Add Drawer -->
+<div id="drawer" class="drawer">
+    <div class="drawer-header">
+        <span id="drawer-title">新增题目</span>
+        <button class="drawer-close" onclick="closeDrawer()">×</button>
+    </div>
+    <div class="drawer-body">
+        <input type="hidden" id="editingId">
+        <div class="form-group">
+            <label>题型</label>
+            <select id="qType" onchange="handleQuestionTypeChange()" title="题型">
+                <option value="选择题">选择题</option>
+                <option value="多选题">多选题</option>
+                <option value="填空题">填空题</option>
+                <option value="判断题">判断题</option>
+                <option value="简答题">简答题</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>难度 (1-5)</label>
+            <input type="number" id="qDifficulty" min="1" max="5" value="3" title="难度">
+        </div>
+        <div class="form-group">
+            <label>题干</label>
+            <textarea id="qContent" rows="5" oninput="updatePreview()" placeholder="请输入题干内容"></textarea>
+        </div>
+        <div class="form-group" id="optionsGroup">
+            <label>选项</label>
+            <div id="optionsContainer" style="display: flex; flex-direction: column; gap: 12px;">
+            </div>
+            <button type="button" class="btn-secondary" onclick="addOption()" style="margin-top: 12px; width: 100%;">
+                + 添加选项
+            </button>
+        </div>
+        <div class="form-group">
+            <label>答案</label>
+            <div id="answer-container">
+                <input type="text" id="qAnswer" placeholder="请输入答案">
+            </div>
+        </div>
+        <div class="form-group">
+            <label>解析</label>
+            <textarea id="qExplanation" rows="3" placeholder="请输入解析（可选）"></textarea>
+        </div>
+        <div class="preview-box">
+            <h4>预览</h4>
+            <div id="previewContent" class="q-content"></div>
+            <div id="previewOptions" class="options"></div>
+        </div>
+    </div>
+    <div class="drawer-footer">
+        <button class="btn-secondary" onclick="closeDrawer()">取消</button>
+        <button class="btn-primary" onclick="saveQuestion()">保存</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const bankId = {{ bank_id|int }};
+    let allQuestions = [];
+    let editingId = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadBank();
+        loadQuestions();
+        document.getElementById('selectAll').addEventListener('change', (e) => {
+            document.querySelectorAll('.questionSelect').forEach(cb => cb.checked = e.target.checked);
+            updateBatchDeleteBtn();
+        });
+
+        // 点击外部区域关闭下拉菜单
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.dropdown')) {
+                document.querySelectorAll('.dropdown-menu').forEach(m => {
+                    m.classList.remove('open');
+                    m.style.display = 'none';
+                });
+            }
+        });
+    });
+
+    async function loadBank() {
+        try {
+            const res = await api(`/user/banks/api/${bankId}`);
+            document.getElementById('bankName').textContent = res.data.name;
+        } catch (e) {
+            showToast(e.message, 'error');
+        }
+    }
+
+    function toggleDropdown(id) {
+        const menu = document.getElementById(id);
+        const isOpen = menu.classList.contains('open') || menu.style.display === 'block' || menu.style.display === 'flex';
+        // 先关闭其它菜单
+        document.querySelectorAll('.dropdown-menu').forEach(m => { m.classList.remove('open'); m.style.display = 'none'; });
+        if (!isOpen) {
+            menu.classList.add('open');
+            if (id === 'batch-menu') {
+                menu.style.display = 'flex';
+                menu.style.flexWrap = 'nowrap';
+                menu.style.alignItems = 'center';
+                menu.style.whiteSpace = 'nowrap';
+                menu.style.gap = '8px';
+            } else {
+                menu.style.display = 'block';
+            }
+        }
+    }
+
+    async function loadQuestions() {
+        const type = document.getElementById('typeFilter').value;
+        try {
+            let url = `/user/banks/api/${bankId}/questions?page=1&per_page=1000`;
+            if (type && type !== 'all') {
+                url += `&q_type=${encodeURIComponent(type)}`;
+            }
+            const res = await api(url);
+            allQuestions = res.data.questions || [];
+            updateStats();
+            renderTable();
+        } catch (error) {
+            console.error('加载题目失败:', error);
+            showToast('加载题目失败，请刷新页面重试', 'error');
+        }
+    }
+
+    function updateStats() {
+        const total = allQuestions.length;
+        const choice = allQuestions.filter(q => q.q_type === '选择题' || q.q_type === '多选题').length;
+        const blank = allQuestions.filter(q => q.q_type === '填空题').length;
+        const judge = allQuestions.filter(q => q.q_type === '判断题').length;
+
+        document.getElementById('statTotal').textContent = total;
+        document.getElementById('statChoice').textContent = choice;
+        document.getElementById('statBlank').textContent = blank;
+        document.getElementById('statJudge').textContent = judge;
+    }
+
+    function getTypeBadgeClass(type) {
+        if (type === '选择题' || type === '多选题') return 'choice';
+        if (type === '填空题') return 'blank';
+        if (type === '判断题') return 'judge';
+        return 'other';
+    }
+
+    function renderDifficulty(level) {
+        const stars = '★'.repeat(level) + '☆'.repeat(5 - level);
+        return `<span class="difficulty-stars" title="难度: ${level}/5">${stars}</span>`;
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function renderTable() {
+        const tbody = document.getElementById('questionTableBody');
+        const keyword = document.getElementById('searchInput').value.toLowerCase();
+        tbody.innerHTML = '';
+
+        const filtered = allQuestions.filter(q => q.content.toLowerCase().includes(keyword));
+
+        if (filtered.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="empty-state">
+                        <div class="empty-state-text">暂无题目数据</div>
+                        <div class="empty-state-hint">点击"新增题目"按钮添加第一道题目</div>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        filtered.forEach((q, index) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><input type="checkbox" class="questionSelect" data-id="${q.id}" onchange="updateBatchDeleteBtn()" title="选择"></td>
+                <td style="text-align: center;">${index + 1}</td>
+                <td>
+                    <span class="type-badge ${getTypeBadgeClass(q.q_type)}">${q.q_type}</span>
+                </td>
+                <td class="col-content"><div class="content-text">${escapeHtml(q.content)}</div></td>
+                <td>${renderDifficulty(q.difficulty || 3)}</td>
+                <td>
+                    <div class="action-btns">
+                        <button class="btn-sm btn-edit" onclick="openDrawer(${q.id})" title="编辑题目">编辑</button>
+                        <button class="btn-sm btn-delete" onclick="deleteQuestion(${q.id})" title="删除题目">删除</button>
+                    </div>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function searchQuestions() { renderTable(); }
+
+    function updateBatchDeleteBtn() {
+        const selected = document.querySelectorAll('.questionSelect:checked');
+        document.getElementById('batchDeleteBtn').style.display = selected.length > 0 ? 'inline-flex' : 'none';
+    }
+
+    function handleQuestionTypeChange() {
+        rebuildAnswerInput();
+        const optionsGroup = document.getElementById('optionsGroup');
+        const qType = document.getElementById('qType').value;
+        if (qType === '选择题' || qType === '多选题') {
+            optionsGroup.style.display = 'block';
+            if (document.querySelectorAll('.option-item').length === 0) {
+                for (let i = 0; i < 4; i++) {
+                    addOption();
+                }
+            }
+        } else {
+            optionsGroup.style.display = 'none';
+        }
+    }
+
+    function rebuildAnswerInput(defaultValue = '') {
+        const qType = document.getElementById('qType').value;
+        const container = document.getElementById('answer-container');
+        container.innerHTML = '';
+
+        let inputElement;
+
+        if (qType === '判断题') {
+            inputElement = document.createElement('select');
+            inputElement.id = 'qAnswer';
+            inputElement.title = '答案';
+            inputElement.add(new Option('正确', '正确'));
+            inputElement.add(new Option('错误', '错误'));
+            if (defaultValue) inputElement.value = defaultValue;
+        } else if (['问答题', '计算题', '简答题'].includes(qType)) {
+            inputElement = document.createElement('textarea');
+            inputElement.id = 'qAnswer';
+            inputElement.rows = 4;
+            inputElement.placeholder = '请输入详细答案';
+            inputElement.value = defaultValue;
+        } else {
+            inputElement = document.createElement('input');
+            inputElement.type = 'text';
+            inputElement.id = 'qAnswer';
+            if (qType === '选择题') {
+                inputElement.placeholder = '例如: A';
+            } else if (qType === '多选题') {
+                inputElement.placeholder = '例如: AB 或 ABC';
+            } else if (qType === '填空题') {
+                inputElement.placeholder = '多个空用 ;; 分隔';
+            } else {
+                inputElement.placeholder = '请输入答案';
+            }
+            inputElement.value = defaultValue;
+        }
+
+        inputElement.style.width = '100%';
+        inputElement.style.padding = '10px 14px';
+        inputElement.style.border = '1px solid #ced4da';
+        inputElement.style.borderRadius = '8px';
+        inputElement.style.fontSize = '14px';
+
+        container.appendChild(inputElement);
+    }
+
+    function addOption() {
+        const container = document.getElementById('optionsContainer');
+        const optionIndex = container.querySelectorAll('.option-item').length;
+        const optionKey = String.fromCharCode(65 + optionIndex);
+
+        const optionItem = document.createElement('div');
+        optionItem.className = 'option-item';
+        optionItem.style.cssText = 'display: flex; align-items: flex-start; gap: 12px; padding: 12px; background: rgba(142, 142, 147, 0.06); border-radius: 8px; border: 1px solid rgba(0,0,0,0.1);';
+
+        const label = document.createElement('div');
+        label.style.cssText = 'flex: 0 0 auto; width: 32px; padding-top: 8px; font-weight: 600; color: #333;';
+        label.textContent = optionKey + '.';
+
+        const textarea = document.createElement('textarea');
+        textarea.className = 'option-textarea';
+        textarea.style.cssText = 'flex: 1; min-height: 60px; padding: 8px 12px; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px; font-size: 14px; line-height: 1.5; resize: vertical; font-family: inherit;';
+        textarea.rows = 2;
+        textarea.placeholder = '输入选项内容（支持多行）';
+        textarea.oninput = updatePreview;
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.className = 'btn-delete-option';
+        deleteBtn.style.cssText = 'flex: 0 0 auto; padding: 8px 12px; background: rgba(255, 59, 48, 0.1); color: #ff3b30; border: 1px solid rgba(255, 59, 48, 0.2); border-radius: 6px; cursor: pointer; font-size: 13px; white-space: nowrap;';
+        deleteBtn.textContent = '删除';
+        deleteBtn.onclick = function() {
+            optionItem.remove();
+            updateOptionLabels();
+            updatePreview();
+        };
+
+        optionItem.appendChild(label);
+        optionItem.appendChild(textarea);
+        optionItem.appendChild(deleteBtn);
+        container.appendChild(optionItem);
+
+        updatePreview();
+        textarea.focus();
+    }
+
+    function updateOptionLabels() {
+        const items = document.querySelectorAll('.option-item');
+        items.forEach((item, index) => {
+            const label = item.querySelector('div');
+            const optionKey = String.fromCharCode(65 + index);
+            label.textContent = optionKey + '.';
+        });
+    }
+
+    function getOptions() {
+        const items = document.querySelectorAll('.option-item');
+        return Array.from(items).map(item => {
+            const textarea = item.querySelector('.option-textarea');
+            if (!textarea) return '';
+            const value = textarea.value;
+            return value.replace(/^[\s\t]+|[\s\t]+$/g, '');
+        }).filter(Boolean);
+    }
+
+    function setOptions(options) {
+        const container = document.getElementById('optionsContainer');
+        container.innerHTML = '';
+
+        if (options && options.length > 0) {
+            options.forEach((opt, index) => {
+                const optionItem = document.createElement('div');
+                optionItem.className = 'option-item';
+                optionItem.style.cssText = 'display: flex; align-items: flex-start; gap: 12px; padding: 12px; background: rgba(142, 142, 147, 0.06); border-radius: 8px; border: 1px solid rgba(0,0,0,0.1);';
+
+                const optionKey = String.fromCharCode(65 + index);
+                const label = document.createElement('div');
+                label.style.cssText = 'flex: 0 0 auto; width: 32px; padding-top: 8px; font-weight: 600; color: #333;';
+                label.textContent = optionKey + '.';
+
+                const textarea = document.createElement('textarea');
+                textarea.className = 'option-textarea';
+                textarea.style.cssText = 'flex: 1; min-height: 60px; padding: 8px 12px; border: 1px solid rgba(0,0,0,0.1); border-radius: 6px; font-size: 14px; line-height: 1.5; resize: vertical; font-family: inherit;';
+                textarea.rows = 2;
+                textarea.value = opt;
+                textarea.placeholder = '输入选项内容（支持多行）';
+                textarea.oninput = updatePreview;
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.type = 'button';
+                deleteBtn.className = 'btn-delete-option';
+                deleteBtn.style.cssText = 'flex: 0 0 auto; padding: 8px 12px; background: rgba(255, 59, 48, 0.1); color: #ff3b30; border: 1px solid rgba(255, 59, 48, 0.2); border-radius: 6px; cursor: pointer; font-size: 13px; white-space: nowrap;';
+                deleteBtn.textContent = '删除';
+                deleteBtn.onclick = function() {
+                    optionItem.remove();
+                    updateOptionLabels();
+                    updatePreview();
+                };
+
+                optionItem.appendChild(label);
+                optionItem.appendChild(textarea);
+                optionItem.appendChild(deleteBtn);
+                container.appendChild(optionItem);
+            });
+        }
+    }
+
+    function openDrawer(id = null) {
+        editingId = id;
+        document.getElementById('editingId').value = id || '';
+
+        if (id) {
+            document.getElementById('drawer-title').textContent = '修改题目';
+            const q = allQuestions.find(q => q.id === id);
+            if (q) {
+                document.getElementById('qType').value = q.q_type;
+                handleQuestionTypeChange();
+
+                document.getElementById('qDifficulty').value = q.difficulty || 3;
+                document.getElementById('qContent').value = q.content;
+
+                if (q.options) {
+                    try {
+                        const options = JSON.parse(q.options);
+                        setOptions(options);
+                    } catch(e) {
+                        const options = Array.isArray(q.options) ? q.options : [];
+                        setOptions(options);
+                    }
+                } else {
+                    setOptions([]);
+                }
+
+                const answerInput = document.getElementById('qAnswer');
+                if(answerInput) answerInput.value = q.answer || '';
+
+                document.getElementById('qExplanation').value = q.explanation || '';
+                updatePreview();
+            }
+        } else {
+            document.getElementById('drawer-title').textContent = '新增题目';
+            ['qDifficulty', 'qContent', 'qExplanation'].forEach(elId => document.getElementById(elId).value = '');
+            setOptions([]);
+            document.getElementById('qDifficulty').value = 3;
+            document.getElementById('qType').selectedIndex = 0;
+            handleQuestionTypeChange();
+            updatePreview();
+        }
+        document.getElementById('drawer').classList.add('open');
+        document.getElementById('drawerOverlay').classList.add('show');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeDrawer() {
+        document.getElementById('drawer').classList.remove('open');
+        document.getElementById('drawerOverlay').classList.remove('show');
+        document.body.style.overflow = '';
+        editingId = null;
+    }
+
+    async function saveQuestion() {
+        const id = document.getElementById('editingId').value;
+        const content = document.getElementById('qContent').value.trim();
+        const answerInput = document.getElementById('qAnswer');
+        const answer = answerInput ? answerInput.value.trim() : '';
+
+        if (!content) {
+            showToast('请输入题干内容', 'error');
+            return;
+        }
+        if (!answer) {
+            showToast('请输入答案', 'error');
+            return;
+        }
+
+        const options = getOptions();
+        const payload = {
+            q_type: document.getElementById('qType').value,
+            difficulty: parseInt(document.getElementById('qDifficulty').value) || 3,
+            content: content,
+            options: options,
+            answer: answer,
+            explanation: document.getElementById('qExplanation').value.trim()
+        };
+
+        try {
+            if (id) {
+                await api(`/user/banks/api/${bankId}/questions/${id}`, {
+                    method: 'PUT',
+                    body: JSON.stringify(payload)
+                });
+                showToast('题目修改成功');
+            } else {
+                await api(`/user/banks/api/${bankId}/questions`, {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+                showToast('题目添加成功');
+            }
+            closeDrawer();
+            loadQuestions();
+        } catch (error) {
+            console.error('保存题目失败:', error);
+            showToast(error.message || '保存失败，请稍后重试', 'error');
+        }
+    }
+
+    async function deleteQuestion(id) {
+        if (!confirmAction('确定要删除该题目吗？此操作不可恢复！')) return;
+
+        try {
+            await api(`/user/banks/api/${bankId}/questions/${id}`, { method: 'DELETE' });
+            showToast('题目删除成功');
+            loadQuestions();
+        } catch (error) {
+            console.error('删除题目失败:', error);
+            showToast(error.message || '删除失败', 'error');
+        }
+    }
+
+    async function batchDeleteQuestions() {
+        const ids = Array.from(document.querySelectorAll('.questionSelect:checked')).map(cb => cb.dataset.id);
+        if (!ids.length) {
+            showToast('请先选择要删除的题目', 'error');
+            return;
+        }
+
+        if (!confirmAction(`确定要删除选中的 ${ids.length} 道题目吗？此操作不可恢复！`)) return;
+
+        try {
+            await api(`/user/banks/api/${bankId}/questions/batch_delete`, {
+                method: 'POST',
+                body: JSON.stringify({ question_ids: ids.map(id => parseInt(id)) })
+            });
+            showToast(`成功删除 ${ids.length} 道题目`);
+            loadQuestions();
+        } catch (error) {
+            console.error('批量删除失败:', error);
+            showToast(error.message || '批量删除失败', 'error');
+        }
+    }
+
+    function updatePreview() {
+        document.getElementById('previewContent').innerHTML = (document.getElementById('qContent').value || '').replace(/\n/g, '<br>');
+        const opts = getOptions();
+        const optsHtml = opts.map((o, index) => {
+            const optionKey = String.fromCharCode(65 + index);
+            const optText = o.replace(/\n/g, '<br>');
+            return `<label><strong>${optionKey}.</strong> ${optText}</label>`;
+        }).join('');
+        document.getElementById('previewOptions').innerHTML = optsHtml;
+    }
+
+    // ======= 批量操作 =======
+    function getSelectedIds(){
+        return Array.from(document.querySelectorAll('.questionSelect:checked')).map(cb => cb.dataset.id);
+    }
+
+    function openBatchTypeChange(){
+        openModal('modalTypeChange');
+    }
+
+    async function doBatchTypeChange(){
+        const ids = getSelectedIds();
+        if(!ids.length) {
+            showToast('请先勾选题目', 'error');
+            return;
+        }
+        const targetType = document.getElementById('typeChangeTarget').value;
+        if (!targetType) {
+            showToast('请选择一个目标题型', 'error');
+            return;
+        }
+
+        try {
+            await api(`/user/banks/api/${bankId}/questions/batch_update`, {
+                method: 'POST',
+                body: JSON.stringify({ question_ids: ids.map(id => parseInt(id)), q_type: targetType })
+            });
+            showToast('批量修改题型成功');
+            closeModal('modalTypeChange');
+            loadQuestions();
+        } catch (error) {
+            showToast(error.message || '操作失败', 'error');
+        }
+    }
+
+    function openBatchDifficulty(){
+        openModal('modalDifficulty');
+    }
+
+    async function doBatchDifficulty(){
+        const ids = getSelectedIds();
+        if(!ids.length) {
+            showToast('请先勾选题目', 'error');
+            return;
+        }
+        const difficulty = parseInt(document.getElementById('diffValue').value) || 3;
+
+        try {
+            await api(`/user/banks/api/${bankId}/questions/batch_update`, {
+                method: 'POST',
+                body: JSON.stringify({ question_ids: ids.map(id => parseInt(id)), difficulty: difficulty })
+            });
+            showToast('批量设置难度成功');
+            closeModal('modalDifficulty');
+            loadQuestions();
+        } catch (error) {
+            showToast(error.message || '操作失败', 'error');
+        }
+    }
+
+    function openModal(id){
+        const m = document.getElementById(id);
+        if(m){
+            m.style.display = 'block';
+        }
+        document.getElementById('drawerOverlay').classList.add('show');
+    }
+
+    function closeModal(id){
+        const m = document.getElementById(id);
+        if(m){
+            m.style.display = 'none';
+        }
+        document.getElementById('drawerOverlay').classList.remove('show');
+    }
+
+    // ======= 导入/导出 =======
+    function openImportModal(){
+        openModal('modalImport');
+        document.getElementById('importPreview').innerHTML = '';
+    }
+
+    function renderImportPreview(){
+        const txt = document.getElementById('importText').value.trim();
+        const file = document.getElementById('importFile').files[0];
+        if(txt){
+            try{
+                const data = JSON.parse(txt);
+                window.__importData = data;
+                showImportPreview(data);
+            } catch(e){
+                showToast('粘贴内容不是有效JSON', 'error');
+            }
+            return;
+        }
+        if(file){
+            const fr = new FileReader();
+            fr.onload = () => {
+                try{
+                    const data = JSON.parse(fr.result);
+                    window.__importData = data;
+                    showImportPreview(data);
+                } catch(e){
+                    showToast('文件内容不是有效JSON', 'error');
+                }
+            };
+            fr.readAsText(file);
+            return;
+        }
+        showToast('请粘贴JSON或选择文件', 'error');
+    }
+
+    function showImportPreview(list){
+        if(!Array.isArray(list)) {
+            showToast('JSON必须是数组', 'error');
+            return;
+        }
+        const box = document.getElementById('importPreview');
+        let ok = 0, bad = 0, html = '';
+        list.forEach((it, i) => {
+            const valid = it['题型'] && it['题干'] !== undefined && it['答案'] !== undefined;
+            if(valid) ok++; else bad++;
+            html += `<div style="padding:6px; border-bottom:1px solid var(--border-color); ${valid ? '' : 'background:#fff3cd'}">#${i+1} ${it['题型'] || '(缺少题型)'} - ${String(it['题干'] || '').slice(0,60)}</div>`;
+        });
+        box.innerHTML = `<div style="margin-bottom:6px;">共 ${list.length} 条；有效 ${ok}，问题 ${bad}</div>` + html;
+    }
+
+    async function confirmImport(){
+        const data = window.__importData;
+        if(!Array.isArray(data) || !data.length) {
+            showToast('暂无可导入数据', 'error');
+            return;
+        }
+
+        try {
+            await api(`/user/banks/api/${bankId}/questions/import/json`, {
+                method: 'POST',
+                body: JSON.stringify({ questions: data })
+            });
+            showToast('导入成功');
+            closeModal('modalImport');
+            loadQuestions();
+        } catch (error) {
+            showToast(error.message || '导入失败', 'error');
+        }
+    }
+
+    function exportQuestions(){
+        window.open(`/user/banks/api/${bankId}/questions/export`, '_blank');
+    }
+
+    // ======= Excel和ZIP导入导出 =======
+    function exportExcel(){
+        showToast('正在生成Excel文件...');
+        window.location.href = `/user/banks/api/${bankId}/questions/export/excel`;
+    }
+
+    function exportPackage(){
+        showToast('正在生成题库包...');
+        window.location.href = `/user/banks/api/${bankId}/questions/export/package`;
+    }
+
+    function openImportExcelModal(){
+        document.getElementById('importExcelFile').value = '';
+        document.getElementById('importExcelResult').innerHTML = '';
+        openModal('modalImportExcel');
+    }
+
+    function openImportPackageModal(){
+        document.getElementById('importPackageFile').value = '';
+        document.getElementById('importPackageResult').innerHTML = '';
+        openModal('modalImportPackage');
+    }
+
+    async function confirmImportExcel(){
+        const fileInput = document.getElementById('importExcelFile');
+        const file = fileInput.files[0];
+
+        if(!file){
+            showToast('请选择Excel文件', 'error');
+            return;
+        }
+
+        if(!file.name.endsWith('.xlsx')){
+            showToast('请选择.xlsx格式的文件', 'error');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            showToast('正在导入...');
+            const response = await fetch(`/user/banks/api/${bankId}/questions/import/excel`, {
+                method: 'POST',
+                body: formData,
+                credentials: 'include'
+            });
+
+            const result = await response.json();
+
+            if(result.code === 0){
+                let msg = result.message || `成功导入${result.data.imported}道题目`;
+                if(result.data.errors && result.data.errors.length > 0){
+                    document.getElementById('importExcelResult').innerHTML =
+                        `<div style="color: var(--warning); margin-top: 10px;">
+                            <strong>部分导入失败:</strong><br>
+                            ${result.data.errors.slice(0, 5).join('<br>')}
+                            ${result.data.errors.length > 5 ? `<br>...还有${result.data.errors.length - 5}条错误` : ''}
+                        </div>`;
+                }
+                showToast(msg);
+                closeModal('modalImportExcel');
+                loadQuestions();
+            } else {
+                showToast(result.message || '导入失败', 'error');
+            }
+        } catch (error) {
+            console.error('导入Excel失败:', error);
+            showToast('导入失败，请检查文件格式', 'error');
+        }
+    }
+
+    async function confirmImportPackage(){
+        const fileInput = document.getElementById('importPackageFile');
+        const file = fileInput.files[0];
+
+        if(!file){
+            showToast('请选择ZIP文件', 'error');
+            return;
+        }
+
+        if(!file.name.endsWith('.zip')){
+            showToast('请选择.zip格式的文件', 'error');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            showToast('正在导入...');
+            const response = await fetch(`/user/banks/api/${bankId}/questions/import/package`, {
+                method: 'POST',
+                body: formData,
+                credentials: 'include'
+            });
+
+            const result = await response.json();
+
+            if(result.code === 0){
+                let msg = result.message || `成功导入${result.data.imported}道题目`;
+                if(result.data.errors && result.data.errors.length > 0){
+                    document.getElementById('importPackageResult').innerHTML =
+                        `<div style="color: var(--warning); margin-top: 10px;">
+                            <strong>部分导入失败:</strong><br>
+                            ${result.data.errors.slice(0, 5).join('<br>')}
+                            ${result.data.errors.length > 5 ? `<br>...还有${result.data.errors.length - 5}条错误` : ''}
+                        </div>`;
+                }
+                showToast(msg);
+                closeModal('modalImportPackage');
+                loadQuestions();
+            } else {
+                showToast(result.message || '导入失败', 'error');
+            }
+        } catch (error) {
+            console.error('导入题库包失败:', error);
+            showToast('导入失败，请检查文件格式', 'error');
+        }
+    }
+</script>
+{% endblock %}

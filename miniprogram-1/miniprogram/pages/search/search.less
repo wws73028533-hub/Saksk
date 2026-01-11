@@ -12,7 +12,7 @@ page {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: #f5f5f5;
+  background: var(--app-bg);
 }
 
 .page-container {
@@ -27,7 +27,7 @@ page {
   flex: 1;
   min-height: 0;
   height: 0;
-  background: #f5f5f5;
+  background: var(--app-bg);
 }
 
 .container {
@@ -37,7 +37,7 @@ page {
 }
 
 .search-card {
-  background: #fff;
+  background: var(--app-surface-solid);
   border-radius: 20rpx;
   padding: 24rpx;
   box-sizing: border-box;
@@ -51,18 +51,18 @@ page {
   justify-content: space-between;
   padding-bottom: 16rpx;
   margin-bottom: 16rpx;
-  border-bottom: 1rpx solid #F0F0F0;
+  border-bottom: 1rpx solid var(--app-divider);
   min-width: 0;
 }
 
 .subject-label {
   font-size: 24rpx;
-  color: #8E8E93;
+  color: var(--app-text-secondary);
 }
 
 .subject-value {
   font-size: 26rpx;
-  color: #000;
+  color: var(--app-text);
   font-weight: 600;
   max-width: 520rpx;
   text-align: right;
@@ -80,7 +80,7 @@ page {
 .search-input {
   flex: 1;
   height: 76rpx;
-  background: #F8F8F8;
+  background: var(--app-fill-solid);
   border-radius: 16rpx;
   padding: 0 20rpx;
   font-size: 28rpx;
@@ -116,8 +116,8 @@ page {
   padding: 12rpx 24rpx;
   height: 52rpx;
   border-radius: 999rpx;
-  background: #fff;
-  border: 1.5rpx solid #E5E5EA;
+  background: var(--app-surface-solid);
+  border: 1.5rpx solid var(--app-stroke);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -130,7 +130,7 @@ page {
 
 .tag-text {
   font-size: 24rpx;
-  color: #8E8E93;
+  color: var(--app-text-secondary);
   line-height: 1;
 }
 
@@ -144,7 +144,7 @@ page {
 
 .total-text {
   font-size: 24rpx;
-  color: #8E8E93;
+  color: var(--app-text-secondary);
 }
 
 .result-list {
@@ -155,17 +155,17 @@ page {
 }
 
 .result-item {
-  background: #fff;
+  background: var(--app-surface-solid);
   border-radius: 20rpx;
   padding: 20rpx 24rpx;
   box-sizing: border-box;
-  border: 1rpx solid #F0F0F0;
+  border: 1rpx solid var(--app-divider);
   width: 100%;
 }
 
 .result-content {
   font-size: 28rpx;
-  color: #000;
+  color: var(--app-text);
   line-height: 1.5;
   margin-bottom: 12rpx;
   display: -webkit-box;
@@ -207,6 +207,6 @@ page {
   align-items: center;
   justify-content: center;
   padding: 60rpx 24rpx;
-  color: #8E8E93;
+  color: var(--app-text-secondary);
   font-size: 26rpx;
 }

@@ -1,6 +1,11 @@
 // quiz.ts - 刷题/背题页面
+// 支持公有题库（subject参数）和个人题库（bank_id参数）双数据源
 import { api, normalizeImageUrls } from '../../utils/api';
 import { checkLogin } from '../../utils/auth';
+import { createSourceFromOptions, IQuizSource } from '../../utils/quiz-source';
+
+// 数据源实例（页面级别）
+let quizSource: IQuizSource | null = null;
 
 type OptionItem = {
   key: string;
@@ -20,9 +25,13 @@ type QuestionType = '选择题' | '多选题' | '判断题' | '填空题' | '问
 Page({
   data: {
     mode: 'quiz',              // 模式：'quiz' 或 'memo'
-    subject: '',               // 科目名称
+    // 数据源信息
+    sourceType: '' as 'public' | 'bank' | '',  // 数据源类型
+    sourceId: '' as string | number,            // 数据源标识
+    displayName: '',                            // 显示名称
     source: 'all',             // 数据范围：all/favorites/mistakes
     qType: 'all',              // 题型筛选（用于进度key）
+    tag: 'all',                // 标签筛选（用于进度key & 服务端筛选）
     shuffleQuestions: false,   // 打乱题目（用于进度key）
     shuffleOptions: false,     // 打乱选项（用于进度key & 服务端确定性打乱）
     startId: 0,                // 从搜索等入口指定起始题目ID
@@ -59,15 +68,33 @@ Page({
     aiExplainText: '',
     aiExplainError: '',
     aiExplainQuestionId: 0,
-    
+
     // 进度信息
     progress: {
       current: 0,              // 当前题号
       total: 0                 // 总题数
     },
-    
+
     // 答题记录（用于题目列表显示状态）
-    answerRecords: {} as Record<number, { answered: boolean; isCorrect: boolean }>
+    answerRecords: {} as Record<number, { answered: boolean; isCorrect: boolean }>,
+
+    // 标签管理
+    canEdit: false,                // 是否可以编辑题目
+    currentQuestionTags: [] as string[],  // 当前题目的标签
+    showTagModal: false,           // 是否显示标签弹窗
+    allTags: [] as Array<{ name: string; count: number; selected: boolean }>,  // 所有标签
+    newTagName: '',                // 新标签名称输入
+
+    // 编辑题目
+    showEditModal: false,          // 是否显示编辑弹窗
+    editForm: {
+      content: '',
+      options: '',
+      answer: '',
+      explanation: '',
+      showOptions: false
+    },
+    editSaving: false              // 编辑保存中
   },
 
   // === 进度同步（与 Web 端 /api/progress 互通）===
@@ -80,49 +107,73 @@ Page({
   lastSavedPayload: null as any,
   practiceSettingsKey: 'quiz_practice_settings_v1' as any,
 
+  onShow() {
+    try {
+      wx.hideShareMenu();
+    } catch (e) {}
+  },
+
   onLoad(options: any) {
     console.log('刷题页面 onLoad，参数:', options);
-    
+
     if (!checkLogin()) {
       wx.redirectTo({ url: '/pages/login/login' });
       return;
     }
-    
-    // 解析参数
-    let subject = options.subject || '';
-    const mode = options.mode || 'quiz';
-    let type = options.type || 'all';
-    const source = options.source || 'all';
-    const shuffleQuestions = options.shuffle_questions === '1';
-    const shuffleOptions = options.shuffle_options === '1';
-    const startId = Number(options.start_id || 0);
-    
-    if (!subject) {
-      wx.showToast({ title: '科目参数缺失', icon: 'none' });
+
+    // 编辑权限初始为 false，在 loadQuestions 中根据数据源类型判断
+    // 公有题库：管理员或科目管理员
+    // 个人题库：题库创建者
+
+    this.setData({
+      canEdit: false
+    });
+
+    // 使用工厂函数创建数据源
+    quizSource = createSourceFromOptions(options);
+
+    if (!quizSource) {
+      console.error('数据源参数缺失（需要 subject 或 bank_id）');
+      wx.showToast({ title: '参数缺失', icon: 'none' });
       setTimeout(() => {
         wx.navigateBack();
       }, 1500);
       return;
     }
-    
-    try {
-      subject = decodeURIComponent(subject);
-    } catch (e) {
-      console.warn('URL参数解码失败:', e);
-    }
 
-    // 题型可能会被 encodeURIComponent（如“选择题”），需显式解码避免后端筛选不匹配
+    console.log('数据源类型:', quizSource.sourceType, '标识:', quizSource.sourceId);
+
+    // 解析参数
+    const mode = options.mode || 'quiz';
+    let type = options.type || 'all';
+    let tag = options.tag || 'all';
+    const source = options.source || 'all';
+    const shuffleQuestions = options.shuffle_questions === '1';
+    const shuffleOptions = options.shuffle_options === '1';
+    const startId = Number(options.start_id || 0);
+
+    // 题型可能会被 encodeURIComponent（如"选择题"），需显式解码避免后端筛选不匹配
     try {
       type = decodeURIComponent(type);
     } catch (e) {
       console.warn('题型参数解码失败:', e);
     }
-    
+
+    // 标签可能会被 encodeURIComponent（如"重点"），需显式解码
+    try {
+      tag = decodeURIComponent(tag);
+    } catch (e) {
+      console.warn('标签参数解码失败:', e);
+    }
+
     this.setData({
       mode,
-      subject,
+      sourceType: quizSource.sourceType,
+      sourceId: quizSource.sourceId,
+      displayName: quizSource.displayName || String(quizSource.sourceId),
       source,
       qType: type || 'all',
+      tag: tag || 'all',
       shuffleQuestions,
       shuffleOptions,
       startId: isFinite(startId) && startId > 0 ? startId : 0,
@@ -130,8 +181,8 @@ Page({
     });
 
     this.initPracticeSettings();
-    
-    this.loadQuestions(type, source, shuffleQuestions, shuffleOptions);
+
+    this.loadQuestions(type, source, shuffleQuestions, shuffleOptions, tag);
   },
 
   initPracticeSettings() {
@@ -177,33 +228,53 @@ Page({
     this.setData({ practiceSettings: next }, () => this.savePracticeSettings());
   },
 
-  // 加载题目列表
-  async loadQuestions(type: string, source: string, shuffleQuestions: boolean, shuffleOptions: boolean) {
+  // 加载题目列表（使用数据源适配器）
+  async loadQuestions(type: string, source: string, shuffleQuestions: boolean, shuffleOptions: boolean, tag: string) {
+    if (!quizSource) {
+      console.error('数据源未初始化');
+      this.setData({ loading: false });
+      return;
+    }
+
     try {
-      const { subject, mode } = this.data;
-      
-      // 构建请求参数
-      // 注意：如果source是favorites或mistakes，需要将其作为mode传递
-      // 否则使用传入的mode参数
-      const actualMode = (source === 'favorites' || source === 'mistakes') ? source : mode;
-      
-      const params: any = {
-        subject,
-        mode: actualMode,
+      const { mode, sourceType, sourceId } = this.data;
+
+      // 检查编辑权限
+      let canEdit = false;
+      try {
+        const userInfo = wx.getStorageSync('userInfo') || {};
+        const currentUserId = userInfo.id || userInfo.user_id;
+
+        if (sourceType === 'public') {
+          // 公有题库：管理员或科目管理员
+          canEdit = !!(userInfo.is_admin || userInfo.is_subject_admin);
+        } else if (sourceType === 'bank' && currentUserId) {
+          // 个人题库：检查是否是题库创建者
+          try {
+            const bankDetail: any = await api.getBankDetail(Number(sourceId));
+            const bankOwnerId = bankDetail?.user_id || bankDetail?.data?.user_id;
+            canEdit = bankOwnerId && Number(bankOwnerId) === Number(currentUserId);
+          } catch (e) {
+            console.warn('获取题库详情失败:', e);
+            canEdit = false;
+          }
+        }
+      } catch (e) {
+        // 忽略
+      }
+      this.setData({ canEdit });
+
+      // 使用数据源适配器获取题目
+      const result = await quizSource.getQuestions({
+        mode: mode,
+        source: source,
+        type: type !== 'all' ? type : undefined,
+        tag: tag && tag !== 'all' ? tag : undefined,
+        shuffle_questions: shuffleQuestions,
+        shuffle_options: shuffleOptions,
         per_page: 1000  // 一次性加载所有题目
-      };
-      
-      if (type !== 'all') {
-        params.q_type = type;
-      }
-      if (shuffleOptions) {
-        params.shuffle_options = '1';
-      }
-      
-      console.log('加载题目列表，参数:', params);
-      
-      const result = await api.getQuestions(params);
-      
+      });
+
       let questions = result.questions || [];
       const total = result.total || questions.length;
 
@@ -602,10 +673,14 @@ Page({
     // 重要操作：立即同步进度到云端
     this.saveProgressIndex(true);
     
-    // 调用API记录答题结果
+    // 调用数据源适配器记录答题结果
     try {
-      if (isJudgable) {
-        await api.recordResult(currentQuestion.id, isCorrect);
+      if (isJudgable && quizSource) {
+        await quizSource.recordResult({
+          questionId: currentQuestion.id,
+          userAnswer: userAnswer,
+          isCorrect: isCorrect
+        });
       }
     } catch (err: any) {
       console.error('记录答题结果失败:', err);
@@ -644,10 +719,10 @@ Page({
 
   async autoFavoriteIfNeeded() {
     const { currentQuestion, isFavorite } = this.data;
-    if (!currentQuestion || isFavorite) return;
+    if (!currentQuestion || isFavorite || !quizSource) return;
 
     try {
-      await api.toggleFavorite(currentQuestion.id);
+      await quizSource.toggleFavorite(currentQuestion.id);
       this.setData({ isFavorite: true });
       const questions = this.data.questions.map((q: any) => {
         if (q.id === currentQuestion.id) return Object.assign({}, q, { is_fav: 1 });
@@ -762,31 +837,33 @@ Page({
     }
   },
 
-  // 切换收藏
+  // 切换收藏（使用数据源适配器）
   async onToggleFavorite() {
     const { currentQuestion, isFavorite } = this.data;
-    if (!currentQuestion) {
+    if (!currentQuestion || !quizSource) {
       return;
     }
-    
+
     try {
-      await api.toggleFavorite(currentQuestion.id);
+      const result = await quizSource.toggleFavorite(currentQuestion.id);
+      const newFavoriteState = result.is_favorite !== undefined ? result.is_favorite : !isFavorite;
+
       this.setData({
-        isFavorite: !isFavorite
+        isFavorite: newFavoriteState
       });
-      
+
       // 更新题目数据
       const questions = this.data.questions.map((q: any) => {
         if (q.id === currentQuestion.id) {
-          return Object.assign({}, q, { is_fav: !isFavorite ? 1 : 0 });
+          return Object.assign({}, q, { is_fav: newFavoriteState ? 1 : 0 });
         }
         return q;
       });
-      
+
       this.setData({ questions });
-      
+
       wx.showToast({
-        title: !isFavorite ? '已收藏' : '已取消收藏',
+        title: newFavoriteState ? '已收藏' : '已取消收藏',
         icon: 'none',
         duration: 1500
       });
@@ -864,6 +941,282 @@ Page({
   // 阻止事件冒泡（用于抽屉）
   stopPropagation() {
     // 空函数，用于阻止点击事件冒泡
+  },
+
+  // === 标签管理 ===
+  async onOpenTagModal() {
+    const { currentQuestion } = this.data;
+    if (!currentQuestion) return;
+
+    this.setData({ showTagModal: true, newTagName: '' });
+    await this.loadAllTags();
+    await this.loadQuestionTags();
+  },
+
+  onCloseTagModal() {
+    this.setData({ showTagModal: false });
+  },
+
+  onTagNameInput(e: any) {
+    this.setData({ newTagName: (e.detail.value || '').trim() });
+  },
+
+  async onCreateTag() {
+    const { newTagName, sourceType, sourceId } = this.data;
+    if (!newTagName) {
+      wx.showToast({ title: '请输入标签名', icon: 'none' });
+      return;
+    }
+
+    try {
+      if (sourceType === 'bank') {
+        await api.createBankTag(Number(sourceId), newTagName);
+      } else {
+        await api.createTag(newTagName);
+      }
+      this.setData({ newTagName: '' });
+      await this.loadAllTags();
+      wx.showToast({ title: '创建成功', icon: 'none' });
+    } catch (err: any) {
+      console.error('创建标签失败:', err);
+      wx.showToast({ title: err.message || '创建失败', icon: 'none' });
+    }
+  },
+
+  async onToggleTagSelection(e: any) {
+    const tagName = e.currentTarget.dataset.tag;
+    if (!tagName) return;
+
+    const { currentQuestion, allTags, currentQuestionTags, sourceType, sourceId } = this.data;
+    if (!currentQuestion) return;
+
+    const tagItem = allTags.find(t => t.name === tagName);
+    if (!tagItem) return;
+
+    const isSelected = tagItem.selected;
+    let newTags: string[];
+
+    if (isSelected) {
+      // 取消选中
+      newTags = currentQuestionTags.filter(t => t !== tagName);
+    } else {
+      // 选中
+      newTags = [...currentQuestionTags, tagName];
+    }
+
+    try {
+      if (sourceType === 'bank') {
+        await api.setBankQuestionTags(Number(sourceId), currentQuestion.id, newTags);
+      } else {
+        await api.setQuestionTags(currentQuestion.id, newTags);
+      }
+
+      // 更新状态
+      const updatedAllTags = allTags.map(t => ({
+        ...t,
+        selected: newTags.includes(t.name),
+        count: t.name === tagName ? (isSelected ? t.count - 1 : t.count + 1) : t.count
+      }));
+
+      this.setData({
+        currentQuestionTags: newTags,
+        allTags: updatedAllTags
+      });
+    } catch (err: any) {
+      console.error('设置标签失败:', err);
+      wx.showToast({ title: err.message || '设置失败', icon: 'none' });
+    }
+  },
+
+  async loadAllTags() {
+    try {
+      const { sourceType, sourceId } = this.data;
+      let res: any;
+
+      if (sourceType === 'bank') {
+        res = await api.getBankTags(Number(sourceId));
+      } else {
+        res = await api.getTags();
+      }
+
+      const tags = res.tags || res || [];
+      const { currentQuestionTags } = this.data;
+
+      const allTags = tags.map((t: any) => ({
+        name: t.name || t,
+        count: t.count || 0,
+        selected: currentQuestionTags.includes(t.name || t)
+      }));
+
+      this.setData({ allTags });
+    } catch (err: any) {
+      console.error('加载标签列表失败:', err);
+    }
+  },
+
+  async loadQuestionTags() {
+    const { currentQuestion, sourceType, sourceId } = this.data;
+    if (!currentQuestion) return;
+
+    try {
+      let res: any;
+
+      if (sourceType === 'bank') {
+        res = await api.getBankQuestionTags(Number(sourceId), currentQuestion.id);
+      } else {
+        res = await api.getQuestionTags(currentQuestion.id);
+      }
+
+      const tags = res.tags || res || [];
+      const tagNames = tags.map((t: any) => t.name || t);
+
+      // 更新 allTags 的选中状态
+      const { allTags } = this.data;
+      const updatedAllTags = allTags.map(t => ({
+        ...t,
+        selected: tagNames.includes(t.name)
+      }));
+
+      this.setData({
+        currentQuestionTags: tagNames,
+        allTags: updatedAllTags
+      });
+    } catch (err: any) {
+      console.error('加载题目标签失败:', err);
+      this.setData({ currentQuestionTags: [] });
+    }
+  },
+
+  // === 编辑题目 ===
+  onEditQuestion() {
+    const { currentQuestion, canEdit } = this.data;
+    if (!currentQuestion || !canEdit) return;
+
+    const qType = currentQuestion.q_type || '';
+    const showOptions = qType === '选择题' || qType === '多选题' || qType === '判断题';
+
+    // 格式化选项为文本
+    let optionsText = '';
+    if (showOptions && Array.isArray(currentQuestion.options)) {
+      optionsText = currentQuestion.options
+        .map((opt: any) => `${opt.key}. ${opt.value}`)
+        .join('\n');
+    }
+
+    this.setData({
+      showEditModal: true,
+      editForm: {
+        content: currentQuestion.content || '',
+        options: optionsText,
+        answer: currentQuestion.answer || '',
+        explanation: currentQuestion.explanation || '',
+        showOptions
+      }
+    });
+  },
+
+  onCloseEditModal() {
+    this.setData({ showEditModal: false });
+  },
+
+  onEditContentInput(e: any) {
+    this.setData({ 'editForm.content': e.detail.value });
+  },
+
+  onEditOptionsInput(e: any) {
+    this.setData({ 'editForm.options': e.detail.value });
+  },
+
+  onEditAnswerInput(e: any) {
+    this.setData({ 'editForm.answer': e.detail.value });
+  },
+
+  onEditExplanationInput(e: any) {
+    this.setData({ 'editForm.explanation': e.detail.value });
+  },
+
+  async onSaveQuestion() {
+    const { currentQuestion, editForm, editSaving, sourceType, sourceId } = this.data;
+    if (!currentQuestion || editSaving) return;
+
+    if (!editForm.content.trim()) {
+      wx.showToast({ title: '题干不能为空', icon: 'none' });
+      return;
+    }
+
+    if (!editForm.answer.trim()) {
+      wx.showToast({ title: '答案不能为空', icon: 'none' });
+      return;
+    }
+
+    this.setData({ editSaving: true });
+
+    try {
+      // 解析选项
+      let options: Array<{ key: string; value: string }> | undefined;
+      if (editForm.showOptions && editForm.options.trim()) {
+        options = editForm.options
+          .split('\n')
+          .map(line => line.trim())
+          .filter(line => line)
+          .map(line => {
+            const match = line.match(/^([A-Za-z0-9]{1,3})\s*[、.．:：]\s*(.+)$/);
+            if (match) {
+              return { key: match[1].toUpperCase(), value: match[2].trim() };
+            }
+            return { key: '', value: line };
+          });
+      }
+
+      const updateData = {
+        content: editForm.content.trim(),
+        options,
+        answer: editForm.answer.trim(),
+        explanation: editForm.explanation.trim() || undefined
+      };
+
+      if (sourceType === 'bank') {
+        await api.updateBankQuestion(Number(sourceId), currentQuestion.id, updateData);
+      } else {
+        await api.updateQuestion(currentQuestion.id, updateData);
+      }
+
+      // 更新当前题目数据
+      const updatedQuestion = {
+        ...currentQuestion,
+        content: editForm.content.trim(),
+        answer: editForm.answer.trim(),
+        explanation: editForm.explanation.trim()
+      };
+
+      if (options) {
+        updatedQuestion.options = options;
+      }
+
+      // 更新题目列表中的数据
+      const questions = this.data.questions.map((q: any) => {
+        if (q.id === currentQuestion.id) {
+          return { ...q, ...updatedQuestion };
+        }
+        return q;
+      });
+
+      this.setData({
+        currentQuestion: updatedQuestion,
+        questions,
+        showEditModal: false,
+        editSaving: false
+      });
+
+      // 刷新显示
+      this.refreshDisplayOptions();
+
+      wx.showToast({ title: '保存成功', icon: 'success' });
+    } catch (err: any) {
+      console.error('保存题目失败:', err);
+      this.setData({ editSaving: false });
+      wx.showToast({ title: err.message || '保存失败', icon: 'none' });
+    }
   },
 
   normalizeOptions(rawOptions: any, qType: string, correctAnswer?: string): OptionItem[] {
@@ -1090,20 +1443,35 @@ Page({
   },
 
   buildProgressKey(): string {
+    // 使用数据源适配器构建进度key
+    if (quizSource) {
+      return quizSource.buildProgressKey(this.data.mode as 'quiz' | 'memo', {
+        type: this.data.qType,
+        source: this.data.source,
+        tag: this.data.tag,
+        shuffleQuestions: this.data.shuffleQuestions,
+        shuffleOptions: this.data.shuffleOptions
+      });
+    }
+
+    // 兜底：手动构建（不应该到达这里）
     const userInfo = wx.getStorageSync('userInfo') || {};
     const uid = (userInfo && (userInfo.id || userInfo.user_id)) ? String(userInfo.id || userInfo.user_id) : 'guest';
 
     const mode = (this.data.mode || 'quiz').toString();
-    const subject = (this.data.subject || 'all').toString();
+    const sourceId = String(this.data.sourceId || 'all');
     const type = (this.data.qType || 'all').toString();
 
     const sourceParam = (this.data.source || '').toString();
     const dataScope = (sourceParam === 'favorites' || sourceParam === 'mistakes') ? sourceParam : 'all';
+    const tag = (this.data.tag || '').toString();
+    const tagPart = tag && tag.toLowerCase() !== 'all' ? `_tag${tag}` : '';
 
     const shuffleQ = this.data.shuffleQuestions ? '1' : '0';
     const shuffleO = this.data.shuffleOptions ? '1' : '0';
 
-    return `quiz_progress_${uid}_${mode}_${subject}_${type}_${dataScope}_q${shuffleQ}_o${shuffleO}`;
+    const prefix = this.data.sourceType === 'bank' ? 'bank_quiz_progress' : 'quiz_progress';
+    return `${prefix}_${uid}_${mode}_${sourceId}_${type}_${dataScope}${tagPart}_q${shuffleQ}_o${shuffleO}`;
   },
 
   async loadProgressState(key: string): Promise<any | null> {
@@ -1296,13 +1664,15 @@ Page({
     }
   },
 
-  // 保存“上次练习”指针（云端 + 本地），用于首页一键继续
+  // 保存"上次练习"指针（云端 + 本地），用于首页一键继续
   async saveLastSession(force = false) {
-    const subject = (this.data.subject || '').toString().trim();
-    if (!subject) return;
+    const { sourceType, sourceId, displayName } = this.data;
+    if (!sourceId) return;
 
-    const payload = {
-      subject,
+    const payload: any = {
+      source_type: sourceType,
+      source_id: sourceId,
+      display_name: displayName,
       mode: (this.data.mode || 'quiz').toString(),
       type: (this.data.qType || 'all').toString(),
       source: (this.data.source || 'all').toString(),
@@ -1311,6 +1681,13 @@ Page({
       progress_key: this.progressKey || this.buildProgressKey(),
       timestamp: Date.now()
     };
+
+    // 兼容旧格式：如果是公有题库，仍保存 subject 字段
+    if (sourceType === 'public') {
+      payload.subject = String(sourceId);
+    } else if (sourceType === 'bank') {
+      payload.bank_id = Number(sourceId);
+    }
 
     const key = 'last_practice_session';
     try {

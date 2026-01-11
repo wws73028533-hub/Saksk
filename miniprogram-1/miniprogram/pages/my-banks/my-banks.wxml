@@ -1,0 +1,117 @@
+<!-- my-banks.wxml - 我的题库页 -->
+<view class="page-root {{themeClass}}">
+  <navigation-bar title="题库" back="{{false}}" color="var(--app-nav-fg)" background="var(--app-nav-bg)"></navigation-bar>
+
+  <view class="page-container">
+    <!-- 标签切换 -->
+    <view class="tab-bar">
+      <view class="tab-item {{activeTab === 'my' ? 'active' : ''}}" bindtap="onTabChange" data-tab="my">
+        <text>我的题库</text>
+      </view>
+      <view class="tab-item {{activeTab === 'shared' ? 'active' : ''}}" bindtap="onTabChange" data-tab="shared">
+        <text>收到的分享</text>
+      </view>
+      <view class="join-btn" bindtap="onJoinTap">
+        <text>+加入</text>
+      </view>
+    </view>
+
+    <scroll-view
+      class="content-area"
+      scroll-y
+      type="list"
+      bounces="{{false}}"
+      refresher-enabled="{{true}}"
+      bindrefresherrefresh="onPullDownRefresh"
+    >
+      <view class="container">
+        <!-- 我的题库列表 -->
+        <block wx:if="{{activeTab === 'my'}}">
+          <view class="banks-list">
+            <view
+              class="bank-card"
+              wx:for="{{myBanks}}"
+              wx:key="id"
+              bindtap="onBankTap"
+              data-id="{{item.id}}"
+            >
+              <view class="bank-info">
+                <view class="bank-name">{{item.name}}</view>
+                <view class="bank-desc" wx:if="{{item.description}}">{{item.description}}</view>
+                <view class="bank-meta">
+                  <text class="meta-item">{{item.question_count || 0}} 道题</text>
+                  <text class="meta-item status {{item.is_public ? 'public' : 'private'}}">{{item.is_public ? '公开' : '私密'}}</text>
+                </view>
+              </view>
+              <view class="bank-arrow">
+                <text class="arrow-text">刷题</text>
+              </view>
+            </view>
+          </view>
+          <view class="empty-state" wx:if="{{!loading && myBanks.length === 0}}">
+            <text class="empty-text">暂无题库，请在网页端创建</text>
+          </view>
+        </block>
+
+        <!-- 收到的分享列表 -->
+        <block wx:if="{{activeTab === 'shared'}}">
+          <view class="banks-list">
+            <view
+              class="bank-card"
+              wx:for="{{sharedBanks}}"
+              wx:key="bank_id"
+              bindtap="onBankTap"
+              data-id="{{item.bank_id}}"
+            >
+              <view class="bank-info">
+                <view class="bank-name">{{item.bank_name}}</view>
+                <view class="bank-owner">来自: {{item.owner_nickname}}</view>
+                <view class="bank-meta">
+                  <text class="meta-item">{{item.question_count || 0}} 道题</text>
+                  <text class="meta-item permission">{{item.permission === 'copy' ? '可复制' : '仅查看'}}</text>
+                </view>
+              </view>
+              <view class="bank-arrow">
+                <text class="arrow-text">刷题</text>
+              </view>
+            </view>
+          </view>
+          <view class="empty-state" wx:if="{{!loading && sharedBanks.length === 0}}">
+            <text class="empty-text">暂无收到的分享</text>
+            <text class="empty-hint">点击右上角"加入"输入分享码</text>
+          </view>
+        </block>
+
+        <view class="loading" wx:if="{{loading}}">
+          <text>加载中...</text>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- 加入题库弹窗 -->
+  <view class="modal-overlay" wx:if="{{showJoinModal}}" bindtap="onCloseJoinModal">
+    <view class="modal-content" catchtap="">
+      <view class="modal-header">
+        <text class="modal-title">加入题库</text>
+        <view class="modal-close" bindtap="onCloseJoinModal">×</view>
+      </view>
+      <view class="modal-body">
+        <view class="form-group">
+          <text class="form-label">请输入6位分享码</text>
+          <input
+            class="form-input"
+            placeholder="如: ABC123"
+            value="{{shareCode}}"
+            bindinput="onShareCodeInput"
+            maxlength="6"
+          />
+        </view>
+      </view>
+      <view class="modal-footer">
+        <view class="modal-btn cancel" bindtap="onCloseJoinModal">取消</view>
+        <view class="modal-btn confirm" bindtap="onConfirmJoin">加入</view>
+      </view>
+    </view>
+  </view>
+</view>

@@ -1,6 +1,15 @@
 <!--index.wxml-->
-<view class="page-root">
-  <navigation-bar title="首页" back="{{false}}" color="black" background="#FFF"></navigation-bar>
+<view class="page-root {{themeClass}}">
+  <navigation-bar title="首页" back="{{false}}" color="var(--app-nav-fg)" background="var(--app-nav-bg)">
+    <view slot="right" class="nav-actions">
+      <view class="theme-toggle" bindtap="onToggleThemeTap" aria-role="button" aria-label="切换主题">
+        <image class="theme-icon" src="{{isDarkMode ? '/images/icons/moon.svg' : '/images/icons/sun.svg'}}" mode="aspectFit"></image>
+        <view class="theme-auto" wx:if="{{themeMode === 'system'}}">
+          <text>A</text>
+        </view>
+      </view>
+    </view>
+  </navigation-bar>
   <view class="page-container">
     <scroll-view
       class="content-area"

@@ -1,17 +1,20 @@
 <!--quiz.wxml - 刷题/背题页面-->
-<view class="page-root">
-  <navigation-bar 
-    title="第 {{progress.current}} 题 / 共 {{progress.total}} 题" 
-    back="{{true}}" 
-    color="black" 
-    background="#FFF"
+<view class="page-root {{themeClass}}">
+  <navigation-bar
+    title="{{progress.current}}/{{progress.total}}"
+    back="{{true}}"
+    color="var(--app-nav-fg)"
+    background="var(--app-nav-bg)"
+    extClass="quiz-navbar"
   >
-    <view slot="right" class="nav-right-actions">
-      <view class="nav-action-btn" bindtap="onOpenQuestionList">
-        <text class="iconfont icon-list">≡</text>
+    <view slot="left" class="nav-left-actions">
+      <view class="nav-action-btn" bindtap="onOpenQuestionList" hover-class="nav-action-btn-hover">
+        <image class="nav-action-icon" src="/images/icons/list.svg" mode="aspectFit"></image>
       </view>
-      <view class="nav-action-btn" bindtap="onToggleFavorite">
-        <text class="iconfont icon-heart">{{isFavorite ? '♥' : '♡'}}</text>
+    </view>
+    <view slot="right" class="nav-right-actions">
+      <view class="nav-action-btn" bindtap="onOpenSettings" hover-class="nav-action-btn-hover">
+        <image class="nav-action-icon" src="/images/icons/settings.svg" mode="aspectFit"></image>
       </view>
     </view>
   </navigation-bar>
@@ -30,6 +33,18 @@
         <view class="question-card">
           <view class="question-header">
             <view class="question-type-tag">{{currentQuestion.q_type}}</view>
+            <!-- 卡片右上角操作按钮：编辑、收藏、标签 -->
+            <view class="card-actions">
+              <view class="card-action-btn" bindtap="onEditQuestion" hover-class="card-action-btn-hover" wx:if="{{canEdit}}">
+                <image class="card-action-icon" src="/images/icons/edit.svg" mode="aspectFit"></image>
+              </view>
+              <view class="card-action-btn" bindtap="onToggleFavorite" hover-class="card-action-btn-hover">
+                <image class="card-action-icon" src="{{isFavorite ? '/images/icons/heart-filled.svg' : '/images/icons/heart.svg'}}" mode="aspectFit"></image>
+              </view>
+              <view class="card-action-btn" bindtap="onOpenTagModal" hover-class="card-action-btn-hover">
+                <image class="card-action-icon" src="/images/icons/tag.svg" mode="aspectFit"></image>
+              </view>
+            </view>
           </view>
         <view class="question-content">
             <text class="question-text {{currentQuestion.isCode ? 'mono' : ''}}">{{currentQuestion.displayContent || currentQuestion.content}}</text>
@@ -95,7 +110,12 @@
 
         <!-- 背题模式：答案展示 -->
         <view wx:if="{{mode === 'memo'}}" class="answer-display-card">
-          <view class="answer-title">正确答案：{{currentQuestion.displayAnswer || currentQuestion.answer}}</view>
+          <view class="answer-display-header">
+            <view class="answer-title">正确答案：{{currentQuestion.displayAnswer || currentQuestion.answer}}</view>
+            <view class="answer-card-actions">
+              <view class="answer-ai-btn" bindtap="onToggleAIExplain" hover-class="answer-ai-btn-hover">AI</view>
+            </view>
+          </view>
           <view class="answer-divider"></view>
           <text
             class="answer-tip"
@@ -112,6 +132,9 @@
           <view class="result-header {{isJudgable ? (isCorrect ? 'correct' : 'wrong') : 'submitted'}}">
             <text class="result-icon">{{isJudgable ? (isCorrect ? '✓' : '✕') : '✓'}}</text>
             <text class="result-text">{{isJudgable ? (isCorrect ? '回答正确' : '回答错误') : '已提交'}}</text>
+            <view class="answer-card-actions">
+              <view class="answer-ai-btn" bindtap="onToggleAIExplain" hover-class="answer-ai-btn-hover">AI</view>
+            </view>
           </view>
           <view class="correct-answer">
             <text class="answer-label">正确答案：</text>
@@ -158,13 +181,11 @@
       >
         上一题
       </button>
-      <button class="mini-action-btn" bindtap="onOpenSettings">设置</button>
     </view>
     <view class="bottom-col right">
       <button class="nav-btn next-btn" bindtap="onNextQuestion">
         {{currentIndex === questions.length - 1 ? '完成' : '下一题'}}
       </button>
-      <button class="mini-action-btn ai" bindtap="onToggleAIExplain">AI</button>
     </view>
   </view>
 </view>
@@ -249,5 +270,109 @@
         <text class="ai-text">{{aiExplainText}}</text>
       </view>
     </scroll-view>
+  </view>
+</view>
+
+<!-- 标签选择弹窗 -->
+<view wx:if="{{showTagModal}}" class="modal-mask" bindtap="onCloseTagModal">
+  <view class="modal-card tag-modal" catchtap="stopPropagation">
+    <view class="modal-header">
+      <text class="modal-title">管理标签</text>
+      <view class="modal-close" bindtap="onCloseTagModal"><text>×</text></view>
+    </view>
+    <view class="modal-body">
+      <!-- 新增标签输入 -->
+      <view class="tag-input-row">
+        <input
+          class="tag-input"
+          placeholder="输入新标签名称"
+          value="{{newTagName}}"
+          bindinput="onTagNameInput"
+          confirm-type="done"
+          bindconfirm="onCreateTag"
+        />
+        <button class="tag-add-btn" bindtap="onCreateTag" disabled="{{!newTagName}}">添加</button>
+      </view>
+      <!-- 标签列表 -->
+      <view class="tag-list">
+        <view
+          wx:for="{{allTags}}"
+          wx:key="name"
+          class="tag-item {{item.selected ? 'tag-selected' : ''}}"
+          bindtap="onToggleTagSelection"
+          data-tag="{{item.name}}"
+        >
+          <text class="tag-name">{{item.name}}</text>
+          <text class="tag-count">{{item.count}}</text>
+        </view>
+        <view wx:if="{{allTags.length === 0}}" class="tag-empty">
+          <text>暂无标签，请先创建</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>
+
+<!-- 编辑题目弹窗 -->
+<view wx:if="{{showEditModal}}" class="modal-mask" bindtap="onCloseEditModal">
+  <view class="modal-card edit-modal" catchtap="stopPropagation">
+    <view class="modal-header">
+      <text class="modal-title">编辑题目</text>
+      <view class="modal-close" bindtap="onCloseEditModal"><text>×</text></view>
+    </view>
+    <scroll-view class="modal-body edit-modal-body" scroll-y>
+      <!-- 题干 -->
+      <view class="edit-field">
+        <text class="edit-label">题干</text>
+        <textarea
+          class="edit-textarea"
+          value="{{editForm.content}}"
+          bindinput="onEditContentInput"
+          placeholder="请输入题干内容"
+          auto-height
+          maxlength="2000"
+        ></textarea>
+      </view>
+      <!-- 选项（仅选择题/多选题/判断题） -->
+      <view class="edit-field" wx:if="{{editForm.showOptions}}">
+        <text class="edit-label">选项（每行一个，格式：A. 选项内容）</text>
+        <textarea
+          class="edit-textarea"
+          value="{{editForm.options}}"
+          bindinput="onEditOptionsInput"
+          placeholder="A. 选项一&#10;B. 选项二&#10;C. 选项三&#10;D. 选项四"
+          auto-height
+          maxlength="2000"
+        ></textarea>
+      </view>
+      <!-- 答案 -->
+      <view class="edit-field">
+        <text class="edit-label">答案</text>
+        <textarea
+          class="edit-textarea edit-textarea-small"
+          value="{{editForm.answer}}"
+          bindinput="onEditAnswerInput"
+          placeholder="请输入正确答案"
+          auto-height
+          maxlength="500"
+        ></textarea>
+      </view>
+      <!-- 解析 -->
+      <view class="edit-field">
+        <text class="edit-label">解析（可选）</text>
+        <textarea
+          class="edit-textarea"
+          value="{{editForm.explanation}}"
+          bindinput="onEditExplanationInput"
+          placeholder="请输入答案解析"
+          auto-height
+          maxlength="2000"
+        ></textarea>
+      </view>
+    </scroll-view>
+    <view class="edit-modal-footer">
+      <button class="edit-cancel-btn" bindtap="onCloseEditModal">取消</button>
+      <button class="edit-save-btn" bindtap="onSaveQuestion" loading="{{editSaving}}" disabled="{{editSaving}}">保存</button>
+    </view>
   </view>
 </view>

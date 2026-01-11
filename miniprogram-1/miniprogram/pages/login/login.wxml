@@ -1,6 +1,6 @@
 <!--登录页面-->
-<view class="page">
-  <navigation-bar title="登录" back="{{false}}" color="black" background="#FFF"></navigation-bar>
+<view class="page {{themeClass}}">
+  <navigation-bar title="登录" back="{{false}}" color="var(--app-nav-fg)" background="var(--app-nav-bg)"></navigation-bar>
   <view class="body">
     <view class="login-card">
     <view class="title">登录</view>

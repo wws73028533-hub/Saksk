@@ -1,0 +1,128 @@
+<!-- bank-detail.wxml - 个人题库详情页 -->
+<view class="page-root {{themeClass}}">
+  <navigation-bar title="{{bankInfo.name || '题库详情'}}" back="{{true}}" color="var(--app-nav-fg)" background="var(--app-nav-bg)"></navigation-bar>
+
+  <view class="page-container">
+    <scroll-view class="content-area" scroll-y type="list">
+      <view class="container">
+        <!-- 题库信息卡片 -->
+        <view class="info-card">
+          <view class="bank-name-wrapper">
+            <text class="bank-name">{{bankInfo.name}}</text>
+          </view>
+
+          <!-- 描述 -->
+          <view class="desc-section" wx:if="{{bankInfo.description}}">
+            <text class="desc-text">{{bankInfo.description}}</text>
+          </view>
+
+          <!-- 基本信息 -->
+          <view class="info-section">
+            <view class="info-item">
+              <text class="info-label">题目总数</text>
+              <text class="info-value">{{bankInfo.question_count}}</text>
+            </view>
+            <view class="info-item" wx:if="{{bankInfo.is_public}}">
+              <text class="info-label">状态</text>
+              <text class="info-value public">公开</text>
+            </view>
+            <view class="info-item" wx:if="{{bankInfo.owner_username}}">
+              <text class="info-label">作者</text>
+              <text class="info-value">{{bankInfo.owner_username}}</text>
+            </view>
+          </view>
+
+          <!-- 学习进度 -->
+          <view class="progress-section">
+            <view class="progress-item">
+              <text class="progress-label">已做</text>
+              <text class="progress-value">{{myStats.total_answered}}</text>
+            </view>
+            <view class="progress-divider"></view>
+            <view class="progress-item">
+              <text class="progress-label">正确</text>
+              <text class="progress-value correct">{{myStats.correct_count}}</text>
+            </view>
+            <view class="progress-divider"></view>
+            <view class="progress-item">
+              <text class="progress-label">错题</text>
+              <text class="progress-value error">{{myStats.wrong_count}}</text>
+            </view>
+            <view class="progress-divider"></view>
+            <view class="progress-item">
+              <text class="progress-label">收藏</text>
+              <text class="progress-value favorite">{{myStats.favorite_count}}</text>
+            </view>
+          </view>
+
+          <!-- 操作按钮网格 -->
+          <view class="buttons-section">
+            <view class="buttons-grid">
+              <view
+                class="button-item"
+                bindtap="onButtonTap"
+                data-action="practice"
+              >
+                <text class="button-text">刷题</text>
+              </view>
+              <view
+                class="button-item"
+                bindtap="onButtonTap"
+                data-action="exam"
+              >
+                <text class="button-text">考试</text>
+              </view>
+              <view
+                class="button-item"
+                bindtap="onButtonTap"
+                data-action="search"
+              >
+                <text class="button-text">搜索</text>
+              </view>
+              <view
+                class="button-item"
+                bindtap="onButtonTap"
+                data-action="update"
+              >
+                <text class="button-text">更新</text>
+              </view>
+              <view
+                class="button-item"
+                bindtap="onButtonTap"
+                data-action="mistakes"
+              >
+                <text class="button-text">错题</text>
+              </view>
+              <view
+                class="button-item"
+                bindtap="onButtonTap"
+                data-action="stats"
+              >
+                <text class="button-text">统计</text>
+              </view>
+              <view
+                class="button-item"
+                bindtap="onButtonTap"
+                data-action="share"
+              >
+                <text class="button-text">分享</text>
+              </view>
+              <view
+                class="button-item"
+                bindtap="onButtonTap"
+                data-action="favorites"
+              >
+                <text class="button-text">收藏</text>
+              </view>
+            </view>
+          </view>
+        </view>
+
+        <!-- 加载提示 -->
+        <view class="loading" wx:if="{{loading}}">
+          <text>加载中...</text>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+</view>

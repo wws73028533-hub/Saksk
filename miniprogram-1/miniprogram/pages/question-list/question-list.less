@@ -9,7 +9,7 @@ page {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: #f5f5f5;
+  background: var(--app-bg);
 }
 
 .page-container {
@@ -37,7 +37,7 @@ page {
 
 .total-text {
   font-size: 28rpx;
-  color: #888;
+  color: var(--app-text-secondary);
 }
 
 .question-list {
@@ -47,7 +47,7 @@ page {
 }
 
 .question-item {
-  background: #fff;
+  background: var(--app-surface-solid);
   border-radius: 16rpx;
   padding: 32rpx;
   box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
@@ -55,13 +55,13 @@ page {
 }
 
 .question-item:active {
-  background: #f8f8f8;
+  background: var(--app-fill-solid);
   transform: scale(0.98);
 }
 
 .question-content {
   font-size: 30rpx;
-  color: #000;
+  color: var(--app-text);
   line-height: 1.6;
   margin-bottom: 20rpx;
   display: -webkit-box;
@@ -78,21 +78,21 @@ page {
 
 .question-type {
   font-size: 24rpx;
-  color: #007AFF;
-  background: #E3F2FD;
+  color: var(--app-accent);
+  background: var(--app-accent-tag-bg);
   padding: 8rpx 16rpx;
   border-radius: 8rpx;
 }
 
 .question-subject {
   font-size: 24rpx;
-  color: #888;
+  color: var(--app-text-secondary);
 }
 
 .loading-more, .no-more, .empty-state {
   text-align: center;
   padding: 60rpx 0;
-  color: #888;
+  color: var(--app-text-secondary);
   font-size: 28rpx;
 }
 

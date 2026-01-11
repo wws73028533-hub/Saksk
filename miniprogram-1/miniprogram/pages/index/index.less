@@ -9,7 +9,58 @@ page {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: #F2F2F7;
+  background: var(--app-bg);
+}
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+.theme-toggle {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 999rpx;
+  background: var(--app-fill);
+  border: 1rpx solid var(--app-border-weak);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.theme-toggle:active {
+  transform: scale(0.96);
+  opacity: 0.9;
+}
+
+.theme-icon {
+  width: 32rpx;
+  height: 32rpx;
+}
+
+.theme-auto {
+  position: absolute;
+  right: 6rpx;
+  bottom: 6rpx;
+  width: 24rpx;
+  height: 24rpx;
+  border-radius: 12rpx;
+  background: var(--app-surface-solid);
+  border: 1rpx solid var(--app-border);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.theme-auto text {
+  font-size: 16rpx;
+  font-weight: 700;
+  color: var(--app-text-secondary);
+  line-height: 1;
 }
 
 .page-container {
@@ -40,8 +91,8 @@ page {
   align-items: center;
   justify-content: space-between;
   padding: 20rpx 20rpx;
-  background: rgba(255, 255, 255, 0.72);
-  border: 1rpx solid rgba(0, 0, 0, 0.06);
+  background: var(--app-surface-glass);
+  border: 1rpx solid var(--app-border);
   border-radius: 22rpx;
   box-sizing: border-box;
   backdrop-filter: blur(18rpx);
@@ -61,8 +112,8 @@ page {
   width: 96rpx;
   height: 96rpx;
   border-radius: 48rpx;
-  background: #fff;
-  border: 1rpx solid rgba(0, 0, 0, 0.06);
+  background: var(--app-surface-solid);
+  border: 1rpx solid var(--app-border);
   flex-shrink: 0;
 }
 
@@ -77,7 +128,7 @@ page {
 .hero-title {
   font-size: 36rpx;
   font-weight: 700;
-  color: #111111;
+  color: var(--app-text);
   line-height: 1.2;
   display: block;
   overflow: hidden;
@@ -88,7 +139,7 @@ page {
 .hero-subtitle {
   margin-top: 6rpx;
   font-size: 24rpx;
-  color: rgba(60, 60, 67, 0.6);
+  color: var(--app-text-secondary);
   line-height: 1.2;
   display: block;
 }
@@ -97,8 +148,8 @@ page {
   height: 72rpx;
   padding: 0 18rpx;
   border-radius: 999rpx;
-  background: rgba(60, 60, 67, 0.08);
-  border: 1rpx solid rgba(0, 0, 0, 0.05);
+  background: var(--app-fill);
+  border: 1rpx solid var(--app-border-weak);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -113,15 +164,15 @@ page {
 .hero-right-text {
   font-size: 26rpx;
   font-weight: 600;
-  color: #111111;
+  color: var(--app-text);
 }
 
 /* Continue Card */
 .continue-card {
   width: 100%;
-  background: rgba(255, 255, 255, 0.86);
+  background: var(--app-surface);
   border-radius: 22rpx;
-  border: 1rpx solid rgba(0, 0, 0, 0.06);
+  border: 1rpx solid var(--app-border);
   box-sizing: border-box;
   padding: 20rpx 20rpx 18rpx;
   box-shadow: 0 10rpx 26rpx rgba(0, 0, 0, 0.06);
@@ -139,12 +190,12 @@ page {
 .card-title {
   font-size: 28rpx;
   font-weight: 700;
-  color: #111111;
+  color: var(--app-text);
 }
 
 .card-time {
   font-size: 22rpx;
-  color: rgba(60, 60, 67, 0.6);
+  color: var(--app-text-secondary);
   flex-shrink: 0;
 }
 
@@ -155,7 +206,7 @@ page {
 .session-subject {
   font-size: 32rpx;
   font-weight: 700;
-  color: #111111;
+  color: var(--app-text);
   display: block;
   word-break: break-word;
 }
@@ -163,7 +214,7 @@ page {
 .session-meta {
   margin-top: 6rpx;
   font-size: 24rpx;
-  color: rgba(60, 60, 67, 0.6);
+  color: var(--app-text-secondary);
   display: block;
 }
 
@@ -177,8 +228,8 @@ page {
   height: 72rpx;
   padding: 0 22rpx;
   border-radius: 18rpx;
-  background: #111111;
-  color: #FFFFFF;
+  background: var(--app-strong-bg);
+  color: var(--app-strong-fg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -201,9 +252,9 @@ page {
 }
 
 .bento-card {
-  background: rgba(255, 255, 255, 0.86);
+  background: var(--app-surface);
   border-radius: 22rpx;
-  border: 1rpx solid rgba(0, 0, 0, 0.06);
+  border: 1rpx solid var(--app-border);
   box-sizing: border-box;
   padding: 18rpx 18rpx;
   min-height: 150rpx;
@@ -222,14 +273,14 @@ page {
 .bento-value {
   font-size: 52rpx;
   font-weight: 800;
-  color: #111111;
+  color: var(--app-text);
   line-height: 1.05;
 }
 
 .bento-label {
   margin-top: 6rpx;
   font-size: 24rpx;
-  color: rgba(60, 60, 67, 0.6);
+  color: var(--app-text-secondary);
 }
 
 .bento-action {
@@ -240,18 +291,18 @@ page {
 .bento-action-title {
   font-size: 30rpx;
   font-weight: 800;
-  color: #111111;
+  color: var(--app-text);
 }
 
 .bento-action-sub {
   font-size: 24rpx;
-  color: rgba(60, 60, 67, 0.6);
+  color: var(--app-text-secondary);
 }
 
 /* 加载提示 */
 .loading {
   text-align: center;
   padding: 40rpx;
-  color: rgba(60, 60, 67, 0.6);
+  color: var(--app-text-secondary);
   font-size: 28rpx;
 }

@@ -5,7 +5,9 @@ function parseQuery(raw: string): Record<string, string> {
   if (!raw) return out;
   const parts = raw.split('&');
   for (const part of parts) {
-    const [k, v] = part.split('=');
+    const kv = part.split('=');
+    const k = kv[0];
+    const v = kv[1];
     if (!k) continue;
     out[decodeURIComponent(k)] = decodeURIComponent(v || '');
   }

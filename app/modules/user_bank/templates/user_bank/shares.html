@@ -1,0 +1,352 @@
+{% extends "user_bank/base.html" %}
+
+{% block title %}分享管理{% endblock %}
+
+{% block content %}
+<a href="/user/banks" class="nav-back">← 返回我的题库</a>
+
+<div class="page-header">
+    <h1 class="page-title" id="pageTitle">分享管理</h1>
+    <div class="header-actions">
+        <button type="button" class="btn btn-primary" onclick="showCreateModal()">+ 创建分享</button>
+    </div>
+</div>
+
+<div id="shareList" class="card">
+    <div class="loading"></div>
+</div>
+
+<!-- 创建分享弹窗 -->
+<div id="createModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">创建分享</div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label class="form-label">分享类型</label>
+                <select id="shareType" class="form-input form-select" title="分享类型">
+                    <option value="code">分享码</option>
+                    <option value="link">分享链接</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">权限级别</label>
+                <select id="permission" class="form-input form-select" title="权限级别">
+                    <option value="read">只读（仅可刷题）</option>
+                    <option value="copy">可复制（可刷题并复制题目）</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">有效期</label>
+                <select id="expiresIn" class="form-input form-select" title="有效期">
+                    <option value="">永久有效</option>
+                    <option value="7">7天</option>
+                    <option value="30">30天</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">最大使用次数</label>
+                <select id="maxUses" class="form-input form-select" title="最大使用次数">
+                    <option value="">不限</option>
+                    <option value="10">10次</option>
+                    <option value="50">50次</option>
+                    <option value="100">100次</option>
+                </select>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeCreateModal()">取消</button>
+            <button type="button" class="btn btn-primary" onclick="createShare()">创建</button>
+        </div>
+    </div>
+</div>
+
+<!-- 分享结果弹窗 -->
+<div id="resultModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">分享创建成功</div>
+        <div class="modal-body" id="resultContent"></div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-primary" onclick="closeResultModal()">完成</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block head %}
+<style>
+    .share-item {
+        padding: 20px;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .share-item:last-child {
+        border-bottom: none;
+    }
+
+    .share-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .share-code {
+        font-size: 24px;
+        font-weight: 600;
+        font-family: 'SF Mono', Monaco, monospace;
+        letter-spacing: 2px;
+        color: var(--primary);
+    }
+
+    .share-link-label {
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text-sub);
+    }
+
+    .share-meta {
+        display: flex;
+        gap: 20px;
+        font-size: 13px;
+        color: var(--text-sub);
+        flex-wrap: wrap;
+    }
+
+    .share-actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    .copy-btn {
+        background: var(--primary-light);
+        border: 0.5px solid rgba(0, 122, 255, 0.2);
+        padding: 8px 16px;
+        border-radius: var(--radius-sm);
+        color: var(--primary);
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+    .copy-btn:hover {
+        background: var(--primary);
+        color: white;
+    }
+
+    .result-code {
+        text-align: center;
+        padding: 24px;
+    }
+    .result-code-label {
+        color: var(--text-sub);
+        margin-bottom: 12px;
+        font-size: 14px;
+    }
+    .result-code-value {
+        font-size: 36px;
+        font-weight: bold;
+        font-family: 'SF Mono', Monaco, monospace;
+        letter-spacing: 4px;
+        color: var(--primary);
+    }
+
+    .result-link {
+        padding: 20px;
+    }
+    .result-link-label {
+        color: var(--text-sub);
+        margin-bottom: 12px;
+        font-size: 14px;
+    }
+    .result-link input {
+        margin-bottom: 12px;
+    }
+
+    /* ========== 黑夜模式适配 ========== */
+    [data-theme="dark"] .share-item {
+        border-bottom-color: rgba(255, 255, 255, 0.1);
+    }
+
+    [data-theme="dark"] .copy-btn {
+        background: rgba(0, 122, 255, 0.15);
+        border-color: rgba(0, 122, 255, 0.25);
+    }
+    [data-theme="dark"] .copy-btn:hover {
+        background: var(--primary);
+        color: white;
+    }
+
+    [data-theme="dark"] .result-code,
+    [data-theme="dark"] .result-link {
+        background: rgba(28, 28, 30, 0.6);
+        border-radius: var(--radius-md);
+    }
+
+    [data-theme="dark"] .result-link input {
+        background: rgba(28, 28, 30, 0.8);
+        border-color: rgba(255, 255, 255, 0.15);
+        color: var(--text-color);
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const bankId = {{ bank_id }};
+    let shares = [];
+
+    async function loadBank() {
+        try {
+            const res = await api(`/user/banks/api/${bankId}`);
+            document.getElementById('pageTitle').textContent = res.data.name + ' - 分享管理';
+        } catch (e) {
+            showToast(e.message, 'error');
+        }
+    }
+
+    async function loadShares() {
+        try {
+            const res = await api(`/user/banks/api/${bankId}/shares`);
+            shares = res.data.shares || [];
+            renderShares();
+        } catch (e) {
+            showToast(e.message, 'error');
+        }
+    }
+
+    function renderShares() {
+        const container = document.getElementById('shareList');
+
+        if (shares.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
+                    </svg>
+                    <p class="empty-state-text">暂无分享</p>
+                    <button type="button" class="btn btn-primary" style="margin-top: 16px;" onclick="showCreateModal()">创建第一个分享</button>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = shares.map(s => `
+            <div class="share-item">
+                <div class="share-header">
+                    <div>
+                        ${s.share_code
+                            ? `<span class="share-code">${s.share_code}</span>`
+                            : `<span class="share-link-label">链接分享</span>`}
+                        ${!s.is_active ? '<span class="badge badge-danger" style="margin-left: 8px;">已失效</span>' : ''}
+                    </div>
+                    <div class="share-actions">
+                        ${s.share_code ? `<button type="button" class="copy-btn" onclick="copyCode('${s.share_code}')">复制分享码</button>` : ''}
+                        ${s.share_token ? `<button type="button" class="copy-btn" onclick="copyLink('${s.share_token}')">复制链接</button>` : ''}
+                        ${s.is_active ? `<button type="button" class="btn btn-danger btn-sm" onclick="revokeShare(${s.id})">撤销</button>` : ''}
+                    </div>
+                </div>
+                <div class="share-meta">
+                    <span>权限: ${s.permission === 'copy' ? '可复制' : '只读'}</span>
+                    <span>已使用: ${s.current_uses}${s.max_uses ? '/' + s.max_uses : ''} 次</span>
+                    <span>过期: ${s.expires_at ? formatDate(s.expires_at) : '永久'}</span>
+                    <span>创建于: ${formatDate(s.created_at)}</span>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function showCreateModal() {
+        document.getElementById('createModal').classList.add('show');
+    }
+
+    function closeCreateModal() {
+        document.getElementById('createModal').classList.remove('show');
+    }
+
+    function closeResultModal() {
+        document.getElementById('resultModal').classList.remove('show');
+    }
+
+    async function createShare() {
+        const data = {
+            type: document.getElementById('shareType').value,
+            permission: document.getElementById('permission').value,
+            expires_in: document.getElementById('expiresIn').value || null,
+            max_uses: document.getElementById('maxUses').value || null
+        };
+
+        try {
+            const res = await api(`/user/banks/api/${bankId}/shares`, {
+                method: 'POST',
+                body: JSON.stringify(data)
+            });
+
+            closeCreateModal();
+
+            // 显示结果
+            let resultHtml = '';
+            if (res.data.share_code) {
+                resultHtml = `
+                    <div class="result-code">
+                        <p class="result-code-label">分享码</p>
+                        <div class="result-code-value">${res.data.share_code}</div>
+                        <button type="button" class="copy-btn" style="margin-top: 16px;" onclick="copyCode('${res.data.share_code}')">复制分享码</button>
+                    </div>
+                `;
+            } else {
+                resultHtml = `
+                    <div class="result-link">
+                        <p class="result-link-label">分享链接</p>
+                        <input type="text" class="form-input" value="${res.data.share_link}" readonly>
+                        <button type="button" class="copy-btn" style="width: 100%;" onclick="copyText('${res.data.share_link}')">复制链接</button>
+                    </div>
+                `;
+            }
+            document.getElementById('resultContent').innerHTML = resultHtml;
+            document.getElementById('resultModal').classList.add('show');
+
+            loadShares();
+        } catch (e) {
+            showToast(e.message, 'error');
+        }
+    }
+
+    async function revokeShare(shareId) {
+        if (!confirmAction('确定要撤销此分享吗？已使用此分享的用户将无法再访问。')) return;
+
+        try {
+            await api(`/user/banks/api/${bankId}/shares/${shareId}`, { method: 'DELETE' });
+            showToast('已撤销');
+            loadShares();
+        } catch (e) {
+            showToast(e.message, 'error');
+        }
+    }
+
+    function copyCode(code) {
+        navigator.clipboard.writeText(code).then(() => showToast('已复制分享码'));
+    }
+
+    function copyLink(token) {
+        const link = window.location.origin + '/bank/join?token=' + token;
+        navigator.clipboard.writeText(link).then(() => showToast('已复制链接'));
+    }
+
+    function copyText(text) {
+        navigator.clipboard.writeText(text).then(() => showToast('已复制'));
+    }
+
+    // 点击模态框外部关闭
+    document.getElementById('createModal').addEventListener('click', (e) => {
+        if (e.target.id === 'createModal') closeCreateModal();
+    });
+    document.getElementById('resultModal').addEventListener('click', (e) => {
+        if (e.target.id === 'resultModal') closeResultModal();
+    });
+
+    // 初始化
+    loadBank();
+    loadShares();
+</script>
+{% endblock %}

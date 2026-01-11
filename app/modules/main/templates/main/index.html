@@ -2894,6 +2894,13 @@
             setTimeout(()=>{ window.location.href = url; }, 50);
         }
 
+        // 修复：从答题页返回（浏览器后退 / bfcache 恢复）后，“刷题模式”等按钮可能仍处于 disabled 状态
+        window.addEventListener('pageshow', function(){
+            try {
+                document.querySelectorAll('button[data-loading="true"]').forEach(b => setLoading(b, false));
+            } catch(e) {}
+        });
+
         const TEMPLATE_KEY_SERVER = 'exam_templates';
         const TEMPLATE_KEY_LOCAL = 'exam_templates_local';
         const TEMPLATE_SELECTED_KEY = 'exam_template_selected';

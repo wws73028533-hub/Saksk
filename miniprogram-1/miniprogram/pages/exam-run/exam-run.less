@@ -17,7 +17,7 @@ page {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: #f5f5f5;
+  background: var(--app-bg);
 }
 
 .content-area {
@@ -41,7 +41,7 @@ page {
   width: 56rpx;
   height: 56rpx;
   border-radius: 16rpx;
-  background: #F8F8F8;
+  background: var(--app-fill-solid);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -49,8 +49,8 @@ page {
 
 .timer {
   font-size: 26rpx;
-  color: #000;
-  background: #F8F8F8;
+  color: var(--app-text);
+  background: var(--app-fill-solid);
   border-radius: 999rpx;
   padding: 10rpx 16rpx;
   font-weight: 700;
@@ -79,15 +79,15 @@ page {
   align-items: center;
   justify-content: center;
   padding: 80rpx 24rpx;
-  color: #8E8E93;
+  color: var(--app-text-secondary);
   font-size: 28rpx;
 }
 
 .question-card {
-  background: #fff;
+  background: var(--app-surface-solid);
   border-radius: 20rpx;
   padding: 24rpx;
-  border: 1rpx solid #F0F0F0;
+  border: 1rpx solid var(--app-divider);
 }
 
 .question-header {
@@ -107,7 +107,7 @@ page {
 
 .question-score {
   font-size: 24rpx;
-  color: #8E8E93;
+  color: var(--app-text-secondary);
 }
 
 .question-content {
@@ -124,7 +124,7 @@ page {
 
 .question-text {
   font-size: 30rpx;
-  color: #000;
+  color: var(--app-text);
   line-height: 1.6;
   word-break: break-word;
   white-space: pre-wrap;
@@ -132,8 +132,8 @@ page {
 
 .question-text.mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  background: rgba(60, 60, 67, 0.06);
-  border: 1rpx solid rgba(0, 0, 0, 0.05);
+  background: var(--app-fill);
+  border: 1rpx solid var(--app-border-weak);
   padding: 18rpx 18rpx;
   border-radius: 16rpx;
 }
@@ -146,10 +146,10 @@ page {
 
 .option-item {
   margin-top: 16rpx;
-  background: #fff;
+  background: var(--app-surface-solid);
   border-radius: 18rpx;
   padding: 20rpx 22rpx;
-  border: 1rpx solid #F0F0F0;
+  border: 1rpx solid var(--app-divider);
   display: flex;
   gap: 16rpx;
   align-items: flex-start;
@@ -170,7 +170,7 @@ page {
 
 .option-text {
   font-size: 28rpx;
-  color: #000;
+  color: var(--app-text);
   line-height: 1.5;
   flex: 1;
 }
@@ -181,23 +181,23 @@ page {
 }
 
 .blank-item {
-  background: #fff;
+  background: var(--app-surface-solid);
   border-radius: 18rpx;
   padding: 18rpx 22rpx;
-  border: 1rpx solid #F0F0F0;
+  border: 1rpx solid var(--app-divider);
   margin-bottom: 12rpx;
 }
 
 .blank-label {
   font-size: 24rpx;
-  color: #8E8E93;
+  color: var(--app-text-secondary);
   display: block;
   margin-bottom: 10rpx;
 }
 
 .blank-input {
   height: 72rpx;
-  background: #F8F8F8;
+  background: var(--app-fill-solid);
   border-radius: 14rpx;
   padding: 0 18rpx;
   font-size: 28rpx;
@@ -206,20 +206,21 @@ page {
 .text-answer-input {
   width: 100%;
   min-height: 220rpx;
-  background: #fff;
+  background: var(--app-surface-solid);
   border-radius: 18rpx;
   padding: 18rpx 22rpx;
-  border: 1rpx solid #F0F0F0;
+  border: 1rpx solid var(--app-divider);
   font-size: 28rpx;
+  color: var(--app-text);
   box-sizing: border-box;
 }
 
 .answer-card {
   margin-top: 16rpx;
-  background: #fff;
+  background: var(--app-surface-solid);
   border-radius: 18rpx;
   padding: 18rpx 22rpx;
-  border: 1rpx solid #F0F0F0;
+  border: 1rpx solid var(--app-divider);
 }
 
 .answer-row {
@@ -231,17 +232,17 @@ page {
 .answer-row + .answer-row {
   margin-top: 12rpx;
   padding-top: 12rpx;
-  border-top: 1rpx solid #F0F0F0;
+  border-top: 1rpx solid var(--app-divider);
 }
 
 .answer-label {
   font-size: 24rpx;
-  color: #8E8E93;
+  color: var(--app-text-secondary);
 }
 
 .answer-value {
   font-size: 28rpx;
-  color: #000;
+  color: var(--app-text);
   line-height: 1.5;
   word-break: break-word;
   white-space: pre-wrap;
@@ -256,8 +257,8 @@ page {
   gap: 16rpx;
   padding: 24rpx;
   padding-bottom: calc(80rpx + env(safe-area-inset-bottom));
-  background: #fff;
-  border-top: 1rpx solid #F0F0F0;
+  background: var(--app-surface-solid);
+  border-top: 1rpx solid var(--app-divider);
 }
 
 .nav-btn {
@@ -275,8 +276,8 @@ page {
 }
 
 .prev-btn {
-  background: #F0F0F0;
-  color: #000;
+  background: var(--app-fill-solid);
+  color: var(--app-text);
 }
 
 .prev-btn.disabled {
@@ -290,7 +291,7 @@ page {
   top: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--app-mask);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.2s;
@@ -308,7 +309,7 @@ page {
   right: 0;
   bottom: 0;
   height: 70vh;
-  background: #fff;
+  background: var(--app-surface-solid);
   border-top-left-radius: 24rpx;
   border-top-right-radius: 24rpx;
   transform: translateY(100%);
@@ -327,24 +328,24 @@ page {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1rpx solid #F0F0F0;
+  border-bottom: 1rpx solid var(--app-divider);
 }
 
 .drawer-title {
   font-size: 30rpx;
   font-weight: 700;
-  color: #000;
+  color: var(--app-text);
 }
 
 .drawer-close {
   width: 56rpx;
   height: 56rpx;
   border-radius: 16rpx;
-  background: #F8F8F8;
+  background: var(--app-fill-solid);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #000;
+  color: var(--app-text);
   font-size: 40rpx;
   line-height: 1;
 }
@@ -356,7 +357,7 @@ page {
 
 .drawer-item {
   padding: 18rpx 24rpx;
-  border-bottom: 1rpx solid #F5F5F5;
+  border-bottom: 1rpx solid var(--app-divider);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -382,14 +383,14 @@ page {
 
 .drawer-item-number {
   font-size: 26rpx;
-  color: #8E8E93;
+  color: var(--app-text-secondary);
   width: 46rpx;
   flex-shrink: 0;
 }
 
 .drawer-item-text {
   font-size: 26rpx;
-  color: #000;
+  color: var(--app-text);
   line-height: 1.4;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -405,8 +406,8 @@ page {
 
 .drawer-item-type {
   font-size: 22rpx;
-  color: #8E8E93;
-  background: #F8F8F8;
+  color: var(--app-text-secondary);
+  background: var(--app-fill-solid);
   padding: 6rpx 10rpx;
   border-radius: 999rpx;
 }

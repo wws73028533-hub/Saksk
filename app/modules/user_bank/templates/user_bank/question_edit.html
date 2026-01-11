@@ -1,0 +1,312 @@
+{% extends "user_bank/base.html" %}
+
+{% block title %}{% if mode == 'add' %}添加题目{% else %}编辑题目{% endif %}{% endblock %}
+
+{% block content %}
+<a href="/user/banks/{{ bank_id }}" class="nav-back">← 返回题目列表</a>
+
+<div class="page-header">
+    <h1 class="page-title">{% if mode == 'add' %}添加题目{% else %}编辑题目{% endif %}</h1>
+</div>
+
+<div class="card form-card">
+    <form id="questionForm">
+        <div class="form-group">
+            <label class="form-label">题型 *</label>
+            <select id="q_type" class="form-input form-select" required title="选择题型">
+                <option value="选择题">选择题</option>
+                <option value="多选题">多选题</option>
+                <option value="判断题">判断题</option>
+                <option value="填空题">填空题</option>
+                <option value="简答题">简答题</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">题干 *</label>
+            <textarea id="content" class="form-input form-textarea content-textarea" placeholder="请输入题目内容" required></textarea>
+        </div>
+
+        <div id="optionsGroup" class="form-group options-group">
+            <label class="form-label">选项</label>
+            <div id="optionsList" class="options-list"></div>
+            <button type="button" class="btn btn-secondary btn-sm add-option-btn" onclick="addOption()">+ 添加选项</button>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">答案 *</label>
+            <input type="text" id="answer" class="form-input" placeholder="请输入答案" required>
+            <p class="form-hint">选择题填选项字母（如A），多选题用逗号分隔（如A,B,C），判断题填"对"或"错"</p>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">解析</label>
+            <textarea id="explanation" class="form-input form-textarea" placeholder="请输入答案解析（选填）"></textarea>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">难度</label>
+            <select id="difficulty" class="form-input form-select" title="选择难度">
+                <option value="1">★☆☆☆☆ 简单</option>
+                <option value="2">★★☆☆☆ 较易</option>
+                <option value="3" selected>★★★☆☆ 中等</option>
+                <option value="4">★★★★☆ 较难</option>
+                <option value="5">★★★★★ 困难</option>
+            </select>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">{% if mode == 'add' %}添加题目{% else %}保存修改{% endif %}</button>
+            <a href="/user/banks/{{ bank_id }}" class="btn btn-secondary">取消</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block head %}
+<style>
+    .form-card {
+        max-width: 800px;
+    }
+
+    .content-textarea {
+        min-height: 120px;
+    }
+
+    .options-group {
+        padding: 16px;
+        background: rgba(142, 142, 147, 0.04);
+        border-radius: var(--radius-md);
+        border: 0.5px solid var(--border-color);
+    }
+
+    .options-list {
+        margin-bottom: 12px;
+    }
+
+    .option-row {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 10px;
+        align-items: center;
+    }
+
+    .option-label {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--primary-light);
+        color: var(--primary);
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 14px;
+        flex-shrink: 0;
+    }
+
+    .option-row input {
+        flex: 1;
+    }
+
+    .remove-option {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 59, 48, 0.1);
+        border: none;
+        color: var(--danger);
+        cursor: pointer;
+        font-size: 18px;
+        border-radius: 8px;
+        transition: all 0.2s;
+        flex-shrink: 0;
+    }
+
+    .remove-option:hover {
+        background: rgba(255, 59, 48, 0.2);
+    }
+
+    .add-option-btn {
+        margin-top: 4px;
+    }
+
+    .form-hint {
+        font-size: 12px;
+        color: var(--text-sub);
+        margin-top: 6px;
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 32px;
+        padding-top: 24px;
+        border-top: 1px solid var(--border-color);
+    }
+
+    /* ========== 黑夜模式适配 ========== */
+    [data-theme="dark"] .options-group {
+        background: rgba(255, 255, 255, 0.03);
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    [data-theme="dark"] .option-label {
+        background: rgba(0, 122, 255, 0.15);
+    }
+
+    [data-theme="dark"] .remove-option {
+        background: rgba(255, 59, 48, 0.15);
+        color: #ff6b6b;
+    }
+    [data-theme="dark"] .remove-option:hover {
+        background: rgba(255, 59, 48, 0.25);
+    }
+
+    [data-theme="dark"] .form-actions {
+        border-top-color: rgba(255, 255, 255, 0.1);
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const mode = '{{ mode }}';
+    const bankId = {{ bank_id }};
+    const questionId = {{ question_id if question_id else 'null' }};
+    let options = ['', '', '', ''];
+
+    function renderOptions() {
+        const container = document.getElementById('optionsList');
+        const labels = 'ABCDEFGHIJ';
+        container.innerHTML = options.map((opt, i) => `
+            <div class="option-row">
+                <span class="option-label">${labels[i]}</span>
+                <input type="text" class="form-input" value="${escapeHtml(opt)}" onchange="updateOption(${i}, this.value)" placeholder="选项内容">
+                ${options.length > 2 ? `<button type="button" class="remove-option" onclick="removeOption(${i})" title="删除选项">&times;</button>` : ''}
+            </div>
+        `).join('');
+    }
+
+    function addOption() {
+        if (options.length >= 10) {
+            showToast('最多10个选项', 'error');
+            return;
+        }
+        options.push('');
+        renderOptions();
+    }
+
+    function removeOption(index) {
+        if (options.length <= 2) return;
+        options.splice(index, 1);
+        renderOptions();
+    }
+
+    function updateOption(index, value) {
+        options[index] = value;
+    }
+
+    function updateOptionsVisibility() {
+        const qType = document.getElementById('q_type').value;
+        const show = qType === '选择题' || qType === '多选题';
+        document.getElementById('optionsGroup').style.display = show ? 'block' : 'none';
+    }
+
+    async function loadQuestion() {
+        if (!questionId) return;
+
+        try {
+            const res = await api(`/user/banks/api/${bankId}/questions?page=1&per_page=1000`);
+            const question = (res.data.questions || []).find(q => q.id === questionId);
+
+            if (!question) {
+                showToast('题目不存在', 'error');
+                return;
+            }
+
+            document.getElementById('q_type').value = question.q_type;
+            document.getElementById('content').value = question.content || '';
+            document.getElementById('answer').value = question.answer || '';
+            document.getElementById('explanation').value = question.explanation || '';
+            document.getElementById('difficulty').value = question.difficulty || 3;
+
+            if (question.options) {
+                try {
+                    options = JSON.parse(question.options);
+                } catch (e) {
+                    options = ['', '', '', ''];
+                }
+            }
+
+            renderOptions();
+            updateOptionsVisibility();
+        } catch (e) {
+            showToast(e.message, 'error');
+        }
+    }
+
+    document.getElementById('q_type').addEventListener('change', updateOptionsVisibility);
+
+    document.getElementById('questionForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const qType = document.getElementById('q_type').value;
+        const data = {
+            q_type: qType,
+            content: document.getElementById('content').value.trim(),
+            answer: document.getElementById('answer').value.trim(),
+            explanation: document.getElementById('explanation').value.trim(),
+            difficulty: parseInt(document.getElementById('difficulty').value)
+        };
+
+        if (!data.content) {
+            showToast('请输入题干', 'error');
+            return;
+        }
+
+        if (!data.answer) {
+            showToast('请输入答案', 'error');
+            return;
+        }
+
+        if (qType === '选择题' || qType === '多选题') {
+            const validOptions = options.filter(o => o.trim());
+            if (validOptions.length < 2) {
+                showToast('选择题至少需要2个选项', 'error');
+                return;
+            }
+            data.options = options.filter(o => o.trim());
+        }
+
+        try {
+            if (mode === 'add') {
+                await api(`/user/banks/api/${bankId}/questions`, {
+                    method: 'POST',
+                    body: JSON.stringify(data)
+                });
+                showToast('添加成功');
+            } else {
+                await api(`/user/banks/api/${bankId}/questions/${questionId}`, {
+                    method: 'PUT',
+                    body: JSON.stringify(data)
+                });
+                showToast('保存成功');
+            }
+
+            setTimeout(() => {
+                window.location.href = `/user/banks/${bankId}`;
+            }, 1000);
+        } catch (e) {
+            showToast(e.message, 'error');
+        }
+    });
+
+    // 初始化
+    renderOptions();
+    updateOptionsVisibility();
+    loadQuestion();
+</script>
+{% endblock %}

@@ -1,6 +1,6 @@
 <!-- subjects.wxml - 科目页 -->
-<view class="page-root">
-  <navigation-bar title="科目" back="{{false}}" color="black" background="#FFF"></navigation-bar>
+<view class="page-root {{themeClass}}">
+  <navigation-bar title="科目" back="{{false}}" color="var(--app-nav-fg)" background="var(--app-nav-bg)"></navigation-bar>
 
   <view class="page-container">
     <scroll-view

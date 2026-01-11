@@ -1,0 +1,252 @@
+{% extends "user_bank/base.html" %}
+
+{% block title %}收到的分享{% endblock %}
+
+{% block content %}
+<a href="/user/banks" class="nav-back">← 返回我的题库</a>
+
+<div class="page-header">
+    <h1 class="page-title">收到的分享</h1>
+    <div class="header-actions">
+        <button type="button" class="btn btn-primary" onclick="showJoinModal()">+ 输入分享码</button>
+    </div>
+</div>
+
+<div id="sharedList">
+    <div class="loading"></div>
+</div>
+
+<!-- 加入题库弹窗 -->
+<div id="joinModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">输入分享码</div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label class="form-label">分享码</label>
+                <input type="text" id="shareCode" class="form-input share-code-input" placeholder="请输入6位分享码" maxlength="6">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeJoinModal()">取消</button>
+            <button type="button" class="btn btn-primary" onclick="joinByCode()">加入</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block head %}
+<style>
+    .shared-card {
+        background: var(--card-bg);
+        backdrop-filter: var(--blur);
+        -webkit-backdrop-filter: var(--blur);
+        border-radius: var(--radius-lg);
+        border: 0.5px solid var(--border-color);
+        padding: 24px;
+        margin-bottom: 16px;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .shared-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow);
+    }
+
+    .shared-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 12px;
+    }
+
+    .shared-name {
+        font-size: 18px;
+        font-weight: 600;
+        color: var(--text-color);
+        margin: 0;
+    }
+
+    .shared-owner {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 14px;
+        color: var(--text-sub);
+        margin-bottom: 12px;
+    }
+
+    .shared-owner img {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+
+    .shared-meta {
+        display: flex;
+        gap: 20px;
+        font-size: 13px;
+        color: var(--text-sub);
+        flex-wrap: wrap;
+    }
+
+    .shared-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid var(--border-color);
+        flex-wrap: wrap;
+    }
+
+    .share-code-input {
+        text-transform: uppercase;
+        letter-spacing: 4px;
+        font-size: 20px;
+        text-align: center;
+        font-family: 'SF Mono', Monaco, monospace;
+    }
+
+    /* ========== 黑夜模式适配 ========== */
+    [data-theme="dark"] .shared-card {
+        background: rgba(28, 28, 30, 0.7);
+    }
+
+    [data-theme="dark"] .shared-actions {
+        border-top-color: rgba(255, 255, 255, 0.1);
+    }
+
+    [data-theme="dark"] .share-code-input {
+        background: rgba(28, 28, 30, 0.8);
+        border-color: rgba(255, 255, 255, 0.15);
+        color: var(--text-color);
+    }
+    [data-theme="dark"] .share-code-input:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.2);
+    }
+
+    [data-theme="dark"] .btn-delete {
+        background: rgba(255, 59, 48, 0.15);
+        color: #ff6b6b;
+        border-color: rgba(255, 59, 48, 0.25);
+    }
+    [data-theme="dark"] .btn-delete:hover {
+        background: rgba(255, 59, 48, 0.22);
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let sharedBanks = [];
+
+    async function loadSharedBanks() {
+        try {
+            const res = await api('/user/banks/api/shared');
+            sharedBanks = res.data.banks || [];
+            renderSharedBanks();
+        } catch (e) {
+            showToast(e.message, 'error');
+        }
+    }
+
+    function renderSharedBanks() {
+        const container = document.getElementById('sharedList');
+
+        if (sharedBanks.length === 0) {
+            container.innerHTML = `
+                <div class="card">
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
+                        </svg>
+                        <p class="empty-state-text">暂无收到的分享</p>
+                        <p class="empty-state-hint">输入分享码加入他人的题库</p>
+                        <button type="button" class="btn btn-primary" style="margin-top: 16px;" onclick="showJoinModal()">输入分享码</button>
+                    </div>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = sharedBanks.map(bank => `
+            <div class="shared-card">
+                <div class="shared-header">
+                    <h3 class="shared-name">${escapeHtml(bank.bank_name)}</h3>
+                    <span class="badge ${bank.permission === 'copy' ? 'badge-success' : 'badge-primary'}">${bank.permission === 'copy' ? '可复制' : '只读'}</span>
+                </div>
+                <div class="shared-owner">
+                    ${bank.owner_avatar ? `<img src="${bank.owner_avatar}" alt="">` : ''}
+                    <span>来自 ${escapeHtml(bank.owner_nickname)}</span>
+                </div>
+                <div class="shared-meta">
+                    <span>${bank.question_count || 0} 题</span>
+                    <span>最后访问: ${bank.last_access_at ? formatDate(bank.last_access_at) : '未访问'}</span>
+                    <span>访问 ${bank.access_count || 0} 次</span>
+                </div>
+                <div class="shared-actions">
+                    <a href="/user/banks/${bank.bank_id}/quiz" class="btn btn-primary btn-sm">开始刷题</a>
+                    <a href="/user/banks/${bank.bank_id}" class="btn btn-secondary btn-sm">查看题目</a>
+                    <button type="button" class="btn btn-delete btn-sm" onclick="removeShared(${bank.bank_id}, '${escapeHtml(bank.bank_name).replace(/'/g, "\\'")}')">移除</button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function showJoinModal() {
+        document.getElementById('joinModal').classList.add('show');
+        document.getElementById('shareCode').value = '';
+        setTimeout(() => document.getElementById('shareCode').focus(), 100);
+    }
+
+    function closeJoinModal() {
+        document.getElementById('joinModal').classList.remove('show');
+    }
+
+    async function joinByCode() {
+        const code = document.getElementById('shareCode').value.trim().toUpperCase();
+
+        if (!code || code.length !== 6) {
+            showToast('请输入6位分享码', 'error');
+            return;
+        }
+
+        try {
+            const res = await api('/user/banks/api/join', {
+                method: 'POST',
+                body: JSON.stringify({ share_code: code })
+            });
+            showToast(`已成功加入「${res.data.bank_name}」`);
+            closeJoinModal();
+            loadSharedBanks();
+        } catch (e) {
+            showToast(e.message, 'error');
+        }
+    }
+
+    async function removeShared(bankId, name) {
+        if (!confirmAction(`确定要移除「${name}」吗？`)) return;
+
+        try {
+            await api(`/user/banks/api/shared/${bankId}`, { method: 'DELETE' });
+            showToast('已移除');
+            loadSharedBanks();
+        } catch (e) {
+            showToast(e.message, 'error');
+        }
+    }
+
+    // 点击模态框外部关闭
+    document.getElementById('joinModal').addEventListener('click', (e) => {
+        if (e.target.id === 'joinModal') closeJoinModal();
+    });
+
+    // Enter 键提交
+    document.getElementById('shareCode').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') joinByCode();
+    });
+
+    // 初始化
+    loadSharedBanks();
+</script>
+{% endblock %}

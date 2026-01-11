@@ -1,0 +1,312 @@
+{% extends "user_bank/base.html" %}
+
+{% block title %}题库广场{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">题库广场</h1>
+    <a href="/user/banks" class="btn btn-secondary">我的题库</a>
+</div>
+
+<!-- 搜索和筛选 -->
+<div class="card">
+    <div class="filter-row">
+        <input type="text" id="searchInput" class="form-input" placeholder="搜索题库..." style="flex: 1; max-width: 300px;">
+        <select id="typeSelect" class="form-input form-select" style="width: 130px;" title="题库类型">
+            <option value="">全部题库</option>
+            <option value="system">系统题库</option>
+            <option value="user">用户题库</option>
+        </select>
+        <select id="sortSelect" class="form-input form-select" style="width: 140px;" title="排序方式">
+            <option value="newest">最新发布</option>
+            <option value="popular">最受欢迎</option>
+            <option value="questions">题目最多</option>
+        </select>
+    </div>
+</div>
+
+<!-- 公开题库列表 -->
+<div id="bankList">
+    <div class="loading"></div>
+</div>
+
+<!-- 分页 -->
+<div id="pagination" class="pagination"></div>
+{% endblock %}
+
+{% block head %}
+<style>
+    .filter-row {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .bank-card {
+        background: var(--card-bg);
+        backdrop-filter: blur(30px);
+        border-radius: var(--radius-lg);
+        border: 0.5px solid var(--border-color);
+        padding: 20px;
+        margin-bottom: 16px;
+        transition: all 0.2s ease;
+    }
+    .bank-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow);
+    }
+
+    .bank-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 12px;
+        gap: 10px;
+    }
+
+    .bank-name {
+        font-size: 18px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .bank-badges {
+        display: flex;
+        gap: 6px;
+        flex-shrink: 0;
+    }
+
+    .type-tag {
+        display: inline-flex;
+        align-items: center;
+        padding: 3px 8px;
+        border-radius: 10px;
+        font-size: 11px;
+        font-weight: 500;
+    }
+    .type-tag.system {
+        background: rgba(255, 149, 0, 0.12);
+        color: var(--warning);
+    }
+    .type-tag.user {
+        background: rgba(0, 122, 255, 0.1);
+        color: var(--primary);
+    }
+
+    .bank-owner {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 14px;
+        color: var(--text-sub);
+        margin-bottom: 12px;
+    }
+    .bank-owner img {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+    }
+
+    .bank-desc {
+        font-size: 14px;
+        color: var(--text-sub);
+        margin-bottom: 16px;
+        line-height: 1.5;
+    }
+
+    .bank-meta {
+        display: flex;
+        gap: 20px;
+        font-size: 13px;
+        color: var(--text-sub);
+    }
+
+    .bank-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .pagination {
+        display: flex;
+        justify-content: center;
+        gap: 8px;
+        margin-top: 24px;
+    }
+    .page-btn {
+        padding: 8px 14px;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        background: var(--card-bg-solid);
+        color: var(--text-color);
+        cursor: pointer;
+    }
+    .page-btn:hover { background: var(--primary-light); }
+    .page-btn.active { background: var(--primary); color: white; }
+    .page-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* ========== 黑夜模式适配 ========== */
+    [data-theme="dark"] .bank-card {
+        background: rgba(28, 28, 30, 0.7);
+    }
+
+    [data-theme="dark"] .bank-actions {
+        border-top-color: rgba(255, 255, 255, 0.1);
+    }
+
+    [data-theme="dark"] .page-btn {
+        background: rgba(28, 28, 30, 0.8);
+        border-color: rgba(255, 255, 255, 0.15);
+        color: var(--text-color);
+    }
+    [data-theme="dark"] .page-btn:hover {
+        background: rgba(0, 122, 255, 0.15);
+    }
+    [data-theme="dark"] .page-btn.active {
+        background: var(--primary);
+        color: white;
+    }
+
+    [data-theme="dark"] .type-tag.system {
+        background: rgba(255, 149, 0, 0.2);
+        color: #ff9f0a;
+    }
+    [data-theme="dark"] .type-tag.user {
+        background: rgba(10, 132, 255, 0.2);
+        color: #0a84ff;
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let banks = [];
+    let total = 0;
+    let currentPage = 1;
+    const perPage = 20;
+
+    async function loadBanks() {
+        const keyword = document.getElementById('searchInput').value.trim();
+        const sort = document.getElementById('sortSelect').value;
+        const bankType = document.getElementById('typeSelect').value;
+
+        let url = `/api/public/banks?page=${currentPage}&per_page=${perPage}&sort=${sort}`;
+        if (keyword) url += `&keyword=${encodeURIComponent(keyword)}`;
+        if (bankType) url += `&type=${bankType}`;
+
+        try {
+            const res = await api(url);
+            banks = res.data.banks || [];
+            total = res.data.total || 0;
+            renderBanks();
+            renderPagination();
+        } catch (e) {
+            showToast(e.message, 'error');
+        }
+    }
+
+    function renderBanks() {
+        const container = document.getElementById('bankList');
+
+        if (banks.length === 0) {
+            container.innerHTML = `
+                <div class="card">
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                        </svg>
+                        <p>暂无公开题库</p>
+                    </div>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = banks.map(bank => {
+            const isSystem = bank.bank_type === 'system';
+            const typeTag = isSystem
+                ? '<span class="type-tag system">系统</span>'
+                : '<span class="type-tag user">用户</span>';
+            const quizUrl = isSystem
+                ? `/quiz?subject_id=${bank.id}`
+                : `/user/banks/${bank.id}/quiz`;
+            const detailUrl = isSystem
+                ? `/quiz?subject_id=${bank.id}`
+                : `/user/banks/${bank.id}`;
+
+            return `
+                <div class="bank-card">
+                    <div class="bank-header">
+                        <h3 class="bank-name">${escapeHtml(bank.name)}</h3>
+                        <div class="bank-badges">
+                            ${typeTag}
+                            ${bank.allow_copy ? '<span class="badge badge-success">可复制</span>' : ''}
+                        </div>
+                    </div>
+                    <div class="bank-owner">
+                        ${bank.owner_avatar ? `<img src="${bank.owner_avatar}" alt="">` : ''}
+                        <span>${escapeHtml(bank.owner_nickname)}</span>
+                    </div>
+                    ${bank.description ? `<p class="bank-desc">${escapeHtml(bank.description)}</p>` : ''}
+                    <div class="bank-meta">
+                        <span>${bank.question_count || 0} 道题</span>
+                        ${!isSystem ? `<span>${bank.use_count || 0} 人使用</span>` : ''}
+                        <span>${formatDate(bank.public_at)}</span>
+                    </div>
+                    <div class="bank-actions">
+                        <a href="${quizUrl}" class="btn btn-primary btn-sm">开始刷题</a>
+                        ${!isSystem ? `<a href="${detailUrl}" class="btn btn-secondary btn-sm">查看详情</a>` : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function renderPagination() {
+        const totalPages = Math.ceil(total / perPage);
+        if (totalPages <= 1) {
+            document.getElementById('pagination').innerHTML = '';
+            return;
+        }
+
+        let html = `<button class="page-btn" ${currentPage === 1 ? 'disabled' : ''} onclick="goPage(${currentPage - 1})">上一页</button>`;
+
+        for (let i = 1; i <= totalPages; i++) {
+            if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+                html += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="goPage(${i})">${i}</button>`;
+            } else if (i === currentPage - 3 || i === currentPage + 3) {
+                html += `<span style="padding: 8px;">...</span>`;
+            }
+        }
+
+        html += `<button class="page-btn" ${currentPage === totalPages ? 'disabled' : ''} onclick="goPage(${currentPage + 1})">下一页</button>`;
+        document.getElementById('pagination').innerHTML = html;
+    }
+
+    function goPage(page) {
+        currentPage = page;
+        loadBanks();
+        window.scrollTo(0, 0);
+    }
+
+    document.getElementById('searchInput').addEventListener('input', debounce(() => { currentPage = 1; loadBanks(); }, 300));
+    document.getElementById('sortSelect').addEventListener('change', () => { currentPage = 1; loadBanks(); });
+    document.getElementById('typeSelect').addEventListener('change', () => { currentPage = 1; loadBanks(); });
+
+    function debounce(fn, delay) {
+        let timer;
+        return function(...args) {
+            clearTimeout(timer);
+            timer = setTimeout(() => fn.apply(this, args), delay);
+        };
+    }
+
+    // 初始化
+    loadBanks();
+</script>
+{% endblock %}

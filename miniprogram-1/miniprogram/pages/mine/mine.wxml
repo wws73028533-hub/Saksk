@@ -1,6 +1,6 @@
 <!-- mine.wxml - 我的 -->
-<view class="page-root">
-  <navigation-bar title="我的" back="{{false}}" color="black" background="#FFF"></navigation-bar>
+<view class="page-root {{themeClass}}">
+  <navigation-bar title="我的" back="{{false}}" color="var(--app-nav-fg)" background="var(--app-nav-bg)"></navigation-bar>
 
   <view class="page-container">
     <scroll-view class="content-area" scroll-y type="list" bounces="{{false}}">
@@ -52,4 +52,3 @@
     </scroll-view>
   </view>
 </view>
-

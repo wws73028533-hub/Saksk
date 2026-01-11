@@ -1,12 +1,12 @@
-<!-- subject-stats.wxml - 学习统计 -->
-<view class="page-root">
-  <navigation-bar title="学习统计" back="{{true}}" color="black" background="#FFF"></navigation-bar>
+<!-- subject-stats.wxml - 学习统计（支持公有题库和个人题库双数据源） -->
+<view class="page-root {{themeClass}}">
+  <navigation-bar title="学习统计" back="{{true}}" color="var(--app-nav-fg)" background="var(--app-nav-bg)"></navigation-bar>
 
   <view class="page-container">
     <scroll-view class="content-area" scroll-y type="list">
       <view class="container">
         <view class="header-card">
-          <text class="subject-name">{{subject}}</text>
+          <text class="subject-name">{{displayName}}</text>
           <text class="subtitle">统计数据会随做题/收藏/错题实时更新</text>
         </view>
 

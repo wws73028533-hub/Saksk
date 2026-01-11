@@ -12,7 +12,7 @@ page {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: #f5f5f5;
+  background: var(--app-bg);
 }
 
 .page-container {
@@ -21,7 +21,7 @@ page {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  background: #f5f5f5;
+  background: var(--app-bg);
 }
 
 .content-area {
@@ -38,10 +38,10 @@ page {
 }
 
 .card {
-  background: #fff;
+  background: var(--app-surface-solid);
   border-radius: 20rpx;
   padding: 12rpx 24rpx;
-  border: 1rpx solid #F0F0F0;
+  border: 1rpx solid var(--app-divider);
   margin-bottom: 16rpx;
   width: 100%;
   box-sizing: border-box;
@@ -57,17 +57,17 @@ page {
 
 .row + .row,
 .subject-row + .row {
-  border-top: 1rpx solid #F0F0F0;
+  border-top: 1rpx solid var(--app-divider);
 }
 
 .label {
   font-size: 26rpx;
-  color: #000;
+  color: var(--app-text);
 }
 
 .value {
   font-size: 26rpx;
-  color: #8E8E93;
+  color: var(--app-text-secondary);
   max-width: 520rpx;
   text-align: right;
   word-break: break-word;
@@ -76,7 +76,7 @@ page {
 .input {
   width: 160rpx;
   height: 60rpx;
-  background: #F8F8F8;
+  background: var(--app-fill-solid);
   border-radius: 12rpx;
   padding: 0 16rpx;
   font-size: 28rpx;
@@ -87,7 +87,7 @@ page {
 .section-title {
   font-size: 26rpx;
   font-weight: 700;
-  color: #000;
+  color: var(--app-text);
   padding: 18rpx 0 12rpx;
 }
 
@@ -97,7 +97,7 @@ page {
 }
 
 .type-block + .type-block {
-  border-top: 1rpx solid #F0F0F0;
+  border-top: 1rpx solid var(--app-divider);
 }
 
 .type-row {
@@ -115,13 +115,13 @@ page {
 
 .type-name {
   font-size: 28rpx;
-  color: #000;
+  color: var(--app-text);
   font-weight: 600;
 }
 
 .type-sub {
   font-size: 24rpx;
-  color: #8E8E93;
+  color: var(--app-text-secondary);
 }
 
 .type-config {
@@ -132,7 +132,7 @@ page {
 
 .config-field {
   flex: 1;
-  background: #F8F8F8;
+  background: var(--app-fill-solid);
   border-radius: 16rpx;
   padding: 14rpx 16rpx;
   display: flex;
@@ -143,7 +143,7 @@ page {
 
 .config-label {
   font-size: 22rpx;
-  color: #8E8E93;
+  color: var(--app-text-secondary);
   flex-shrink: 0;
 }
 
@@ -151,19 +151,19 @@ page {
   flex: 1;
   height: 56rpx;
   font-size: 28rpx;
-  color: #000;
+  color: var(--app-text);
   text-align: right;
 }
 
 .config-unit {
   font-size: 22rpx;
-  color: #8E8E93;
+  color: var(--app-text-secondary);
   flex-shrink: 0;
 }
 
 .hint {
   padding: 20rpx 0 24rpx;
-  color: #8E8E93;
+  color: var(--app-text-secondary);
   font-size: 26rpx;
   text-align: center;
 }
@@ -171,8 +171,8 @@ page {
 .action-bar {
   padding: 18rpx 24rpx;
   padding-bottom: calc(28rpx + env(safe-area-inset-bottom));
-  border-top: 1rpx solid #F0F0F0;
-  background: #fff;
+  border-top: 1rpx solid var(--app-divider);
+  background: var(--app-surface-solid);
   box-sizing: border-box;
   flex-shrink: 0;
 }
@@ -196,7 +196,7 @@ page {
 
 .sub-hint {
   margin-top: 14rpx;
-  color: #8E8E93;
+  color: var(--app-text-secondary);
   font-size: 24rpx;
   text-align: center;
   padding: 0 10rpx;
@@ -207,6 +207,6 @@ page {
   align-items: center;
   justify-content: center;
   padding: 80rpx 24rpx;
-  color: #8E8E93;
+  color: var(--app-text-secondary);
   font-size: 28rpx;
 }

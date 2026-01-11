@@ -1,8 +1,9 @@
 // API基础配置
-// TODO: 请修改为实际的后端API地址
-// 开发环境示例: 'http://localhost:5000/api' 或 'http://192.168.31.74:5000/api'（微信小程序需要使用IP地址）
-// 生产环境示例: 'https://your-actual-domain.com/api'
-const API_BASE_URL = 'http://192.168.31.74:5000/api';  // 后端API地址，微信小程序需要使用本机IP而非localhost
+// 从 config.ts 导入配置，支持自动检测开发/生产环境
+import { config } from './config';
+
+// API 基础 URL（自动根据环境选择）
+const API_BASE_URL = config.getApiUrl();
 const API_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, '');
 
 export function getApiOrigin(): string {
@@ -221,6 +222,7 @@ export const api = {
     subject?: string;
     q_type?: string;
     mode?: string;
+    tag?: string;
     source?: string;
     shuffle_questions?: string | number;
     shuffle_options?: string | number;
@@ -265,12 +267,14 @@ export const api = {
     subject?: string;
     type?: string;
     source?: string;
+    tag?: string;
   }) => request('/quiz/questions/count', 'GET', params || {}),
   
   // 获取用户收藏和错题数量（支持题型筛选）
   getUserCounts: (params: {
     subject?: string;
     type?: string;
+    tag?: string;
   }) => request('/quiz/questions/user_counts', 'GET', params),
 
   // 获取云端进度（与 Web 端 /api/progress 互通）
@@ -298,5 +302,130 @@ export const api = {
   submitExam: (examId: number, answers: Array<{ question_id: number; user_answer: string }>) =>
     request('/exams/submit', 'POST', { exam_id: examId, answers }),
 
-  examToMistakes: (examId: number) => request(`/exams/${examId}/mistakes`, 'POST', {})
+  examToMistakes: (examId: number) => request(`/exams/${examId}/mistakes`, 'POST', {}),
+
+  // === 用户题库（个人题库） ===
+  // 获取我的题库列表
+  getMyBanks: (params?: { category_id?: number; is_public?: number }) =>
+    request('/user/banks/api/list', 'GET', params || {}),
+
+  // 获取收到的分享题库列表
+  getSharedBanks: () => request('/user/banks/api/shared', 'GET'),
+
+  // 获取题库详情
+  getBankDetail: (bankId: number) => request(`/user/banks/api/${bankId}`, 'GET'),
+
+  // 获取题库题目列表
+  getBankQuestions: (bankId: number, params?: {
+    page?: number;
+    per_page?: number;
+    q_type?: string;
+    keyword?: string;
+  }) => request(`/user/banks/api/${bankId}/questions`, 'GET', params || {}),
+
+  // 获取题库刷题题目
+  getBankQuizQuestions: (bankId: number, params?: {
+    mode?: string;  // 'all' | 'wrong' | 'random'
+    limit?: number;
+    q_type?: string; // 题型筛选
+    tag?: string;    // 题库标签筛选（用户私有）
+  }) => request(`/user/banks/api/${bankId}/quiz`, 'GET', params || {}),
+
+  // 记录题库答题结果
+  recordBankQuizResult: (bankId: number, data: {
+    question_id: number;
+    user_answer: string;
+    is_correct: boolean;
+  }) => request(`/user/banks/api/${bankId}/quiz/record`, 'POST', data),
+
+  // 切换题库题目收藏状态
+  toggleBankFavorite: (bankId: number, questionId: number) =>
+    request(`/user/banks/api/${bankId}/questions/${questionId}/favorite`, 'POST'),
+
+  // 获取题库答题统计
+  getBankMyStats: (bankId: number) => request(`/user/banks/api/${bankId}/my-stats`, 'GET'),
+
+  // 获取题库用户统计（总数、收藏数、错题数，支持题型和来源筛选）
+  getBankUserCounts: (bankId: number, params?: {
+    q_type?: string;   // 题型筛选
+    source?: string;   // 来源筛选（all/favorites/mistakes）
+    tag?: string;      // 题库标签筛选（用户私有）
+  }) => request(`/user/banks/api/${bankId}/user-counts`, 'GET', params || {}),
+
+  // 通过分享码加入题库
+  joinBankByCode: (shareCode: string) =>
+    request('/user/banks/api/join', 'POST', { share_code: shareCode }),
+
+  // 通过分享链接token加入题库
+  joinBankByToken: (token: string) =>
+    request('/user/banks/api/join', 'POST', { token }),
+
+  // 获取题库分享列表
+  getBankShares: (bankId: number) =>
+    request(`/user/banks/api/${bankId}/shares`, 'GET'),
+
+  // 创建题库分享
+  createBankShare: (bankId: number, data: {
+    type?: string;        // 'code' 或 'link'
+    permission?: string;  // 'read' 或 'copy'
+    expires_in?: number | null;  // 有效天数，null为永久
+    max_uses?: number;
+  }) => request(`/user/banks/api/${bankId}/shares`, 'POST', data),
+
+  // 删除/撤销题库分享
+  deleteBankShare: (bankId: number, shareId: number) =>
+    request(`/user/banks/api/${bankId}/shares/${shareId}`, 'DELETE'),
+
+  // 搜索题库题目
+  searchBankQuestions: (bankId: number, params: {
+    keyword: string;
+    page?: number;
+    per_page?: number;
+  }) => request(`/user/banks/api/${bankId}/questions`, 'GET', params),
+
+  // === 题目标签（公有题库） ===
+  // 获取用户所有标签
+  getTags: () => request('/quiz/tags', 'GET'),
+
+  // 创建新标签
+  createTag: (name: string) => request('/quiz/tags', 'POST', { name }),
+
+  // 获取题目标签
+  getQuestionTags: (questionId: number) => request(`/quiz/questions/${questionId}/tags`, 'GET'),
+
+  // 设置题目标签
+  setQuestionTags: (questionId: number, tags: string[]) =>
+    request(`/quiz/questions/${questionId}/tags`, 'POST', { tags }),
+
+  // === 编辑题目（公有题库，需要管理员权限） ===
+  updateQuestion: (questionId: number, data: {
+    content?: string;
+    options?: Array<{ key: string; value: string }>;
+    answer?: string;
+    explanation?: string;
+  }) => request(`/quiz/questions/${questionId}`, 'PUT', data),
+
+  // === 题目标签（个人题库） ===
+  // 获取题库标签
+  getBankTags: (bankId: number) => request(`/user/banks/api/${bankId}/tags`, 'GET'),
+
+  // 创建题库标签
+  createBankTag: (bankId: number, name: string) =>
+    request(`/user/banks/api/${bankId}/tags`, 'POST', { name }),
+
+  // 获取题库题目标签
+  getBankQuestionTags: (bankId: number, questionId: number) =>
+    request(`/user/banks/api/${bankId}/questions/${questionId}/tags`, 'GET'),
+
+  // 设置题库题目标签
+  setBankQuestionTags: (bankId: number, questionId: number, tags: string[]) =>
+    request(`/user/banks/api/${bankId}/questions/${questionId}/tags`, 'POST', { tags }),
+
+  // === 编辑题目（个人题库） ===
+  updateBankQuestion: (bankId: number, questionId: number, data: {
+    content?: string;
+    options?: Array<{ key: string; value: string }>;
+    answer?: string;
+    explanation?: string;
+  }) => request(`/user/banks/api/${bankId}/questions/${questionId}`, 'PUT', data)
 };
