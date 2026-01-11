@@ -10,6 +10,10 @@ Component({
       type: String,
       value: ''
     },
+    compact: {
+      type: Boolean,
+      value: false
+    },
     title: {
       type: String,
       value: ''
@@ -59,6 +63,7 @@ Component({
   },
   lifetimes: {
     attached() {
+      const compact = !!this.properties.compact
       const rect = wx.getMenuButtonBoundingClientRect()
       wx.getSystemInfo({
         success: (res) => {
@@ -67,7 +72,7 @@ Component({
           this.setData({
             ios: !isAndroid,
             innerPaddingRight: `padding-right: ${res.windowWidth - rect.left}px`,
-            leftWidth: `width: ${res.windowWidth - rect.left }px`,
+            leftWidth: compact ? '' : `width: ${res.windowWidth - rect.left}px`,
             safeAreaTop: isDevtools || isAndroid ? `height: calc(var(--height) + ${res.safeArea.top}px); padding-top: ${res.safeArea.top}px` : ``
           })
         }

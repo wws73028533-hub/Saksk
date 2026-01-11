@@ -6,6 +6,7 @@
     color="var(--app-nav-fg)"
     background="var(--app-nav-bg)"
     extClass="quiz-navbar"
+    compact="{{true}}"
   >
     <view slot="left" class="nav-left-actions">
       <view class="nav-action-btn" bindtap="onOpenQuestionList" hover-class="nav-action-btn-hover">

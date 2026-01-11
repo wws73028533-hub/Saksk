@@ -32,20 +32,18 @@ page {
     overflow: hidden;
   }
 
+  .weui-navigation-bar__left {
+    padding-left: 12rpx;
+  }
+
+  .weui-navigation-bar__right {
+    padding-right: 12rpx;
+  }
+
   .weui-navigation-bar__left,
   .weui-navigation-bar__right {
     display: flex;
     align-items: center;
-  }
-
-  .weui-navigation-bar__center {
-    position: absolute;
-    top: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    height: 100%;
-    width: auto;
-    pointer-events: none;
   }
 
   .weui-navigation-bar__btn_goback_wrapper {
@@ -74,14 +72,14 @@ page {
 .nav-left-actions {
   display: flex;
   align-items: center;
-  margin-left: 12rpx;
+  margin-left: 8rpx;
 }
 
 .nav-right-actions {
   display: flex;
   align-items: center;
   gap: 16rpx;
-  padding-right: 8rpx;
+  padding-right: 0;
 }
 
 .nav-action-btn {
