@@ -1,0 +1,303 @@
+{% set _path = request.path or '' %}
+{% set _is_admin_any = (is_admin or is_subject_admin or is_notification_admin) %}
+
+<style>
+  .app-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 10px;
+    border-radius: 12px;
+    border: 1px solid var(--app-border);
+    background: var(--app-surface-2);
+    box-shadow: var(--app-shadow-soft);
+    margin-bottom: 10px;
+  }
+  .app-brand-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    background: var(--app-primary);
+    box-shadow: 0 0 0 4px var(--app-primary-soft);
+    flex: 0 0 auto;
+  }
+  .app-brand-text { font-weight: 900; letter-spacing: -0.3px; }
+
+  .app-cta {
+    border: 1px solid var(--app-border);
+    border-radius: var(--app-radius-xl);
+    background: var(--app-surface-2);
+    box-shadow: var(--app-shadow-soft);
+    padding: 12px;
+    margin-bottom: 10px;
+  }
+  .app-cta-title { font-size: 13px; font-weight: 900; letter-spacing: -0.2px; }
+  .app-cta-meta { margin-top: 6px; font-size: 12px; color: var(--app-muted); line-height: 1.35; }
+  .app-cta-actions { display: grid; gap: 8px; margin-top: 10px; }
+
+  .app-btn {
+    height: 38px;
+    border-radius: 999px;
+    border: 1px solid var(--app-border);
+    background: var(--app-surface);
+    box-shadow: var(--app-shadow-soft);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 12px;
+    transition: background 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+    font-weight: 800;
+    font-size: 13px;
+  }
+  .app-btn:hover { box-shadow: var(--app-shadow); transform: translateY(-1px); }
+  .app-btn:active { transform: translateY(0); }
+  .app-btn:focus { outline: none; box-shadow: 0 0 0 3px var(--app-primary-soft), var(--app-shadow-soft); }
+
+  .app-btn-primary {
+    border-color: color-mix(in srgb, var(--app-primary) 50%, var(--app-border));
+    background: color-mix(in srgb, var(--app-primary) 12%, var(--app-surface));
+    color: var(--app-text);
+  }
+  .app-btn-primary[data-mode="continue"] {
+    background: color-mix(in srgb, var(--app-primary) 18%, var(--app-surface));
+  }
+  .app-btn-secondary {
+    background: transparent;
+  }
+
+  .app-search {
+    display: flex;
+    gap: 8px;
+    padding: 10px 10px;
+    border-radius: 14px;
+    border: 1px solid var(--app-border);
+    background: var(--app-surface);
+    box-shadow: var(--app-shadow-soft);
+    margin-bottom: 10px;
+  }
+  .app-search input {
+    border: 0;
+    outline: none;
+    background: transparent;
+    color: var(--app-text);
+    font-size: 13px;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+  .app-search button {
+    border: 0;
+    background: transparent;
+    color: var(--app-muted);
+    cursor: pointer;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 10px;
+  }
+  .app-search button:hover { background: rgba(148, 163, 184, 0.14); color: var(--app-text); }
+
+  .app-nav { display: grid; gap: 12px; margin-top: 6px; }
+  .app-nav-section { display: grid; gap: 6px; }
+  .app-nav-title { font-size: 11px; font-weight: 800; letter-spacing: 0.2px; color: var(--app-muted); padding: 0 10px; }
+  .app-nav-item {
+    height: 40px;
+    border-radius: 12px;
+    padding: 0 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid transparent;
+    color: var(--app-text);
+    transition: background 140ms ease, border-color 140ms ease;
+  }
+  .app-nav-item:hover { background: rgba(148, 163, 184, 0.10); }
+  .app-nav-item.active {
+    background: var(--app-primary-soft);
+    border-color: color-mix(in srgb, var(--app-primary) 35%, var(--app-border));
+  }
+  .app-nav-icon {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 auto;
+    color: var(--app-text);
+    opacity: 0.95;
+  }
+  .app-nav-label { font-size: 13px; font-weight: 850; letter-spacing: -0.1px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .app-sidebar-footer {
+    position: sticky;
+    bottom: 0;
+    margin-top: 12px;
+    padding-top: 10px;
+    background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--app-surface) 88%, transparent) 20%);
+  }
+  .app-footer-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px;
+    border-radius: 14px;
+    border: 1px solid var(--app-border);
+    background: var(--app-surface-2);
+    box-shadow: var(--app-shadow-soft);
+  }
+  .app-user {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+    flex: 1 1 auto;
+    padding: 6px 8px;
+    border-radius: 12px;
+    transition: background 140ms ease, box-shadow 140ms ease;
+  }
+  .app-user:hover { background: rgba(148, 163, 184, 0.10); }
+  .app-user:focus { outline: none; box-shadow: 0 0 0 3px var(--app-primary-soft); }
+  .app-user .name { font-weight: 900; font-size: 13px; letter-spacing: -0.2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .app-user .sub { font-size: 11px; color: var(--app-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .app-mini-btn {
+    height: 34px;
+    width: 34px;
+    border-radius: 12px;
+    border: 1px solid var(--app-border);
+    background: var(--app-surface);
+    box-shadow: var(--app-shadow-soft);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .app-mini-btn:focus { outline: none; box-shadow: 0 0 0 3px var(--app-primary-soft), var(--app-shadow-soft); }
+</style>
+
+<a class="app-brand" href="/hub" aria-label="返回首页" title="返回首页">
+  <span class="app-brand-dot" aria-hidden="true"></span>
+  <span class="app-brand-text">SAK</span>
+</a>
+
+<form class="app-search" action="/search" method="get" role="search" aria-label="全局搜索">
+  <input type="text" name="keyword" placeholder="搜索题干/答案/解析" autocomplete="off" />
+  <button type="submit" aria-label="搜索">
+    <svg class="app-nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16Z" stroke="currentColor" stroke-width="2"/>
+      <path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+  </button>
+</form>
+
+<nav class="app-nav" aria-label="主导航">
+  <div class="app-nav-section">
+    <div class="app-nav-title">概览</div>
+    <a class="app-nav-item {{ 'active' if _path.startswith('/hub') else '' }}" href="/hub" aria-label="首页" title="首页">
+      <svg class="app-nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M3 10.5 12 3l9 7.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M5 9.8V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.8" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+        <path d="M10 20v-6a2 2 0 0 1 4 0v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <span class="app-nav-label">首页</span>
+    </a>
+  </div>
+
+  <div class="app-nav-section">
+    <div class="app-nav-title">题库</div>
+    <a class="app-nav-item {{ 'active' if _path == '/' or _path.startswith('/subjects') else '' }}" href="/" aria-label="公共题库" title="公共题库">
+      <svg class="app-nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M4 6.5c0-1.1.9-2 2-2h12c1.1 0 2 .9 2 2V19c0 .6-.4 1-1 1H7a3 3 0 0 1-3-3V6.5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+        <path d="M7 8h10M7 12h10M7 16h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <span class="app-nav-label">公共题库</span>
+    </a>
+
+    <a class="app-nav-item {{ 'active' if _path.startswith('/user/banks') else '' }}" href="/user/banks" aria-label="个人题库" title="个人题库">
+      <svg class="app-nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M4 7a2 2 0 0 1 2-2h10a3 3 0 0 1 3 3v11a1 1 0 0 1-1 1H7a3 3 0 0 1-3-3V7Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+        <path d="M7 9h8M7 13h8M7 17h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <span class="app-nav-label">个人题库</span>
+    </a>
+  </div>
+
+  <div class="app-nav-section">
+    <div class="app-nav-title">复盘</div>
+    <a class="app-nav-item {{ 'active' if _path.startswith('/mistakes') else '' }}" href="/mistakes" aria-label="错题" title="错题">
+      <svg class="app-nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M12 8v5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <path d="M12 16h.01" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+        <path d="M10.3 4.3 2.8 17.3A2 2 0 0 0 4.5 20h15a2 2 0 0 0 1.7-2.7L13.7 4.3a2 2 0 0 0-3.4 0Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+      </svg>
+      <span class="app-nav-label">错题</span>
+    </a>
+
+    <a class="app-nav-item {{ 'active' if _path.startswith('/favorites') else '' }}" href="/favorites" aria-label="收藏" title="收藏">
+      <svg class="app-nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M12 17.3 6.3 20.6l1.2-6.6L2.6 9.8l6.7-.9L12 3l2.7 5.9 6.7.9-4.9 4.2 1.2 6.6L12 17.3Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+      </svg>
+      <span class="app-nav-label">收藏</span>
+    </a>
+  </div>
+
+  <div class="app-nav-section">
+    <div class="app-nav-title">成长</div>
+    <a class="app-nav-item {{ 'active' if _path.startswith('/history') else '' }}" href="/history" aria-label="进度" title="进度">
+      <svg class="app-nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M4 19V5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <path d="M4 19h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <path d="M8 15v-3M12 15V8M16 15v-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <span class="app-nav-label">进度</span>
+    </a>
+
+    <a class="app-nav-item {{ 'active' if _path.startswith('/exams') else '' }}" href="/exams" aria-label="考试" title="考试">
+      <svg class="app-nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18Z" stroke="currentColor" stroke-width="2"/>
+        <path d="m8.5 12.5 2.2 2.2 4.8-5.2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="app-nav-label">考试</span>
+    </a>
+  </div>
+
+  <div class="app-nav-section">
+    <div class="app-nav-title">系统</div>
+    <a class="app-nav-item {{ 'active' if _path.startswith('/settings') or _path.startswith('/quiz_settings') else '' }}" href="/settings" aria-label="设置" title="设置">
+      <svg class="app-nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" stroke="currentColor" stroke-width="2"/>
+        <path d="M19.4 13a7.9 7.9 0 0 0 0-2l2-1.5-2-3.5-2.4.6a8 8 0 0 0-1.7-1L15 2h-6l-.3 3.6a8 8 0 0 0-1.7 1L4.6 6 2.6 9.5l2 1.5a7.9 7.9 0 0 0 0 2l-2 1.5 2 3.5 2.4-.6a8 8 0 0 0 1.7 1L9 22h6l.3-3.6a8 8 0 0 0 1.7-1l2.4.6 2-3.5-2-1.5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+      </svg>
+      <span class="app-nav-label">设置</span>
+    </a>
+
+    <a class="app-nav-item {{ 'active' if _path.startswith('/admin') else '' }}" href="{% if _is_admin_any %}/admin{% if is_subject_admin and not is_admin %}/subjects{% elif is_notification_admin and not is_admin %}/notifications{% endif %}{% else %}/user/banks/manage{% endif %}" aria-label="管理" title="管理">
+      <svg class="app-nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M10 7h10M10 12h10M10 17h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <path d="M4 7h1M4 12h1M4 17h1" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+      </svg>
+      <span class="app-nav-label">管理</span>
+    </a>
+  </div>
+</nav>
+
+<div class="app-sidebar-footer">
+  <div class="app-footer-row">
+    {% if logged_in %}
+      <a class="app-user" href="/profile" aria-label="个人资料" title="个人资料">
+        <div class="name">{{ username }}</div>
+        <div class="sub">查看个人资料</div>
+      </a>
+    {% else %}
+      <a class="app-user" href="/login" aria-label="前往登录" title="前往登录">
+        <div class="name">未登录</div>
+        <div class="sub">前往登录</div>
+      </a>
+    {% endif %}
+    <button class="app-mini-btn" type="button" id="appSidebarCollapse" aria-label="折叠侧边栏" title="折叠侧边栏">
+      <svg class="app-nav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+  </div>
+</div>

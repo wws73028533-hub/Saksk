@@ -3,158 +3,603 @@
 from flask import Blueprint, render_template, request, session, redirect, send_from_directory, current_app
 import json
 import os
+from datetime import datetime, timedelta
 from app.core.utils.database import get_db
+from app.core.utils.decorators import login_required
 
 main_pages_bp = Blueprint('main_pages', __name__)
+
+def _get_accessible_subject_rows(conn, uid):
+    """获取用户可访问的科目（id/name），并过滤锁定科目。"""
+    if uid:
+        from app.core.utils.subject_permissions import get_user_accessible_subjects
+        accessible_subject_ids = get_user_accessible_subjects(uid)
+        if not accessible_subject_ids:
+            return []
+        placeholders = ','.join(['?'] * len(accessible_subject_ids))
+        rows = conn.execute(
+            f"SELECT id, name FROM subjects WHERE id IN ({placeholders}) AND (is_locked=0 OR is_locked IS NULL) ORDER BY id",
+            accessible_subject_ids,
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    rows = conn.execute(
+        "SELECT id, name FROM subjects WHERE (is_locked=0 OR is_locked IS NULL) ORDER BY id"
+    ).fetchall()
+    return [dict(r) for r in rows]
 
 
 @main_pages_bp.route('/hub')
 def hub():
-    """功能选择中心"""
+    """介绍页"""
     uid = session.get('user_id')
-    return render_template('main/hub.html',
-                         logged_in=bool(uid),
-                         username=session.get('username'),
-                         is_admin=session.get('is_admin', False),
-                         is_subject_admin=session.get('is_subject_admin', False),
-                         user_id=uid or 0)
+    conn = get_db()
+
+    subject_total = 0
+    question_total = 0
+    my_bank_total = 0
+
+    try:
+        if uid:
+            subjects_meta = _get_accessible_subject_rows(conn, uid)
+            subject_total = len(subjects_meta or [])
+
+            subject_ids = [
+                int(s['id'])
+                for s in (subjects_meta or [])
+                if s and s.get('id') is not None
+            ]
+            if subject_ids:
+                placeholders = ','.join(['?'] * len(subject_ids))
+                question_total = conn.execute(
+                    f"""
+                    SELECT COUNT(*)
+                    FROM questions q
+                    LEFT JOIN subjects s ON q.subject_id = s.id
+                    WHERE q.subject_id IN ({placeholders})
+                      AND (s.is_locked=0 OR s.is_locked IS NULL)
+                    """,
+                    subject_ids,
+                ).fetchone()[0]
+        else:
+            subject_total = conn.execute(
+                "SELECT COUNT(*) FROM subjects WHERE (is_locked=0 OR is_locked IS NULL)"
+            ).fetchone()[0]
+            question_total = conn.execute(
+                """
+                SELECT COUNT(*)
+                FROM questions q
+                LEFT JOIN subjects s ON q.subject_id = s.id
+                WHERE (s.is_locked=0 OR s.is_locked IS NULL)
+                """
+            ).fetchone()[0]
+    except Exception as e:
+        current_app.logger.error(f"Error fetching hub stats: {e}")
+        subject_total = 0
+        question_total = 0
+
+    if uid:
+        try:
+            my_bank_total = conn.execute(
+                "SELECT COUNT(*) FROM user_question_banks WHERE user_id = ? AND status = 1",
+                (uid,),
+            ).fetchone()[0]
+        except Exception:
+            my_bank_total = 0
+
+    return render_template(
+        'main/hub.html',
+        subject_total=subject_total,
+        question_total=question_total,
+        my_bank_total=my_bank_total,
+        logged_in=bool(uid),
+        username=session.get('username'),
+        is_admin=session.get('is_admin', False),
+        is_subject_admin=session.get('is_subject_admin', False),
+        is_notification_admin=session.get('is_notification_admin', False),
+        user_id=uid or 0,
+    )
 
 
 @main_pages_bp.route('/')
 def index():
-    """首页（题库中心）"""
+    """首页（公共题库）"""
     uid = session.get('user_id')
     conn = get_db()
-    
+
+    subjects_meta = []
     try:
-        # 统计基础数据（只统计未锁定科目的题目）
-        quiz_count = conn.execute("""
-            SELECT COUNT(*) 
-            FROM questions q 
-            LEFT JOIN subjects s ON q.subject_id = s.id 
-            WHERE (s.is_locked=0 OR s.is_locked IS NULL)
-        """).fetchone()[0]
-        
-        # 统计当前用户的收藏/错题
-        if uid:
-            fav_count = conn.execute(
-                "SELECT COUNT(*) FROM favorites f INNER JOIN questions q ON f.question_id = q.id WHERE f.user_id = ?",
-                (uid,)
-            ).fetchone()[0]
-            mistake_count = conn.execute(
-                "SELECT COUNT(*) FROM mistakes m INNER JOIN questions q ON m.question_id = q.id WHERE m.user_id = ?",
-                (uid,)
-            ).fetchone()[0]
-        else:
-            fav_count = 0
-            mistake_count = 0
-        
-        # 获取所有科目（添加权限过滤）
-        from app.core.utils.subject_permissions import get_user_accessible_subjects
-        accessible_subject_ids = []
-        if uid:
-            accessible_subject_ids = get_user_accessible_subjects(uid)
-            if accessible_subject_ids:
-                placeholders = ','.join(['?'] * len(accessible_subject_ids))
-                subjects = [row[0] for row in conn.execute(
-                    f"SELECT name FROM subjects WHERE id IN ({placeholders}) AND (is_locked=0 OR is_locked IS NULL) ORDER BY id",
-                    accessible_subject_ids
-                ).fetchall()]
-            else:
-                subjects = []
-        else:
-            # 未登录用户：显示所有未锁定的科目
-            subjects = [row[0] for row in conn.execute(
-                "SELECT name FROM subjects WHERE (is_locked=0 OR is_locked IS NULL) ORDER BY id"
-            ).fetchall()]
-        
-        # 获取所有题型（作为备用）
-        q_types = [row[0] for row in conn.execute("SELECT DISTINCT q_type FROM questions").fetchall()]
-        
-        # 获取每个科目下的题型（添加权限过滤）
-        subject_q_types = {}
-        if uid and accessible_subject_ids:
-            placeholders = ','.join(['?'] * len(accessible_subject_ids))
-            rows = conn.execute(f"""
-                SELECT s.name, GROUP_CONCAT(DISTINCT q.q_type)
-                FROM subjects s
-                LEFT JOIN questions q ON s.id = q.subject_id
-                WHERE s.id IN ({placeholders})
-                GROUP BY s.name
-                ORDER BY s.id
-            """, accessible_subject_ids).fetchall()
-            for row in rows:
-                if row[0] and row[1]:
-                    subject_q_types[row[0]] = sorted(list(set(row[1].split(','))))
-                elif row[0]:
-                    subject_q_types[row[0]] = []
-        elif not uid:
-            # 未登录用户：获取所有未锁定科目的题型
-            rows = conn.execute("""
-                SELECT s.name, GROUP_CONCAT(DISTINCT q.q_type)
-                FROM subjects s
-                LEFT JOIN questions q ON s.id = q.subject_id
-                WHERE (s.is_locked=0 OR s.is_locked IS NULL)
-                GROUP BY s.name
-                ORDER BY s.id
-            """).fetchall()
-            for row in rows:
-                if row[0] and row[1]:
-                    subject_q_types[row[0]] = sorted(list(set(row[1].split(','))))
-                elif row[0]:
-                    subject_q_types[row[0]] = []
-    except Exception as e:
-        current_app.logger.error(f"Error fetching index page data: {e}")
-        quiz_count = 0
-        fav_count = 0
-        mistake_count = 0
-        subjects = []
-        q_types = []
-        subject_q_types = {}
-    
-    # 检查用户邮箱绑定状态
-    email_bound = False
+        subjects_meta = _get_accessible_subject_rows(conn, uid)
+    except Exception:
+        subjects_meta = []
+
+    subject_counts = {}
+    quiz_count = 0
+
     if uid:
         try:
-            user_email = conn.execute('SELECT email FROM users WHERE id = ?', (uid,)).fetchone()
-            email_bound = user_email and user_email[0] and user_email[0].strip()
+            subject_ids = [
+                int(s['id'])
+                for s in (subjects_meta or [])
+                if s and s.get('id') is not None
+            ]
+            if subject_ids:
+                placeholders = ','.join(['?'] * len(subject_ids))
+                rows = conn.execute(
+                    f"""
+                    SELECT q.subject_id as subject_id, COUNT(*) as cnt
+                    FROM questions q
+                    LEFT JOIN subjects s ON q.subject_id = s.id
+                    WHERE q.subject_id IN ({placeholders})
+                      AND (s.is_locked=0 OR s.is_locked IS NULL)
+                    GROUP BY q.subject_id
+                    """,
+                    subject_ids,
+                ).fetchall()
+                subject_counts = {
+                    int(r['subject_id']): int(r['cnt'])
+                    for r in rows
+                    if r and r['subject_id'] is not None
+                }
+            quiz_count = int(sum(subject_counts.values())) if subject_counts else 0
         except Exception:
-            email_bound = False
-    
-    # 获取邮箱绑定是否必需的配置
-    email_bind_required = True  # 默认值
-    try:
-        from app.modules.admin.services.system_config_service import SystemConfigService
-        email_bind_required = SystemConfigService.get_email_bind_required_config()
-    except Exception:
-        # 如果获取配置失败，使用默认值True（保持向后兼容）
-        pass
+            subject_counts = {}
+            quiz_count = 0
+    else:
+        try:
+            quiz_count = conn.execute(
+                """
+                SELECT COUNT(*)
+                FROM questions q
+                LEFT JOIN subjects s ON q.subject_id = s.id
+                WHERE (s.is_locked=0 OR s.is_locked IS NULL)
+                """
+            ).fetchone()[0]
+        except Exception:
+            quiz_count = 0
 
-    # 用户题目标签（私有，存储在 user_progress）
+        try:
+            rows = conn.execute(
+                """
+                SELECT q.subject_id as subject_id, COUNT(*) as cnt
+                FROM questions q
+                LEFT JOIN subjects s ON q.subject_id = s.id
+                WHERE (s.is_locked=0 OR s.is_locked IS NULL)
+                GROUP BY q.subject_id
+                """
+            ).fetchall()
+            subject_counts = {
+                int(r['subject_id']): int(r['cnt'])
+                for r in rows
+                if r and r['subject_id'] is not None
+            }
+        except Exception:
+            subject_counts = {}
+
+    return render_template(
+        'main/public_bank.html',
+        quiz_count=quiz_count,
+        subjects_meta=subjects_meta,
+        subject_counts=subject_counts,
+        logged_in=bool(uid),
+        username=session.get('username'),
+        is_admin=session.get('is_admin', False),
+        is_subject_admin=session.get('is_subject_admin', False),
+        is_notification_admin=session.get('is_notification_admin', False),
+        user_id=uid or 0,
+    )
+
+@main_pages_bp.route('/subjects/<int:subject_id>')
+def subject_detail_page(subject_id: int):
+    """科目详情页：承接题型/标签/收藏等选择与开始刷题。"""
+    uid = session.get('user_id')
+    conn = get_db()
+
+    subject = conn.execute(
+        "SELECT id, name, is_locked FROM subjects WHERE id = ?",
+        (subject_id,),
+    ).fetchone()
+
+    if not subject or int(subject['is_locked'] or 0) == 1:
+        return "科目不存在或已锁定", 404
+
+    # 已登录用户：校验科目权限
+    if uid:
+        from app.core.utils.subject_permissions import can_user_access_subject
+        if not can_user_access_subject(uid, int(subject_id)):
+            return "无权限访问该科目", 403
+
+    # 题型列表
+    types = [
+        r[0]
+        for r in conn.execute(
+            "SELECT DISTINCT q_type FROM questions WHERE subject_id = ? ORDER BY q_type",
+            (subject_id,),
+        ).fetchall()
+        if r and r[0]
+    ]
+
+    # 科目题量
+    total_count = conn.execute(
+        """
+        SELECT COUNT(*)
+        FROM questions q
+        LEFT JOIN subjects s ON q.subject_id = s.id
+        WHERE q.subject_id = ? AND (s.is_locked=0 OR s.is_locked IS NULL)
+        """,
+        (subject_id,),
+    ).fetchone()[0]
+
+    fav_count = 0
+    mistake_count = 0
     user_tags = []
     if uid:
+        try:
+            fav_count = conn.execute(
+                """
+                SELECT COUNT(*)
+                FROM favorites f
+                JOIN questions q ON f.question_id = q.id
+                WHERE f.user_id = ? AND q.subject_id = ?
+                """,
+                (uid, subject_id),
+            ).fetchone()[0]
+        except Exception:
+            fav_count = 0
+
+        try:
+            mistake_count = conn.execute(
+                """
+                SELECT COUNT(*)
+                FROM mistakes m
+                JOIN questions q ON m.question_id = q.id
+                WHERE m.user_id = ? AND q.subject_id = ?
+                """,
+                (uid, subject_id),
+            ).fetchone()[0]
+        except Exception:
+            mistake_count = 0
+
         try:
             from app.modules.quiz.services.question_tags_service import list_user_tags
             user_tags = list_user_tags(conn, uid)
         except Exception:
             user_tags = []
-    
-    return render_template('main/index.html',
-                         quiz_count=quiz_count,
-                         fav_count=fav_count,
-                         mistake_count=mistake_count,
-                         subjects=subjects,
-                         q_types=q_types,
-                         subject_q_types_json=json.dumps(subject_q_types, ensure_ascii=False),
-                         user_tags=user_tags,
-                         logged_in=bool(uid),
-                         username=session.get('username'),
-                         is_admin=session.get('is_admin', False),
-                         is_subject_admin=session.get('is_subject_admin', False),
-                         is_notification_admin=session.get('is_notification_admin', False),
-                         user_id=uid or 0,
-                         email_bound=email_bound,
-                         email_bind_required=email_bind_required)
+
+    return render_template(
+        'main/subject_detail.html',
+        subject_id=int(subject['id']),
+        subject_name=subject['name'],
+        types=types,
+        total_count=total_count,
+        fav_count=fav_count,
+        mistake_count=mistake_count,
+        user_tags=user_tags,
+        logged_in=bool(uid),
+        username=session.get('username'),
+        is_admin=session.get('is_admin', False),
+        is_subject_admin=session.get('is_subject_admin', False),
+        is_notification_admin=session.get('is_notification_admin', False),
+        user_id=uid or 0,
+    )
+
+
+@main_pages_bp.route('/favorites')
+@login_required
+def favorites_detail_page():
+    """收藏详情页（新页面）：选择科目/题型/标签后进入刷题/背题。"""
+    uid = session.get('user_id')
+    conn = get_db()
+
+    tab = (request.args.get('tab') or '').strip().lower()
+    if tab not in ('practice', 'stats'):
+        tab = 'practice'
+
+    subjects_meta = _get_accessible_subject_rows(conn, uid)
+    subjects = [s['name'] for s in subjects_meta]
+    accessible_subject_ids = [s['id'] for s in subjects_meta]
+
+    # 预选科目（可选：subject_id=...）
+    subject_id = request.args.get('subject_id', type=int)
+    subject_name = 'all'
+    if subject_id:
+        matched = next((s for s in subjects_meta if int(s['id']) == int(subject_id)), None)
+        if matched:
+            subject_name = matched['name']
+
+    # 题型映射：subject -> [types]
+    subject_q_types = {}
+    if accessible_subject_ids:
+        placeholders = ','.join(['?'] * len(accessible_subject_ids))
+        rows = conn.execute(
+            f"""
+            SELECT s.name, GROUP_CONCAT(DISTINCT q.q_type)
+            FROM subjects s
+            LEFT JOIN questions q ON s.id = q.subject_id
+            WHERE s.id IN ({placeholders}) AND (s.is_locked=0 OR s.is_locked IS NULL)
+            GROUP BY s.name
+            ORDER BY s.id
+            """,
+            accessible_subject_ids,
+        ).fetchall()
+        for row in rows:
+            if row[0] and row[1]:
+                subject_q_types[row[0]] = sorted(list(set(row[1].split(','))))
+            elif row[0]:
+                subject_q_types[row[0]] = []
+
+    # 总收藏数（按权限过滤）
+    fav_total = 0
+    try:
+        sql = """
+            SELECT COUNT(*)
+            FROM favorites f
+            JOIN questions q ON f.question_id = q.id
+            LEFT JOIN subjects s ON q.subject_id = s.id
+            WHERE f.user_id = ? AND (s.is_locked=0 OR s.is_locked IS NULL)
+        """
+        params = [uid]
+        if accessible_subject_ids:
+            placeholders = ','.join(['?'] * len(accessible_subject_ids))
+            sql += f" AND q.subject_id IN ({placeholders})"
+            params.extend(accessible_subject_ids)
+        fav_total = conn.execute(sql, params).fetchone()[0]
+    except Exception:
+        fav_total = 0
+
+    # 各科目收藏数（用于徽标）
+    fav_by_subject = {}
+    try:
+        if accessible_subject_ids:
+            placeholders = ','.join(['?'] * len(accessible_subject_ids))
+            rows = conn.execute(
+                f"""
+                SELECT q.subject_id as subject_id, COUNT(*) as cnt
+                FROM favorites f
+                JOIN questions q ON f.question_id = q.id
+                LEFT JOIN subjects s ON q.subject_id = s.id
+                WHERE f.user_id = ? AND (s.is_locked=0 OR s.is_locked IS NULL)
+                  AND q.subject_id IN ({placeholders})
+                GROUP BY q.subject_id
+                """,
+                [uid] + accessible_subject_ids,
+            ).fetchall()
+            fav_by_subject = {int(r['subject_id']): int(r['cnt']) for r in rows if r and r['subject_id'] is not None}
+    except Exception:
+        fav_by_subject = {}
+
+    # 收藏分布：题型
+    fav_by_type = []
+    try:
+        sql = """
+            SELECT COALESCE(q.q_type, '未知') AS q_type, COUNT(*) AS cnt
+            FROM favorites f
+            JOIN questions q ON f.question_id = q.id
+            LEFT JOIN subjects s ON q.subject_id = s.id
+            WHERE f.user_id = ? AND (s.is_locked=0 OR s.is_locked IS NULL)
+        """
+        params = [uid]
+        if accessible_subject_ids:
+            placeholders = ','.join(['?'] * len(accessible_subject_ids))
+            sql += f" AND q.subject_id IN ({placeholders})"
+            params.extend(accessible_subject_ids)
+        sql += " GROUP BY q.q_type ORDER BY cnt DESC"
+        rows = conn.execute(sql, params).fetchall()
+        fav_by_type = [{'q_type': (r['q_type'] or '未知'), 'count': int(r['cnt'] or 0)} for r in (rows or []) if r]
+    except Exception:
+        fav_by_type = []
+
+    fav_subject_rows = []
+    try:
+        for s in subjects_meta or []:
+            sid = int(s['id'])
+            cnt = int(fav_by_subject.get(sid, 0) or 0)
+            if cnt > 0:
+                fav_subject_rows.append({'subject_id': sid, 'subject': s['name'], 'count': cnt})
+        fav_subject_rows.sort(key=lambda x: x['count'], reverse=True)
+    except Exception:
+        fav_subject_rows = []
+
+    fav_subject_max = max([x.get('count', 0) for x in fav_subject_rows], default=0)
+    fav_type_max = max([x.get('count', 0) for x in fav_by_type], default=0)
+
+    user_tags = []
+    try:
+        from app.modules.quiz.services.question_tags_service import list_user_tags
+        user_tags = list_user_tags(conn, uid)
+    except Exception:
+        user_tags = []
+
+    return render_template(
+        'main/favorites_detail.html',
+        favorites_total=fav_total,
+        subjects_meta=subjects_meta,
+        subject_q_types_json=json.dumps(subject_q_types, ensure_ascii=False),
+        fav_by_subject=fav_by_subject,
+        fav_subject_rows=fav_subject_rows,
+        fav_subject_max=fav_subject_max or 1,
+        fav_by_type=fav_by_type,
+        fav_type_max=fav_type_max or 1,
+        selected_subject=subject_name,
+        user_tags=user_tags,
+        active_tab=tab,
+        logged_in=True,
+        username=session.get('username'),
+        is_admin=session.get('is_admin', False),
+        is_subject_admin=session.get('is_subject_admin', False),
+        is_notification_admin=session.get('is_notification_admin', False),
+        user_id=uid or 0,
+    )
+
+
+@main_pages_bp.route('/mistakes')
+@login_required
+def mistakes_detail_page():
+    """错题详情页（新页面）：选择科目/题型/标签后进入刷题/背题。"""
+    uid = session.get('user_id')
+    conn = get_db()
+
+    tab = (request.args.get('tab') or '').strip().lower()
+    if tab not in ('practice', 'stats'):
+        tab = 'practice'
+
+    mistakes_has_wrong_count = False
+    try:
+        cols = [r['name'] for r in conn.execute("PRAGMA table_info(mistakes)").fetchall()]
+        mistakes_has_wrong_count = 'wrong_count' in cols
+    except Exception:
+        mistakes_has_wrong_count = False
+
+    subjects_meta = _get_accessible_subject_rows(conn, uid)
+    subjects = [s['name'] for s in subjects_meta]
+    accessible_subject_ids = [s['id'] for s in subjects_meta]
+
+    subject_id = request.args.get('subject_id', type=int)
+    subject_name = 'all'
+    if subject_id:
+        matched = next((s for s in subjects_meta if int(s['id']) == int(subject_id)), None)
+        if matched:
+            subject_name = matched['name']
+
+    subject_q_types = {}
+    if accessible_subject_ids:
+        placeholders = ','.join(['?'] * len(accessible_subject_ids))
+        rows = conn.execute(
+            f"""
+            SELECT s.name, GROUP_CONCAT(DISTINCT q.q_type)
+            FROM subjects s
+            LEFT JOIN questions q ON s.id = q.subject_id
+            WHERE s.id IN ({placeholders}) AND (s.is_locked=0 OR s.is_locked IS NULL)
+            GROUP BY s.name
+            ORDER BY s.id
+            """,
+            accessible_subject_ids,
+        ).fetchall()
+        for row in rows:
+            if row[0] and row[1]:
+                subject_q_types[row[0]] = sorted(list(set(row[1].split(','))))
+            elif row[0]:
+                subject_q_types[row[0]] = []
+
+    mis_total = 0
+    mis_times = 0
+    try:
+        if mistakes_has_wrong_count:
+            sql = """
+                SELECT
+                  COUNT(*) AS cnt,
+                  SUM(CASE WHEN m.wrong_count IS NULL THEN 1 ELSE m.wrong_count END) AS times
+                FROM mistakes m
+                JOIN questions q ON m.question_id = q.id
+                LEFT JOIN subjects s ON q.subject_id = s.id
+                WHERE m.user_id = ? AND (s.is_locked=0 OR s.is_locked IS NULL)
+            """
+        else:
+            sql = """
+                SELECT COUNT(*) AS cnt
+                FROM mistakes m
+                JOIN questions q ON m.question_id = q.id
+                LEFT JOIN subjects s ON q.subject_id = s.id
+                WHERE m.user_id = ? AND (s.is_locked=0 OR s.is_locked IS NULL)
+            """
+        params = [uid]
+        if accessible_subject_ids:
+            placeholders = ','.join(['?'] * len(accessible_subject_ids))
+            sql += f" AND q.subject_id IN ({placeholders})"
+            params.extend(accessible_subject_ids)
+        row = conn.execute(sql, params).fetchone()
+        mis_total = int(row['cnt'] or 0) if row else 0
+        if mistakes_has_wrong_count:
+            mis_times = int(row['times'] or 0) if row else 0
+        else:
+            mis_times = mis_total
+    except Exception:
+        mis_total = 0
+        mis_times = 0
+
+    mis_by_subject = {}
+    try:
+        if accessible_subject_ids:
+            placeholders = ','.join(['?'] * len(accessible_subject_ids))
+            rows = conn.execute(
+                f"""
+                SELECT q.subject_id as subject_id, COUNT(*) as cnt
+                FROM mistakes m
+                JOIN questions q ON m.question_id = q.id
+                LEFT JOIN subjects s ON q.subject_id = s.id
+                WHERE m.user_id = ? AND (s.is_locked=0 OR s.is_locked IS NULL)
+                  AND q.subject_id IN ({placeholders})
+                GROUP BY q.subject_id
+                """,
+                [uid] + accessible_subject_ids,
+            ).fetchall()
+            mis_by_subject = {int(r['subject_id']): int(r['cnt']) for r in rows if r and r['subject_id'] is not None}
+    except Exception:
+        mis_by_subject = {}
+
+    # 错题分布：题型
+    mis_by_type = []
+    try:
+        sql = """
+            SELECT COALESCE(q.q_type, '未知') AS q_type, COUNT(*) AS cnt
+            FROM mistakes m
+            JOIN questions q ON m.question_id = q.id
+            LEFT JOIN subjects s ON q.subject_id = s.id
+            WHERE m.user_id = ? AND (s.is_locked=0 OR s.is_locked IS NULL)
+        """
+        params = [uid]
+        if accessible_subject_ids:
+            placeholders = ','.join(['?'] * len(accessible_subject_ids))
+            sql += f" AND q.subject_id IN ({placeholders})"
+            params.extend(accessible_subject_ids)
+        sql += " GROUP BY q.q_type ORDER BY cnt DESC"
+        rows = conn.execute(sql, params).fetchall()
+        mis_by_type = [{'q_type': (r['q_type'] or '未知'), 'count': int(r['cnt'] or 0)} for r in (rows or []) if r]
+    except Exception:
+        mis_by_type = []
+
+    mis_subject_rows = []
+    try:
+        for s in subjects_meta or []:
+            sid = int(s['id'])
+            cnt = int(mis_by_subject.get(sid, 0) or 0)
+            if cnt > 0:
+                mis_subject_rows.append({'subject_id': sid, 'subject': s['name'], 'count': cnt})
+        mis_subject_rows.sort(key=lambda x: x['count'], reverse=True)
+    except Exception:
+        mis_subject_rows = []
+
+    mis_subject_max = max([x.get('count', 0) for x in mis_subject_rows], default=0)
+    mis_type_max = max([x.get('count', 0) for x in mis_by_type], default=0)
+
+    user_tags = []
+    try:
+        from app.modules.quiz.services.question_tags_service import list_user_tags
+        user_tags = list_user_tags(conn, uid)
+    except Exception:
+        user_tags = []
+
+    return render_template(
+        'main/mistakes_detail.html',
+        mistakes_total=mis_total,
+        mistakes_times=mis_times,
+        subjects_meta=subjects_meta,
+        subject_q_types_json=json.dumps(subject_q_types, ensure_ascii=False),
+        mis_by_subject=mis_by_subject,
+        mis_subject_rows=mis_subject_rows,
+        mis_subject_max=mis_subject_max or 1,
+        mis_by_type=mis_by_type,
+        mis_type_max=mis_type_max or 1,
+        selected_subject=subject_name,
+        user_tags=user_tags,
+        active_tab=tab,
+        logged_in=True,
+        username=session.get('username'),
+        is_admin=session.get('is_admin', False),
+        is_subject_admin=session.get('is_subject_admin', False),
+        is_notification_admin=session.get('is_notification_admin', False),
+        user_id=uid or 0,
+    )
 
 
 @main_pages_bp.route('/search')
@@ -312,49 +757,607 @@ def search_page():
 
 @main_pages_bp.route('/history')
 def history_page():
-    """刷题统计页面"""
+    """学习统计页面：汇总 + 趋势 + 薄弱点"""
     uid = session.get('user_id')
     if not uid:
         return redirect('/login')
-    # 尝试加载最近提交记录（若表不存在则返回空列表）
-    records = []
+
+    conn = get_db()
+
+    def _column_exists(table: str, column: str) -> bool:
+        try:
+            rows = conn.execute(f"PRAGMA table_info({table})").fetchall()
+            return any(r and r['name'] == column for r in rows)
+        except Exception:
+            return False
+
+    subjects_meta = _get_accessible_subject_rows(conn, uid)
+    subject_ids = [
+        int(s['id'])
+        for s in (subjects_meta or [])
+        if s and s.get('id') is not None
+    ]
+
+    # 公共题库总题数（按权限与锁定过滤）
+    total_questions = 0
     try:
-        conn = get_db()
-        records = conn.execute(
-            'SELECT id, status, created_at, code_snippet FROM submissions WHERE user_id = ? ORDER BY created_at DESC LIMIT 100',
-            (uid,)
-        ).fetchall()
+        base_sql = """
+            SELECT COUNT(*)
+            FROM questions q
+            LEFT JOIN subjects s ON q.subject_id = s.id
+            WHERE (s.is_locked=0 OR s.is_locked IS NULL)
+        """
+        params = []
+        if subject_ids:
+            placeholders = ','.join(['?'] * len(subject_ids))
+            base_sql += f" AND q.subject_id IN ({placeholders})"
+            params.extend(subject_ids)
+        total_questions = conn.execute(base_sql, params).fetchone()[0]
     except Exception:
-        # 表不存在或查询失败
-        records = []
-    return render_template('main/history.html', records=records)
+        total_questions = 0
+
+    # 复用 join + 权限过滤（公共题库）
+    ua_from = """
+        FROM user_answers ua
+        JOIN questions q ON ua.question_id = q.id
+        LEFT JOIN subjects s ON q.subject_id = s.id
+        WHERE ua.user_id = ?
+          AND (s.is_locked=0 OR s.is_locked IS NULL)
+    """
+    ua_params_base = [uid]
+    if subject_ids:
+        placeholders = ','.join(['?'] * len(subject_ids))
+        ua_from += f" AND q.subject_id IN ({placeholders})"
+        ua_params_base.extend(subject_ids)
+
+    # 全局汇总（公共题库）
+    answered_count = 0
+    correct_count = 0
+    last_activity = None
+    try:
+        row = conn.execute(
+            f"""
+            SELECT
+              COUNT(*) AS answered,
+              SUM(CASE WHEN ua.is_correct = 1 THEN 1 ELSE 0 END) AS correct,
+              MAX(ua.created_at) AS last_activity
+            {ua_from}
+            """,
+            ua_params_base,
+        ).fetchone()
+        answered_count = int(row['answered'] or 0) if row else 0
+        correct_count = int(row['correct'] or 0) if row else 0
+        last_activity = (row['last_activity'] if row else None) or None
+    except Exception:
+        answered_count = 0
+        correct_count = 0
+        last_activity = None
+
+    accuracy = round(correct_count * 100 / answered_count, 1) if answered_count > 0 else 0.0
+    completion = round(answered_count * 100 / total_questions, 1) if total_questions > 0 else 0.0
+
+    # 收藏/错题（公共题库）
+    favorites_count = 0
+    mistakes_count = 0
+    mistakes_times = 0  # 若存在 wrong_count 则为累计次数，否则退化为 mistakes_count
+    try:
+        fav_sql = """
+            SELECT COUNT(*)
+            FROM favorites f
+            JOIN questions q ON f.question_id = q.id
+            LEFT JOIN subjects s ON q.subject_id = s.id
+            WHERE f.user_id = ? AND (s.is_locked=0 OR s.is_locked IS NULL)
+        """
+        fav_params = [uid]
+        if subject_ids:
+            placeholders = ','.join(['?'] * len(subject_ids))
+            fav_sql += f" AND q.subject_id IN ({placeholders})"
+            fav_params.extend(subject_ids)
+        favorites_count = conn.execute(fav_sql, fav_params).fetchone()[0]
+    except Exception:
+        favorites_count = 0
+
+    mistakes_has_wrong_count = _column_exists('mistakes', 'wrong_count')
+    mistakes_has_updated_at = _column_exists('mistakes', 'updated_at')
+    try:
+        mis_sql = """
+            SELECT
+              COUNT(*) AS cnt,
+              SUM(CASE WHEN m.wrong_count IS NULL THEN 1 ELSE m.wrong_count END) AS times
+            FROM mistakes m
+            JOIN questions q ON m.question_id = q.id
+            LEFT JOIN subjects s ON q.subject_id = s.id
+            WHERE m.user_id = ? AND (s.is_locked=0 OR s.is_locked IS NULL)
+        """
+        mis_params = [uid]
+        if subject_ids:
+            placeholders = ','.join(['?'] * len(subject_ids))
+            mis_sql += f" AND q.subject_id IN ({placeholders})"
+            mis_params.extend(subject_ids)
+        if not mistakes_has_wrong_count:
+            mis_sql = mis_sql.replace("m.wrong_count", "NULL")
+        row = conn.execute(mis_sql, mis_params).fetchone()
+        mistakes_count = int(row['cnt'] or 0) if row else 0
+        mistakes_times = int(row['times'] or 0) if row else 0
+        if not mistakes_has_wrong_count:
+            mistakes_times = mistakes_count
+    except Exception:
+        mistakes_count = 0
+        mistakes_times = 0
+
+    # 连续学习天数（基于 user_answers 的 DATE(created_at)）
+    streak_days = 0
+    try:
+        rows = conn.execute(
+            f"SELECT DISTINCT DATE(ua.created_at) AS day {ua_from} ORDER BY day DESC LIMIT 120",
+            ua_params_base,
+        ).fetchall()
+        dates = []
+        for r in rows or []:
+            if r and r['day']:
+                try:
+                    dates.append(datetime.strptime(r['day'], '%Y-%m-%d').date())
+                except Exception:
+                    continue
+        today = datetime.now().date()
+        if dates and dates[0] >= (today - timedelta(days=1)):
+            streak_days = 1
+            for i in range(1, len(dates)):
+                if dates[i - 1] - dates[i] == timedelta(days=1):
+                    streak_days += 1
+                else:
+                    break
+    except Exception:
+        streak_days = 0
+
+    def _count_since(days: int) -> tuple[int, int]:
+        if days <= 0:
+            return answered_count, correct_count
+        try:
+            row = conn.execute(
+                f"""
+                SELECT
+                  COUNT(*) AS answered,
+                  SUM(CASE WHEN ua.is_correct = 1 THEN 1 ELSE 0 END) AS correct
+                {ua_from}
+                  AND ua.created_at >= datetime('now', ?)
+                """,
+                ua_params_base + [f'-{days} days'],
+            ).fetchone()
+            return int(row['answered'] or 0), int(row['correct'] or 0)
+        except Exception:
+            return 0, 0
+
+    answered_7d, correct_7d = _count_since(7)
+    answered_30d, correct_30d = _count_since(30)
+
+    # 趋势窗口（只影响趋势图展示）
+    window_days = request.args.get('days', 30, type=int)
+    if window_days not in (7, 30, 90):
+        window_days = 30
+
+    daily = []
+    daily_max = 0
+    window_answered = 0
+    window_correct = 0
+    window_accuracy = 0.0
+    try:
+        rows = conn.execute(
+            f"""
+            SELECT
+              DATE(ua.created_at) AS day,
+              COUNT(*) AS total,
+              SUM(CASE WHEN ua.is_correct = 1 THEN 1 ELSE 0 END) AS correct
+            {ua_from}
+              AND ua.created_at >= datetime('now', ?)
+            GROUP BY DATE(ua.created_at)
+            ORDER BY day
+            """,
+            ua_params_base + [f'-{window_days} days'],
+        ).fetchall()
+        data_map = {r['day']: {'total': int(r['total'] or 0), 'correct': int(r['correct'] or 0)} for r in (rows or []) if r and r['day']}
+
+        today = datetime.now().date()
+        start = today - timedelta(days=window_days - 1)
+        for i in range(window_days):
+            d = start + timedelta(days=i)
+            key = d.strftime('%Y-%m-%d')
+            total = int((data_map.get(key) or {}).get('total', 0))
+            correct = int((data_map.get(key) or {}).get('correct', 0))
+            acc = round(correct * 100 / total, 1) if total > 0 else 0.0
+            daily_max = max(daily_max, total)
+            daily.append({'day': key, 'total': total, 'correct': correct, 'accuracy': acc})
+
+        window_answered = sum(int(x.get('total', 0) or 0) for x in daily)
+        window_correct = sum(int(x.get('correct', 0) or 0) for x in daily)
+        window_accuracy = round(window_correct * 100 / window_answered, 1) if window_answered > 0 else 0.0
+    except Exception as e:
+        current_app.logger.warning(f"history daily stats failed: {e}")
+        daily = []
+        daily_max = 0
+        window_answered = 0
+        window_correct = 0
+        window_accuracy = 0.0
+
+    # 科目维度（公共题库）
+    subject_rows = []
+    try:
+        # 总题数（每科目）
+        total_map = {}
+        if subject_ids:
+            placeholders = ','.join(['?'] * len(subject_ids))
+            rows = conn.execute(
+                f"""
+                SELECT q.subject_id AS subject_id, COUNT(*) AS total
+                FROM questions q
+                LEFT JOIN subjects s ON q.subject_id = s.id
+                WHERE (s.is_locked=0 OR s.is_locked IS NULL)
+                  AND q.subject_id IN ({placeholders})
+                GROUP BY q.subject_id
+                """,
+                subject_ids,
+            ).fetchall()
+            total_map = {int(r['subject_id']): int(r['total'] or 0) for r in (rows or []) if r and r['subject_id'] is not None}
+
+        # 已做/正确（每科目）
+        ans_map = {}
+        if subject_ids:
+            placeholders = ','.join(['?'] * len(subject_ids))
+            rows = conn.execute(
+                f"""
+                SELECT q.subject_id AS subject_id,
+                       COUNT(*) AS answered,
+                       SUM(CASE WHEN ua.is_correct = 1 THEN 1 ELSE 0 END) AS correct
+                FROM user_answers ua
+                JOIN questions q ON ua.question_id = q.id
+                LEFT JOIN subjects s ON q.subject_id = s.id
+                WHERE ua.user_id = ?
+                  AND (s.is_locked=0 OR s.is_locked IS NULL)
+                  AND q.subject_id IN ({placeholders})
+                GROUP BY q.subject_id
+                """,
+                [uid] + subject_ids,
+            ).fetchall()
+            ans_map = {
+                int(r['subject_id']): {'answered': int(r['answered'] or 0), 'correct': int(r['correct'] or 0)}
+                for r in (rows or [])
+                if r and r['subject_id'] is not None
+            }
+
+        # 错题/收藏（每科目）
+        mis_map = {}
+        fav_map = {}
+        if subject_ids:
+            placeholders = ','.join(['?'] * len(subject_ids))
+            rows = conn.execute(
+                f"""
+                SELECT q.subject_id AS subject_id, COUNT(*) AS cnt
+                FROM mistakes m
+                JOIN questions q ON m.question_id = q.id
+                LEFT JOIN subjects s ON q.subject_id = s.id
+                WHERE m.user_id = ? AND (s.is_locked=0 OR s.is_locked IS NULL)
+                  AND q.subject_id IN ({placeholders})
+                GROUP BY q.subject_id
+                """,
+                [uid] + subject_ids,
+            ).fetchall()
+            mis_map = {int(r['subject_id']): int(r['cnt'] or 0) for r in (rows or []) if r and r['subject_id'] is not None}
+
+            rows = conn.execute(
+                f"""
+                SELECT q.subject_id AS subject_id, COUNT(*) AS cnt
+                FROM favorites f
+                JOIN questions q ON f.question_id = q.id
+                LEFT JOIN subjects s ON q.subject_id = s.id
+                WHERE f.user_id = ? AND (s.is_locked=0 OR s.is_locked IS NULL)
+                  AND q.subject_id IN ({placeholders})
+                GROUP BY q.subject_id
+                """,
+                [uid] + subject_ids,
+            ).fetchall()
+            fav_map = {int(r['subject_id']): int(r['cnt'] or 0) for r in (rows or []) if r and r['subject_id'] is not None}
+
+        for s in subjects_meta or []:
+            sid = int(s['id'])
+            total = int(total_map.get(sid, 0))
+            answered = int((ans_map.get(sid) or {}).get('answered', 0))
+            correct = int((ans_map.get(sid) or {}).get('correct', 0))
+            acc = round(correct * 100 / answered, 1) if answered > 0 else 0.0
+            comp = round(answered * 100 / total, 1) if total > 0 else 0.0
+            subject_rows.append({
+                'subject_id': sid,
+                'subject': s['name'],
+                'total': total,
+                'answered': answered,
+                'correct': correct,
+                'accuracy': acc,
+                'completion': comp,
+                'mistakes': int(mis_map.get(sid, 0)),
+                'favorites': int(fav_map.get(sid, 0)),
+            })
+    except Exception as e:
+        current_app.logger.warning(f"history subject stats failed: {e}")
+        subject_rows = []
+
+    # 题型维度（公共题库）
+    type_rows = []
+    try:
+        rows = conn.execute(
+            f"""
+            SELECT
+              COALESCE(q.q_type, '未知') AS q_type,
+              COUNT(*) AS answered,
+              SUM(CASE WHEN ua.is_correct = 1 THEN 1 ELSE 0 END) AS correct
+            {ua_from}
+            GROUP BY q.q_type
+            ORDER BY answered DESC
+            """,
+            ua_params_base,
+        ).fetchall()
+        for r in rows or []:
+            answered = int(r['answered'] or 0)
+            correct = int(r['correct'] or 0)
+            type_rows.append({
+                'q_type': r['q_type'] or '未知',
+                'answered': answered,
+                'correct': correct,
+                'accuracy': round(correct * 100 / answered, 1) if answered > 0 else 0.0,
+            })
+    except Exception as e:
+        current_app.logger.warning(f"history type stats failed: {e}")
+        type_rows = []
+
+    # 难度维度（公共题库）
+    difficulty_rows = []
+    try:
+        rows = conn.execute(
+            f"""
+            SELECT
+              COALESCE(q.difficulty, 1) AS difficulty,
+              COUNT(*) AS answered,
+              SUM(CASE WHEN ua.is_correct = 1 THEN 1 ELSE 0 END) AS correct
+            {ua_from}
+            GROUP BY q.difficulty
+            ORDER BY difficulty ASC
+            """,
+            ua_params_base,
+        ).fetchall()
+        for r in rows or []:
+            diff = int(r['difficulty'] or 1)
+            answered = int(r['answered'] or 0)
+            correct = int(r['correct'] or 0)
+            label = {1: '简单', 2: '中等', 3: '困难'}.get(diff, f'难度{diff}')
+            difficulty_rows.append({
+                'difficulty': diff,
+                'label': label,
+                'answered': answered,
+                'correct': correct,
+                'accuracy': round(correct * 100 / answered, 1) if answered > 0 else 0.0,
+            })
+    except Exception as e:
+        current_app.logger.warning(f"history difficulty stats failed: {e}")
+        difficulty_rows = []
+
+    # 薄弱点：科目 × 题型（公共题库）
+    weakness_rows = []
+    try:
+        rows = conn.execute(
+            f"""
+            SELECT
+              COALESCE(s.name, '未分类') AS subject,
+              COALESCE(q.q_type, '未知') AS q_type,
+              COUNT(*) AS answered,
+              SUM(CASE WHEN ua.is_correct = 1 THEN 1 ELSE 0 END) AS correct
+            {ua_from}
+            GROUP BY s.name, q.q_type
+            HAVING answered >= 5
+            ORDER BY (correct * 1.0 / answered) ASC, answered DESC
+            LIMIT 8
+            """,
+            ua_params_base,
+        ).fetchall()
+
+        # 错题分布（用于提示强弱）
+        mis_rows = conn.execute(
+            f"""
+            SELECT
+              COALESCE(s.name, '未分类') AS subject,
+              COALESCE(q.q_type, '未知') AS q_type,
+              COUNT(*) AS mistakes
+            FROM mistakes m
+            JOIN questions q ON m.question_id = q.id
+            LEFT JOIN subjects s ON q.subject_id = s.id
+            WHERE m.user_id = ? AND (s.is_locked=0 OR s.is_locked IS NULL)
+            {('AND q.subject_id IN (' + ','.join(['?']*len(subject_ids)) + ')') if subject_ids else ''}
+            GROUP BY s.name, q.q_type
+            """,
+            [uid] + (subject_ids if subject_ids else []),
+        ).fetchall()
+        mis_map = {(r['subject'] or '未分类', r['q_type'] or '未知'): int(r['mistakes'] or 0) for r in (mis_rows or []) if r}
+
+        for r in rows or []:
+            answered = int(r['answered'] or 0)
+            correct = int(r['correct'] or 0)
+            acc = round(correct * 100 / answered, 1) if answered > 0 else 0.0
+            key = (r['subject'] or '未分类', r['q_type'] or '未知')
+            weakness_rows.append({
+                'subject': r['subject'] or '未分类',
+                'q_type': r['q_type'] or '未知',
+                'answered': answered,
+                'correct': correct,
+                'accuracy': acc,
+                'mistakes': int(mis_map.get(key, 0)),
+            })
+    except Exception as e:
+        current_app.logger.warning(f"history weakness stats failed: {e}")
+        weakness_rows = []
+
+    # 最近错题（公共题库）
+    recent_mistakes = []
+    try:
+        order_by = "m.created_at DESC"
+        if mistakes_has_wrong_count:
+            # 优先看错得多的题，其次最近更新
+            order_by = "m.wrong_count DESC, COALESCE(m.updated_at, m.created_at) DESC" if mistakes_has_updated_at else "m.wrong_count DESC, m.created_at DESC"
+        sql = f"""
+            SELECT
+              COALESCE(s.name, '未分类') AS subject,
+              COALESCE(q.q_type, '未知') AS q_type,
+              q.id AS question_id,
+              q.content AS content,
+              q.difficulty AS difficulty,
+              m.created_at AS created_at
+              {', m.wrong_count AS wrong_count' if mistakes_has_wrong_count else ''}
+            FROM mistakes m
+            JOIN questions q ON m.question_id = q.id
+            LEFT JOIN subjects s ON q.subject_id = s.id
+            WHERE m.user_id = ? AND (s.is_locked=0 OR s.is_locked IS NULL)
+            {('AND q.subject_id IN (' + ','.join(['?']*len(subject_ids)) + ')') if subject_ids else ''}
+            ORDER BY {order_by}
+            LIMIT 8
+        """
+        rows = conn.execute(sql, [uid] + (subject_ids if subject_ids else [])).fetchall()
+        for r in rows or []:
+            content = (r['content'] or '').strip().replace('\r', ' ').replace('\n', ' ')
+            snippet = content[:80] + ('…' if len(content) > 80 else '')
+            recent_mistakes.append({
+                'subject': r['subject'] or '未分类',
+                'q_type': r['q_type'] or '未知',
+                'question_id': int(r['question_id']),
+                'snippet': snippet,
+                'difficulty': int(r['difficulty'] or 1),
+                'wrong_count': int(r['wrong_count'] or 1) if mistakes_has_wrong_count else None,
+            })
+    except Exception as e:
+        current_app.logger.warning(f"history recent mistakes failed: {e}")
+        recent_mistakes = []
+
+    # 用于 UI 的“下一步建议”
+    next_actions = []
+    try:
+        for w in (weakness_rows or [])[:3]:
+            next_actions.append({
+                'title': f"{w['subject']} · {w['q_type']}",
+                'meta': f"正确率 {w['accuracy']}%（已做 {w['answered']}）",
+                'subject': w['subject'],
+                'q_type': w['q_type'],
+            })
+    except Exception:
+        next_actions = []
+
+    return render_template(
+        'main/history.html',
+        total_questions=total_questions,
+        answered_count=answered_count,
+        correct_count=correct_count,
+        accuracy=accuracy,
+        completion=completion,
+        favorites_count=favorites_count,
+        mistakes_count=mistakes_count,
+        mistakes_times=mistakes_times,
+        streak_days=streak_days,
+        last_activity=last_activity,
+        answered_7d=answered_7d,
+        correct_7d=correct_7d,
+        answered_30d=answered_30d,
+        correct_30d=correct_30d,
+        window_days=window_days,
+        daily=daily,
+        daily_max=daily_max or 1,
+        window_answered=window_answered,
+        window_correct=window_correct,
+        window_accuracy=window_accuracy,
+        subject_rows=subject_rows,
+        type_rows=type_rows,
+        difficulty_rows=difficulty_rows,
+        weakness_rows=weakness_rows,
+        recent_mistakes=recent_mistakes,
+        next_actions=next_actions,
+        logged_in=True,
+        username=session.get('username'),
+        is_admin=session.get('is_admin', False),
+        is_subject_admin=session.get('is_subject_admin', False),
+        is_notification_admin=session.get('is_notification_admin', False),
+        user_id=uid,
+    )
 
 
 @main_pages_bp.route('/profile')
 def profile_page():
-    """个人资料页面（只读）"""
-    username = session.get('username', '用户')
-    is_admin = session.get('is_admin', False)
-    return render_template('main/user_profile.html', username=username, is_admin=is_admin)
+    """个人资料页面（兼容旧入口）"""
+    return redirect('/settings/account/profile')
 
 
 @main_pages_bp.route('/account')
 def account_page():
-    """账号管理页面（密码修改等）"""
-    return render_template('main/profile.html')
+    """账号管理页面"""
+    return redirect('/settings/account/profile')
+
+
+@main_pages_bp.route('/account/profile')
+def account_profile_page():
+    """账号 - 个人资料"""
+    return redirect('/settings/account/profile')
+
+
+@main_pages_bp.route('/account/security')
+def account_security_page():
+    """账号 - 账号安全"""
+    return redirect('/settings/account/security')
+
+
+@main_pages_bp.route('/account/bindings')
+def account_bindings_page():
+    """账号 - 账号绑定"""
+    return redirect('/settings/account/bindings')
+
+
+@main_pages_bp.route('/settings')
+def settings_page():
+    """设置页入口"""
+    return redirect('/settings/account/profile')
+
+
+@main_pages_bp.route('/settings/account/profile')
+def settings_account_profile_page():
+    """设置 - 账号管理 - 个人资料"""
+    return render_template('main/account/profile.html')
+
+
+@main_pages_bp.route('/settings/account/security')
+def settings_account_security_page():
+    """设置 - 账号管理 - 账号安全"""
+    return render_template('main/account/security.html')
+
+
+@main_pages_bp.route('/settings/account/bindings')
+def settings_account_bindings_page():
+    """设置 - 账号管理 - 账号绑定"""
+    return render_template('main/account/bindings.html')
+
+
+@main_pages_bp.route('/settings/hotkeys')
+def settings_hotkeys_page():
+    """设置 - 快捷键"""
+    return render_template('main/settings/hotkeys.html')
+
+
+@main_pages_bp.route('/settings/practice')
+def settings_practice_page():
+    """设置 - 练习管理"""
+    return render_template('main/settings/practice.html')
+
+
+@main_pages_bp.route('/settings/about')
+def settings_about_page():
+    """设置 - 关于"""
+    return render_template('main/settings/about.html')
 
 
 @main_pages_bp.route('/quiz_settings')
 def quiz_settings_page():
     """题库设置页面"""
-    if not session.get('user_id'):
-        return redirect('/login')
-    return render_template(
-        'main/quiz_settings.html',
-        logged_in=True,
-        username=session.get('username'),
-        user_id=session.get('user_id')
-    )
+    return redirect('/settings')
 
 
 @main_pages_bp.route('/uploads/<path:filename>')
@@ -428,9 +1431,4 @@ def contact_admin_page():
 @main_pages_bp.route('/about')
 def about_page():
     """关于页面（占位）"""
-    return render_template(
-        'main/about.html',
-        logged_in=bool(session.get('user_id')),
-        username=session.get('username'),
-        is_admin=session.get('is_admin', False),
-    )
+    return redirect('/settings/about')

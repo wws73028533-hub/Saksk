@@ -1,0 +1,1269 @@
+{% extends "main/app_shell.html" %}
+{% block title %}SAK · 题库中心{% endblock %}
+{% block page_title %}题库中心{% endblock %}
+{% block head_extra %}
+  <style>
+    :root {
+      --bg: #f5f5f7;
+      --card: rgba(255, 255, 255, 0.78);
+      --card-solid: rgba(255, 255, 255, 0.96);
+      --text: #1d1d1f;
+      --muted: #6e6e73;
+      --border: rgba(0, 0, 0, 0.08);
+      --shadow: 0 12px 40px rgba(0, 0, 0, 0.06);
+      --shadow2: 0 6px 18px rgba(0, 0, 0, 0.05);
+      --blur: blur(24px) saturate(180%);
+      --radius-xl: 22px;
+      --radius-lg: 18px;
+      --radius-md: 14px;
+      --radius-sm: 12px;
+      --focus: 0 0 0 3px rgba(0, 0, 0, 0.12);
+    }
+
+    body.dark-mode {
+      --bg: #000000;
+      --card: rgba(28, 28, 30, 0.72);
+      --card-solid: rgba(28, 28, 30, 0.96);
+      --text: #f5f5f7;
+      --muted: #a1a1a6;
+      --border: rgba(255, 255, 255, 0.14);
+      --shadow: 0 18px 60px rgba(0, 0, 0, 0.6);
+      --shadow2: 0 10px 30px rgba(0, 0, 0, 0.45);
+      --focus: 0 0 0 3px rgba(255, 255, 255, 0.16);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    button { font-family: inherit; }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      padding: calc(env(safe-area-inset-top) + 10px) 12px 10px;
+      background: color-mix(in srgb, var(--bg) 70%, transparent);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      border-bottom: 0.5px solid var(--border);
+    }
+    .topbar-inner {
+      max-width: 1080px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-width: 0;
+    }
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      letter-spacing: -0.4px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: var(--card);
+      border: 0.5px solid var(--border);
+      box-shadow: var(--shadow2);
+      flex: 0 0 auto;
+      user-select: none;
+    }
+    .brand-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text);
+      opacity: 0.9;
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      min-width: 0;
+      flex: 1 1 auto;
+      overflow: auto hidden;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 2px;
+      scrollbar-width: none;
+    }
+    .nav::-webkit-scrollbar { height: 0; }
+
+    .pill, .icon-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 36px;
+      padding: 0 12px;
+      border-radius: 999px;
+      border: 0.5px solid var(--border);
+      background: var(--card);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      box-shadow: var(--shadow2);
+      font-size: 14px;
+      line-height: 36px;
+      white-space: nowrap;
+      flex: 0 0 auto;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    }
+    .pill:hover, .icon-btn:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
+    .pill:active, .icon-btn:active { transform: translateY(0); }
+    .pill.primary {
+      background: var(--text);
+      color: var(--bg);
+      border-color: color-mix(in srgb, var(--text) 80%, transparent);
+    }
+    body.dark-mode .pill.primary {
+      background: rgba(245, 245, 247, 0.92);
+      color: #000;
+      border-color: rgba(255, 255, 255, 0.18);
+    }
+    .icon-btn {
+      width: 36px;
+      padding: 0;
+    }
+    .icon-btn img { width: 18px; height: 18px; opacity: 0.9; }
+    body.dark-mode .icon-btn img { filter: invert(1); opacity: 0.85; }
+
+    .container {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 18px 12px calc(34px + var(--bottom-space, 0px));
+    }
+
+    @media (max-width: 859px) {
+      :root { --bottom-space: calc(76px + env(safe-area-inset-bottom)); }
+    }
+    @media (min-width: 860px) {
+      :root { --bottom-space: 0px; }
+    }
+
+    .search {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+      padding: 14px;
+      border-radius: var(--radius-xl);
+      background: var(--card);
+      border: 0.5px solid var(--border);
+      box-shadow: var(--shadow2);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+    }
+    .search input {
+      height: 42px;
+      padding: 0 14px;
+      border-radius: var(--radius-md);
+      border: 0.5px solid var(--border);
+      background: var(--card-solid);
+      color: var(--text);
+      font-size: 15px;
+      outline: none;
+      min-width: 0;
+    }
+    .search input:focus { box-shadow: var(--focus); }
+    .btn {
+      height: 42px;
+      padding: 0 16px;
+      border-radius: var(--radius-md);
+      border: 0.5px solid var(--border);
+      background: rgba(142, 142, 147, 0.12);
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+      white-space: nowrap;
+    }
+    .btn:hover { transform: translateY(-1px); box-shadow: var(--shadow2); background: rgba(142, 142, 147, 0.18); }
+    .btn:active { transform: translateY(0); }
+    .btn.primary { background: var(--text); color: var(--bg); border-color: color-mix(in srgb, var(--text) 80%, transparent); }
+    body.dark-mode .btn.primary { background: rgba(245, 245, 247, 0.92); color: #000; border-color: rgba(255,255,255,0.18); }
+
+    .grid {
+      margin-top: 14px;
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 12px;
+    }
+    .card {
+      grid-column: span 12;
+      border-radius: var(--radius-xl);
+      background: var(--card);
+      border: 0.5px solid var(--border);
+      box-shadow: var(--shadow2);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      padding: 16px;
+      min-width: 0;
+    }
+    @media (min-width: 860px) {
+      .card.span-6 { grid-column: span 6; }
+    }
+
+    .card-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+      min-width: 0;
+    }
+    .card-title {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.2px;
+      margin: 0;
+    }
+    .card-sub {
+      font-size: 13px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .stat {
+      border-radius: var(--radius-lg);
+      background: rgba(142, 142, 147, 0.10);
+      border: 0.5px solid var(--border);
+      padding: 12px;
+      min-width: 0;
+    }
+    .stat .k { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    .stat .v { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+
+    .mini-links {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .mini-link {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px;
+      border-radius: var(--radius-lg);
+      border: 0.5px solid var(--border);
+      background: rgba(142, 142, 147, 0.10);
+      min-width: 0;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    }
+    .mini-link:hover { transform: translateY(-1px); box-shadow: var(--shadow2); background: rgba(142, 142, 147, 0.14); }
+    .mini-link:active { transform: translateY(0); }
+    .mini-link .left { min-width: 0; }
+    .mini-link .name { font-weight: 700; font-size: 14px; }
+    .mini-link .desc { font-size: 12px; color: var(--muted); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 28px;
+      height: 22px;
+      padding: 0 8px;
+      border-radius: 999px;
+      background: var(--text);
+      color: var(--bg);
+      font-weight: 700;
+      font-size: 12px;
+      flex: 0 0 auto;
+    }
+    body.dark-mode .badge { background: rgba(245, 245, 247, 0.92); color: #000; }
+
+    .subjects {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    @media (min-width: 860px) {
+      .subjects { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    }
+    .subject-card {
+      border-radius: var(--radius-xl);
+      border: 0.5px solid var(--border);
+      background: rgba(142, 142, 147, 0.10);
+      padding: 14px;
+      min-width: 0;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+      outline: none;
+    }
+    .subject-card:hover { transform: translateY(-1px); box-shadow: var(--shadow2); background: rgba(142, 142, 147, 0.14); }
+    .subject-card:active { transform: translateY(0); }
+    .subject-card:focus-visible { box-shadow: var(--focus), var(--shadow2); }
+    .subject-name { font-size: 15px; font-weight: 800; letter-spacing: -0.2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .subject-actions { display: flex; gap: 8px; margin-top: 10px; }
+    .subject-actions button {
+      flex: 1 1 0;
+      height: 34px;
+      border-radius: 999px;
+      border: 0.5px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 700;
+      transition: transform 0.15s ease, background 0.15s ease;
+      min-width: 0;
+    }
+    .subject-actions button:hover { transform: translateY(-1px); background: rgba(142, 142, 147, 0.14); }
+    .subject-actions button:active { transform: translateY(0); }
+
+    .subject-card.is-hidden { display: none; }
+    .subject-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .subject-badge {
+      height: 22px;
+      padding: 0 10px;
+      border-radius: 999px;
+      border: 0.5px solid var(--border);
+      background: var(--card);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      line-height: 22px;
+      flex: 0 0 auto;
+    }
+
+    .subject-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    @media (max-width: 520px) {
+      .subject-toolbar { flex-direction: column; align-items: stretch; }
+    }
+    .subject-search { display: flex; gap: 10px; flex: 1 1 auto; min-width: 0; width: 100%; }
+    .subject-filter {
+      height: 42px;
+      padding: 0 14px;
+      border-radius: var(--radius-md);
+      border: 0.5px solid var(--border);
+      background: var(--card-solid);
+      color: var(--text);
+      font-size: 14px;
+      outline: none;
+      min-width: 0;
+      width: 100%;
+    }
+    .subject-filter:focus { box-shadow: var(--focus); }
+    .subject-toolbar-actions { display: flex; gap: 8px; flex: 0 0 auto; }
+    @media (max-width: 520px) {
+      .subject-toolbar-actions { width: 100%; }
+      .subject-toolbar-actions .btn { flex: 1 1 0; }
+    }
+
+    .recent-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 6px 0 10px;
+      min-width: 0;
+    }
+    .recent-title { font-size: 12px; color: var(--muted); font-weight: 700; flex: 0 0 auto; }
+    .recent-list {
+      display: flex;
+      gap: 8px;
+      overflow: auto hidden;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+    .recent-list::-webkit-scrollbar { height: 0; }
+    .recent-pill {
+      height: 34px;
+      padding: 0 12px;
+      border-radius: 999px;
+      border: 0.5px solid var(--border);
+      background: rgba(142, 142, 147, 0.10);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.15s ease, background 0.15s ease;
+      white-space: nowrap;
+      flex: 0 0 auto;
+    }
+    .recent-pill:hover { transform: translateY(-1px); background: rgba(142, 142, 147, 0.14); }
+    .recent-pill:active { transform: translateY(0); }
+
+    .subject-footer { margin-top: 10px; display: flex; justify-content: center; }
+    .subject-footer .btn { width: min(360px, 100%); }
+
+    .subject-picker-list {
+      display: grid;
+      gap: 10px;
+      max-height: min(62vh, 520px);
+      overflow: auto;
+      padding: 2px;
+      margin-top: 10px;
+    }
+    .subject-picker-item {
+      border-radius: var(--radius-xl);
+      border: 0.5px solid var(--border);
+      background: rgba(142, 142, 147, 0.10);
+      padding: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+      min-width: 0;
+      outline: none;
+    }
+    .subject-picker-item:hover { transform: translateY(-1px); box-shadow: var(--shadow2); background: rgba(142, 142, 147, 0.14); }
+    .subject-picker-item:active { transform: translateY(0); }
+    .subject-picker-item:focus-visible { box-shadow: var(--focus), var(--shadow2); }
+    .subject-picker-left { min-width: 0; }
+    .subject-picker-name { font-size: 14px; font-weight: 900; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .subject-picker-sub { margin-top: 4px; font-size: 12px; color: var(--muted); }
+    .subject-picker-actions { display: flex; gap: 8px; flex: 0 0 auto; }
+    .mini-btn {
+      height: 34px;
+      padding: 0 12px;
+      border-radius: 999px;
+      border: 0.5px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.15s ease, background 0.15s ease;
+      white-space: nowrap;
+    }
+    .mini-btn:hover { transform: translateY(-1px); background: rgba(142, 142, 147, 0.14); }
+    .mini-btn:active { transform: translateY(0); }
+
+    .bank-list { display: grid; gap: 10px; }
+    .bank-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px;
+      border-radius: var(--radius-lg);
+      border: 0.5px solid var(--border);
+      background: rgba(142, 142, 147, 0.10);
+      transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+      min-width: 0;
+    }
+    .bank-row:hover { transform: translateY(-1px); box-shadow: var(--shadow2); background: rgba(142, 142, 147, 0.14); }
+    .bank-row:active { transform: translateY(0); }
+    .bank-name { font-size: 14px; font-weight: 800; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .bank-meta { font-size: 12px; color: var(--muted); white-space: nowrap; flex: 0 0 auto; }
+
+    .empty {
+      padding: 12px;
+      border-radius: var(--radius-lg);
+      border: 0.5px dashed var(--border);
+      color: var(--muted);
+      background: rgba(142, 142, 147, 0.06);
+      font-size: 13px;
+    }
+
+    .footer {
+      margin-top: 20px;
+      padding-bottom: env(safe-area-inset-bottom);
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+    }
+
+    /* Bottom bar (mobile) */
+    .bottombar {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 60;
+      padding: 10px 12px calc(env(safe-area-inset-bottom) + 10px);
+      pointer-events: none;
+    }
+    @media (min-width: 860px) { .bottombar { display: none; } }
+    .bottombar-inner {
+      pointer-events: auto;
+      max-width: 1080px;
+      margin: 0 auto;
+      border-radius: 999px;
+      background: var(--card);
+      border: 0.5px solid var(--border);
+      box-shadow: var(--shadow);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      padding: 8px;
+    }
+    .tabs {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 6px;
+    }
+    a.tab, button.tab {
+      height: 52px;
+      border-radius: 18px;
+      border: 0.5px solid transparent;
+      background: transparent;
+      color: var(--muted);
+      display: grid;
+      place-items: center;
+      gap: 4px;
+      width: 100%;
+      padding: 0;
+      text-decoration: none;
+      cursor: pointer;
+      transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease;
+    }
+    a.tab:hover, button.tab:hover { transform: translateY(-1px); background: rgba(142, 142, 147, 0.10); }
+    a.tab:active, button.tab:active { transform: translateY(0); }
+    a.tab svg, button.tab svg { width: 20px; height: 20px; }
+    a.tab .label, button.tab .label { font-size: 11px; font-weight: 800; letter-spacing: -0.2px; }
+    a.tab.active, button.tab.active {
+      background: rgba(142, 142, 147, 0.12);
+      border-color: var(--border);
+      color: var(--text);
+    }
+
+    html.modal-open, body.modal-open { overflow: hidden; }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.35);
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 10px 10px calc(env(safe-area-inset-bottom) + 10px);
+      z-index: 100;
+    }
+    .modal-overlay.is-open { display: flex; }
+    .modal-overlay[hidden] { display: none !important; }
+    .modal {
+      width: min(720px, 100%);
+      border-radius: var(--radius-xl);
+      background: var(--card);
+      border: 0.5px solid var(--border);
+      box-shadow: var(--shadow);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      overflow: hidden;
+    }
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 14px 14px 12px;
+      border-bottom: 0.5px solid var(--border);
+      background: color-mix(in srgb, var(--card) 70%, transparent);
+    }
+    .modal-title { font-weight: 800; letter-spacing: -0.2px; }
+    .modal-close {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      border: 0.5px solid var(--border);
+      background: rgba(142, 142, 147, 0.10);
+      cursor: pointer;
+      font-size: 18px;
+      line-height: 34px;
+      color: var(--text);
+    }
+    .modal-body { padding: 14px; }
+    .field { display: grid; gap: 8px; margin-bottom: 12px; }
+    .label { font-size: 12px; color: var(--muted); }
+    .select, .num {
+      height: 42px;
+      border-radius: var(--radius-md);
+      border: 0.5px solid var(--border);
+      background: var(--card-solid);
+      color: var(--text);
+      padding: 0 12px;
+      outline: none;
+      font-size: 14px;
+    }
+    .select:focus, .num:focus { box-shadow: var(--focus); }
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .subhead { margin-top: 4px; font-size: 13px; font-weight: 800; }
+    .hint { margin-top: 8px; font-size: 12px; color: var(--muted); }
+    .types-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
+    @media (min-width: 860px) { .types-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+    .type-item {
+      border-radius: var(--radius-lg);
+      border: 0.5px solid var(--border);
+      background: rgba(142, 142, 147, 0.10);
+      padding: 10px;
+      min-width: 0;
+    }
+    .type-name { font-size: 13px; font-weight: 800; margin-bottom: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .type-item input { width: 100%; }
+    .inline-actions { display: flex; gap: 10px; margin-top: 12px; }
+    .inline-actions .btn { flex: 1 1 0; }
+    .modal-footer {
+      display: flex;
+      gap: 10px;
+      padding: 12px 14px 14px;
+      border-top: 0.5px solid var(--border);
+    }
+    .modal-footer .btn { flex: 1 1 0; }
+  </style>
+{% endblock %}
+
+{% block content %}
+  <div class="container">
+    <section class="search" aria-label="全局搜索">
+      <input id="kw" type="text" placeholder="搜索题干/答案/解析/关键词…" autocomplete="off" onkeydown="if(event.key==='Enter'){doSearch();}" />
+      <button class="btn primary" type="button" onclick="doSearch()">搜索</button>
+    </section>
+
+    <section class="grid" aria-label="主页卡片">
+      <div class="card span-6">
+        <div class="card-head">
+          <h2 class="card-title">题库概览</h2>
+          <div class="card-sub">全部可用题量</div>
+        </div>
+        <div class="stats">
+          <div class="stat">
+            <div class="k">题目</div>
+            <div class="v">{{ quiz_count }}</div>
+          </div>
+          <div class="stat">
+            <div class="k">收藏</div>
+            <div class="v">{{ fav_count if logged_in else '—' }}</div>
+          </div>
+          <div class="stat">
+            <div class="k">错题</div>
+            <div class="v">{{ mistake_count if logged_in else '—' }}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card span-6">
+        <div class="card-head">
+          <h2 class="card-title">我的入口</h2>
+          <div class="card-sub">收藏 / 错题</div>
+        </div>
+        <div class="mini-links">
+          <a class="mini-link" href="/favorites">
+            <div class="left">
+              <div class="name">收藏详情</div>
+              <div class="desc">按科目/题型/标签筛选</div>
+            </div>
+            <span class="badge">{{ fav_count if logged_in else 0 }}</span>
+          </a>
+          <a class="mini-link" href="/mistakes">
+            <div class="left">
+              <div class="name">错题详情</div>
+              <div class="desc">按科目/题型/标签筛选</div>
+            </div>
+            <span class="badge">{{ mistake_count if logged_in else 0 }}</span>
+          </a>
+          <a class="mini-link" href="/history">
+            <div class="left">
+              <div class="name">刷题统计</div>
+              <div class="desc">查看刷题记录与进度</div>
+            </div>
+            <span class="badge">→</span>
+          </a>
+          <a class="mini-link" href="/hub">
+            <div class="left">
+              <div class="name">功能中心</div>
+              <div class="desc">更多入口与工具</div>
+            </div>
+            <span class="badge">→</span>
+          </a>
+        </div>
+      </div>
+
+      <div class="card" id="subjectsCard">
+        <div class="card-head">
+          <h2 class="card-title">科目</h2>
+          <div class="card-sub" id="subjectCountText">共 {{ subjects_meta|length }} 个</div>
+        </div>
+
+        <div class="subject-toolbar" aria-label="科目筛选">
+          <div class="subject-search">
+            <input id="subjectFilter" class="subject-filter" type="text" placeholder="搜索科目…" autocomplete="off" />
+          </div>
+          <div class="subject-toolbar-actions">
+            <button class="btn" type="button" onclick="clearSubjectFilter()">清除</button>
+            <button class="btn" type="button" onclick="openSubjectPicker()">全部</button>
+          </div>
+        </div>
+
+        <div class="recent-row" id="recentSubjectsRow" hidden>
+          <div class="recent-title">最近</div>
+          <div class="recent-list" id="recentSubjects"></div>
+        </div>
+
+        <div class="subjects" id="subjectsGrid">
+          {% for s in subjects_meta %}
+            <div class="subject-card" role="button" tabindex="0"
+                 data-subject-id="{{ s.id }}" data-subject-name="{{ s.name|e }}"
+                 onclick="gotoSubject({{ s.id }})"
+                 onkeydown="if(event.key==='Enter' || event.key===' '){ event.preventDefault(); gotoSubject({{ s.id }}); }">
+              <div class="subject-top">
+                <div class="subject-name">{{ s.name }}</div>
+                <div class="subject-badge" data-count="{{ subject_counts.get(s.id, 0) }}">{{ subject_counts.get(s.id, 0) }}题</div>
+              </div>
+              <div class="subject-actions" aria-label="快捷入口">
+                <button type="button" onclick="event.stopPropagation(); gotoSubject({{ s.id }}, 'quiz')">刷题</button>
+                <button type="button" onclick="event.stopPropagation(); gotoSubject({{ s.id }}, 'memo')">背题</button>
+              </div>
+            </div>
+          {% endfor %}
+          {% if subjects_meta|length == 0 %}
+            <div class="empty">暂无可用科目</div>
+          {% endif %}
+        </div>
+
+        <div class="empty" id="subjectsEmpty" hidden>没有匹配的科目</div>
+        <div class="subject-footer" id="subjectsFooter" hidden>
+          <button class="btn" type="button" id="subjectsToggleBtn" onclick="toggleSubjectsExpand()"></button>
+        </div>
+      </div>
+
+      <div class="card" id="banksCard">
+        <div class="card-head">
+          <h2 class="card-title">个人题库</h2>
+          <div class="card-sub">
+            <a class="pill" href="/user/banks" style="height:28px; padding:0 10px; font-size:12px; line-height:28px;">全部</a>
+            <a class="pill" href="/user/banks/add" style="height:28px; padding:0 10px; font-size:12px; line-height:28px;">创建</a>
+          </div>
+        </div>
+
+        {% if not logged_in %}
+          <div class="empty">登录后可使用个人题库</div>
+        {% else %}
+          {% if recent_banks and recent_banks|length > 0 %}
+            <div class="bank-list">
+              {% for b in recent_banks %}
+                <a class="bank-row" href="/user/banks/{{ b.id }}/practice">
+                  <div style="min-width:0;">
+                    <div class="bank-name">{{ b.name }}</div>
+                    <div class="bank-meta">
+                      {{ (b.question_count or 0) }} 题
+                    </div>
+                  </div>
+                  <div class="bank-meta">进入详情</div>
+                </a>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="empty">还没有个人题库，去创建一个新的题库吧。</div>
+          {% endif %}
+        {% endif %}
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2 class="card-title">模拟考试</h2>
+          <div class="card-sub"><a class="pill" href="/exams" style="height:28px; padding:0 10px; font-size:12px; line-height:28px;">考试记录</a></div>
+        </div>
+        {% if logged_in %}
+          <button class="btn primary" type="button" onclick="openExamModal()">开始模拟考试</button>
+        {% else %}
+          <a class="btn primary" href="/login">登录后开始</a>
+        {% endif %}
+      </div>
+    </section>
+
+    <footer class="footer">By: Saksk</footer>
+  </div>
+
+  <nav class="bottombar" aria-label="基础栏">
+    <div class="bottombar-inner">
+      <div class="tabs">
+        <a class="tab active" href="/" aria-label="首页">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 10.5 12 3l9 7.5"></path>
+            <path d="M5 10v10h14V10"></path>
+          </svg>
+          <div class="label">首页</div>
+        </a>
+        <button class="tab" type="button" onclick="scrollToSection('subjectsCard','subjectFilter')" aria-label="科目">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M4 4h7v7H4z"></path>
+            <path d="M13 4h7v7h-7z"></path>
+            <path d="M4 13h7v7H4z"></path>
+            <path d="M13 13h7v7h-7z"></path>
+          </svg>
+          <div class="label">科目</div>
+        </button>
+        <a class="tab" href="/user/banks" aria-label="题库">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+            <path d="M6.5 3H20v18H6.5A2.5 2.5 0 0 1 4 18.5v-13A2.5 2.5 0 0 1 6.5 3z"></path>
+          </svg>
+          <div class="label">题库</div>
+        </a>
+        <a class="tab" href="/favorites" aria-label="收藏">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 17.3l-6.2 3.3 1.2-7-5-4.8 7-1 3.1-6.4 3.1 6.4 7 1-5 4.8 1.2 7z"></path>
+          </svg>
+          <div class="label">收藏</div>
+        </a>
+        <a class="tab" href="/mistakes" aria-label="错题">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 9v4"></path>
+            <path d="M12 17h.01"></path>
+            <path d="M10.3 3.2 2.2 19.2A2 2 0 0 0 4 22h16a2 2 0 0 0 1.8-2.8L13.7 3.2a2 2 0 0 0-3.4 0z"></path>
+          </svg>
+          <div class="label">错题</div>
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <div id="subjectPickerOverlay" class="modal-overlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-label="科目选择">
+      <div class="modal-header">
+        <div class="modal-title">全部科目</div>
+        <button class="modal-close" type="button" onclick="closeSubjectPicker()" aria-label="关闭">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="field" style="margin-bottom:0;">
+          <div class="label">搜索</div>
+          <div class="subject-search">
+            <input id="subjectPickerFilter" class="subject-filter" type="text" placeholder="搜索科目…" autocomplete="off" />
+          </div>
+          <div class="inline-actions" style="margin-top:10px;">
+            <button class="btn" type="button" onclick="clearSubjectPickerFilter()">清除</button>
+            <button class="btn primary" type="button" onclick="closeSubjectPicker()">完成</button>
+          </div>
+        </div>
+
+        <div class="subject-picker-list" id="subjectPickerList"></div>
+        <div class="hint">提示：点击科目进入详情；也可用右侧按钮直接开始刷题/背题。</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="examOverlay" class="modal-overlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-label="模拟考试设置">
+      <div class="modal-header">
+        <div class="modal-title">模拟考试</div>
+        <button class="modal-close" type="button" onclick="closeExamModal()" aria-label="关闭">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="field">
+          <div class="label">科目</div>
+          <select class="select" id="exam_subject" onchange="renderExamTypes()">
+            <option value="all">全部科目</option>
+            {% for s in subjects_meta %}
+              <option value="{{ s.name }}">{{ s.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="row2">
+          <div class="field">
+            <div class="label">总题数</div>
+            <input class="num" id="exam_total" type="number" min="1" max="300" value="30" />
+          </div>
+          <div class="field">
+            <div class="label">时长（分钟）</div>
+            <input class="num" id="exam_duration" type="number" min="1" max="1440" value="60" />
+          </div>
+        </div>
+
+        <div class="subhead">题型分配</div>
+        <div id="exam_types" class="types-grid"></div>
+        <div class="hint">提示：可手动调整每种题型题数，也可一键均分。</div>
+        <div class="inline-actions">
+          <button class="btn" type="button" onclick="autoDistributeExam()">均分</button>
+          <button class="btn" type="button" onclick="clearExamTypes()">清空</button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" type="button" onclick="closeExamModal()">取消</button>
+        <button class="btn primary" id="examStartBtn" type="button" onclick="startExam()">开始</button>
+      </div>
+    </div>
+  </div>
+
+{% endblock %}
+
+{% block body_end %}
+  <script>
+    const LOGGED_IN = {{ 'true' if logged_in else 'false' }};
+    const SUBJECT_Q_TYPES = {{ subject_q_types_json|safe }};
+    const ALL_Q_TYPES = {{ q_types|tojson }};
+    const SUBJECTS_META = {{ subjects_meta|tojson }};
+    const SUBJECT_COUNTS = {{ subject_counts|tojson }};
+
+    function applyThemeFromStorage(){
+      const saved = localStorage.getItem('theme') || '';
+      const preferDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const dark = saved === 'dark' || (!saved && preferDark);
+      document.body.classList.toggle('dark-mode', !!dark);
+      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#000000' : '#f5f5f7');
+    }
+    function toggleTheme(){
+      const isDark = document.body.classList.toggle('dark-mode');
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', isDark ? '#000000' : '#f5f5f7');
+    }
+    applyThemeFromStorage();
+
+    function normalizeText(s){
+      return String(s || '').trim().toLowerCase();
+    }
+
+    function setOverlayOpen(overlayId, open){
+      const overlay = document.getElementById(overlayId);
+      if (!overlay) return;
+      overlay.hidden = !open;
+      overlay.classList.toggle('is-open', !!open);
+      overlay.setAttribute('aria-hidden', open ? 'false' : 'true');
+      syncModalOpenClass();
+    }
+
+    function syncModalOpenClass(){
+      const anyOpen = Array.from(document.querySelectorAll('.modal-overlay')).some(el => !el.hidden && el.classList.contains('is-open'));
+      document.documentElement.classList.toggle('modal-open', anyOpen);
+      document.body.classList.toggle('modal-open', anyOpen);
+    }
+
+    function forceCloseAllOverlays(){
+      document.querySelectorAll('.modal-overlay').forEach(el => {
+        el.hidden = true;
+        el.classList.remove('is-open');
+        el.setAttribute('aria-hidden', 'true');
+      });
+      syncModalOpenClass();
+    }
+
+    function doSearch(){
+      const kw = (document.getElementById('kw')?.value || '').trim();
+      if (!kw) return;
+      window.location.href = '/search?keyword=' + encodeURIComponent(kw);
+    }
+
+    function gotoSubject(subjectId, entry){
+      recordRecentSubject(subjectId);
+      const qs = entry ? ('?entry=' + encodeURIComponent(entry)) : '';
+      window.location.href = '/subjects/' + subjectId + qs;
+    }
+
+    function openExamModal(){
+      if (!LOGGED_IN) { window.location.href = '/login'; return; }
+      setOverlayOpen('examOverlay', true);
+      renderExamTypes();
+      setTimeout(() => {
+        try { document.getElementById('exam_total')?.focus(); } catch(e) {}
+      }, 50);
+    }
+    function closeExamModal(){
+      setOverlayOpen('examOverlay', false);
+    }
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { closeExamModal(); closeSubjectPicker(); }
+    });
+    document.getElementById('examOverlay')?.addEventListener('click', (e) => {
+      if (e.target && e.target.id === 'examOverlay') closeExamModal();
+    });
+    document.getElementById('subjectPickerOverlay')?.addEventListener('click', (e) => {
+      if (e.target && e.target.id === 'subjectPickerOverlay') closeSubjectPicker();
+    });
+
+    function getExamTypesBySubject(subjectName){
+      if (!subjectName || subjectName === 'all') return Array.isArray(ALL_Q_TYPES) ? ALL_Q_TYPES : [];
+      const t = SUBJECT_Q_TYPES && SUBJECT_Q_TYPES[subjectName];
+      if (Array.isArray(t) && t.length) return t;
+      return Array.isArray(ALL_Q_TYPES) ? ALL_Q_TYPES : [];
+    }
+
+    function renderExamTypes(){
+      const subject = document.getElementById('exam_subject')?.value || 'all';
+      const types = getExamTypesBySubject(subject);
+      const box = document.getElementById('exam_types');
+      if (!box) return;
+      if (!types.length) {
+        box.innerHTML = '<div class="empty" style="grid-column:1/-1;">该科目暂无题型</div>';
+        return;
+      }
+      box.innerHTML = types.map(t => (
+        `<div class="type-item">
+          <div class="type-name" title="${escapeHtml(t)}">${escapeHtml(t)}</div>
+          <input class="num" type="number" min="0" max="500" value="0" data-qtype="${escapeAttr(t)}" />
+        </div>`
+      )).join('');
+      autoDistributeExam();
+    }
+
+    function clearExamTypes(){
+      document.querySelectorAll('#exam_types input[data-qtype]').forEach(inp => { inp.value = 0; });
+    }
+
+    function autoDistributeExam(){
+      const total = Math.max(1, parseInt(document.getElementById('exam_total')?.value || '30', 10) || 30);
+      const inputs = Array.from(document.querySelectorAll('#exam_types input[data-qtype]'));
+      if (!inputs.length) return;
+      const n = inputs.length;
+      const base = Math.floor(total / n);
+      let rem = total % n;
+      inputs.forEach((inp) => {
+        let v = base + (rem > 0 ? 1 : 0);
+        if (rem > 0) rem -= 1;
+        inp.value = String(v);
+      });
+    }
+
+    async function startExam(){
+      if (!LOGGED_IN) { window.location.href = '/login'; return; }
+      const btn = document.getElementById('examStartBtn');
+      if (btn) { btn.disabled = true; btn.textContent = '创建中…'; }
+      try {
+        const subject = document.getElementById('exam_subject')?.value || 'all';
+        const duration = Math.max(1, parseInt(document.getElementById('exam_duration')?.value || '60', 10) || 60);
+        const types = {};
+        let total = 0;
+        document.querySelectorAll('#exam_types input[data-qtype]').forEach(inp => {
+          const t = inp.getAttribute('data-qtype') || '';
+          const c = Math.max(0, parseInt(inp.value || '0', 10) || 0);
+          if (t && c > 0) { types[t] = c; total += c; }
+        });
+        if (total <= 0) {
+          alert('请至少设置一种题型的题数');
+          return;
+        }
+
+        const resp = await fetch('/api/exams/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ subject, duration, types, scores: {} })
+        });
+        const js = await resp.json().catch(() => ({}));
+        if (!resp.ok || !js || js.status !== 'success' || !js.exam_id) {
+          alert((js && js.message) ? js.message : '创建考试失败，请稍后再试');
+          return;
+        }
+        closeExamModal();
+        window.location.href = `/quiz?mode=exam&exam_id=${js.exam_id}`;
+      } catch (e) {
+        alert('创建考试失败，请检查网络或稍后重试');
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '开始'; }
+      }
+    }
+
+    function escapeHtml(s){
+      return String(s || '').replace(/[&<>"']/g, (c) => ({
+        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+      }[c]));
+    }
+    function escapeAttr(s){ return escapeHtml(s).replace(/\\s+/g, ' ').trim(); }
+
+    /* Subject: recent + filter + expand */
+    let subjectsExpanded = false;
+
+    function recordRecentSubject(subjectId){
+      try {
+        const id = Number(subjectId);
+        if (!id) return;
+        const key = 'recent_subject_ids_v1';
+        const raw = localStorage.getItem(key) || '[]';
+        const arr = JSON.parse(raw);
+        const next = [id].concat((Array.isArray(arr) ? arr : []).map(Number).filter(x => x && x !== id)).slice(0, 10);
+        localStorage.setItem(key, JSON.stringify(next));
+      } catch(e) {}
+    }
+
+    function renderRecentSubjects(){
+      const row = document.getElementById('recentSubjectsRow');
+      const box = document.getElementById('recentSubjects');
+      if (!row || !box) return;
+      let ids = [];
+      try { ids = JSON.parse(localStorage.getItem('recent_subject_ids_v1') || '[]'); } catch(e) { ids = []; }
+      ids = (Array.isArray(ids) ? ids : []).map(Number).filter(Boolean);
+
+      const map = new Map((Array.isArray(SUBJECTS_META) ? SUBJECTS_META : []).map(s => [Number(s.id), s]));
+      const pills = ids.map((id) => map.get(id)).filter(Boolean).slice(0, 8).map((s) => {
+        return `<button class="recent-pill" type="button" onclick="gotoSubject(${Number(s.id)})" title="${escapeHtml(s.name)}">${escapeHtml(s.name)}</button>`;
+      });
+      if (!pills.length) {
+        row.hidden = true;
+        box.innerHTML = '';
+        return;
+      }
+      row.hidden = false;
+      box.innerHTML = pills.join('');
+    }
+
+    function getSubjectLimit(){
+      return window.matchMedia && window.matchMedia('(min-width: 860px)').matches ? 12 : 8;
+    }
+
+    function updateSubjectsUI(){
+      const input = document.getElementById('subjectFilter');
+      const filter = normalizeText(input?.value || '');
+      const cards = Array.from(document.querySelectorAll('#subjectsGrid .subject-card'));
+      const emptyEl = document.getElementById('subjectsEmpty');
+      const footer = document.getElementById('subjectsFooter');
+      const toggleBtn = document.getElementById('subjectsToggleBtn');
+      const countText = document.getElementById('subjectCountText');
+
+      const limit = getSubjectLimit();
+      let matched = 0;
+      let shown = 0;
+
+      cards.forEach((card, idx) => {
+        const name = normalizeText(card.getAttribute('data-subject-name') || '');
+        const isMatch = !filter || name.includes(filter);
+        if (isMatch) matched += 1;
+
+        let hide = !isMatch;
+        if (!filter && !subjectsExpanded && isMatch && idx >= limit) hide = true;
+        card.classList.toggle('is-hidden', !!hide);
+        if (!hide) shown += 1;
+      });
+
+      if (emptyEl) emptyEl.hidden = matched > 0;
+
+      const total = cards.length;
+      if (countText) {
+        if (filter) countText.textContent = `共 ${total} 个 · 匹配 ${matched} 个`;
+        else countText.textContent = `共 ${total} 个 · 显示 ${shown} 个`;
+      }
+
+      if (!footer || !toggleBtn) return;
+      if (filter || total <= limit) {
+        footer.hidden = true;
+        return;
+      }
+      footer.hidden = false;
+      toggleBtn.textContent = subjectsExpanded ? '收起' : `展开全部（${total}）`;
+    }
+
+    function clearSubjectFilter(){
+      const input = document.getElementById('subjectFilter');
+      if (input) input.value = '';
+      subjectsExpanded = false;
+      updateSubjectsUI();
+    }
+
+    function toggleSubjectsExpand(){
+      subjectsExpanded = !subjectsExpanded;
+      updateSubjectsUI();
+    }
+
+    /* Subject picker (modal) */
+    function openSubjectPicker(){
+      renderSubjectPickerList();
+      setOverlayOpen('subjectPickerOverlay', true);
+      setTimeout(() => {
+        try { document.getElementById('subjectPickerFilter')?.focus(); } catch(e) {}
+      }, 30);
+    }
+
+    function closeSubjectPicker(){
+      setOverlayOpen('subjectPickerOverlay', false);
+    }
+
+    function clearSubjectPickerFilter(){
+      const input = document.getElementById('subjectPickerFilter');
+      if (input) input.value = '';
+      renderSubjectPickerList();
+      try { input?.focus(); } catch(e) {}
+    }
+
+    function getCountBySubjectId(id){
+      if (!SUBJECT_COUNTS) return 0;
+      const n = SUBJECT_COUNTS[id] ?? SUBJECT_COUNTS[String(id)] ?? 0;
+      return Number(n) || 0;
+    }
+
+    function renderSubjectPickerList(){
+      const list = document.getElementById('subjectPickerList');
+      if (!list) return;
+      const kw = normalizeText(document.getElementById('subjectPickerFilter')?.value || '');
+      const items = (Array.isArray(SUBJECTS_META) ? SUBJECTS_META : []).filter(s => {
+        const name = normalizeText(s && s.name);
+        return !kw || name.includes(kw);
+      });
+
+      if (!items.length) {
+        list.innerHTML = '<div class="empty">没有匹配的科目</div>';
+        return;
+      }
+
+      list.innerHTML = items.map((s) => {
+        const id = Number(s.id);
+        const name = escapeHtml(s.name || '');
+        const cnt = getCountBySubjectId(id);
+        return `
+          <div class="subject-picker-item" role="button" tabindex="0"
+               onclick="gotoSubject(${id})"
+               onkeydown="if(event.key==='Enter' || event.key===' '){ event.preventDefault(); gotoSubject(${id}); }">
+            <div class="subject-picker-left">
+              <div class="subject-picker-name">${name}</div>
+              <div class="subject-picker-sub">${cnt} 题</div>
+            </div>
+            <div class="subject-picker-actions" aria-label="快捷入口">
+              <button class="mini-btn" type="button" onclick="event.stopPropagation(); gotoSubject(${id}, 'quiz')">刷题</button>
+              <button class="mini-btn" type="button" onclick="event.stopPropagation(); gotoSubject(${id}, 'memo')">背题</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function scrollToSection(sectionId, focusId){
+      try { forceCloseAllOverlays(); } catch(e) {}
+      const el = document.getElementById(sectionId);
+      if (!el) return;
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (focusId) {
+        setTimeout(() => {
+          try { document.getElementById(focusId)?.focus(); } catch(e) {}
+        }, 260);
+      }
+    }
+
+    document.getElementById('subjectFilter')?.addEventListener('input', () => {
+      updateSubjectsUI();
+    });
+    document.getElementById('subjectPickerFilter')?.addEventListener('input', () => {
+      renderSubjectPickerList();
+    });
+
+    window.addEventListener('resize', () => {
+      updateSubjectsUI();
+    });
+
+    window.addEventListener('pageshow', () => {
+      forceCloseAllOverlays();
+      renderRecentSubjects();
+      updateSubjectsUI();
+    });
+
+    forceCloseAllOverlays();
+    renderRecentSubjects();
+    updateSubjectsUI();
+  </script>
+{% endblock %}

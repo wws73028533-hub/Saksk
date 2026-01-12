@@ -2,8 +2,8 @@
 
 {% block title %}{% if mode == 'add' %}创建题库{% else %}编辑题库{% endif %}{% endblock %}
 
-{% block content %}
-<a href="/user/banks" class="nav-back">← 返回我的题库</a>
+{% block page_content %}
+<a href="/user/banks/manage" class="nav-back">← 返回题库后台</a>
 
 <div class="page-header">
     <h1 class="page-title">{% if mode == 'add' %}创建题库{% else %}编辑题库{% endif %}</h1>
@@ -47,7 +47,7 @@
 
         <div class="form-actions">
             <button type="submit" class="btn btn-primary">{% if mode == 'add' %}创建题库{% else %}保存修改{% endif %}</button>
-            <a href="/user/banks" class="btn btn-secondary">取消</a>
+            <a href="/user/banks/manage" class="btn btn-secondary">取消</a>
         </div>
     </form>
 </div>
@@ -220,7 +220,7 @@
             }
 
             setTimeout(() => {
-                window.location.href = '/user/banks';
+                window.location.href = '/user/banks/manage';
             }, 1000);
         } catch (e) {
             showToast(e.message, 'error');

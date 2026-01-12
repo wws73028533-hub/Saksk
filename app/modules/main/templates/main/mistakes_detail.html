@@ -1,0 +1,362 @@
+{% extends "main/app_shell.html" %}
+{% block title %}错题{% endblock %}
+{% block page_title %}错题{% endblock %}
+
+{% block head_extra %}
+  <link rel="stylesheet" href="/static/css/ui18_pages.css" />
+  <link rel="stylesheet" href="/static/css/ui18_stats.css" />
+{% endblock %}
+
+{% block content %}
+  <div class="ui18-page ui18-has-basebar" data-page="mistakes">
+    <header class="ui18-header" aria-label="错题页概览">
+      <div class="ui18-header-left">
+        <h1 class="ui18-title">错题</h1>
+        <div class="ui18-sub">先刷错题再重练全量；在“数据”里按科目/题型快速定位短板。</div>
+      </div>
+      <div class="ui18-meta">
+        <div class="ui18-pill" aria-label="错题总数">
+          <span class="k">总数</span>
+          <span class="v">{{ mistakes_total }}</span>
+        </div>
+        <div class="ui18-pill" aria-label="当前科目">
+          <span class="k">科目</span>
+          <span class="v" id="curSubjectText">—</span>
+        </div>
+      </div>
+    </header>
+
+    <nav class="ui18-basebar" aria-label="错题页基础栏">
+      <div class="ui18-basebar-inner">
+        <a class="ui18-baseitem {{ 'active' if active_tab == 'practice' else '' }}" href="?tab=practice" data-tab="practice" aria-current="{{ 'page' if active_tab == 'practice' else 'false' }}">
+          <svg class="ui18-baseicon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M9 7v10l8-5-8-5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+          </svg>
+          练习
+        </a>
+        <a class="ui18-baseitem {{ 'active' if active_tab == 'stats' else '' }}" href="?tab=stats" data-tab="stats" aria-current="{{ 'page' if active_tab == 'stats' else 'false' }}">
+          <svg class="ui18-baseicon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M4 19V5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M4 19h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M8 15v-5M12 15V7M16 15v-3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          数据
+        </a>
+      </div>
+    </nav>
+
+    <section id="misTabPractice" data-tab="practice" class="{{ '' if active_tab == 'practice' else 'ui18-hidden' }}">
+      <section class="ui18-card" aria-label="科目选择">
+        <h2>科目</h2>
+        <div class="sub">切换科目会联动题型列表。</div>
+        <div class="chips" id="chipsSubject">
+          <button type="button" class="chip" data-val="all" onclick="selectChip('subject', this)">
+            <span>全部科目</span>
+          </button>
+          {% for s in subjects_meta %}
+            {% set cnt = mis_by_subject.get(s.id, 0) %}
+            <button type="button" class="chip" data-val="{{ s.name }}" onclick="selectChip('subject', this)">
+              <span>{{ s.name }}</span>
+              {% if cnt and cnt > 0 %}
+                <span class="mini-badge">{{ cnt }}</span>
+              {% endif %}
+            </button>
+          {% endfor %}
+        </div>
+      </section>
+
+      <section class="ui18-card" aria-label="题型选择">
+        <h2>题型</h2>
+        <div class="sub">“全部题型”表示混合练习。</div>
+        <div class="chips" id="chipsType"></div>
+      </section>
+
+      {% if user_tags %}
+        <section class="ui18-card" aria-label="标签选择">
+          <h2>标签</h2>
+          <div class="sub">用于个人标签筛选。</div>
+          <div class="chips" id="chipsTag">
+            <button type="button" class="chip" data-val="all" onclick="selectChip('tag', this)">全部标签</button>
+            {% for tg in user_tags %}
+              <button type="button" class="chip" data-val="{{ tg.name|e }}" onclick="selectChip('tag', this)" title="{{ tg.count }}题">{{ tg.name }}</button>
+            {% endfor %}
+          </div>
+        </section>
+      {% endif %}
+
+      <section class="ui18-card" aria-label="开始练习">
+        <h2>开始</h2>
+        <div class="sub">默认继承你在其它页面设置的打乱选项。</div>
+        <div class="actions">
+          <button class="btn primary" type="button" onclick="start('quiz')">刷错题</button>
+          <button class="btn" type="button" onclick="start('memo')">背错题</button>
+        </div>
+      </section>
+    </section>
+
+    <section id="misTabStats" data-tab="stats" class="{{ '' if active_tab == 'stats' else 'ui18-hidden' }}">
+      <section class="ui18-card" aria-label="错题数据概览">
+        <h2>数据概览</h2>
+        <div class="sub">分布统计用于定位“错题集中在哪里”，并一键进入对应错题练习。</div>
+
+        <div class="ui18-kpi-grid">
+          <div class="ui18-kpi">
+            <div class="ui18-kpi-top">
+              <div class="ui18-kpi-label">错题总数</div>
+              <svg class="ui18-kpi-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M12 8v5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M12 16h.01" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+                <path d="M10.3 4.3 2.8 17.3A2 2 0 0 0 4.5 20h15a2 2 0 0 0 1.7-2.7L13.7 4.3a2 2 0 0 0-3.4 0Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <div class="ui18-kpi-value">{{ mistakes_total }}</div>
+            <div class="ui18-kpi-meta">建议：先刷错题再重练全量</div>
+          </div>
+
+          <div class="ui18-kpi">
+            <div class="ui18-kpi-top">
+              <div class="ui18-kpi-label">累计次数</div>
+              <svg class="ui18-kpi-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M12 6v6l4 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M21 12a9 9 0 1 1-9-9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="ui18-kpi-value">{{ mistakes_times }}</div>
+            <div class="ui18-kpi-meta">若系统支持累计，将更准确</div>
+          </div>
+
+          <div class="ui18-kpi">
+            <div class="ui18-kpi-top">
+              <div class="ui18-kpi-label">涉及科目</div>
+              <svg class="ui18-kpi-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M4 6.5c0-1.1.9-2 2-2h12c1.1 0 2 .9 2 2V19c0 .6-.4 1-1 1H7a3 3 0 0 1-3-3V6.5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+                <path d="M7 8h10M7 12h10M7 16h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="ui18-kpi-value">{{ mis_subject_rows|length }}</div>
+            <div class="ui18-kpi-meta">仅统计有错题的科目</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="ui18-card" aria-label="科目分布">
+        <h2>科目分布</h2>
+        <div class="sub">按错题数量排序。</div>
+        {% if mis_subject_rows %}
+          <div class="ui18-weak-list">
+            {% for row in mis_subject_rows %}
+              {% set pct = (row.count * 100 / mis_subject_max) if mis_subject_max else 0 %}
+              <div class="ui18-weak-row">
+                <div style="min-width:0;">
+                  <div class="ui18-weak-title">{{ row.subject }}</div>
+                  <div class="ui18-weak-meta">{{ row.count }} 题</div>
+                  <div class="ui18-weak-bar">
+                    <div class="ui18-progress" aria-hidden="true"><span style="width: {{ pct|round(1) }}%"></span></div>
+                  </div>
+                </div>
+                <div class="ui18-actions">
+                  <a class="ui18-mini-btn primary" href="/quiz?subject={{ row.subject|urlencode }}&type=all&mode=quiz&source=mistakes">刷错题</a>
+                  <a class="ui18-mini-btn" href="/quiz?subject={{ row.subject|urlencode }}&type=all&mode=memo&source=mistakes">背错题</a>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="ui18-empty">暂无错题数据。</div>
+        {% endif %}
+      </section>
+
+      <section class="ui18-card" aria-label="题型分布">
+        <h2>题型分布</h2>
+        <div class="sub">用于判断错题集中在哪类题型。</div>
+        {% if mis_by_type %}
+          <div class="ui18-weak-list">
+            {% for row in mis_by_type %}
+              {% set pct = (row.count * 100 / mis_type_max) if mis_type_max else 0 %}
+              <div class="ui18-weak-row">
+                <div style="min-width:0;">
+                  <div class="ui18-weak-title">{{ row.q_type }}</div>
+                  <div class="ui18-weak-meta">{{ row.count }} 题</div>
+                  <div class="ui18-weak-bar">
+                    <div class="ui18-progress" aria-hidden="true"><span style="width: {{ pct|round(1) }}%"></span></div>
+                  </div>
+                </div>
+                <div class="ui18-actions">
+                  <a class="ui18-mini-btn primary" href="/quiz?subject=all&type={{ row.q_type|urlencode }}&mode=quiz&source=mistakes">刷错题</a>
+                  <a class="ui18-mini-btn" href="/quiz?subject=all&type={{ row.q_type|urlencode }}&mode=memo&source=mistakes">背错题</a>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="ui18-empty">暂无题型分布数据。</div>
+        {% endif %}
+      </section>
+    </section>
+  </div>
+{% endblock %}
+
+{% block body_end %}
+  <script>
+    const SUBJECT_Q_TYPES = {{ subject_q_types_json|safe }};
+    const SELECTED_SUBJECT = {{ selected_subject|tojson }};
+    const KEY_TAB = 'mistakes_tab';
+    const KEY_SUBJECT = 'mistakes_subject';
+    const KEY_TYPE = 'mistakes_type';
+    const KEY_TAG = 'mistakes_tag';
+    const KEY_SHUFFLE_Q = 'shuffle_questions';
+    const KEY_SHUFFLE_O = 'shuffle_options';
+
+    const state = { tab: 'practice', subject: 'all', type: 'all', tag: 'all', shuffleQ: false, shuffleO: false };
+
+    function restore(){
+      try {
+        state.tab = localStorage.getItem(KEY_TAB) || '{{ active_tab }}' || 'practice';
+        state.subject = localStorage.getItem(KEY_SUBJECT) || 'all';
+        state.type = localStorage.getItem(KEY_TYPE) || 'all';
+        state.tag = localStorage.getItem(KEY_TAG) || 'all';
+        state.shuffleQ = (localStorage.getItem(KEY_SHUFFLE_Q) === '1');
+        state.shuffleO = (localStorage.getItem(KEY_SHUFFLE_O) === '1');
+      } catch (e) {}
+      if (SELECTED_SUBJECT) state.subject = SELECTED_SUBJECT;
+    }
+
+    function persist(){
+      try {
+        localStorage.setItem(KEY_TAB, state.tab);
+        localStorage.setItem(KEY_SUBJECT, state.subject);
+        localStorage.setItem(KEY_TYPE, state.type);
+        localStorage.setItem(KEY_TAG, state.tag);
+      } catch (e) {}
+    }
+
+    function setTab(tab, syncUrl){
+      const next = (tab === 'stats') ? 'stats' : 'practice';
+      state.tab = next;
+      persist();
+
+      document.querySelectorAll('[data-tab]').forEach(el => {
+        const isPanel = el.id === 'misTabPractice' || el.id === 'misTabStats';
+        if (!isPanel) return;
+        el.classList.toggle('ui18-hidden', el.dataset.tab !== next);
+      });
+      document.querySelectorAll('.ui18-baseitem[data-tab]').forEach(a => {
+        const active = a.dataset.tab === next;
+        a.classList.toggle('active', active);
+        a.setAttribute('aria-current', active ? 'page' : 'false');
+      });
+
+      if (syncUrl) {
+        try {
+          const url = new URL(window.location.href);
+          url.searchParams.set('tab', next);
+          window.history.replaceState({}, '', url);
+        } catch (e) {}
+      }
+    }
+
+    function selectChip(kind, btn){
+      if (!btn) return;
+      const v = btn.dataset.val || 'all';
+      if (kind === 'subject') {
+        state.subject = v;
+        document.querySelectorAll('#chipsSubject .chip').forEach(b => b.classList.toggle('active', b === btn));
+        updateTypes();
+      } else if (kind === 'type') {
+        state.type = v;
+        document.querySelectorAll('#chipsType .chip').forEach(b => b.classList.toggle('active', b === btn));
+      } else if (kind === 'tag') {
+        state.tag = v;
+        document.querySelectorAll('#chipsTag .chip').forEach(b => b.classList.toggle('active', b === btn));
+      }
+      persist();
+      updateCurrentSubjectText();
+    }
+
+    function unionAllTypes(){
+      const set = new Set();
+      try {
+        Object.values(SUBJECT_Q_TYPES || {}).forEach(arr => (arr || []).forEach(t => set.add(t)));
+      } catch(e) {}
+      return Array.from(set);
+    }
+
+    function getTypesForSubject(subjectName){
+      if (!subjectName || subjectName === 'all') return unionAllTypes();
+      const arr = SUBJECT_Q_TYPES && SUBJECT_Q_TYPES[subjectName];
+      if (Array.isArray(arr)) return arr;
+      return unionAllTypes();
+    }
+
+    function updateTypes(){
+      const types = getTypesForSubject(state.subject);
+      const box = document.getElementById('chipsType');
+      if (!box) return;
+      let html = `<button type="button" class="chip" data-val="all" onclick="selectChip('type', this)">全部题型</button>`;
+      (types || []).forEach(t => {
+        html += `<button type="button" class="chip" data-val="${escapeAttr(t)}" onclick="selectChip('type', this)">${escapeHtml(t)}</button>`;
+      });
+      box.innerHTML = html;
+      const want = state.type || 'all';
+      const btn = box.querySelector(`.chip[data-val="${cssEscape(want)}"]`) || box.querySelector('.chip[data-val="all"]');
+      if (btn) selectChip('type', btn);
+    }
+
+    function updateCurrentSubjectText(){
+      const el = document.getElementById('curSubjectText');
+      if (!el) return;
+      el.textContent = (state.subject === 'all') ? '全部科目' : state.subject;
+    }
+
+    function start(mode){
+      const params = new URLSearchParams({
+        subject: state.subject || 'all',
+        type: state.type || 'all',
+        mode: mode || 'quiz',
+        source: 'mistakes',
+        shuffle_questions: state.shuffleQ ? '1' : '0',
+        shuffle_options: state.shuffleO ? '1' : '0'
+      });
+      if (state.tag && state.tag !== 'all') params.set('tag', state.tag);
+      window.location.href = '/quiz?' + params.toString();
+    }
+
+    function escapeHtml(s){
+      return String(s || '').replace(/[&<>"']/g, (c) => ({
+        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+      }[c]));
+    }
+    function escapeAttr(s){ return escapeHtml(s).replace(/\\s+/g, ' ').trim(); }
+    function cssEscape(s){
+      if (window.CSS && typeof window.CSS.escape === 'function') return window.CSS.escape(String(s || ''));
+      return String(s || '').replace(/[^a-zA-Z0-9_\\-]/g, '\\\\$&');
+    }
+
+    // init
+    restore();
+    // subject default
+    const subBtn = document.querySelector(`#chipsSubject .chip[data-val="${cssEscape(state.subject)}"]`) || document.querySelector('#chipsSubject .chip[data-val="all"]');
+    if (subBtn) selectChip('subject', subBtn);
+    // tag default
+    const tagBtn = document.querySelector(`#chipsTag .chip[data-val="${cssEscape(state.tag)}"]`) || document.querySelector('#chipsTag .chip[data-val="all"]');
+    if (tagBtn) selectChip('tag', tagBtn);
+    updateCurrentSubjectText();
+
+    // base bar
+    document.querySelectorAll('.ui18-baseitem[data-tab]').forEach(a => {
+      a.addEventListener('click', (e) => {
+        e.preventDefault();
+        setTab(a.dataset.tab, true);
+      });
+    });
+
+    try {
+      const qs = new URLSearchParams(window.location.search);
+      const t = qs.get('tab');
+      if (t) setTab(t, false);
+      else setTab(state.tab, false);
+    } catch (e) {
+      setTab(state.tab, false);
+    }
+  </script>
+{% endblock %}

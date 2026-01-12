@@ -1,0 +1,388 @@
+{% extends "main/app_shell.html" %}
+{% block title %}{% block settings_title %}设置{% endblock %}{% endblock %}
+{% block page_title %}{% block settings_page_title %}设置{% endblock %}{% endblock %}
+
+{% block head_extra %}
+  <style>
+    :root {
+      --acc-card-bg: rgba(255, 255, 255, 0.78);
+      --acc-text: #111113;
+      --acc-muted: rgba(17, 17, 19, 0.62);
+      --acc-border: rgba(0, 0, 0, 0.08);
+      --acc-shadow: 0 10px 34px rgba(0, 0, 0, 0.08);
+      --acc-shadow-soft: 0 2px 12px rgba(0, 0, 0, 0.06);
+      --acc-shadow-hover: 0 16px 46px rgba(0, 0, 0, 0.10);
+      --acc-radius-xl: 22px;
+      --acc-radius-lg: 16px;
+      --acc-radius-md: 14px;
+      --acc-radius-sm: 12px;
+      --acc-blur: blur(26px) saturate(180%);
+
+      --acc-btn-primary-bg: #111113;
+      --acc-btn-primary-fg: #ffffff;
+      --acc-btn-primary-border: rgba(17, 17, 19, 0.22);
+      --acc-btn-secondary-bg: rgba(255, 255, 255, 0.62);
+      --acc-btn-secondary-fg: var(--acc-text);
+      --acc-btn-secondary-border: var(--acc-border);
+      --acc-btn-quiet-bg: rgba(0, 0, 0, 0.04);
+      --acc-btn-quiet-border: rgba(0, 0, 0, 0.08);
+
+      --acc-focus-ring: rgba(17, 17, 19, 0.10);
+      --acc-focus-border: rgba(17, 17, 19, 0.40);
+    }
+
+    body.dark-mode {
+      --acc-card-bg: rgba(28, 28, 30, 0.62);
+      --acc-text: #f5f5f7;
+      --acc-muted: rgba(245, 245, 247, 0.64);
+      --acc-border: rgba(255, 255, 255, 0.14);
+      --acc-shadow: 0 18px 52px rgba(0, 0, 0, 0.55);
+      --acc-shadow-soft: 0 10px 26px rgba(0, 0, 0, 0.30);
+      --acc-shadow-hover: 0 22px 68px rgba(0, 0, 0, 0.60);
+
+      --acc-btn-primary-bg: rgba(245, 245, 247, 0.92);
+      --acc-btn-primary-fg: rgba(0, 0, 0, 0.92);
+      --acc-btn-primary-border: rgba(255, 255, 255, 0.24);
+      --acc-btn-secondary-bg: rgba(28, 28, 30, 0.72);
+      --acc-btn-quiet-bg: rgba(255, 255, 255, 0.06);
+      --acc-btn-quiet-border: rgba(255, 255, 255, 0.12);
+
+      --acc-focus-ring: rgba(245, 245, 247, 0.12);
+      --acc-focus-border: rgba(245, 245, 247, 0.42);
+    }
+
+    .set-wrap {
+      max-width: 1140px;
+      margin: 0 auto;
+      padding: 10px 6px 24px;
+      min-width: 0;
+    }
+
+    .set-layout {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 14px;
+      align-items: start;
+      min-width: 0;
+    }
+
+    .set-side-card {
+      background: var(--acc-card-bg);
+      border: 1px solid var(--acc-border);
+      border-radius: var(--acc-radius-xl);
+      box-shadow: var(--acc-shadow);
+      backdrop-filter: var(--acc-blur);
+      -webkit-backdrop-filter: var(--acc-blur);
+      padding: 14px;
+      min-width: 0;
+      position: sticky;
+      top: calc(var(--app-topbar-h) + 12px);
+    }
+
+    .set-side-title {
+      font-size: 13px;
+      font-weight: 850;
+      letter-spacing: -0.2px;
+      color: var(--acc-text);
+      padding: 0 6px 10px;
+    }
+
+    .set-nav {
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .set-nav-item {
+      height: 42px;
+      padding: 0 12px;
+      border-radius: var(--acc-radius-md);
+      border: 1px solid transparent;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      background: transparent;
+      color: var(--acc-text);
+      transition: background 140ms ease, border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+      min-width: 0;
+    }
+    .set-nav-item:hover { background: var(--acc-btn-quiet-bg); border-color: var(--acc-btn-quiet-border); }
+    .set-nav-item:active { transform: translateY(1px); }
+    .set-nav-item.active {
+      background: var(--acc-btn-primary-bg);
+      color: var(--acc-btn-primary-fg);
+      border-color: var(--acc-btn-primary-border);
+      box-shadow: var(--acc-shadow-soft);
+    }
+
+    .set-nav-label {
+      font-size: 13px;
+      font-weight: 850;
+      letter-spacing: -0.1px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      min-width: 0;
+    }
+
+    .set-main {
+      min-width: 0;
+      display: grid;
+      gap: 14px;
+    }
+
+    .set-header {
+      padding: 0 6px;
+    }
+
+    .set-header-title {
+      font-size: 20px;
+      font-weight: 850;
+      letter-spacing: -0.2px;
+      color: var(--acc-text);
+    }
+
+    .set-header-sub {
+      margin-top: 6px;
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--acc-muted);
+    }
+
+    .acc-tabs {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px;
+      border-radius: 999px;
+      border: 1px solid var(--acc-border);
+      background: var(--acc-btn-secondary-bg);
+      box-shadow: var(--acc-shadow-soft);
+      backdrop-filter: var(--acc-blur);
+      -webkit-backdrop-filter: var(--acc-blur);
+      margin: 0 6px;
+      overflow: auto;
+    }
+
+    .acc-tab {
+      flex: 0 0 auto;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      font-size: 13px;
+      font-weight: 850;
+      letter-spacing: -0.1px;
+      color: var(--acc-text);
+      background: transparent;
+      transition: background 140ms ease, box-shadow 140ms ease, transform 140ms ease, border-color 140ms ease, color 140ms ease;
+      white-space: nowrap;
+    }
+    .acc-tab:hover { box-shadow: var(--acc-shadow-soft); transform: translateY(-1px); }
+    .acc-tab:active { transform: translateY(0); }
+    .acc-tab.active {
+      background: var(--acc-btn-primary-bg);
+      color: var(--acc-btn-primary-fg);
+      border-color: var(--acc-btn-primary-border);
+      box-shadow: var(--acc-shadow-soft);
+    }
+
+    .acc-card {
+      background: var(--acc-card-bg);
+      border: 1px solid var(--acc-border);
+      border-radius: var(--acc-radius-xl);
+      box-shadow: var(--acc-shadow);
+      backdrop-filter: var(--acc-blur);
+      -webkit-backdrop-filter: var(--acc-blur);
+      padding: 20px;
+      min-width: 0;
+    }
+
+    .acc-card-title {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 850;
+      letter-spacing: -0.2px;
+      color: var(--acc-text);
+    }
+
+    .acc-card-sub {
+      margin: 8px 0 0 0;
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--acc-muted);
+    }
+
+    .acc-divider {
+      height: 1px;
+      background: var(--acc-border);
+      margin: 16px 0;
+    }
+
+    .acc-btn {
+      height: 42px;
+      padding: 10px 16px;
+      min-width: 96px;
+      border-radius: var(--acc-radius-sm);
+      border: 1px solid var(--acc-btn-secondary-border);
+      background: var(--acc-btn-secondary-bg);
+      color: var(--acc-btn-secondary-fg);
+      font-size: 14px;
+      font-weight: 750;
+      letter-spacing: -0.1px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: transform 150ms ease, box-shadow 150ms ease, background 150ms ease, border-color 150ms ease, color 150ms ease;
+      white-space: nowrap;
+    }
+    .acc-btn:hover { transform: translateY(-1px); box-shadow: var(--acc-shadow-hover); }
+    .acc-btn:active { transform: translateY(0); }
+    .acc-btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    .acc-btn-primary {
+      background: var(--acc-btn-primary-bg);
+      color: var(--acc-btn-primary-fg);
+      border-color: var(--acc-btn-primary-border);
+    }
+    .acc-btn-secondary {
+      background: var(--acc-btn-quiet-bg);
+      color: var(--acc-text);
+      border-color: var(--acc-btn-quiet-border);
+    }
+
+    .acc-input,
+    .acc-textarea {
+      width: 100%;
+      border-radius: var(--acc-radius-sm);
+      border: 1px solid var(--acc-border);
+      background: rgba(255, 255, 255, 0.80);
+      color: var(--acc-text);
+      padding: 10px 12px;
+      font-size: 14px;
+      outline: none;
+      transition: box-shadow 150ms ease, border-color 150ms ease, background 150ms ease;
+      min-width: 0;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    body.dark-mode .acc-input,
+    body.dark-mode .acc-textarea {
+      background: rgba(0, 0, 0, 0.20);
+    }
+    .acc-input:focus,
+    .acc-textarea:focus { border-color: var(--acc-focus-border); box-shadow: 0 0 0 3px var(--acc-focus-ring); }
+    .acc-input[readonly],
+    .acc-textarea[readonly] { opacity: 0.82; }
+
+    .acc-textarea { min-height: 92px; resize: vertical; line-height: 1.6; }
+
+    .acc-field { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+    .acc-label { font-size: 12px; color: var(--acc-muted); letter-spacing: -0.1px; }
+    .acc-help { font-size: 12px; color: var(--acc-muted); line-height: 1.5; }
+
+    .acc-msg {
+      padding: 12px 14px;
+      border-radius: var(--acc-radius-md);
+      border: 1px solid var(--acc-btn-quiet-border);
+      background: var(--acc-btn-quiet-bg);
+      color: var(--acc-text);
+      font-size: 13px;
+      line-height: 1.6;
+      display: none;
+      margin: 0 6px;
+    }
+
+    .acc-modal-overlay {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.52);
+      z-index: 9999;
+      padding: 18px;
+      box-sizing: border-box;
+    }
+
+    .acc-modal {
+      width: 100%;
+      max-width: 520px;
+      background: rgba(255, 255, 255, 0.92);
+      border-radius: var(--acc-radius-xl);
+      border: 1px solid var(--acc-border);
+      box-shadow: var(--acc-shadow-hover);
+      padding: 18px;
+      backdrop-filter: var(--acc-blur);
+      -webkit-backdrop-filter: var(--acc-blur);
+      max-height: calc(100vh - 36px);
+      overflow: auto;
+    }
+    body.dark-mode .acc-modal { background: rgba(28, 28, 30, 0.90); }
+
+    .acc-modal-title { margin: 0; font-size: 16px; font-weight: 900; letter-spacing: -0.2px; color: var(--acc-text); }
+    .acc-modal-sub { margin: 6px 0 0 0; font-size: 13px; line-height: 1.6; color: var(--acc-muted); }
+    .acc-modal-actions { margin-top: 14px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+
+    @media (max-width: 980px) {
+      .set-layout { grid-template-columns: 1fr; }
+      .set-side-card {
+        position: relative;
+        top: auto;
+        padding: 10px;
+      }
+      .set-side-title { display: none; }
+      .set-nav {
+        grid-auto-flow: column;
+        grid-auto-columns: max-content;
+        display: grid;
+        overflow: auto;
+      }
+      .set-nav-item { height: 38px; }
+      .set-header-title { font-size: 18px; }
+      .acc-card { padding: 16px; }
+    }
+  </style>
+  {% block settings_head_extra %}{% endblock %}
+{% endblock %}
+
+{% block content %}
+  <div class="set-wrap">
+    <div class="set-layout">
+      <aside class="set-side-card">
+        <div class="set-side-title">设置</div>
+        <nav class="set-nav" aria-label="设置分区">
+          <a class="set-nav-item {{ 'active' if request.path.startswith('/settings/account') else '' }}" href="/settings/account/profile">
+            <span class="set-nav-label">账号管理</span>
+          </a>
+          <a class="set-nav-item {{ 'active' if request.path.startswith('/settings/hotkeys') else '' }}" href="/settings/hotkeys">
+            <span class="set-nav-label">快捷键</span>
+          </a>
+          <a class="set-nav-item {{ 'active' if request.path.startswith('/settings/practice') else '' }}" href="/settings/practice">
+            <span class="set-nav-label">练习管理</span>
+          </a>
+          <a class="set-nav-item {{ 'active' if request.path.startswith('/settings/about') else '' }}" href="/settings/about">
+            <span class="set-nav-label">关于</span>
+          </a>
+        </nav>
+      </aside>
+
+      <section class="set-main">
+        <header class="set-header">
+          <div class="set-header-title">{% block settings_header_title %}设置{% endblock %}</div>
+          <div class="set-header-sub">{% block settings_header_sub %}{% endblock %}</div>
+        </header>
+
+        {% block settings_subnav %}{% endblock %}
+        {% block settings_content %}{% endblock %}
+      </section>
+    </div>
+  </div>
+{% endblock %}
+
+{% block body_end %}
+  {% block settings_body_end %}{% endblock %}
+{% endblock %}
+

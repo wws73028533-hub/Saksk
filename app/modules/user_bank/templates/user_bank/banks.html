@@ -800,7 +800,7 @@
 </style>
 {% endblock %}
 
-{% block content %}
+{% block page_content %}
 <div class="container">
     <!-- 统计卡片 -->
     <div class="stats-row">
@@ -839,6 +839,7 @@
             <div class="quick-link-list">
                 <a href="/public/banks" class="quick-link">题库广场</a>
                 <a href="/user/banks/shared" class="quick-link">收到的分享</a>
+                <a href="/user/banks/manage/shares" class="quick-link">分享管理</a>
                 <a href="/user/banks/add" class="quick-link">完整创建</a>
             </div>
         </div>
@@ -1044,7 +1045,7 @@
                             <a href="/user/banks/${bank.id}" class="action-item">
                                 <span class="action-text">题目管理</span>
                             </a>
-                            <a href="/user/banks/${bank.id}/quiz" class="action-item">
+                            <a href="/quiz?bank_id=${bank.id}" class="action-item">
                                 <span class="action-text">开始刷题</span>
                             </a>
                             <a href="/user/banks/${bank.id}/shares" class="action-item">

@@ -1,0 +1,376 @@
+{% extends "user_bank/base.html" %}
+
+{% block title %}分享管理{% endblock %}
+
+{% block page_content %}
+<a href="/user/banks/manage" class="nav-back">← 返回题库后台</a>
+
+<div class="page-header">
+    <h1 class="page-title">分享管理</h1>
+    <div class="header-actions">
+        <a href="/user/banks" class="btn btn-secondary">我的题库</a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="filter-row">
+        <input type="text" id="searchInput" class="form-input" placeholder="搜索题库名/分享码..." style="flex: 1; max-width: 360px;">
+        <select id="statusSelect" class="form-input form-select" style="width: 130px;">
+            <option value="">全部状态</option>
+            <option value="1">有效</option>
+            <option value="0">已撤销</option>
+        </select>
+        <select id="permSelect" class="form-input form-select" style="width: 130px;">
+            <option value="">全部权限</option>
+            <option value="read">只读</option>
+            <option value="copy">可复制</option>
+        </select>
+    </div>
+</div>
+
+<div id="shareList">
+    <div class="loading"></div>
+</div>
+
+<!-- 使用记录弹窗 -->
+<div class="modal-overlay" id="recordsModal" style="display:none;">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 style="margin:0;">使用记录</h3>
+            <button class="btn btn-secondary btn-sm" onclick="closeRecordsModal()">关闭</button>
+        </div>
+        <div id="recordsBody" style="margin-top: 12px;">
+            <div class="loading"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block head %}
+<style>
+    .filter-row {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .share-card {
+        background: var(--card-bg);
+        backdrop-filter: blur(30px);
+        border-radius: var(--radius-lg);
+        border: 0.5px solid var(--border-color);
+        padding: 20px;
+        margin-bottom: 16px;
+        transition: all 0.2s ease;
+    }
+    .share-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow);
+    }
+
+    .share-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+    .share-title {
+        font-size: 16px;
+        font-weight: 600;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        min-width: 0;
+    }
+    .share-title .bank-name {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .share-badges {
+        display: flex;
+        gap: 6px;
+        flex-shrink: 0;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+
+    .kv {
+        display: grid;
+        grid-template-columns: 86px 1fr;
+        gap: 10px;
+        font-size: 13px;
+        color: var(--text-sub);
+        margin-top: 12px;
+    }
+    .kv .k {
+        color: var(--text-sub);
+        white-space: nowrap;
+    }
+    .kv .v {
+        color: var(--text-color);
+        word-break: break-all;
+    }
+
+    .share-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid var(--border-color);
+        flex-wrap: wrap;
+    }
+
+    .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.35);
+        backdrop-filter: blur(10px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        z-index: 999;
+    }
+    .modal {
+        width: min(920px, 100%);
+        max-height: 80vh;
+        overflow: auto;
+        background: var(--card-bg-solid);
+        border: 0.5px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        padding: 20px;
+        box-shadow: var(--shadow-hover);
+    }
+    .modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    .records-table {
+        width: 100%;
+        border-collapse: collapse;
+        overflow: hidden;
+        border-radius: var(--radius-md);
+        border: 0.5px solid var(--border-color);
+    }
+    .records-table th,
+    .records-table td {
+        padding: 12px 14px;
+        text-align: left;
+        font-size: 14px;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .records-table th {
+        color: var(--text-sub);
+        font-weight: 600;
+        background: rgba(142, 142, 147, 0.08);
+    }
+    .records-table tr:last-child td { border-bottom: none; }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let allShares = [];
+
+    function isTrue(v) { return v === 1 || v === true || v === '1'; }
+
+    async function loadShares() {
+        try {
+            const res = await api('/user/banks/api/shares/all');
+            allShares = res.data.shares || [];
+            renderShares();
+        } catch (e) {
+            showToast(e.message, 'error');
+        }
+    }
+
+    function getFilteredShares() {
+        const keyword = document.getElementById('searchInput').value.trim().toLowerCase();
+        const status = document.getElementById('statusSelect').value;
+        const perm = document.getElementById('permSelect').value;
+
+        return (allShares || []).filter(s => {
+            if (status !== '') {
+                const wantActive = status === '1';
+                if (isTrue(s.is_active) !== wantActive) return false;
+            }
+            if (perm && (s.permission || '') !== perm) return false;
+            if (keyword) {
+                const bankName = (s.bank_name || '').toString().toLowerCase();
+                const code = (s.share_code || '').toString().toLowerCase();
+                const token = (s.share_token || '').toString().toLowerCase();
+                return bankName.includes(keyword) || code.includes(keyword) || token.includes(keyword);
+            }
+            return true;
+        });
+    }
+
+    function formatPerm(p) {
+        if (p === 'copy') return '可复制';
+        return '只读';
+    }
+
+    function safeText(v) {
+        return escapeHtml((v ?? '').toString());
+    }
+
+    async function copyText(text) {
+        const t = (text || '').toString();
+        if (!t) return;
+        try {
+            await navigator.clipboard.writeText(t);
+            showToast('已复制');
+        } catch (e) {
+            // fallback
+            const ta = document.createElement('textarea');
+            ta.value = t;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            ta.remove();
+            showToast('已复制');
+        }
+    }
+
+    async function revokeShare(bankId, shareId) {
+        if (!confirmAction('确定要撤销该分享吗？')) return;
+        try {
+            await api(`/user/banks/api/${bankId}/shares/${shareId}`, { method: 'DELETE' });
+            showToast('已撤销');
+            await loadShares();
+        } catch (e) {
+            showToast(e.message, 'error');
+        }
+    }
+
+    async function openRecordsModal(bankId, shareId) {
+        const modal = document.getElementById('recordsModal');
+        const body = document.getElementById('recordsBody');
+        if (!modal || !body) return;
+
+        modal.style.display = 'flex';
+        body.innerHTML = '<div class="loading"></div>';
+
+        try {
+            const res = await api(`/user/banks/api/${bankId}/shares/${shareId}/records`);
+            const records = (res.data && res.data.records) ? res.data.records : [];
+
+            if (!records.length) {
+                body.innerHTML = '<div class="card"><div class="empty-state"><p>暂无记录</p></div></div>';
+                return;
+            }
+
+            body.innerHTML = `
+                <table class="records-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 220px;">用户</th>
+                            <th style="width: 160px;">权限</th>
+                            <th style="width: 200px;">加入时间</th>
+                            <th style="width: 200px;">最后访问</th>
+                            <th style="width: 120px;">访问次数</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${records.map(r => `
+                            <tr>
+                                <td>${safeText(r.nickname || ('UID ' + r.user_id))}</td>
+                                <td>${safeText(formatPerm(r.permission))}</td>
+                                <td>${safeText(formatDate(r.created_at))}</td>
+                                <td>${safeText(formatDate(r.last_access_at))}</td>
+                                <td>${safeText(r.access_count || 0)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        } catch (e) {
+            body.innerHTML = `<div class="card"><div class="empty-state"><p>${safeText(e.message)}</p></div></div>`;
+        }
+    }
+
+    function closeRecordsModal() {
+        const modal = document.getElementById('recordsModal');
+        if (modal) modal.style.display = 'none';
+    }
+
+    function renderShares() {
+        const container = document.getElementById('shareList');
+        const shares = getFilteredShares();
+
+        if (!shares.length) {
+            container.innerHTML = `
+                <div class="card">
+                    <div class="empty-state">
+                        <p>暂无分享</p>
+                    </div>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = shares.map(s => {
+            const isActive = isTrue(s.is_active);
+            const statusBadge = isActive
+                ? '<span class="badge badge-success">有效</span>'
+                : '<span class="badge badge-secondary">已撤销</span>';
+            const permBadge = s.permission === 'copy'
+                ? '<span class="badge badge-primary">可复制</span>'
+                : '<span class="badge badge-secondary">只读</span>';
+
+            const shareType = s.share_code ? '分享码' : '链接';
+            const shareValue = s.share_code || s.share_link || '';
+
+            return `
+                <div class="share-card">
+                    <div class="share-header">
+                        <div class="share-title">
+                            <div class="bank-name">${safeText(s.bank_name || '-') }</div>
+                            <div style="font-size: 13px; color: var(--text-sub);">
+                                ${safeText(shareType)} · ${safeText(s.created_at ? formatDate(s.created_at) : '-')}
+                            </div>
+                        </div>
+                        <div class="share-badges">
+                            ${statusBadge}
+                            ${permBadge}
+                        </div>
+                    </div>
+
+                    <div class="kv">
+                        <div class="k">分享值</div>
+                        <div class="v">${safeText(shareValue || '-')}</div>
+                        <div class="k">有效期</div>
+                        <div class="v">${safeText(s.expires_at ? formatDate(s.expires_at) : '不限')}</div>
+                        <div class="k">次数</div>
+                        <div class="v">${safeText((s.used_count || 0) + (s.max_uses ? ` / ${s.max_uses}` : ''))}</div>
+                    </div>
+
+                    <div class="share-actions">
+                        ${s.share_code ? `<button class="btn btn-secondary btn-sm" onclick='copyText(${JSON.stringify(s.share_code)})'>复制分享码</button>` : ''}
+                        ${s.share_link ? `<button class="btn btn-secondary btn-sm" onclick='copyText(${JSON.stringify(s.share_link)})'>复制链接</button>` : ''}
+                        <button class="btn btn-secondary btn-sm" onclick="openRecordsModal(${s.bank_id}, ${s.id})">使用记录</button>
+                        <a class="btn btn-secondary btn-sm" href="/user/banks/${s.bank_id}/shares">进入该题库分享页</a>
+                        ${isActive ? `<button class="btn btn-danger btn-sm" onclick="revokeShare(${s.bank_id}, ${s.id})">撤销</button>` : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    document.getElementById('searchInput').addEventListener('input', () => renderShares());
+    document.getElementById('statusSelect').addEventListener('change', () => renderShares());
+    document.getElementById('permSelect').addEventListener('change', () => renderShares());
+    document.getElementById('recordsModal').addEventListener('click', (e) => {
+        if (e && e.target && e.target.id === 'recordsModal') closeRecordsModal();
+    });
+
+    loadShares();
+</script>
+{% endblock %}

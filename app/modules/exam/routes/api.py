@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """考试API路由"""
+import json
 from flask import Blueprint, request, jsonify, session
 from app.core.utils.database import get_db
 from app.core.utils.decorators import auth_required, current_user_id
@@ -20,13 +21,46 @@ def api_exams_create():
         return jsonify({'status': 'unauthorized', 'message': '请先登录'}), 401
 
     data = request.json or {}
+    source = (data.get('source') or 'public').strip().lower()
+    if source not in ('public', 'user_bank'):
+        source = 'public'
+
     subject = data.get('subject') or 'all'
     duration = data.get('duration') or 60
     types_cfg = data.get('types') or {}
     scores_cfg = data.get('scores') or {}
+
+    bank_id = data.get('bank_id')
+    bank_id_int = None
+
+    if source == 'user_bank':
+        try:
+            bank_id_int = int(bank_id)
+        except Exception:
+            bank_id_int = 0
+
+        if bank_id_int <= 0:
+            return jsonify({'status': 'error', 'message': '请选择个人题库'}), 400
+
+        from app.modules.user_bank.routes.api import check_bank_access
+
+        has_access, _permission, _access_type = check_bank_access(uid, bank_id_int)
+        if not has_access:
+            return jsonify({'status': 'error', 'message': '题库不存在或无权限'}), 403
+
+        conn = get_db()
+        bank = conn.execute(
+            "SELECT id, name FROM user_question_banks WHERE id=? AND status=1",
+            (bank_id_int,),
+        ).fetchone()
+        if not bank:
+            return jsonify({'status': 'error', 'message': '题库不存在或无权限'}), 404
+
+        # 兼容 exams.subject 字段：用于列表展示（公共/个人统一一个“范围”列）
+        subject = bank['name'] or f'题库#{bank_id_int}'
     
     # 如果指定了科目，检查用户是否有权限访问该科目
-    if subject != 'all':
+    if source != 'user_bank' and subject != 'all':
         conn = get_db()
         subject_row = conn.execute(
             'SELECT id FROM subjects WHERE name = ?',
@@ -41,7 +75,10 @@ def api_exams_create():
                     'message': '您没有权限访问该科目'
                 }), 403
 
-    exam_id = Exam.create(uid, subject, duration, types_cfg, scores_cfg)
+    try:
+        exam_id = Exam.create(uid, subject, duration, types_cfg, scores_cfg, source=source, bank_id=bank_id_int)
+    except ValueError:
+        return jsonify({'status': 'error', 'message': '创建考试失败：参数不合法'}), 400
     return jsonify({'status': 'success', 'exam_id': exam_id})
 
 
@@ -193,6 +230,27 @@ def api_exam_to_mistakes(exam_id):
     
     if exam['status'] != 'submitted':
         return jsonify({'status':'error','message':'请在提交考试后再加入错题本'}), 400
+
+    cfg = {}
+    try:
+        cfg = json.loads(exam['config_json'] or '{}')
+        if not isinstance(cfg, dict):
+            cfg = {}
+    except Exception:
+        cfg = {}
+
+    source = (cfg.get('source') or 'public').strip().lower()
+    if source not in ('public', 'user_bank'):
+        source = 'public'
+
+    bank_id_val = None
+    if source == 'user_bank':
+        try:
+            bank_id_val = int(cfg.get('bank_id') or 0)
+        except Exception:
+            bank_id_val = 0
+        if not bank_id_val:
+            return jsonify({'status': 'error', 'message': '该考试缺少题库信息，无法加入错题本'}), 400
     
     wrongs = conn.execute(
         'SELECT question_id FROM exam_questions WHERE exam_id=? AND (is_correct IS NULL OR is_correct=0)',
@@ -202,13 +260,28 @@ def api_exam_to_mistakes(exam_id):
     count = 0
     for r in wrongs:
         qid = r['question_id']
-        conn.execute("""
-            INSERT INTO mistakes (user_id, question_id, wrong_count)
-            VALUES (?, ?, 1)
-            ON CONFLICT(user_id, question_id) DO UPDATE SET wrong_count = wrong_count + 1
-        """, (uid, qid))
+        if source == 'user_bank':
+            conn.execute(
+                """
+                INSERT INTO user_bank_mistakes (user_id, bank_id, question_id, wrong_count)
+                VALUES (?, ?, ?, 1)
+                ON CONFLICT(user_id, question_id) DO UPDATE SET
+                  wrong_count = wrong_count + 1,
+                  bank_id = excluded.bank_id,
+                  updated_at = CURRENT_TIMESTAMP
+                """,
+                (uid, int(bank_id_val), qid),
+            )
+        else:
+            conn.execute(
+                """
+                INSERT INTO mistakes (user_id, question_id, wrong_count)
+                VALUES (?, ?, 1)
+                ON CONFLICT(user_id, question_id) DO UPDATE SET wrong_count = wrong_count + 1
+                """,
+                (uid, qid),
+            )
         count += 1
     
     conn.commit()
     return jsonify({'status':'success','count': count})
-

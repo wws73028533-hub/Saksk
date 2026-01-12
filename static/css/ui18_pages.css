@@ -1,0 +1,423 @@
+/* UI18 Pages (Favorites / Mistakes / Progress)
+   Scoped helpers to keep the iOS 18 minimal, monochrome, glass look. */
+
+.ui18-page {
+  max-width: 980px;
+  margin: 0 auto;
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.ui18-header,
+.ui18-card {
+  border-radius: 18px;
+  background: var(--app-surface-2);
+  border: 1px solid var(--app-border);
+  box-shadow: var(--app-shadow-soft);
+  backdrop-filter: blur(22px) saturate(180%);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  min-width: 0;
+}
+
+.ui18-header {
+  padding: 16px 16px 14px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ui18-header-left {
+  min-width: 0;
+}
+
+.ui18-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 850;
+  letter-spacing: -0.25px;
+  line-height: 1.2;
+}
+
+.ui18-sub {
+  margin-top: 6px;
+  color: var(--app-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.ui18-meta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.ui18-pill {
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--app-border);
+  background: rgba(148, 163, 184, 0.10);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--app-text);
+  box-shadow: var(--app-shadow-soft);
+  white-space: nowrap;
+}
+
+.ui18-pill .k {
+  color: var(--app-muted);
+  font-weight: 750;
+}
+
+.ui18-pill .v {
+  font-weight: 900;
+  letter-spacing: -0.2px;
+}
+
+.ui18-card {
+  padding: 16px;
+}
+
+.ui18-card h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 850;
+  letter-spacing: -0.2px;
+}
+
+.ui18-card .sub {
+  margin-top: 6px;
+  color: var(--app-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.ui18-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.ui18-stat {
+  border-radius: 14px;
+  border: 1px solid var(--app-border);
+  background: rgba(148, 163, 184, 0.10);
+  padding: 12px;
+  min-width: 0;
+}
+
+.ui18-stat .k {
+  color: var(--app-muted);
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+
+.ui18-stat .v {
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: -0.3px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ui18-page .chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.ui18-page .chip {
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--app-border);
+  background: rgba(148, 163, 184, 0.10);
+  color: var(--app-text);
+  font-weight: 850;
+  font-size: 13px;
+  cursor: pointer;
+  transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ui18-page .chip:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--app-shadow);
+  background: rgba(148, 163, 184, 0.14);
+}
+
+.ui18-page .chip:active {
+  transform: translateY(0);
+}
+
+.ui18-page .chip:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.12), var(--app-shadow-soft);
+}
+
+body.dark-mode .ui18-page .chip:focus {
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.16), var(--app-shadow-soft);
+}
+
+.ui18-page .chip.active {
+  background: var(--app-text);
+  color: var(--app-bg);
+  border-color: color-mix(in srgb, var(--app-text) 60%, var(--app-border));
+}
+
+body.dark-mode .ui18-page .chip.active {
+  background: rgba(226, 232, 240, 0.92);
+  color: var(--app-bg);
+  border-color: rgba(226, 232, 240, 0.18);
+}
+
+.ui18-page .mini-badge {
+  height: 18px;
+  min-width: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.20);
+  color: var(--app-text);
+  font-size: 11px;
+  font-weight: 900;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+body.dark-mode .ui18-page .mini-badge {
+  background: rgba(226, 232, 240, 0.14);
+}
+
+.ui18-page .toggles {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.ui18-page .toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--app-border);
+  background: rgba(148, 163, 184, 0.10);
+}
+
+.ui18-page .toggle .label {
+  font-weight: 850;
+  font-size: 13px;
+  letter-spacing: -0.1px;
+}
+
+.ui18-page .toggle .desc {
+  font-size: 12px;
+  color: var(--app-muted);
+  margin-top: 4px;
+  line-height: 1.35;
+}
+
+.ui18-page .switch {
+  position: relative;
+  width: 46px;
+  height: 28px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.26);
+  border: 1px solid var(--app-border);
+  cursor: pointer;
+  flex: 0 0 auto;
+  transition: background 140ms ease;
+}
+
+.ui18-page .switch::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--app-surface);
+  box-shadow: var(--app-shadow-soft);
+  transition: transform 140ms ease;
+}
+
+.ui18-page .switch.on {
+  background: rgba(15, 23, 42, 0.62);
+}
+
+body.dark-mode .ui18-page .switch.on {
+  background: rgba(226, 232, 240, 0.52);
+}
+
+.ui18-page .switch.on::after {
+  transform: translateX(18px);
+}
+
+.ui18-page .actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.ui18-page .btn {
+  height: 46px;
+  border-radius: 14px;
+  border: 1px solid var(--app-border);
+  background: rgba(148, 163, 184, 0.10);
+  color: var(--app-text);
+  font-size: 14px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease;
+  min-width: 0;
+}
+
+.ui18-page .btn:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--app-shadow);
+  background: rgba(148, 163, 184, 0.14);
+}
+
+.ui18-page .btn:active {
+  transform: translateY(0);
+}
+
+.ui18-page .btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.12), var(--app-shadow-soft);
+}
+
+body.dark-mode .ui18-page .btn:focus {
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.16), var(--app-shadow-soft);
+}
+
+.ui18-page .btn.primary {
+  background: var(--app-text);
+  color: var(--app-bg);
+  border-color: color-mix(in srgb, var(--app-text) 60%, var(--app-border));
+}
+
+body.dark-mode .ui18-page .btn.primary {
+  background: rgba(226, 232, 240, 0.92);
+  color: var(--app-bg);
+  border-color: rgba(226, 232, 240, 0.18);
+}
+
+/* Progress table */
+.ui18-table-wrap {
+  margin-top: 12px;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 14px;
+  border: 1px solid var(--app-border);
+  background: color-mix(in srgb, var(--app-surface) 80%, transparent);
+  box-shadow: var(--app-shadow-soft);
+}
+
+.ui18-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: transparent;
+}
+
+.ui18-table thead {
+  background: color-mix(in srgb, var(--app-surface) 80%, transparent);
+}
+
+.ui18-table th,
+.ui18-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--app-border);
+  text-align: left;
+  vertical-align: top;
+  font-size: 13px;
+}
+
+.ui18-table th {
+  color: var(--app-muted);
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  font-size: 12px;
+}
+
+.ui18-table tbody tr:hover {
+  background: rgba(148, 163, 184, 0.08);
+}
+
+body.dark-mode .ui18-table tbody tr:hover {
+  background: rgba(226, 232, 240, 0.06);
+}
+
+.ui18-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--app-border);
+  background: rgba(148, 163, 184, 0.10);
+  font-weight: 900;
+  font-size: 12px;
+  letter-spacing: -0.1px;
+  white-space: nowrap;
+}
+
+.ui18-badge svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+
+.ui18-code {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--app-muted);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.ui18-empty {
+  padding: 28px 16px;
+  text-align: center;
+  color: var(--app-muted);
+  font-size: 13px;
+}
+
+@media (max-width: 560px) {
+  .ui18-stats,
+  .ui18-page .actions {
+    grid-template-columns: 1fr;
+  }
+
+  .ui18-table th,
+  .ui18-table td {
+    padding: 10px 12px;
+  }
+}

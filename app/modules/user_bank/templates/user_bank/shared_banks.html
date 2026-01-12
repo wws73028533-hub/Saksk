@@ -2,7 +2,7 @@
 
 {% block title %}收到的分享{% endblock %}
 
-{% block content %}
+{% block page_content %}
 <a href="/user/banks" class="nav-back">← 返回我的题库</a>
 
 <div class="page-header">
@@ -185,7 +185,7 @@
                     <span>访问 ${bank.access_count || 0} 次</span>
                 </div>
                 <div class="shared-actions">
-                    <a href="/user/banks/${bank.bank_id}/quiz" class="btn btn-primary btn-sm">开始刷题</a>
+                    <a href="/quiz?bank_id=${bank.bank_id}" class="btn btn-primary btn-sm">开始刷题</a>
                     <a href="/user/banks/${bank.bank_id}" class="btn btn-secondary btn-sm">查看题目</a>
                     <button type="button" class="btn btn-delete btn-sm" onclick="removeShared(${bank.bank_id}, '${escapeHtml(bank.bank_name).replace(/'/g, "\\'")}')">移除</button>
                 </div>

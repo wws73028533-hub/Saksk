@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#F6F7F8" />
+  <title>{% block title %}SAK{% endblock %}</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Crect width='128' height='128' rx='24' fill='%23111827'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='central' text-anchor='middle' font-size='88' fill='white'%3ES%3C/text%3E%3C/svg%3E" />
+
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem('theme');
+        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var theme = stored || (prefersDark ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', theme);
+
+        var collapsed = localStorage.getItem('sidebar_collapsed') === '1';
+        document.documentElement.classList.toggle('sidebar-collapsed', collapsed);
+      } catch (e) {}
+    })();
+  </script>
+
+  <style>
+    :root {
+      --app-bg: #f6f7f8;
+      --app-surface: #ffffff;
+      --app-surface-2: rgba(255, 255, 255, 0.78);
+      --app-text: #111827;
+      --app-muted: #6b7280;
+      --app-border: #e5e7eb;
+      --app-primary: #111827;
+      --app-primary-soft: rgba(17, 24, 39, 0.08);
+      --app-cta: #111827;
+      --app-shadow: 0 10px 30px rgba(2, 6, 23, 0.06);
+      --app-shadow-soft: 0 2px 10px rgba(2, 6, 23, 0.05);
+      --app-radius-xl: 18px;
+      --app-radius-lg: 14px;
+      --app-radius-md: 12px;
+      --app-radius-sm: 10px;
+      --app-sidebar-w: 264px;
+      --app-sidebar-w-collapsed: 76px;
+      --app-topbar-h: 56px;
+    }
+
+    html[data-theme="dark"] {
+      --app-bg: #0b0b0c;
+      --app-surface: rgba(17, 17, 19, 0.92);
+      --app-surface-2: rgba(17, 17, 19, 0.72);
+      --app-text: #f3f4f6;
+      --app-muted: #a1a1aa;
+      --app-border: rgba(243, 244, 246, 0.14);
+      --app-primary: #f3f4f6;
+      --app-primary-soft: rgba(243, 244, 246, 0.12);
+      --app-shadow: 0 16px 44px rgba(0, 0, 0, 0.35);
+      --app-shadow-soft: 0 8px 22px rgba(0, 0, 0, 0.25);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    html { scrollbar-gutter: stable; }
+    @supports not (scrollbar-gutter: stable) {
+      html { overflow-y: scroll; }
+    }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Arial, "Noto Sans", sans-serif;
+      background: var(--app-bg);
+      color: var(--app-text);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    a { color: inherit; text-decoration: none; }
+    button, input { font-family: inherit; }
+
+    .app-skip-link {
+      position: absolute;
+      left: 10px;
+      top: 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: var(--app-surface);
+      border: 1px solid var(--app-border);
+      box-shadow: var(--app-shadow-soft);
+      transform: translateY(-160%);
+      transition: transform 120ms ease;
+      z-index: 9999;
+    }
+    .app-skip-link:focus { transform: translateY(0); outline: none; box-shadow: 0 0 0 3px var(--app-primary-soft), var(--app-shadow-soft); }
+
+    .app-shell {
+      min-height: 100vh;
+      display: flex;
+      background: var(--app-bg);
+    }
+
+    .app-sidebar {
+      width: var(--app-sidebar-w);
+      flex: 0 0 auto;
+      border-right: 1px solid var(--app-border);
+      background: color-mix(in srgb, var(--app-surface) 78%, transparent);
+      backdrop-filter: blur(22px) saturate(180%);
+      -webkit-backdrop-filter: blur(22px) saturate(180%);
+      padding: 12px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
+
+    .app-body {
+      flex: 1 1 auto;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .app-topbar {
+      height: var(--app-topbar-h);
+      flex: 0 0 auto;
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: calc(env(safe-area-inset-top) + 10px) 14px 10px;
+      background: color-mix(in srgb, var(--app-bg) 75%, transparent);
+      backdrop-filter: blur(22px) saturate(180%);
+      -webkit-backdrop-filter: blur(22px) saturate(180%);
+      border-bottom: 1px solid var(--app-border);
+    }
+
+    .app-topbar-left, .app-topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .app-topbar-title {
+      min-width: 0;
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: -0.2px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .app-top-practice {
+      height: 36px;
+      border-radius: 999px;
+      border: 1px solid color-mix(in srgb, var(--app-primary) 35%, var(--app-border));
+      background: color-mix(in srgb, var(--app-primary) 12%, var(--app-surface));
+      padding: 0 12px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-weight: 850;
+      font-size: 13px;
+      letter-spacing: -0.1px;
+      box-shadow: var(--app-shadow-soft);
+      transition: box-shadow 140ms ease, transform 140ms ease;
+      white-space: nowrap;
+    }
+    .app-top-practice:hover { box-shadow: var(--app-shadow); transform: translateY(-1px); }
+    .app-top-practice:active { transform: translateY(0); }
+    .app-top-practice:focus { outline: none; box-shadow: 0 0 0 3px var(--app-primary-soft), var(--app-shadow-soft); }
+
+    .app-icon-btn {
+      height: 36px;
+      width: 36px;
+      border-radius: 999px;
+      border: 1px solid var(--app-border);
+      background: var(--app-surface-2);
+      box-shadow: var(--app-shadow-soft);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+    }
+    .app-icon-btn:hover { box-shadow: var(--app-shadow); transform: translateY(-1px); }
+    .app-icon-btn:active { transform: translateY(0); }
+    .app-icon-btn:focus { outline: none; box-shadow: 0 0 0 3px var(--app-primary-soft), var(--app-shadow-soft); }
+
+    .app-icon {
+      width: 18px;
+      height: 18px;
+      display: block;
+      color: var(--app-text);
+    }
+
+    .app-hamburger { display: none; }
+
+    .app-main {
+      flex: 1 1 auto;
+      min-width: 0;
+      padding: 14px;
+    }
+
+    .app-container {
+      width: 100%;
+      max-width: 1120px;
+      margin: 0 auto;
+      min-width: 0;
+    }
+
+    .app-card {
+      border: 1px solid var(--app-border);
+      border-radius: var(--app-radius-xl);
+      background: var(--app-surface-2);
+      box-shadow: var(--app-shadow-soft);
+    }
+    .app-card-solid { background: var(--app-surface); }
+
+    .app-input {
+      height: 40px;
+      border-radius: 12px;
+      border: 1px solid var(--app-border);
+      background: var(--app-surface);
+      padding: 0 12px;
+      font-size: 13px;
+      color: var(--app-text);
+      outline: none;
+      min-width: 0;
+    }
+    .app-input:focus { box-shadow: 0 0 0 3px var(--app-primary-soft); }
+
+    .app-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--app-border);
+      background: var(--app-surface);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: -0.1px;
+      color: var(--app-text);
+      white-space: nowrap;
+    }
+
+    .app-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(2, 6, 23, 0.42);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 160ms ease;
+      z-index: 60;
+    }
+
+    :is(html.sidebar-collapsed .app-shell, .app-shell.sidebar-collapsed) .app-sidebar { width: var(--app-sidebar-w-collapsed); padding: 10px; }
+    :is(html.sidebar-collapsed .app-shell, .app-shell.sidebar-collapsed) .app-sidebar .app-nav-label,
+    :is(html.sidebar-collapsed .app-shell, .app-shell.sidebar-collapsed) .app-sidebar .app-nav-title,
+    :is(html.sidebar-collapsed .app-shell, .app-shell.sidebar-collapsed) .app-sidebar .app-cta-title,
+    :is(html.sidebar-collapsed .app-shell, .app-shell.sidebar-collapsed) .app-sidebar .app-cta-meta,
+    :is(html.sidebar-collapsed .app-shell, .app-shell.sidebar-collapsed) .app-sidebar .app-search,
+    :is(html.sidebar-collapsed .app-shell, .app-shell.sidebar-collapsed) .app-sidebar .app-cta-secondary,
+    :is(html.sidebar-collapsed .app-shell, .app-shell.sidebar-collapsed) .app-sidebar .app-user,
+    :is(html.sidebar-collapsed .app-shell, .app-shell.sidebar-collapsed) .app-sidebar .app-brand-text { display: none; }
+    :is(html.sidebar-collapsed .app-shell, .app-shell.sidebar-collapsed) .app-sidebar .app-brand { justify-content: center; padding: 8px; }
+    :is(html.sidebar-collapsed .app-shell, .app-shell.sidebar-collapsed) .app-sidebar .app-brand-dot {
+      width: 32px;
+      height: 32px;
+      border-radius: 12px;
+      box-shadow: 0 0 0 3px var(--app-primary-soft);
+    }
+    :is(html.sidebar-collapsed .app-shell, .app-shell.sidebar-collapsed) .app-sidebar .app-brand-dot::after { content: 'S'; color: var(--app-bg); font-weight: 950; font-size: 15px; }
+
+    :is(html.sidebar-collapsed .app-shell, .app-shell.sidebar-collapsed) .app-sidebar .app-cta { padding: 6px; overflow: hidden; }
+    :is(html.sidebar-collapsed .app-shell, .app-shell.sidebar-collapsed) .app-sidebar .app-cta-actions { place-items: center; margin-top: 0; }
+    :is(html.sidebar-collapsed .app-shell, .app-shell.sidebar-collapsed) .app-sidebar .app-cta-primary { width: 40px; height: 40px; padding: 0; border-radius: 12px; justify-content: center; box-shadow: none; }
+    :is(html.sidebar-collapsed .app-shell, .app-shell.sidebar-collapsed) .app-sidebar .app-cta-primary:hover { box-shadow: none; transform: none; }
+    :is(html.sidebar-collapsed .app-shell, .app-shell.sidebar-collapsed) .app-sidebar .app-cta-primary:active { transform: none; }
+    :is(html.sidebar-collapsed .app-shell, .app-shell.sidebar-collapsed) .app-sidebar .app-cta-primary .app-btn-text { display: none; }
+
+    :is(html.sidebar-collapsed .app-shell, .app-shell.sidebar-collapsed) .app-sidebar .app-nav-item { justify-content: center; padding: 0; }
+    :is(html.sidebar-collapsed .app-shell, .app-shell.sidebar-collapsed) .app-sidebar .app-footer-row { justify-content: center; }
+    .app-shell .app-sidebar #appSidebarCollapse .app-nav-icon { transition: transform 160ms ease; }
+    :is(html.sidebar-collapsed .app-shell, .app-shell.sidebar-collapsed) .app-sidebar #appSidebarCollapse .app-nav-icon { transform: rotate(180deg); }
+
+    @media (max-width: 860px) {
+      .app-sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        height: auto;
+        transform: translateX(-102%);
+        transition: transform 180ms ease;
+        z-index: 80;
+        width: min(var(--app-sidebar-w), calc(100vw - 56px));
+        box-shadow: var(--app-shadow);
+        border-right: 1px solid var(--app-border);
+      }
+      .app-hamburger { display: inline-flex; }
+      .app-top-practice { display: inline-flex; }
+      .app-shell.sidebar-open .app-sidebar { transform: translateX(0); }
+      .app-shell.sidebar-open + .app-overlay { opacity: 1; pointer-events: auto; }
+    }
+  </style>
+
+  {% block head_extra %}{% endblock %}
+</head>
+<body>
+  <a class="app-skip-link" href="#main">跳到主要内容</a>
+
+  <div class="app-shell" id="appShell">
+    <aside class="app-sidebar" id="appSidebar" aria-label="侧边栏导航">
+      {% include 'main/_app_sidebar.html' %}
+    </aside>
+
+    <div class="app-body">
+      <header class="app-topbar">
+        <div class="app-topbar-left">
+          <button class="app-icon-btn app-hamburger" type="button" id="appHamburger" aria-label="打开侧边栏" aria-controls="appSidebar" aria-expanded="false">
+            <svg class="app-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </button>
+
+          <div class="app-topbar-title">
+            {% block page_title %}SAK{% endblock %}
+          </div>
+        </div>
+
+        <div class="app-topbar-actions">
+          <a class="app-top-practice" id="appTopPractice" href="/" data-mode="start">开始练习</a>
+          {% block topbar_actions %}{% endblock %}
+
+          <button class="app-icon-btn" type="button" id="appThemeToggle" aria-label="切换主题">
+            <img src="/static/icons/theme-moon.svg" alt="" style="width:18px;height:18px;display:block;opacity:.9;" />
+          </button>
+        </div>
+      </header>
+
+      <main class="app-main" id="main">
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+
+  <div class="app-overlay" id="appOverlay" aria-hidden="true"></div>
+
+  <script>
+    (function () {
+      var root = document.documentElement;
+      var shell = document.getElementById('appShell');
+      var sidebar = document.getElementById('appSidebar');
+      var overlay = document.getElementById('appOverlay');
+      var hamburger = document.getElementById('appHamburger');
+      var themeToggle = document.getElementById('appThemeToggle');
+
+      function getTheme() {
+        try {
+          return localStorage.getItem('theme') || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        } catch (e) {
+          return 'light';
+        }
+      }
+
+      function applyTheme(theme) {
+        root.setAttribute('data-theme', theme);
+        try {
+          document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#0B0B0C' : '#F6F7F8');
+        } catch (e) {}
+        if (theme === 'dark') {
+          document.body.classList.add('dark-mode');
+          themeToggle?.querySelector('img')?.setAttribute('src', '/static/icons/theme-sun.svg');
+        } else {
+          document.body.classList.remove('dark-mode');
+          themeToggle?.querySelector('img')?.setAttribute('src', '/static/icons/theme-moon.svg');
+        }
+      }
+
+      function setTheme(theme) {
+        try { localStorage.setItem('theme', theme); } catch (e) {}
+        applyTheme(theme);
+      }
+
+      function getCollapsed() {
+        try { return localStorage.getItem('sidebar_collapsed') === '1'; } catch (e) { return false; }
+      }
+      function setCollapsed(collapsed) {
+        try { localStorage.setItem('sidebar_collapsed', collapsed ? '1' : '0'); } catch (e) {}
+        root.classList.toggle('sidebar-collapsed', !!collapsed);
+        shell.classList.toggle('sidebar-collapsed', !!collapsed);
+      }
+
+      function openSidebar() {
+        shell.classList.add('sidebar-open');
+        hamburger?.setAttribute('aria-expanded', 'true');
+        overlay?.setAttribute('aria-hidden', 'false');
+      }
+      function closeSidebar() {
+        shell.classList.remove('sidebar-open');
+        hamburger?.setAttribute('aria-expanded', 'false');
+        overlay?.setAttribute('aria-hidden', 'true');
+      }
+      function toggleSidebar() {
+        if (shell.classList.contains('sidebar-open')) closeSidebar();
+        else openSidebar();
+      }
+
+      function setupPracticeCTA() {
+        var primary = document.getElementById('appPracticePrimary');
+        var meta = document.getElementById('appPracticeMeta');
+        var top = document.getElementById('appTopPractice');
+        var url = null;
+        try { url = (localStorage.getItem('sak:lastPracticeUrl') || '').trim(); } catch (e) {}
+
+        var hasUrl = !!url;
+        var href = hasUrl ? url : '/';
+        var mode = hasUrl ? 'continue' : 'start';
+        var label = hasUrl ? '继续上次' : '开始练习';
+        var metaText = hasUrl ? '继续你上次的练习进度' : '从公共题库或个人题库开始';
+
+        if (primary) {
+          primary.setAttribute('href', href);
+          primary.setAttribute('data-mode', mode);
+          primary.querySelector('.app-btn-text') && (primary.querySelector('.app-btn-text').textContent = label);
+          primary.setAttribute('aria-label', label);
+          primary.setAttribute('title', label);
+        }
+        if (meta) meta.textContent = metaText;
+        if (top) {
+          top.setAttribute('href', href);
+          top.setAttribute('data-mode', mode);
+          top.textContent = label;
+          top.setAttribute('title', label);
+        }
+      }
+
+      // init theme + collapsed
+      applyTheme(getTheme());
+      setCollapsed(getCollapsed());
+      setupPracticeCTA();
+
+      themeToggle?.addEventListener('click', function () {
+        var next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        setTheme(next);
+      });
+
+      hamburger?.addEventListener('click', toggleSidebar);
+      overlay?.addEventListener('click', closeSidebar);
+      window.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') closeSidebar();
+      });
+
+      // collapse toggle
+      document.getElementById('appSidebarCollapse')?.addEventListener('click', function () {
+        setCollapsed(!shell.classList.contains('sidebar-collapsed'));
+      });
+
+      // close sidebar on nav (mobile)
+      sidebar?.addEventListener('click', function (e) {
+        var a = e.target && (e.target.closest ? e.target.closest('a') : null);
+        if (!a) return;
+        if (window.matchMedia && window.matchMedia('(max-width: 860px)').matches) closeSidebar();
+      });
+    })();
+  </script>
+
+  {% block body_end %}{% endblock %}
+</body>
+</html>

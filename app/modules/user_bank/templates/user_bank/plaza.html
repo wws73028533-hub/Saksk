@@ -1,11 +1,19 @@
 {% extends "user_bank/base.html" %}
 
-{% block title %}题库广场{% endblock %}
+{% set page_view = view or 'public' %}
+{% block title %}{{ '我的题库' if page_view == 'my' else '题库广场' }}{% endblock %}
 
-{% block content %}
+{% block page_content %}
 <div class="page-header">
-    <h1 class="page-title">题库广场</h1>
-    <a href="/user/banks" class="btn btn-secondary">我的题库</a>
+    <h1 class="page-title">{{ '我的题库' if page_view == 'my' else '题库广场' }}</h1>
+    <div class="header-actions">
+        {% if page_view == 'my' %}
+            <a href="/public/banks" class="btn btn-secondary">题库广场</a>
+            <a href="/user/banks/manage" class="btn btn-secondary">后台管理</a>
+        {% else %}
+            <a href="/user/banks" class="btn btn-secondary">我的题库</a>
+        {% endif %}
+    </div>
 </div>
 
 <!-- 搜索和筛选 -->
@@ -13,14 +21,26 @@
     <div class="filter-row">
         <input type="text" id="searchInput" class="form-input" placeholder="搜索题库..." style="flex: 1; max-width: 300px;">
         <select id="typeSelect" class="form-input form-select" style="width: 130px;" title="题库类型">
-            <option value="">全部题库</option>
-            <option value="system">系统题库</option>
-            <option value="user">用户题库</option>
+            {% if page_view == 'my' %}
+                <option value="">全部状态</option>
+                <option value="1">公开</option>
+                <option value="0">私密</option>
+            {% else %}
+                <option value="">全部题库</option>
+                <option value="system">系统题库</option>
+                <option value="user">用户题库</option>
+            {% endif %}
         </select>
         <select id="sortSelect" class="form-input form-select" style="width: 140px;" title="排序方式">
-            <option value="newest">最新发布</option>
-            <option value="popular">最受欢迎</option>
-            <option value="questions">题目最多</option>
+            {% if page_view == 'my' %}
+                <option value="updated">最近更新</option>
+                <option value="questions">题目最多</option>
+                <option value="shares">分享最多</option>
+            {% else %}
+                <option value="newest">最新发布</option>
+                <option value="popular">最受欢迎</option>
+                <option value="questions">题目最多</option>
+            {% endif %}
         </select>
     </div>
 </div>
@@ -185,21 +205,72 @@
 
 {% block scripts %}
 <script>
+    const VIEW = '{{ page_view }}';
+
     let banks = [];
     let total = 0;
     let currentPage = 1;
     const perPage = 20;
+    let allBanks = [];
+
+    function isTrue(v) {
+        return v === 1 || v === true || v === '1';
+    }
+
+    function filterAndSortMyBanks(list, { keyword, status, sort }) {
+        let out = Array.isArray(list) ? list.slice() : [];
+
+        const kw = (keyword || '').toString().trim().toLowerCase();
+        if (kw) {
+            out = out.filter(b => {
+                const name = (b.name || '').toString().toLowerCase();
+                const desc = (b.description || '').toString().toLowerCase();
+                return name.includes(kw) || desc.includes(kw);
+            });
+        }
+
+        if (status !== '' && status !== null && typeof status !== 'undefined') {
+            const wantPublic = status === '1';
+            out = out.filter(b => isTrue(b.is_public) === wantPublic);
+        }
+
+        if (sort === 'questions') {
+            out.sort((a, b) => (b.question_count || 0) - (a.question_count || 0) ||
+                String(b.updated_at || '').localeCompare(String(a.updated_at || '')));
+        } else if (sort === 'shares') {
+            out.sort((a, b) => (b.share_count || 0) - (a.share_count || 0) ||
+                String(b.updated_at || '').localeCompare(String(a.updated_at || '')));
+        } else {
+            out.sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')));
+        }
+
+        return out;
+    }
 
     async function loadBanks() {
         const keyword = document.getElementById('searchInput').value.trim();
         const sort = document.getElementById('sortSelect').value;
-        const bankType = document.getElementById('typeSelect').value;
-
-        let url = `/api/public/banks?page=${currentPage}&per_page=${perPage}&sort=${sort}`;
-        if (keyword) url += `&keyword=${encodeURIComponent(keyword)}`;
-        if (bankType) url += `&type=${bankType}`;
+        const typeOrStatus = document.getElementById('typeSelect').value;
 
         try {
+            if (VIEW === 'my') {
+                const res = await api('/user/banks/api/list');
+                allBanks = res.data.banks || [];
+
+                const filtered = filterAndSortMyBanks(allBanks, { keyword, status: typeOrStatus, sort });
+                total = filtered.length;
+                const start = (currentPage - 1) * perPage;
+                banks = filtered.slice(start, start + perPage);
+
+                renderBanks();
+                renderPagination();
+                return;
+            }
+
+            let url = `/api/public/banks?page=${currentPage}&per_page=${perPage}&sort=${sort}`;
+            if (keyword) url += `&keyword=${encodeURIComponent(keyword)}`;
+            if (typeOrStatus) url += `&type=${typeOrStatus}`;
+
             const res = await api(url);
             banks = res.data.banks || [];
             total = res.data.total || 0;
@@ -214,13 +285,14 @@
         const container = document.getElementById('bankList');
 
         if (banks.length === 0) {
+            const emptyText = VIEW === 'my' ? '暂无题库' : '暂无公开题库';
             container.innerHTML = `
                 <div class="card">
                     <div class="empty-state">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                             <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
                         </svg>
-                        <p>暂无公开题库</p>
+                        <p>${emptyText}</p>
                     </div>
                 </div>
             `;
@@ -228,13 +300,47 @@
         }
 
         container.innerHTML = banks.map(bank => {
+            if (VIEW === 'my') {
+                const isPublic = isTrue(bank.is_public);
+                const statusTag = isPublic
+                    ? '<span class="type-tag user">公开</span>'
+                    : '<span class="type-tag system">私密</span>';
+
+                const quizUrl = `/user/banks/${bank.id}/practice`;
+                const manageUrl = `/user/banks/${bank.id}`;
+                const shareUrl = `/user/banks/${bank.id}/shares`;
+
+                return `
+                    <div class="bank-card">
+                        <div class="bank-header">
+                            <h3 class="bank-name">${escapeHtml(bank.name)}</h3>
+                            <div class="bank-badges">
+                                ${statusTag}
+                                ${bank.allow_copy ? '<span class="badge badge-success">可复制</span>' : ''}
+                            </div>
+                        </div>
+                        ${bank.description ? `<p class="bank-desc">${escapeHtml(bank.description)}</p>` : ''}
+                        <div class="bank-meta">
+                            <span>${bank.question_count || 0} 道题</span>
+                            <span>${bank.share_count || 0} 次分享</span>
+                            <span>${formatDate(bank.updated_at)}</span>
+                        </div>
+                        <div class="bank-actions">
+                            <a href="${quizUrl}" class="btn btn-primary btn-sm">练习设置</a>
+                            <a href="${manageUrl}" class="btn btn-secondary btn-sm">管理题目</a>
+                            <a href="${shareUrl}" class="btn btn-secondary btn-sm">分享管理</a>
+                        </div>
+                    </div>
+                `;
+            }
+
             const isSystem = bank.bank_type === 'system';
             const typeTag = isSystem
                 ? '<span class="type-tag system">系统</span>'
                 : '<span class="type-tag user">用户</span>';
             const quizUrl = isSystem
                 ? `/quiz?subject_id=${bank.id}`
-                : `/user/banks/${bank.id}/quiz`;
+                : `/quiz?bank_id=${bank.id}`;
             const detailUrl = isSystem
                 ? `/quiz?subject_id=${bank.id}`
                 : `/user/banks/${bank.id}`;

@@ -1,416 +1,696 @@
-<!DOCTYPE html>
-<html lang="zh">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <title>功能中心 - 全能刷题库</title>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Crect width='128' height='128' rx='24' fill='%23007bff'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='central' text-anchor='middle' font-size='88' fill='white'%3EQ%3C/text%3E%3C/svg%3E">
-    <style>
-        :root {
-            --bg-color: #f5f5f7;
-            --card-bg: rgba(255, 255, 255, 0.72);
-            --card-bg-solid: rgba(255, 255, 255, 0.92);
-            --text-color: #1d1d1f;
-            --text-sub: #6e6e73;
-            --border-color: rgba(0, 0, 0, 0.06);
-            --primary: #007AFF;
-            --primary-light: rgba(0, 122, 255, 0.12);
-            --shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
-            --shadow-hover: 0 14px 44px rgba(0, 0, 0, 0.10);
-            --blur: blur(40px) saturate(180%);
-            --radius-xl: 24px;
-            --radius-lg: 18px;
-            --radius-md: 14px;
-            --radius-sm: 12px;
-        }
+{% extends "main/app_shell.html" %}
 
-        body.dark-mode {
-            --bg-color: #000000;
-            --card-bg: rgba(28, 28, 30, 0.6);
-            --card-bg-solid: rgba(28, 28, 30, 0.95);
-            --text-color: #f5f5f7;
-            --text-sub: #a1a1a6;
-            --border-color: rgba(255, 255, 255, 0.12);
-            --primary: #0a84ff;
-            --primary-light: rgba(10, 132, 255, 0.2);
-            --shadow: 0 2px 16px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
-            --shadow-hover: 0 4px 24px rgba(0, 0, 0, 0.6), 0 2px 4px rgba(0, 0, 0, 0.5);
-        }
+{% block title %}产品介绍{% endblock %}
+{% block page_title %}产品介绍{% endblock %}
 
-        * {
-            scrollbar-width: thin;
-            scrollbar-color: transparent transparent;
-        }
-        *:hover {
-            scrollbar-color: rgba(128, 128, 128, 0.3) transparent;
-        }
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: transparent;
-            border-radius: 3px;
-            transition: background 0.3s ease;
-        }
-        *:hover::-webkit-scrollbar-thumb {
-            background: rgba(128, 128, 128, 0.3);
-        }
+{% block head_extra %}
+<style>
+  html { scroll-behavior: smooth; }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            margin: 0;
-            padding: 0;
-            min-height: 100vh;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-            position: relative;
-            overflow-x: hidden;
-        }
+  .landing { display: grid; gap: 12px; }
 
-        body::after {
-            content: '';
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(180deg, #ffffff 0%, #fafafa 30%, #f5f5f7 70%, #f0f0f2 100%);
-            z-index: -1;
-            pointer-events: none;
-            transition: opacity .3s ease;
-        }
+  .hero {
+    position: relative;
+    overflow: hidden;
+    padding: 22px 20px 18px;
+  }
 
-        body.dark-mode::after {
-            background: linear-gradient(180deg, #1c1c1e 0%, #000000 40%, #000000 100%);
-        }
+  .hero::before {
+    content: '';
+    position: absolute;
+    inset: -40%;
+    background:
+      radial-gradient(circle at 20% 20%, rgba(17, 24, 39, 0.10), transparent 55%),
+      radial-gradient(circle at 80% 0%, rgba(17, 24, 39, 0.06), transparent 50%);
+    pointer-events: none;
+  }
 
-        .glow-container {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            z-index: -2;
-        }
+  html[data-theme="dark"] .hero::before {
+    background:
+      radial-gradient(circle at 20% 20%, rgba(243, 244, 246, 0.08), transparent 55%),
+      radial-gradient(circle at 80% 0%, rgba(243, 244, 246, 0.05), transparent 50%);
+  }
 
-        .glow {
-            position: absolute;
-            border-radius: 50%;
-            filter: blur(120px);
-            opacity: 0.10;
-        }
+  .hero-inner {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr;
+    gap: 16px;
+    align-items: start;
+    min-width: 0;
+  }
 
-        .glow.glow1 {
-            width: 860px;
-            height: 860px;
-            background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.9), rgba(255,255,255,0));
-            top: -28%;
-            left: -22%;
-            animation: moveGlow1 26s infinite alternate;
-        }
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--app-border);
+    background: color-mix(in srgb, var(--app-surface) 72%, transparent);
+    box-shadow: var(--app-shadow-soft);
+    font-weight: 950;
+    letter-spacing: -0.25px;
+    user-select: none;
+  }
 
-        .glow.glow2 {
-            width: 760px;
-            height: 760px;
-            background: radial-gradient(circle at 60% 60%, rgba(255,255,255,0.65), rgba(255,255,255,0));
-            bottom: -30%;
-            right: -18%;
-            animation: moveGlow2 30s infinite alternate;
-        }
+  .hero-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    background: var(--app-primary);
+    box-shadow: 0 0 0 4px var(--app-primary-soft);
+    flex: 0 0 auto;
+  }
 
-        @keyframes moveGlow1 {
-            from { transform: translate(0, 0) rotate(0deg); }
-            to { transform: translate(100px, 150px) rotate(45deg); }
-        }
+  .hero h1 {
+    margin: 12px 0 0;
+    font-size: 34px;
+    font-weight: 980;
+    letter-spacing: -1px;
+    line-height: 1.08;
+  }
 
-        @keyframes moveGlow2 {
-            from { transform: translate(0, 0) rotate(0deg); }
-            to { transform: translate(-150px, -100px) rotate(-60deg); }
-        }
+  .hero p {
+    margin: 10px 0 0;
+    color: var(--app-muted);
+    font-size: 14px;
+    line-height: 1.7;
+    max-width: 62ch;
+  }
 
-        .main-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 60px 20px;
-            position: relative;
-            z-index: 2;
-        }
+  .hero-actions {
+    margin-top: 14px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
 
-        .page-header {
-            text-align: center;
-            margin-bottom: 80px;
-        }
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    min-width: 0;
+  }
 
-        .header-title {
-            font-size: 56px;
-            font-weight: 700;
-            color: var(--text-color);
-            letter-spacing: -2px;
-            line-height: 1.1;
-            margin-bottom: 16px;
-        }
+  .kpi {
+    border-radius: 16px;
+    border: 1px solid var(--app-border);
+    background: color-mix(in srgb, var(--app-surface) 70%, transparent);
+    box-shadow: var(--app-shadow-soft);
+    padding: 14px;
+    min-width: 0;
+  }
 
-        .header-subtitle {
-            font-size: 20px;
-            color: var(--text-sub);
-            font-weight: 400;
-        }
+  .kpi-label {
+    color: var(--app-muted);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.2px;
+  }
 
-        .options-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-            gap: 32px;
-            margin-bottom: 60px;
-        }
+  .kpi-value {
+    margin-top: 8px;
+    font-size: 24px;
+    font-weight: 980;
+    letter-spacing: -0.8px;
+  }
 
-        .option-card {
-            background: var(--card-bg);
-            backdrop-filter: var(--blur);
-            -webkit-backdrop-filter: var(--blur);
-            padding: 48px 40px;
-            border-radius: var(--radius-xl);
-            box-shadow: var(--shadow);
-            border: 0.5px solid var(--border-color);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            cursor: pointer;
-            text-decoration: none;
-            color: inherit;
-            display: block;
-            position: relative;
-            overflow: hidden;
-        }
+  .kpi-sub {
+    margin-top: 6px;
+    color: var(--app-muted);
+    font-size: 12px;
+    line-height: 1.5;
+  }
 
-        .option-card::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            border-radius: var(--radius-xl);
-            padding: 0.5px;
-            background: rgba(255, 255, 255, 0.95);
-            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-            -webkit-mask-composite: xor;
-            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-            mask-composite: exclude;
-            pointer-events: none;
-            z-index: 1;
-        }
+  .nav {
+    padding: 12px 12px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
 
-        body.dark-mode .option-card::before {
-            background: rgba(255, 255, 255, 0.15);
-        }
+  .nav a {
+    display: inline-flex;
+    align-items: center;
+    height: 34px;
+    padding: 0 12px;
+    border-radius: 999px;
+    border: 1px solid var(--app-border);
+    background: var(--app-surface);
+    box-shadow: var(--app-shadow-soft);
+    font-size: 13px;
+    font-weight: 850;
+    color: var(--app-text);
+    transition: box-shadow 140ms ease, transform 140ms ease, background 140ms ease;
+    white-space: nowrap;
+  }
 
-        .option-card::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 35%;
-            background: linear-gradient(180deg, 
-                rgba(255, 255, 255, 0.4) 0%,
-                rgba(255, 255, 255, 0.15) 50%,
-                transparent 100%
-            );
-            border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-            pointer-events: none;
-            z-index: 2;
-        }
+  .nav a:hover { box-shadow: var(--app-shadow); transform: translateY(-1px); }
+  .nav a:active { transform: translateY(0); }
+  .nav a:focus { outline: none; box-shadow: 0 0 0 3px var(--app-primary-soft), var(--app-shadow-soft); }
 
-        body.dark-mode .option-card::after {
-            background: linear-gradient(180deg, 
-                rgba(255, 255, 255, 0.08) 0%,
-                rgba(255, 255, 255, 0.03) 50%,
-                transparent 100%
-            );
-        }
+  .section {
+    padding: 18px 18px;
+    min-width: 0;
+  }
 
-        .option-card:hover {
-            transform: translateY(-8px) scale(1.02);
-            box-shadow: var(--shadow-hover);
-            border-color: rgba(0, 0, 0, 0.08);
-        }
+  .section[data-section] { scroll-margin-top: 84px; }
 
-        body.dark-mode .option-card:hover {
-            transform: translateY(-8px) scale(1.02);
-            border-color: rgba(255, 255, 255, 0.16);
-            background: rgba(28, 28, 30, 0.70);
-            box-shadow: 0 18px 66px rgba(0,0,0,0.45);
-        }
+  .section-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 980;
+    letter-spacing: -0.4px;
+  }
 
-        .option-card > * {
-            position: relative;
-            z-index: 3;
-        }
+  .section-sub {
+    margin: 8px 0 0;
+    color: var(--app-muted);
+    font-size: 13px;
+    line-height: 1.6;
+    max-width: 78ch;
+  }
 
-        .option-icon {
-            font-size: 64px;
-            margin-bottom: 24px;
-            line-height: 1;
-        }
+  .feature-grid {
+    margin-top: 14px;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
 
-        .option-title {
-            font-size: 32px;
-            font-weight: 600;
-            margin-bottom: 12px;
-            color: var(--text-color);
-            letter-spacing: -0.5px;
-        }
+  .feature {
+    border-radius: 16px;
+    border: 1px solid var(--app-border);
+    background: var(--app-surface-2);
+    box-shadow: var(--app-shadow-soft);
+    padding: 14px;
+    display: grid;
+    gap: 8px;
+    min-width: 0;
+  }
 
-        .option-description {
-            font-size: 17px;
-            color: var(--text-sub);
-            line-height: 1.5;
-            margin-bottom: 24px;
-        }
+  .feature-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
 
-        .option-features {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
+  .icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 14px;
+    border: 1px solid var(--app-border);
+    background: color-mix(in srgb, var(--app-surface) 72%, transparent);
+    box-shadow: var(--app-shadow-soft);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+  }
 
-        .option-features li {
-            font-size: 15px;
-            color: var(--text-sub);
-            padding: 8px 0;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+  .icon svg {
+    width: 18px;
+    height: 18px;
+    display: block;
+    color: var(--app-text);
+    opacity: 0.95;
+  }
 
-        .option-features li::before {
-            content: '•';
-            color: var(--primary);
-            font-size: 20px;
-            line-height: 1;
-        }
+  .feature h3 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 950;
+    letter-spacing: -0.2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 
-        .user-area {
-            position: fixed;
-            top: 24px;
-            right: 24px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            z-index: 100;
-        }
+  .feature p {
+    margin: 0;
+    color: var(--app-muted);
+    font-size: 12px;
+    line-height: 1.6;
+  }
 
-        .theme-toggle {
-            background: rgba(255, 255, 255, 0.7);
-            backdrop-filter: var(--blur);
-            -webkit-backdrop-filter: var(--blur);
-            border: 0.5px solid rgba(0, 0, 0, 0.06);
-            border-radius: 999px;
-            width: 44px;
-            height: 44px;
-            font-size: 18px;
-            cursor: pointer;
-            color: var(--text-color);
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s ease;
-            box-shadow: var(--shadow);
-        }
+  .steps {
+    margin-top: 14px;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+  }
 
-        .theme-toggle:hover {
-            background: rgba(255, 255, 255, 0.85);
-            transform: scale(1.05);
-        }
+  .step {
+    border-radius: 16px;
+    border: 1px solid var(--app-border);
+    background: var(--app-surface-2);
+    box-shadow: var(--app-shadow-soft);
+    padding: 14px;
+    display: grid;
+    gap: 8px;
+    min-width: 0;
+  }
 
-        body.dark-mode .theme-toggle {
-            background: rgba(28, 28, 30, 0.6);
-            border-color: rgba(255, 255, 255, 0.12);
-        }
+  .step-no {
+    font-size: 12px;
+    color: var(--app-muted);
+    font-weight: 900;
+    letter-spacing: 0.3px;
+  }
 
-        body.dark-mode .theme-toggle:hover {
-            background: rgba(28, 28, 30, 0.75);
-        }
+  .step-title {
+    font-size: 14px;
+    font-weight: 950;
+    letter-spacing: -0.2px;
+  }
 
-        @media (max-width: 768px) {
-            .options-grid {
-                grid-template-columns: 1fr;
-                gap: 24px;
-            }
-            .option-card {
-                padding: 32px 24px;
-            }
-            .header-title {
-                font-size: 40px;
-            }
-            .main-container {
-                padding: 40px 16px;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="glow-container">
-        <div class="glow glow1"></div>
-        <div class="glow glow2"></div>
-    </div>
-    
-    <div class="user-area">
-        {% if logged_in %}
-        <a href="/user_hub" style="text-decoration: none; color: var(--text-color); font-weight: 500;">{{ username }}</a>
-        {% else %}
-        <a href="/login" style="text-decoration: none; color: var(--text-color); font-weight: 500;">登录</a>
-        {% endif %}
-        <button class="theme-toggle" onclick="toggleTheme()" aria-label="切换深色模式">
-            <span style="font-size: 20px;">🌓</span>
-        </button>
-    </div>
+  .step-desc {
+    color: var(--app-muted);
+    font-size: 12px;
+    line-height: 1.6;
+  }
 
-    <div class="main-container">
-        <header class="page-header">
-            <h1 class="header-title">全能刷题库</h1>
-            <p class="header-subtitle">选择学习模式，开始你的学习之旅</p>
-        </header>
+  .cols {
+    margin-top: 14px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
 
-        <div class="options-grid">
-            <a href="/" class="option-card">
-                <div class="option-icon">📚</div>
-                <h2 class="option-title">题库中心</h2>
-                <p class="option-description">传统刷题模式，支持选择题、填空题、判断题等多种题型</p>
-                <ul class="option-features">
-                    <li>多科目分类刷题</li>
-                    <li>收藏与错题本</li>
-                    <li>考试模式</li>
-                    <li>学习进度追踪</li>
-                </ul>
-            </a>
+  .panel {
+    border-radius: 16px;
+    border: 1px solid var(--app-border);
+    background: var(--app-surface-2);
+    box-shadow: var(--app-shadow-soft);
+    padding: 14px;
+    display: grid;
+    gap: 10px;
+    min-width: 0;
+  }
 
-            <a href="/coding" class="option-card">
-                <div class="option-icon">💻</div>
-                <h2 class="option-title">编程模式</h2>
-                <p class="option-description">在线编程练习，支持代码编辑、运行和自动判题</p>
-                <ul class="option-features">
-                    <li>在线代码编辑器</li>
-                    <li>实时代码执行</li>
-                    <li>自动判题系统</li>
-                    <li>提交历史记录</li>
-                </ul>
-            </a>
+  .panel h3 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 950;
+    letter-spacing: -0.2px;
+  }
+
+  .panel ul {
+    margin: 0;
+    padding-left: 16px;
+    color: var(--app-muted);
+    font-size: 12px;
+    line-height: 1.7;
+  }
+
+  .panel li { margin: 0; }
+
+  .faq {
+    margin-top: 14px;
+    display: grid;
+    gap: 8px;
+  }
+
+  .faq details {
+    border-radius: 16px;
+    border: 1px solid var(--app-border);
+    background: var(--app-surface-2);
+    box-shadow: var(--app-shadow-soft);
+    padding: 12px 14px;
+  }
+
+  .faq summary {
+    cursor: pointer;
+    font-weight: 900;
+    font-size: 13px;
+    letter-spacing: -0.15px;
+  }
+
+  .faq summary::-webkit-details-marker { display: none; }
+
+  .faq .answer {
+    margin-top: 8px;
+    color: var(--app-muted);
+    font-size: 12px;
+    line-height: 1.7;
+  }
+
+  .cta {
+    padding: 18px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+
+  .cta h2 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 980;
+    letter-spacing: -0.4px;
+  }
+
+  .cta p {
+    margin: 8px 0 0;
+    color: var(--app-muted);
+    font-size: 13px;
+    line-height: 1.6;
+    max-width: 68ch;
+  }
+
+  .cta-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .foot {
+    margin: 6px 4px 0;
+    color: var(--app-muted);
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .foot a { text-decoration: underline; text-underline-offset: 3px; }
+
+  .reveal { opacity: 1; transform: none; }
+
+  html.reveal-on .reveal {
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 420ms ease, transform 420ms ease;
+  }
+
+  html.reveal-on .reveal.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  @media (max-width: 980px) {
+    .hero-inner { grid-template-columns: 1fr; }
+    .feature-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+
+  @media (max-width: 860px) {
+    .cols { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 560px) {
+    .hero h1 { font-size: 26px; }
+    .feature-grid { grid-template-columns: 1fr; }
+    .steps { grid-template-columns: 1fr; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    html.reveal-on .reveal { opacity: 1; transform: none; transition: none; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="app-container landing">
+  <section class="app-card hero reveal" id="overview" data-section>
+    <div class="hero-inner">
+      <div>
+        <div class="hero-badge" aria-label="SAK">
+          <span class="hero-dot" aria-hidden="true"></span>
+          <span>SAK 题库中心</span>
         </div>
+
+        <h1>专业、统一的题库练习与复盘工作台</h1>
+        <p>将公共题库与个人题库放在同一套体验里：选择入口 → 配置练习 → 开始刷题 → 错题与进度复盘。面向个人学习与团队管理，保持简洁且可控。</p>
+
+        <div class="hero-actions">
+          <a class="app-btn app-btn-primary" href="/" aria-label="立即开始">立即开始</a>
+          <a class="app-btn app-btn-secondary" href="#capabilities" aria-label="了解核心能力">了解核心能力</a>
+          <a class="app-btn app-btn-secondary" href="/about" aria-label="关于">关于</a>
+        </div>
+      </div>
+
+      <div class="kpi-grid" aria-label="数据概览">
+        <div class="kpi">
+          <div class="kpi-label">公共科目</div>
+          <div class="kpi-value">{{ subject_total or 0 }}</div>
+          <div class="kpi-sub">按权限展示可访问科目</div>
+        </div>
+
+        <div class="kpi">
+          <div class="kpi-label">公共题量</div>
+          <div class="kpi-value">{{ question_total or 0 }}</div>
+          <div class="kpi-sub">统计未锁定科目的题目</div>
+        </div>
+
+        <div class="kpi">
+          <div class="kpi-label">个人题库</div>
+          {% if logged_in %}
+            <div class="kpi-value">{{ my_bank_total or 0 }}</div>
+            <div class="kpi-sub">你创建的题库数量</div>
+          {% else %}
+            <div class="kpi-value">登录后可用</div>
+            <div class="kpi-sub">用于自建与整理专项题目</div>
+          {% endif %}
+        </div>
+      </div>
     </div>
+  </section>
 
-    <script>
-        const savedTheme = localStorage.getItem('theme');
-        if (savedTheme === 'dark') document.body.classList.add('dark-mode');
+  <nav class="app-card nav reveal" aria-label="页面目录">
+    <a href="#overview">概览</a>
+    <a href="#capabilities">核心能力</a>
+    <a href="#workflow">标准流程</a>
+    <a href="#governance">管理与安全</a>
+    <a href="#faq">常见问题</a>
+    <a href="#start">开始使用</a>
+  </nav>
 
-        function toggleTheme() {
-            document.body.classList.toggle('dark-mode');
-            localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
-        }
-    </script>
-</body>
-</html>
+  <section class="app-card section reveal" id="capabilities" data-section>
+    <h2 class="section-title">核心能力</h2>
+    <p class="section-sub">以“题库组织 + 练习设置 + 复盘追踪”为主线，减少冗余操作，让每一步更清晰。</p>
 
+    <div class="feature-grid">
+      <div class="feature">
+        <div class="feature-head">
+          <span class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M4 6.5c0-1.1.9-2 2-2h12c1.1 0 2 .9 2 2V19c0 .6-.4 1-1 1H7a3 3 0 0 1-3-3V6.5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+              <path d="M7 8h10M7 12h10M7 16h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </span>
+          <h3>公共题库（按科目）</h3>
+        </div>
+        <p>面向系统化复习：按科目进入练习设置，统一入口、快速开始。</p>
+      </div>
+
+      <div class="feature">
+        <div class="feature-head">
+          <span class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M4 7a2 2 0 0 1 2-2h10a3 3 0 0 1 3 3v11a1 1 0 0 1-1 1H7a3 3 0 0 1-3-3V7Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+              <path d="M7 9h8M7 13h8M7 17h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </span>
+          <h3>个人题库（自建维护）</h3>
+        </div>
+        <p>面向专项整理：自建题库、维护题目，直接进入练习设置与刷题。</p>
+      </div>
+
+      <div class="feature">
+        <div class="feature-head">
+          <span class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M4 19V5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <path d="M4 19h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <path d="M8 15v-3M12 15V8M16 15v-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </span>
+          <h3>练习设置（可控）</h3>
+        </div>
+        <p>围绕题型、标签、顺序等维度组织练习，支持从题库入口直达。</p>
+      </div>
+
+      <div class="feature">
+        <div class="feature-head">
+          <span class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M12 8v5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <path d="M12 16h.01" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+              <path d="M10.3 4.3 2.8 17.3A2 2 0 0 0 4.5 20h15a2 2 0 0 0 1.7-2.7L13.7 4.3a2 2 0 0 0-3.4 0Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+            </svg>
+          </span>
+          <h3>复盘体系（错题 / 收藏 / 进度）</h3>
+        </div>
+        <p>将高频错题与重点题沉淀下来，配合进度记录形成可追踪的学习闭环。</p>
+      </div>
+
+      <div class="feature">
+        <div class="feature-head">
+          <span class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16Z" stroke="currentColor" stroke-width="2"/>
+              <path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </span>
+          <h3>全局搜索（定位更快）</h3>
+        </div>
+        <p>支持在题干、答案、解析等内容中检索，减少来回翻找。</p>
+      </div>
+
+      <div class="feature">
+        <div class="feature-head">
+          <span class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M12 3 4 7v6c0 5 3.4 9.4 8 10 4.6-.6 8-5 8-10V7l-8-4Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+              <path d="M9.5 12.2 11.4 14l3.2-3.4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+          <h3>权限与管理（按角色开放）</h3>
+        </div>
+        <p>支持登录鉴权与访问控制；管理员可进行题库维护与导入等操作（按权限开放）。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="app-card section reveal" id="workflow" data-section>
+    <h2 class="section-title">标准化流程</h2>
+    <p class="section-sub">保持路径一致，让学习成本更低；从开始到复盘，一步步推进。</p>
+
+    <div class="steps" aria-label="流程步骤">
+      <div class="step">
+        <div class="step-no">01</div>
+        <div class="step-title">选择入口</div>
+        <div class="step-desc">从公共题库按科目进入，或从个人题库选择你维护的题库。</div>
+      </div>
+      <div class="step">
+        <div class="step-no">02</div>
+        <div class="step-title">配置练习</div>
+        <div class="step-desc">按题型/标签等维度筛选范围，确定练习方式与节奏。</div>
+      </div>
+      <div class="step">
+        <div class="step-no">03</div>
+        <div class="step-title">开始刷题</div>
+        <div class="step-desc">练习过程中沉淀收藏与错题，形成可复用的知识资产。</div>
+      </div>
+      <div class="step">
+        <div class="step-no">04</div>
+        <div class="step-title">复盘追踪</div>
+        <div class="step-desc">通过错题、收藏与进度回溯，持续迭代复习策略。</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="app-card section reveal" id="governance" data-section>
+    <h2 class="section-title">管理与安全</h2>
+    <p class="section-sub">在不牺牲体验的前提下，提供必要的权限边界与一致性保障。</p>
+
+    <div class="cols">
+      <div class="panel">
+        <h3>认证与兼容</h3>
+        <ul>
+          <li>Web 端支持 Session 登录态。</li>
+          <li>小程序端支持 JWT（Authorization: Bearer &lt;token&gt;）。</li>
+          <li>同一套语义贯穿收藏 / 错题 / 答题记录 / 进度。</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h3>权限与协作</h3>
+        <ul>
+          <li>科目访问支持权限过滤（不可访问的内容不会展示）。</li>
+          <li>个人题库支持分享与加入，适合小范围协作与共用。</li>
+          <li>管理员入口按权限开放，避免普通用户被无关功能干扰。</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="app-card section reveal" id="faq" data-section>
+    <h2 class="section-title">常见问题</h2>
+    <p class="section-sub">将最常见的使用路径提前说明，降低上手成本。</p>
+
+    <div class="faq" aria-label="常见问题列表">
+      <details>
+        <summary>公共题库与个人题库有什么区别？</summary>
+        <div class="answer">公共题库用于按科目练习；个人题库用于你自建/整理的专项题目，两者的练习与复盘体验保持一致。</div>
+      </details>
+      <details>
+        <summary>如何继续上次练习？</summary>
+        <div class="answer">左侧栏的“练习”按钮会在有历史记录时提供“继续上次”，没有记录时默认从题库开始。</div>
+      </details>
+      <details>
+        <summary>个人题库在哪里新建与维护？</summary>
+        <div class="answer">进入“个人题库”后可新建题库；在题库卡片中可进入练习或题目管理。</div>
+      </details>
+      <details>
+        <summary>管理员相关功能在哪里？</summary>
+        <div class="answer">如果你拥有管理员权限，侧边栏会显示管理入口，用于题库维护与导入等后台操作。</div>
+      </details>
+    </div>
+  </section>
+
+  <section class="app-card cta reveal" id="start" data-section>
+    <div>
+      <h2>开始使用</h2>
+      <p>从公共题库快速开始；如需自建与整理专项题目，登录后进入个人题库。</p>
+    </div>
+    <div class="cta-actions">
+      <a class="app-btn app-btn-primary" href="/" aria-label="进入公共题库">进入公共题库</a>
+      {% if logged_in %}
+        <a class="app-btn app-btn-secondary" href="/user/banks" aria-label="进入个人题库">进入个人题库</a>
+      {% else %}
+        <a class="app-btn app-btn-secondary" href="/login" aria-label="登录">登录</a>
+      {% endif %}
+      <a class="app-btn app-btn-secondary" href="/contact_admin" aria-label="联系管理员">联系管理员</a>
+    </div>
+  </section>
+
+  <div class="foot" aria-label="页脚">
+    <span>SAK</span>
+    <span>·</span>
+    <a href="/about">关于</a>
+    <span>·</span>
+    <a href="/search">搜索</a>
+  </div>
+</div>
+
+<script>
+  (function () {
+    try {
+      var root = document.documentElement;
+      var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (reduce) return;
+
+      var els = Array.prototype.slice.call(document.querySelectorAll('.reveal'));
+      if (!els.length) return;
+      if (!('IntersectionObserver' in window)) return;
+
+      root.classList.add('reveal-on');
+
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          if (!e.isIntersecting) return;
+          e.target.classList.add('is-visible');
+          io.unobserve(e.target);
+        });
+      }, { threshold: 0.08 });
+
+      els.forEach(function (el) { io.observe(el); });
+    } catch (e) {
+      try { document.documentElement.classList.remove('reveal-on'); } catch (e2) {}
+      try {
+        document.querySelectorAll('.reveal').forEach(function (el) { el.classList.add('is-visible'); });
+      } catch (e3) {}
+    }
+  })();
+</script>
+{% endblock %}
 

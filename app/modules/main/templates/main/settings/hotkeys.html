@@ -1,0 +1,374 @@
+{% extends "main/settings/shell.html" %}
+{% block settings_title %}设置 · 快捷键{% endblock %}
+{% block settings_header_title %}快捷键{% endblock %}
+{% block settings_header_sub %}为刷题与考试页面配置键盘操作。{% endblock %}
+
+{% block settings_head_extra %}
+  <style>
+    .hk-row {
+      display: grid;
+      grid-template-columns: 1fr minmax(220px, 320px);
+      gap: 12px;
+      align-items: center;
+      padding: 14px 0;
+      border-top: 1px solid var(--acc-border);
+      min-width: 0;
+    }
+    .hk-row:first-child { border-top: none; }
+
+    .hk-name { font-size: 14px; font-weight: 850; letter-spacing: -0.1px; color: var(--acc-text); }
+    .hk-desc { margin-top: 6px; font-size: 13px; color: var(--acc-muted); line-height: 1.5; }
+
+    .hk-input {
+      width: 100%;
+      cursor: pointer;
+      font-weight: 800;
+      text-align: left;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .hk-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+
+    .hk-section { scroll-margin-top: 80px; }
+
+    @media (max-width: 860px) {
+      .hk-row { grid-template-columns: 1fr; }
+    }
+  </style>
+{% endblock %}
+
+{% block settings_subnav %}
+  <nav class="acc-tabs" aria-label="快捷键分区">
+    <a class="acc-tab active" href="#hotkeys-config" data-subtab="config">配置</a>
+    <a class="acc-tab" href="#hotkeys-help" data-subtab="help">说明</a>
+  </nav>
+{% endblock %}
+
+{% block settings_content %}
+  <section class="acc-card hk-section" id="hotkeys-config" aria-labelledby="hotkeysConfigTitle">
+    <h2 class="acc-card-title" id="hotkeysConfigTitle">答题界面键盘快捷键</h2>
+    <p class="acc-card-sub">点击输入框后按下组合键（如 Ctrl+Shift+N）。按 Backspace/Delete 清空。</p>
+    <div class="acc-divider"></div>
+
+    <div id="hotkeyList"></div>
+
+    <div class="hk-actions">
+      <button class="acc-btn acc-btn-secondary" type="button" id="resetHotkeysBtn">恢复默认</button>
+      <button class="acc-btn acc-btn-primary" type="button" id="saveHotkeysBtn">保存</button>
+    </div>
+  </section>
+
+  <div class="acc-msg" id="hotkeyMsg" role="status" aria-live="polite"></div>
+
+  <section class="acc-card hk-section" id="hotkeys-help" aria-labelledby="hotkeysHelpTitle">
+    <h2 class="acc-card-title" id="hotkeysHelpTitle">说明</h2>
+    <p class="acc-card-sub">与浏览器/系统冲突的组合键可能无法被捕获。建议避开 Ctrl+L、Ctrl+R、Ctrl+W 等常见快捷键。</p>
+    <div class="acc-divider"></div>
+
+    <div class="acc-field">
+      <div class="acc-label">小提示</div>
+      <div class="acc-help">
+        1）推荐使用字母键（如 F）或方向键组合。<br/>
+        2）如果想禁用某个快捷键，点输入框后按 Backspace/Delete。<br/>
+        3）设置会保存在本地，并尝试同步到云端（已登录）。<br/>
+      </div>
+    </div>
+  </section>
+{% endblock %}
+
+{% block settings_body_end %}
+  <script>
+    (function(){
+      const SETTINGS_SYNC_KEY = 'user_settings_v1';
+      const HOME_VISIBLE_SUBJECTS_KEY = 'home_visible_subjects';
+      const QUIZ_HOTKEYS_KEY = 'quiz_hotkeys_v1';
+      const QUIZ_FAB_ENABLED_KEY = 'quiz_fab_enabled_v1';
+      const QUIZ_LAYOUT_THEME_KEY = 'quiz_layout_theme_v1';
+
+      const DEFAULT_QUIZ_HOTKEYS = {
+        prev_question: 'ArrowLeft',
+        next_question: 'ArrowRight',
+        toggle_favorite: 'KeyF',
+        choose_option_1: 'Digit1',
+        choose_option_2: 'Digit2',
+        choose_option_3: 'Digit3',
+        choose_option_4: 'Digit4',
+        blank_prev: 'ArrowUp',
+        blank_next: 'ArrowDown',
+        submit_or_next: 'Enter'
+      };
+
+      const HOTKEY_DEFS = [
+        { key: 'prev_question', label: '上一题', desc: '切换到上一题' },
+        { key: 'next_question', label: '下一题', desc: '切换到下一题' },
+        { key: 'toggle_favorite', label: '收藏/取消收藏', desc: '切换题目收藏状态' },
+        { key: 'choose_option_1', label: '选择选项 1', desc: '选择题/判断题：选第 1 个选项（A/对）' },
+        { key: 'choose_option_2', label: '选择选项 2', desc: '选择题：选第 2 个选项（B/错）' },
+        { key: 'choose_option_3', label: '选择选项 3', desc: '选择题：选第 3 个选项（C）' },
+        { key: 'choose_option_4', label: '选择选项 4', desc: '选择题：选第 4 个选项（D）' },
+        { key: 'blank_prev', label: '填空上一个挖空', desc: '填空题输入框：聚焦时切到上一个空' },
+        { key: 'blank_next', label: '填空下一个挖空', desc: '填空题输入框：聚焦时切到下一个空' },
+        { key: 'submit_or_next', label: '提交/查看结果/下一题', desc: '等同原 Enter 行为（避免与输入换行冲突）' }
+      ];
+
+      const listEl = document.getElementById('hotkeyList');
+      const msgEl = document.getElementById('hotkeyMsg');
+      const saveBtn = document.getElementById('saveHotkeysBtn');
+      const resetBtn = document.getElementById('resetHotkeysBtn');
+
+      function showMsg(text){
+        if (!msgEl) return;
+        const t = (text || '').trim();
+        if (!t) { msgEl.style.display = 'none'; msgEl.textContent = ''; return; }
+        msgEl.textContent = t;
+        msgEl.style.display = 'block';
+      }
+
+      function normalizeHotkeyString(str){ return String(str || '').trim(); }
+
+      function getVisibleSubjects(){
+        try {
+          const arr = JSON.parse(localStorage.getItem(HOME_VISIBLE_SUBJECTS_KEY) || '[]');
+          return Array.isArray(arr) ? arr : [];
+        } catch(e) { return []; }
+      }
+      function setVisibleSubjects(arr){
+        localStorage.setItem(HOME_VISIBLE_SUBJECTS_KEY, JSON.stringify(Array.isArray(arr) ? arr : []));
+      }
+
+      function getHotkeys(){
+        try {
+          const js = JSON.parse(localStorage.getItem(QUIZ_HOTKEYS_KEY) || 'null');
+          if (!js || typeof js !== 'object') return { ...DEFAULT_QUIZ_HOTKEYS };
+          const result = { ...DEFAULT_QUIZ_HOTKEYS };
+          for (const key in js) {
+            if (key in DEFAULT_QUIZ_HOTKEYS) {
+              if (js[key] !== undefined) result[key] = js[key];
+            }
+          }
+          return result;
+        } catch(e) {
+          return { ...DEFAULT_QUIZ_HOTKEYS };
+        }
+      }
+      function setHotkeys(obj){
+        const merged = { ...DEFAULT_QUIZ_HOTKEYS };
+        if (obj && typeof obj === 'object') {
+          for (const key in obj) {
+            if (key in DEFAULT_QUIZ_HOTKEYS) merged[key] = obj[key];
+          }
+        }
+        localStorage.setItem(QUIZ_HOTKEYS_KEY, JSON.stringify(merged));
+      }
+
+      function isQuizFabEnabled(){ return localStorage.getItem(QUIZ_FAB_ENABLED_KEY) !== '0'; }
+      function setQuizFabEnabled(on){ localStorage.setItem(QUIZ_FAB_ENABLED_KEY, on ? '1' : '0'); }
+      function getQuizLayoutTheme(){ return localStorage.getItem(QUIZ_LAYOUT_THEME_KEY) || 'traditional'; }
+      function setQuizLayoutTheme(theme){ localStorage.setItem(QUIZ_LAYOUT_THEME_KEY, theme); }
+
+      function isMac(){ return /Mac|iPhone|iPad|iPod/i.test(navigator.platform); }
+      function hotkeyToDisplay(hk){
+        const s = normalizeHotkeyString(hk);
+        if (!s) return '';
+        const parts = s.split('+').filter(Boolean);
+        const pretty = parts.map(p => {
+          if (p === 'Meta') return isMac() ? '⌘' : 'Win';
+          if (p === 'Ctrl') return isMac() ? '⌃' : 'Ctrl';
+          if (p === 'Alt') return isMac() ? '⌥' : 'Alt';
+          if (p === 'Shift') return isMac() ? '⇧' : 'Shift';
+          if (p === ' ') return 'Space';
+          if (p.startsWith('Key')) return p.slice(3).toUpperCase();
+          if (p.startsWith('Digit')) return p.slice(5);
+          if (p === 'ArrowLeft') return '←';
+          if (p === 'ArrowRight') return '→';
+          if (p === 'ArrowUp') return '↑';
+          if (p === 'ArrowDown') return '↓';
+          return p;
+        });
+        return pretty.join('+');
+      }
+
+      function buildHotkeyToken(e){
+        const mods = [];
+        if (e.ctrlKey) mods.push('Ctrl');
+        if (e.altKey) mods.push('Alt');
+        if (e.shiftKey) mods.push('Shift');
+        if (e.metaKey) mods.push('Meta');
+
+        const code = e.code || '';
+        const isModifierOnly = ['ShiftLeft','ShiftRight','ControlLeft','ControlRight','AltLeft','AltRight','MetaLeft','MetaRight'].includes(code);
+        if (isModifierOnly) return '';
+
+        const keyCode = (code === 'Space') ? ' ' : code;
+        if (!keyCode) return '';
+        return mods.length ? `${mods.join('+')}+${keyCode}` : keyCode;
+      }
+
+      function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text || '';
+        return div.innerHTML;
+      }
+      function escapeAttr(text){
+        return String(text || '')
+          .replaceAll('&','&amp;')
+          .replaceAll('"','&quot;')
+          .replaceAll("'","&#39;")
+          .replaceAll('<','&lt;')
+          .replaceAll('>','&gt;');
+      }
+
+      function collectSettings(){
+        return {
+          version: 1,
+          home_visible_subjects: getVisibleSubjects(),
+          quiz_hotkeys_v1: getHotkeys(),
+          quiz_fab_enabled_v1: isQuizFabEnabled(),
+          quiz_layout_theme_v1: getQuizLayoutTheme(),
+          updated_at: Date.now()
+        };
+      }
+
+      async function syncSettingsToServer(){
+        try {
+          const payload = collectSettings();
+          await fetch('/api/progress', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key: SETTINGS_SYNC_KEY, data: payload })
+          });
+        } catch(e) {}
+      }
+
+      async function loadSettingsFromServerAndMerge(){
+        try {
+          const res = await fetch(`/api/progress?key=${encodeURIComponent(SETTINGS_SYNC_KEY)}`);
+          if (!res.ok) return;
+          const js = await res.json().catch(()=> ({}));
+          if (!js || js.status !== 'success' || !js.data) return;
+
+          const remote = js.data || {};
+          const remoteTs = Number(remote.updated_at || 0);
+          const localTs = Number(localStorage.getItem('settings_updated_at') || '0');
+
+          if (remoteTs > localTs) {
+            setVisibleSubjects(Array.isArray(remote.home_visible_subjects) ? remote.home_visible_subjects : []);
+            if (remote.quiz_hotkeys_v1 && typeof remote.quiz_hotkeys_v1 === 'object') setHotkeys(remote.quiz_hotkeys_v1);
+            if (typeof remote.quiz_fab_enabled_v1 !== 'undefined') setQuizFabEnabled(!!remote.quiz_fab_enabled_v1);
+            if (typeof remote.quiz_layout_theme_v1 === 'string') setQuizLayoutTheme(remote.quiz_layout_theme_v1 === 'card' ? 'card' : 'traditional');
+            localStorage.setItem('settings_updated_at', String(remoteTs));
+          } else if (localTs > remoteTs) {
+            await syncSettingsToServer();
+          }
+        } catch(e) {}
+      }
+
+      function renderHotkeys(){
+        if (!listEl) return;
+        const hk = getHotkeys();
+        listEl.innerHTML = HOTKEY_DEFS.map(def => {
+          const value = hk[def.key] || '';
+          const display = hotkeyToDisplay(value) || '点击录入';
+          return `
+            <div class="hk-row">
+              <div>
+                <div class="hk-name">${escapeHtml(def.label)}</div>
+                <div class="hk-desc">${escapeHtml(def.desc)}</div>
+              </div>
+              <input
+                class="acc-input hk-input"
+                data-hotkey-key="${escapeAttr(def.key)}"
+                value="${escapeAttr(display)}"
+                readonly
+                aria-label="设置 ${escapeAttr(def.label)} 快捷键"
+              />
+            </div>
+          `;
+        }).join('');
+
+        listEl.querySelectorAll('input[data-hotkey-key]').forEach(inp => {
+          const key = inp.dataset.hotkeyKey;
+          inp.dataset.hotkeyValue = (key && hk[key] !== undefined) ? String(hk[key] || '') : '';
+
+          inp.addEventListener('click', () => { inp.focus(); });
+          inp.addEventListener('keydown', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!key) return;
+
+            if (e.key === 'Backspace' || e.key === 'Delete') {
+              inp.dataset.hotkeyValue = '';
+              inp.value = '已清空（点此重新录入）';
+              return;
+            }
+            const token = buildHotkeyToken(e);
+            if (!token) return;
+            inp.dataset.hotkeyValue = token;
+            inp.value = hotkeyToDisplay(token);
+          });
+        });
+      }
+
+      async function applyHotkeys(){
+        if (!listEl) return;
+        showMsg('');
+        saveBtn && (saveBtn.disabled = true);
+        saveBtn && (saveBtn.textContent = '保存中…');
+        try {
+          const obj = {};
+          listEl.querySelectorAll('input[data-hotkey-key]').forEach(inp => {
+            const k = inp.dataset.hotkeyKey;
+            obj[k] = normalizeHotkeyString(inp.dataset.hotkeyValue || '');
+          });
+          setHotkeys(obj);
+          localStorage.setItem('settings_updated_at', String(Date.now()));
+          await syncSettingsToServer();
+          showMsg('已保存');
+        } catch(e) {
+          showMsg('保存失败，请稍后重试');
+        } finally {
+          saveBtn && (saveBtn.disabled = false);
+          saveBtn && (saveBtn.textContent = '保存');
+        }
+      }
+
+      async function resetHotkeys(){
+        if (!confirm('确定要恢复默认快捷键吗？')) return;
+        setHotkeys({ ...DEFAULT_QUIZ_HOTKEYS });
+        localStorage.setItem('settings_updated_at', String(Date.now()));
+        await syncSettingsToServer();
+        renderHotkeys();
+        showMsg('已恢复默认');
+      }
+
+      function setupSubtabs(){
+        const tabs = document.querySelectorAll('.acc-tabs .acc-tab[data-subtab]');
+        function applyActive(){
+          const hash = (location.hash || '').toLowerCase();
+          tabs.forEach(t => t.classList.remove('active'));
+          const active = Array.from(tabs).find(t => (t.getAttribute('href') || '').toLowerCase() === hash) || tabs[0];
+          active && active.classList.add('active');
+        }
+        tabs.forEach(t => t.addEventListener('click', () => { setTimeout(applyActive, 0); }));
+        window.addEventListener('hashchange', applyActive);
+        applyActive();
+      }
+
+      resetBtn && resetBtn.addEventListener('click', resetHotkeys);
+      saveBtn && saveBtn.addEventListener('click', applyHotkeys);
+
+      setupSubtabs();
+      loadSettingsFromServerAndMerge().finally(() => {
+        renderHotkeys();
+      });
+    })();
+  </script>
+{% endblock %}

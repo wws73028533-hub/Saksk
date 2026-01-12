@@ -1,38 +1,51 @@
-<!DOCTYPE html>
-<html lang="zh">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <title>账号管理 - 全能刷题库</title>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Crect width='128' height='128' rx='24' fill='%23007bff'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='central' text-anchor='middle' font-size='88' fill='white'%3EQ%3C/text%3E%3C/svg%3E">
+{% extends "main/app_shell.html" %}
+{% block title %}账号管理{% endblock %}
+{% block page_title %}账号{% endblock %}
+{% block head_extra %}
     <style>
         :root {
-            --bg-color: #fafafa;
-            --card-bg: rgba(255, 255, 255, 0.75);
-            --card-bg-solid: rgba(255, 255, 255, 0.95);
-            --text-color: #1d1d1f;
-            --text-sub: #86868b;
+            --bg-color: #f5f5f7;
+            --card-bg: rgba(255, 255, 255, 0.78);
+            --card-bg-solid: rgba(255, 255, 255, 0.96);
+            --text-color: #111113;
+            --text-sub: rgba(17, 17, 19, 0.62);
             --border-color: rgba(0, 0, 0, 0.08);
-            --primary: #007AFF;
-            --primary-light: rgba(0, 122, 255, 0.12);
-            --shadow: 0 2px 16px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
-            --shadow-hover: 0 4px 24px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.06);
-            --success: #34c759;
-            --danger: #ff3b30;
-            --blur: blur(60px) saturate(200%);
+            --shadow: 0 10px 34px rgba(0, 0, 0, 0.08);
+            --shadow-hover: 0 16px 46px rgba(0, 0, 0, 0.10);
+            --blur: blur(26px) saturate(180%);
+
+            --btn-primary-bg: #111113;
+            --btn-primary-fg: #ffffff;
+            --btn-primary-border: rgba(17, 17, 19, 0.22);
+            --btn-secondary-bg: rgba(255, 255, 255, 0.62);
+            --btn-secondary-fg: var(--text-color);
+            --btn-secondary-border: var(--border-color);
+            --btn-quiet-bg: rgba(0, 0, 0, 0.04);
+            --btn-quiet-border: rgba(0, 0, 0, 0.08);
+
+            --focus-ring: rgba(17, 17, 19, 0.10);
+            --focus-border: rgba(17, 17, 19, 0.40);
         }
 
         body.dark-mode {
             --bg-color: #000000;
-            --card-bg: rgba(28, 28, 30, 0.6);
-            --card-bg-solid: rgba(28, 28, 30, 0.95);
+            --card-bg: rgba(28, 28, 30, 0.62);
+            --card-bg-solid: rgba(28, 28, 30, 0.92);
             --text-color: #f5f5f7;
-            --text-sub: #a1a1a6;
-            --border-color: rgba(255, 255, 255, 0.12);
-            --primary: #0a84ff;
-            --primary-light: rgba(10, 132, 255, 0.2);
-            --shadow: 0 2px 16px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
-            --shadow-hover: 0 4px 24px rgba(0, 0, 0, 0.6), 0 2px 4px rgba(0, 0, 0, 0.5);
+            --text-sub: rgba(245, 245, 247, 0.64);
+            --border-color: rgba(255, 255, 255, 0.14);
+            --shadow: 0 18px 52px rgba(0, 0, 0, 0.55);
+            --shadow-hover: 0 22px 68px rgba(0, 0, 0, 0.60);
+
+            --btn-primary-bg: rgba(245, 245, 247, 0.92);
+            --btn-primary-fg: rgba(0, 0, 0, 0.92);
+            --btn-primary-border: rgba(255, 255, 255, 0.24);
+            --btn-secondary-bg: rgba(28, 28, 30, 0.72);
+            --btn-quiet-bg: rgba(255, 255, 255, 0.06);
+            --btn-quiet-border: rgba(255, 255, 255, 0.12);
+
+            --focus-ring: rgba(245, 245, 247, 0.12);
+            --focus-border: rgba(245, 245, 247, 0.42);
         }
 
         /* 全局滚动条样式 - 极简风格 */
@@ -58,46 +71,32 @@
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
         }
-        body::after, body::before {
-            content: '';
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -1;
-            pointer-events: none;
-            transition: opacity .3s ease;
-        }
-        body::after { background: linear-gradient(180deg, #ffffff 0%, #fafafa 30%, #f5f5f7 70%, #f0f0f2 100%); }
-        body::before { background: linear-gradient(180deg, #1c1c1e 0%, #000000 40%, #000000 100%); opacity: 0; }
-        body.dark-mode::before { opacity: 1; }
-        body.dark-mode::after { opacity: 0; }
 
-        .main-container { max-width: 800px; margin: 0 auto; padding: 40px 20px; }
-        .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; }
-        .header-title { font-size: 36px; font-weight: 700; letter-spacing: -0.8px; }
+
+        .main-container { max-width: 920px; margin: 0 auto; padding: 10px 6px 24px; }
+        .page-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; padding: 0 6px; }
+        .header-title { font-size: 20px; font-weight: 750; letter-spacing: -0.2px; }
+        .header-sub { margin-top: 4px; font-size: 13px; color: var(--text-sub); line-height: 1.5; }
 
         .card {
             background: var(--card-bg);
             backdrop-filter: var(--blur);
             -webkit-backdrop-filter: var(--blur);
-            padding: 32px;
-            border-radius: 20px;
+            padding: 24px;
+            border-radius: 22px;
             box-shadow: var(--shadow);
-            border: 1px solid rgba(255, 255, 255, 0.8);
-            margin-bottom: 24px;
+            border: 1px solid var(--border-color);
+            min-width: 0;
         }
-        body.dark-mode .card { background: rgba(28, 28, 30, 0.65); border: 1px solid rgba(255, 255, 255, 0.1); }
 
-        .card h2 { margin-top: 0; font-size: 24px; font-weight: 600; border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 24px; }
+        .card h2 { margin-top: 0; font-size: 16px; font-weight: 750; border-bottom: 1px solid var(--border-color); padding-bottom: 14px; margin-bottom: 18px; letter-spacing: -0.2px; }
         .form-group { margin-bottom: 20px; }
         .form-group label { display: block; font-weight: 500; color: var(--text-sub); margin-bottom: 8px; font-size: 14px; }
         
         .main-input {
             width: 100%;
             padding: 12px 16px;
-            border: 0.5px solid var(--border-color);
+            border: 1px solid var(--border-color);
             border-radius: 12px;
             font-size: 16px;
             background: var(--card-bg-solid);
@@ -107,30 +106,67 @@
             -webkit-appearance: none;
             appearance: none;
         }
-        .main-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
+        .main-input:focus { outline: none; border-color: var(--focus-border); box-shadow: 0 0 0 3px var(--focus-ring); }
 
         .btn {
-            padding: 12px 24px;
-            border: none;
+            height: 42px;
+            padding: 10px 16px;
+            min-width: 96px;
+            border: 1px solid var(--btn-secondary-border);
             border-radius: 12px;
-            font-size: 16px;
+            font-size: 14px;
             cursor: pointer;
-            transition: all 0.2s ease;
-            font-weight: 500;
+            transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+            font-weight: 600;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
+            background: var(--btn-secondary-bg);
+            color: var(--btn-secondary-fg);
         }
-        .btn-primary { background: var(--primary); color: white; }
-        .btn-primary:hover { opacity: 0.85; }
-        .btn-secondary { background: rgba(142, 142, 147, 0.15); color: var(--text-color); }
-        .btn-secondary:hover { background: rgba(142, 142, 147, 0.25); }
+        .btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-hover); }
+        .btn:active { transform: translateY(0); }
 
-        .actions { display: flex; justify-content: flex-start; gap: 12px; margin-top: 24px; }
-        .message { margin-top: 16px; padding: 12px 16px; border-radius: 12px; font-size: 15px; display: none; }
-        .message.success { background: rgba(52, 199, 89, 0.1); color: var(--success); border: 0.5px solid rgba(52, 199, 89, 0.3); }
-        .message.error { background: rgba(255, 59, 48, 0.1); color: var(--danger); border: 0.5px solid rgba(255, 59, 48, 0.3); }
+        .btn-primary { background: var(--btn-primary-bg); color: var(--btn-primary-fg); border-color: var(--btn-primary-border); }
+        .btn-secondary { background: var(--btn-quiet-bg); color: var(--text-color); border-color: var(--btn-quiet-border); }
+        .btn-danger { background: transparent; color: var(--text-color); border-color: var(--focus-border); }
+
+        .btn.btn-sm { height: 34px; padding: 8px 12px; min-width: auto; font-size: 13px; border-radius: 999px; }
+
+        .actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; flex-wrap: wrap; }
+        .message { margin-top: 14px; padding: 12px 14px; border-radius: 14px; font-size: 13px; display: none; background: var(--btn-quiet-bg); border: 1px solid var(--btn-quiet-border); color: var(--text-color); line-height: 1.6; }
+        .message.success, .message.error { background: var(--btn-quiet-bg); border-color: var(--btn-quiet-border); color: var(--text-color); }
+
+        .binding-list { display: flex; flex-direction: column; gap: 12px; }
+        .binding-item { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 12px 0; border-top: 1px solid var(--border-color); }
+        .binding-item:first-child { border-top: none; padding-top: 0; }
+        .binding-left { min-width: 0; }
+        .binding-title { font-size: 14px; font-weight: 650; letter-spacing: -0.1px; }
+        .binding-value { margin-top: 4px; font-size: 13px; color: var(--text-sub); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .binding-actions { display: flex; gap: 10px; align-items: center; flex: 0 0 auto; flex-wrap: wrap; justify-content: flex-end; }
+
+        .bind-form { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--border-color); }
+        .inline-row { display: flex; gap: 8px; align-items: center; }
+        .inline-row .main-input { flex: 1 1 auto; }
+        .inline-row .btn { white-space: nowrap; }
+
+        .cards-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+        .kv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .kv { padding: 12px; border: 1px solid var(--border-color); border-radius: 16px; background: var(--btn-secondary-bg); }
+        .kv-label { font-size: 12px; color: var(--text-sub); letter-spacing: -0.1px; }
+        .kv-value { margin-top: 6px; font-size: 14px; font-weight: 700; letter-spacing: -0.1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+        .kpi-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+        .kpi { padding: 12px; border: 1px solid var(--border-color); border-radius: 16px; background: var(--btn-secondary-bg); min-width: 0; }
+        .kpi-value { font-size: 20px; font-weight: 850; letter-spacing: -0.4px; }
+        .kpi-label { margin-top: 4px; font-size: 12px; color: var(--text-sub); letter-spacing: -0.1px; }
+
+        .help-text { margin-top: 6px; font-size: 12px; color: var(--text-sub); line-height: 1.5; }
+        .input-wrap { position: relative; }
+        .input-wrap .main-input { padding-right: 78px; }
+        .input-toggle { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); }
 
         /* 微信绑定弹窗 */
         .modal-overlay {
@@ -139,7 +175,7 @@
             display: none;
             align-items: center;
             justify-content: center;
-            background: rgba(0,0,0,0.28);
+            background: rgba(0, 0, 0, 0.52);
             z-index: 9999;
             padding: 18px;
             box-sizing: border-box;
@@ -148,15 +184,15 @@
             width: 100%;
             max-width: 420px;
             background: var(--card-bg-solid);
-            border-radius: 20px;
+            border-radius: 22px;
             border: 1px solid var(--border-color);
             box-shadow: var(--shadow-hover);
-            padding: 22px;
+            padding: 20px;
         }
         .modal-title {
             margin: 0 0 6px 0;
-            font-size: 20px;
-            font-weight: 700;
+            font-size: 16px;
+            font-weight: 750;
             letter-spacing: -0.2px;
         }
         .modal-sub {
@@ -171,85 +207,164 @@
             margin: 0 auto;
             border-radius: 18px;
             border: 1px solid var(--border-color);
-            background: rgba(255,255,255,0.9);
+            background: var(--card-bg-solid);
             display: flex;
             align-items: center;
             justify-content: center;
             overflow: hidden;
         }
-        body.dark-mode .qr-box { background: rgba(28, 28, 30, 0.9); }
         .qr-img { width: 100%; height: 100%; object-fit: contain; display: none; }
         .qr-ph { color: var(--text-sub); font-size: 13px; }
         .qr-status { margin-top: 14px; font-size: 13px; color: var(--text-sub); text-align: center; line-height: 1.6; min-height: 20px; }
         .modal-actions { display: flex; gap: 10px; margin-top: 16px; }
         .modal-actions .btn { flex: 1; justify-content: center; }
 
-        .grid-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-
         @media (max-width: 768px) {
             .main-container { padding: 24px 16px; }
-            .header-title { font-size: 28px; }
-            .card { padding: 24px; }
-            .grid-layout { grid-template-columns: 1fr; }
+            .header-title { font-size: 18px; }
+            .card { padding: 18px; }
+            .cards-grid { grid-template-columns: 1fr; }
+            .kv-grid { grid-template-columns: 1fr; }
+            .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         }
     </style>
-</head>
-<body>
-    <main class="container main-container">
+{% endblock %}
+
+{% block content %}
+    <div class="main-container">
         <header class="page-header">
-            <h1 class="header-title">账号管理</h1>
-            <a href="/user_hub" class="btn btn-secondary">← 返回</a>
+            <div>
+                <h1 class="header-title">账号与安全</h1>
+                <div class="header-sub">管理密码与绑定方式。</div>
+            </div>
+            <a href="/user_hub" class="btn btn-secondary">返回</a>
         </header>
 
-        <div class="grid-layout">
-            <div class="card">
-                <h2 id="passwordTitle">🔒 修改密码</h2>
+        <div class="cards-grid">
+            <section class="card" aria-labelledby="accountOverviewTitle">
+                <h2 id="accountOverviewTitle">账号概览</h2>
+                <div class="kv-grid">
+                    <div class="kv">
+                        <div class="kv-label">用户名</div>
+                        <div class="kv-value" id="profileUsername">-</div>
+                    </div>
+                    <div class="kv">
+                        <div class="kv-label">角色</div>
+                        <div class="kv-value" id="profileRole">-</div>
+                    </div>
+                    <div class="kv">
+                        <div class="kv-label">注册时间</div>
+                        <div class="kv-value" id="profileCreatedAt">-</div>
+                    </div>
+                    <div class="kv">
+                        <div class="kv-label">邮箱状态</div>
+                        <div class="kv-value" id="profileEmailSummary">-</div>
+                    </div>
+                    <div class="kv">
+                        <div class="kv-label">微信状态</div>
+                        <div class="kv-value" id="profileWechatSummary">-</div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="card" aria-labelledby="accountStatsTitle">
+                <h2 id="accountStatsTitle">学习概览</h2>
+                <div class="kpi-grid">
+                    <div class="kpi">
+                        <div class="kpi-value" id="statStreakDays">-</div>
+                        <div class="kpi-label">连续学习（天）</div>
+                    </div>
+                    <div class="kpi">
+                        <div class="kpi-value" id="statTotalAnswered">-</div>
+                        <div class="kpi-label">累计答题</div>
+                    </div>
+                    <div class="kpi">
+                        <div class="kpi-value" id="statAccuracy">-</div>
+                        <div class="kpi-label">正确率</div>
+                    </div>
+                    <div class="kpi">
+                        <div class="kpi-value" id="statFavorites">-</div>
+                        <div class="kpi-label">收藏</div>
+                    </div>
+                    <div class="kpi">
+                        <div class="kpi-value" id="statMistakes">-</div>
+                        <div class="kpi-label">错题</div>
+                    </div>
+                    <div class="kpi">
+                        <div class="kpi-value" id="statCorrectAnswered">-</div>
+                        <div class="kpi-label">答对</div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="card" aria-labelledby="passwordTitle">
+                <h2 id="passwordTitle">修改密码</h2>
                 <form id="passwordForm">
                     <div class="form-group" id="currentPasswordGroup">
                         <label for="current_password">当前密码</label>
-                        <input type="password" id="current_password" name="current_password" class="main-input">
+                        <div class="input-wrap">
+                            <input type="password" id="current_password" name="current_password" class="main-input" autocomplete="current-password">
+                            <button type="button" class="btn btn-secondary btn-sm input-toggle" data-target="current_password" aria-label="显示当前密码">显示</button>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label for="new_password" id="newPasswordLabel">新密码</label>
-                        <input type="password" id="new_password" name="new_password" class="main-input" placeholder="至少8位，含数字与字母" required>
+                        <div class="input-wrap">
+                            <input type="password" id="new_password" name="new_password" class="main-input" placeholder="至少8位，包含字母与数字" autocomplete="new-password" required>
+                            <button type="button" class="btn btn-secondary btn-sm input-toggle" data-target="new_password" aria-label="显示新密码">显示</button>
+                        </div>
+                        <div class="help-text">至少 8 位，且同时包含字母与数字。</div>
                     </div>
                     <div class="form-group">
                         <label for="confirm_password" id="confirmPasswordLabel">确认新密码</label>
-                        <input type="password" id="confirm_password" name="confirm_password" class="main-input" placeholder="请再次输入新密码" required>
+                        <div class="input-wrap">
+                            <input type="password" id="confirm_password" name="confirm_password" class="main-input" placeholder="请再次输入" autocomplete="new-password" required>
+                            <button type="button" class="btn btn-secondary btn-sm input-toggle" data-target="confirm_password" aria-label="显示确认密码">显示</button>
+                        </div>
                     </div>
                     <div class="actions">
-                        <button type="submit" class="btn btn-primary" id="passwordSubmitBtn">🔄 提交修改</button>
+                        <button type="submit" class="btn btn-primary" id="passwordSubmitBtn">提交修改</button>
                     </div>
                     <div id="pwdMsg" class="message"></div>
                 </form>
-            </div>
+            </section>
 
-            <div class="card">
-                <h2>🔗 绑定设置</h2>
-                <div class="form-group">
-                    <p><strong>📧 邮箱:</strong> 
-                        <span id="emailDisplay">加载中...</span> 
-                        <a href="#" id="bindEmailLink" style="color: var(--primary); text-decoration: none; margin-left: 8px;">去绑定</a>
-                    </p>
-                    <p><strong>🟩 微信:</strong>
-                        <span id="wechatDisplay">加载中...</span>
-                        <a href="#" id="bindWechatLink" style="color: var(--primary); text-decoration: none; margin-left: 8px;">去绑定</a>
-                        <a href="#" id="unbindWechatLink" style="color: var(--danger); text-decoration: none; margin-left: 10px; display:none;">解绑</a>
-                    </p>
-                    <p><strong>📱 手机号:</strong> <span>未绑定</span> <a href="#" onclick="return false;" style="opacity: 0.5;">去绑定</a></p>
+            <section class="card" aria-labelledby="bindingTitle">
+                <h2 id="bindingTitle">绑定方式</h2>
+                <div class="binding-list">
+                    <div class="binding-item">
+                        <div class="binding-left">
+                            <div class="binding-title">邮箱</div>
+                            <div class="binding-value"><span id="emailDisplay">加载中...</span></div>
+                        </div>
+                        <div class="binding-actions">
+                            <a href="#" id="bindEmailLink" class="btn btn-secondary btn-sm">去绑定</a>
+                        </div>
+                    </div>
+
+                    <div class="binding-item">
+                        <div class="binding-left">
+                            <div class="binding-title">微信</div>
+                            <div class="binding-value"><span id="wechatDisplay">加载中...</span></div>
+                        </div>
+                        <div class="binding-actions">
+                            <a href="#" id="bindWechatLink" class="btn btn-secondary btn-sm">去绑定</a>
+                            <a href="#" id="unbindWechatLink" class="btn btn-danger btn-sm" style="display:none;">解绑</a>
+                        </div>
+                    </div>
                 </div>
-                
+
                 <!-- 邮箱绑定表单（默认隐藏） -->
-                <div id="emailBindForm" style="display: none; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border-color);">
+                <div id="emailBindForm" class="bind-form" style="display: none;">
                     <div class="form-group">
                         <label for="bindEmailInput">邮箱地址</label>
-                        <input type="email" id="bindEmailInput" class="main-input" placeholder="请输入邮箱地址" required>
+                        <input type="email" id="bindEmailInput" class="main-input" placeholder="请输入邮箱地址" autocomplete="email" required>
                     </div>
                     <div class="form-group">
                         <label for="bindCodeInput">验证码</label>
-                        <div style="display: flex; gap: 8px;">
-                            <input type="text" id="bindCodeInput" class="main-input" placeholder="请输入6位验证码" maxlength="6" style="flex: 1;">
-                            <button type="button" id="sendCodeBtn" class="btn btn-secondary" style="white-space: nowrap;">发送验证码</button>
+                        <div class="inline-row">
+                            <input type="text" id="bindCodeInput" class="main-input" placeholder="请输入6位验证码" inputmode="numeric" maxlength="6">
+                            <button type="button" id="sendCodeBtn" class="btn btn-secondary btn-sm">发送验证码</button>
                         </div>
                     </div>
                     <div class="actions">
@@ -258,9 +373,9 @@
                     </div>
                     <div id="emailBindMsg" class="message"></div>
                 </div>
-            </div>
+            </section>
         </div>
-    </main>
+    </div>
 
     <!-- 微信绑定二维码弹窗 -->
     <div id="wechatBindModal" class="modal-overlay" onclick="closeWechatBindModal(event)">
@@ -278,51 +393,120 @@
             </div>
         </div>
     </div>
+{% endblock %}
 
+{% block body_end %}
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            if (localStorage.getItem('theme') === 'dark') {
-                document.body.classList.add('dark-mode');
-            }
-        });
+        function setText(id, value) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            if (value === null || typeof value === 'undefined' || value === '') el.textContent = '-';
+            else el.textContent = String(value);
+        }
 
-        // 加载用户邮箱信息
-        async function loadEmailInfo() {
-            try {
-                const res = await fetch('/api/profile');
-                if (!res.ok) throw new Error('加载失败');
-                const d = await res.json();
-                if (d.status !== 'success') throw new Error(d.message || '加载失败');
-                
-                const emailDisplay = document.getElementById('emailDisplay');
-                const bindEmailLink = document.getElementById('bindEmailLink');
-                const wechatDisplay = document.getElementById('wechatDisplay');
-                const bindWechatLink = document.getElementById('bindWechatLink');
-                const unbindWechatLink = document.getElementById('unbindWechatLink');
-                
-                if (d.data.email) {
-                    emailDisplay.textContent = d.data.email + (d.data.email_verified ? ' ✓' : ' (未验证)');
-                    bindEmailLink.textContent = '更换';
-                } else {
-                    emailDisplay.textContent = '未绑定';
-                    bindEmailLink.textContent = '去绑定';
-                }
+        function formatCount(value) {
+            const n = Number(value);
+            if (!Number.isFinite(n)) return '-';
+            return n.toLocaleString('zh-CN');
+        }
 
-                if (d.data.wechat_bound) {
-                    wechatDisplay.textContent = '已绑定 ✓';
-                    bindWechatLink.textContent = '更换';
-                    unbindWechatLink.style.display = 'inline';
-                } else {
-                    wechatDisplay.textContent = '未绑定';
-                    bindWechatLink.textContent = '去绑定';
-                    unbindWechatLink.style.display = 'none';
-                }
-            } catch (err) {
-                document.getElementById('emailDisplay').textContent = '加载失败';
-                document.getElementById('wechatDisplay').textContent = '加载失败';
+        function formatPercent(value) {
+            const n = Number(value);
+            if (!Number.isFinite(n)) return '-';
+            const fixed = Math.round(n * 10) / 10;
+            return (Number.isInteger(fixed) ? String(fixed) : fixed.toFixed(1)) + '%';
+        }
+
+        function applyPasswordMode(hasPasswordSet) {
+            const setMode = !hasPasswordSet;
+            needsPasswordSet = setMode;
+
+            if (setMode) {
+                document.getElementById('passwordTitle').textContent = '设置密码';
+                document.getElementById('currentPasswordGroup').style.display = 'none';
+                document.getElementById('current_password').required = false;
+                document.getElementById('newPasswordLabel').textContent = '密码';
+                document.getElementById('confirmPasswordLabel').textContent = '确认密码';
+                document.getElementById('passwordSubmitBtn').textContent = '设置密码';
+            } else {
+                document.getElementById('passwordTitle').textContent = '修改密码';
+                document.getElementById('currentPasswordGroup').style.display = 'block';
+                document.getElementById('current_password').required = true;
+                document.getElementById('newPasswordLabel').textContent = '新密码';
+                document.getElementById('confirmPasswordLabel').textContent = '确认新密码';
+                document.getElementById('passwordSubmitBtn').textContent = '提交修改';
             }
         }
-        
+
+        function applyProfile(data) {
+            const d = data || {};
+
+            setText('profileUsername', d.username || '-');
+            setText('profileRole', d.is_admin ? '管理员' : '普通用户');
+            setText('profileCreatedAt', d.created_at || '-');
+
+            const email = (d.email || '').toString().trim();
+            const emailStatus = email ? ('已绑定' + (d.email_verified ? '（已验证）' : '（未验证）')) : '未绑定';
+            const emailText = email ? (email + (d.email_verified ? '（已验证）' : '（未验证）')) : '未绑定';
+            setText('profileEmailSummary', emailStatus);
+            setText('emailDisplay', emailText);
+
+            const wechatBound = !!d.wechat_bound;
+            const wechatText = wechatBound ? '已绑定' : '未绑定';
+            setText('profileWechatSummary', wechatText);
+            setText('wechatDisplay', wechatText);
+
+            const bindEmailLink = document.getElementById('bindEmailLink');
+            if (bindEmailLink) bindEmailLink.textContent = email ? '更换' : '去绑定';
+
+            const bindWechatLink = document.getElementById('bindWechatLink');
+            if (bindWechatLink) bindWechatLink.textContent = wechatBound ? '更换' : '去绑定';
+
+            const unbindWechatLink = document.getElementById('unbindWechatLink');
+            if (unbindWechatLink) unbindWechatLink.style.display = wechatBound ? 'inline-flex' : 'none';
+
+            setText('statStreakDays', formatCount(d.streak_days));
+            setText('statTotalAnswered', formatCount(d.total_answered));
+            setText('statCorrectAnswered', formatCount(d.correct_answered));
+            setText('statFavorites', formatCount(d.favorites_count));
+            setText('statMistakes', formatCount(d.mistakes_count));
+            setText('statAccuracy', formatPercent(d.accuracy));
+
+            applyPasswordMode(!!d.has_password_set);
+        }
+
+        function setLoadFailed() {
+            const failed = '加载失败';
+            setText('profileUsername', failed);
+            setText('profileRole', failed);
+            setText('profileCreatedAt', failed);
+            setText('profileEmailSummary', failed);
+            setText('profileWechatSummary', failed);
+            setText('emailDisplay', failed);
+            setText('wechatDisplay', failed);
+            setText('statStreakDays', '-');
+            setText('statTotalAnswered', '-');
+            setText('statCorrectAnswered', '-');
+            setText('statFavorites', '-');
+            setText('statMistakes', '-');
+            setText('statAccuracy', '-');
+            applyPasswordMode(true);
+        }
+
+        let needsPasswordSet = false;
+
+        async function loadProfile() {
+            try {
+                const res = await fetch('/api/profile', { credentials: 'include' });
+                if (!res.ok) throw new Error('加载失败');
+                const js = await res.json();
+                if (!js || js.status !== 'success' || !js.data) throw new Error(js?.message || '加载失败');
+                applyProfile(js.data);
+            } catch (err) {
+                setLoadFailed();
+            }
+        }
+
         // 邮箱绑定相关
         let countdownTimer = null;
         let countdownSeconds = 0;
@@ -439,11 +623,11 @@
                     return;
                 }
                 if (state === 'bound') {
-                    setWechatBindStatus('绑定成功 ✓');
+                    setWechatBindStatus('绑定成功');
                     if (wechatBindTimer) { clearInterval(wechatBindTimer); wechatBindTimer = null; }
                     setTimeout(() => {
                         closeWechatBindModal();
-                        loadEmailInfo();
+                        loadProfile();
                     }, 800);
                 }
             } catch (e) {
@@ -469,7 +653,7 @@
                 const d = await res.json();
                 if (!res.ok || d.status !== 'success') throw new Error(d.message || '解绑失败');
                 alert('解绑成功');
-                loadEmailInfo();
+                loadProfile();
             } catch (err) {
                 alert('解绑失败：' + ((err && err.message) ? err.message : '请稍后重试'));
             }
@@ -516,20 +700,20 @@
                     // 请求失败，显示错误信息
                     const errorMsg = d.message || '发送失败';
                     console.error('发送验证码失败:', d);
-                    showEmailMessage('❌ ' + errorMsg, 'error');
+                    showEmailMessage(errorMsg, 'error');
                     return;
                 }
                 
                 if (d.status === 'success') {
-                    showEmailMessage('✅ 验证码已发送，请查收邮件', 'success');
+                    showEmailMessage('验证码已发送，请查收邮件', 'success');
                     countdownSeconds = 60;
                     updateCountdown();
                 } else {
-                    showEmailMessage('❌ ' + (d.message || '发送失败'), 'error');
+                    showEmailMessage(d.message || '发送失败', 'error');
                 }
             } catch (err) {
                 console.error('发送验证码异常:', err);
-                showEmailMessage('❌ 发送失败，请稍后重试: ' + err.message, 'error');
+                showEmailMessage('发送失败，请稍后重试: ' + err.message, 'error');
             }
         });
         
@@ -556,69 +740,28 @@
                 const d = await res.json();
                 
                 if (d.status === 'success') {
-                    showEmailMessage('✅ 邮箱绑定成功！', 'success');
+                    showEmailMessage('邮箱绑定成功', 'success');
                     setTimeout(() => {
                         document.getElementById('emailBindForm').style.display = 'none';
                         document.getElementById('bindEmailInput').value = '';
                         document.getElementById('bindCodeInput').value = '';
-                        loadEmailInfo(); // 重新加载邮箱信息
+                        loadProfile(); // 重新加载信息
                     }, 1500);
                 } else {
-                    showEmailMessage('❌ ' + (d.message || '绑定失败'), 'error');
+                    showEmailMessage(d.message || '绑定失败', 'error');
                 }
             } catch (err) {
-                showEmailMessage('❌ 绑定失败，请稍后重试', 'error');
+                showEmailMessage('绑定失败，请稍后重试', 'error');
             }
         });
 
-        // 加载用户信息，判断是否需要设置密码
-        let needsPasswordSet = false;
-        async function loadUserPasswordStatus() {
-            try {
-                const res = await fetch('/api/profile');
-                if (!res.ok) throw new Error('加载失败');
-                const d = await res.json();
-                if (d.status !== 'success') throw new Error(d.message || '加载失败');
-                
-                needsPasswordSet = !d.data.has_password_set;
-                
-                // 根据是否需要设置密码更新UI
-                if (needsPasswordSet) {
-                    // 设置密码模式
-                    document.getElementById('passwordTitle').textContent = '🔒 设置密码';
-                    document.getElementById('currentPasswordGroup').style.display = 'none';
-                    document.getElementById('current_password').required = false;
-                    document.getElementById('newPasswordLabel').textContent = '密码';
-                    document.getElementById('confirmPasswordLabel').textContent = '确认密码';
-                    document.getElementById('passwordSubmitBtn').textContent = '✅ 设置密码';
-                } else {
-                    // 修改密码模式
-                    document.getElementById('passwordTitle').textContent = '🔒 修改密码';
-                    document.getElementById('currentPasswordGroup').style.display = 'block';
-                    document.getElementById('current_password').required = true;
-                    document.getElementById('newPasswordLabel').textContent = '新密码';
-                    document.getElementById('confirmPasswordLabel').textContent = '确认新密码';
-                    document.getElementById('passwordSubmitBtn').textContent = '🔄 提交修改';
-                }
-            } catch (err) {
-                console.error('[账号管理] 加载用户信息失败:', err);
-                // 出错时默认显示修改密码模式（安全起见）
-                document.getElementById('passwordTitle').textContent = '🔒 修改密码';
-                document.getElementById('currentPasswordGroup').style.display = 'block';
-                document.getElementById('current_password').required = true;
-                document.getElementById('newPasswordLabel').textContent = '新密码';
-                document.getElementById('confirmPasswordLabel').textContent = '确认新密码';
-                document.getElementById('passwordSubmitBtn').textContent = '🔄 提交修改';
-                needsPasswordSet = false;
-            }
-        }
-        
         document.getElementById('passwordForm').addEventListener('submit', async e => {
             e.preventDefault();
             const cur = document.getElementById('current_password').value;
             const nw = document.getElementById('new_password').value;
             const c_nw = document.getElementById('confirm_password').value;
             const msg = document.getElementById('pwdMsg');
+            const submitBtn = document.getElementById('passwordSubmitBtn');
             msg.style.display = 'none';
 
             function showMessage(text, type) {
@@ -649,6 +792,7 @@
             }
 
             try {
+                if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '处理中…'; }
                 const res = await fetch('/api/profile/password', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
@@ -662,26 +806,42 @@
                 if (!res.ok || d.status !== 'success') throw new Error(d.message || '操作失败');
                 
                 if (needsPasswordSet) {
-                    showMessage('✅ 密码设置成功', 'success');
+                    showMessage('密码设置成功', 'success');
                     // 重新加载状态
                     setTimeout(() => {
-                        loadUserPasswordStatus();
+                        loadProfile();
                         document.getElementById('passwordForm').reset();
                     }, 1500);
                 } else {
-                    showMessage('✅ 修改成功，请重新登录', 'success');
+                    showMessage('修改成功，请重新登录', 'success');
                     setTimeout(() => location.href = '/login', 1500);
                 }
             } catch (err) {
-                showMessage('❌ ' + err.message, 'error');
+                showMessage(err.message, 'error');
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = needsPasswordSet ? '设置密码' : '提交修改';
+                }
             }
         });
-        
-        // 页面加载时获取用户密码状态
-        loadUserPasswordStatus();
-        
-        // 页面加载时获取邮箱信息
-        loadEmailInfo();
+
+        function setupPasswordToggles() {
+            const btns = document.querySelectorAll('.input-toggle');
+            btns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const targetId = btn.getAttribute('data-target');
+                    const input = targetId ? document.getElementById(targetId) : null;
+                    if (!input) return;
+
+                    const willShow = input.type === 'password';
+                    input.type = willShow ? 'text' : 'password';
+                    btn.textContent = willShow ? '隐藏' : '显示';
+                });
+            });
+        }
+
+        setupPasswordToggles();
+        loadProfile();
     </script>
-</body>
-</html>
+{% endblock %}

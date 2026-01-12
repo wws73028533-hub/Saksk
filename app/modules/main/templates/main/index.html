@@ -1358,7 +1358,9 @@
             bottom: 20px;
             left: 50%;
             transform: translateX(-50%);
-            background: linear-gradient(135deg, rgba(0, 122, 255, 0.1) 0%, var(--card-bg-solid) 100%);
+            background: var(--card-bg);
+            backdrop-filter: var(--blur);
+            -webkit-backdrop-filter: var(--blur);
             color: var(--text-color);
             padding: 14px 18px;
             border-radius: 18px;
@@ -1367,8 +1369,8 @@
             opacity: 0;
             animation: subjectHintSlideIn 0.5s ease-out forwards;
             transition: opacity 0.3s, transform 0.3s;
-            box-shadow: 0 8px 24px rgba(0, 122, 255, 0.15), var(--shadow);
-            border: 1px solid rgba(0, 122, 255, 0.2);
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
             display: flex;
             align-items: center;
             gap: 12px;
@@ -1386,13 +1388,10 @@
             }
         }
         .subject-hint-icon {
-            font-size: 20px;
+            width: 18px;
+            height: 18px;
             flex-shrink: 0;
-            animation: subjectHintIconPulse 2s ease-in-out infinite;
-        }
-        @keyframes subjectHintIconPulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.1); }
+            opacity: 0.9;
         }
         .subject-hint-content {
             flex: 1;
@@ -1412,9 +1411,9 @@
             line-height: 1.5;
         }
         .subject-hint-try {
-            background: rgba(0, 122, 255, 0.15);
-            border: 1px solid rgba(0, 122, 255, 0.3);
-            color: rgba(0, 122, 255, 0.9);
+            background: rgba(0, 0, 0, 0.04);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            color: var(--text-color);
             font-size: 12px;
             font-weight: 600;
             cursor: pointer;
@@ -1425,9 +1424,9 @@
             white-space: nowrap;
         }
         .subject-hint-try:hover {
-            background: rgba(0, 122, 255, 0.25);
-            border-color: rgba(0, 122, 255, 0.5);
-            transform: scale(1.05);
+            background: rgba(0, 0, 0, 0.06);
+            border-color: rgba(0, 0, 0, 0.12);
+            box-shadow: var(--shadow-hover);
         }
         .subject-hint-dismiss {
             background: none;
@@ -1471,18 +1470,14 @@
             gap: 8px;
             flex-shrink: 0;
         }
-        body.dark-mode .subject-hint {
-            background: linear-gradient(135deg, rgba(88, 166, 255, 0.15) 0%, rgba(28, 28, 30, 0.85) 100%);
-            border-color: rgba(88, 166, 255, 0.3);
-        }
         body.dark-mode .subject-hint-try {
-            background: rgba(88, 166, 255, 0.15);
-            border-color: rgba(88, 166, 255, 0.3);
-            color: rgba(88, 166, 255, 1);
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(255, 255, 255, 0.12);
+            color: var(--text-color);
         }
         body.dark-mode .subject-hint-try:hover {
-            background: rgba(88, 166, 255, 0.25);
-            border-color: rgba(88, 166, 255, 0.5);
+            background: rgba(255, 255, 255, 0.10);
+            border-color: rgba(255, 255, 255, 0.16);
         }
         body.dark-mode .subject-hint-dismiss:hover {
             background: rgba(255, 255, 255, 0.1);
@@ -3419,11 +3414,11 @@
             }
         }
         
-        // 跳转到题库设置页
+        // 跳转到练习管理（科目设置）
         function goToQuizSettings() {
             // 用户主动去设置，说明已知悉科目自定义功能，永久关闭提示
             dismissSubjectHintPermanently();
-            window.location.href = '/quiz_settings';
+            window.location.href = '/settings/practice#practice-subjects';
         }
         
         // 页面加载完成后显示提示
@@ -3436,13 +3431,16 @@
     
     {# 科目设置提示横幅 #}
     <div id="subjectHint" class="subject-hint" style="display: none;">
-        <span class="subject-hint-icon">⚙️</span>
+        <svg class="subject-hint-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" stroke="currentColor" stroke-width="2"/>
+            <path d="M19.4 13a7.9 7.9 0 0 0 0-2l2-1.5-2-3.5-2.4.6a8 8 0 0 0-1.7-1L15 2h-6l-.3 3.6a8 8 0 0 0-1.7 1L4.6 6 2.6 9.5l2 1.5a7.9 7.9 0 0 0 0 2l-2 1.5 2 3.5 2.4-.6a8 8 0 0 0 1.7 1L9 22h6l.3-3.6a8 8 0 0 0 1.7-1l2.4.6 2-3.5-2-1.5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+        </svg>
         <div class="subject-hint-content">
             <div class="subject-hint-title">自定义科目显示</div>
-            <div class="subject-hint-text">可在题库设置页选择要显示的科目，让界面更简洁</div>
+            <div class="subject-hint-text">可在练习管理中选择要显示的科目，让界面更简洁</div>
         </div>
         <div class="subject-hint-actions">
-            <button class="subject-hint-try" aria-label="去设置" onclick="goToQuizSettings()" title="前往题库设置">去设置</button>
+            <button class="subject-hint-try" aria-label="去设置" onclick="goToQuizSettings()" title="前往练习管理">去设置</button>
             <button class="subject-hint-dismiss" aria-label="不再提示" onclick="dismissSubjectHintPermanently()" title="不再提示">不再提示</button>
         </div>
         <button class="subject-hint-close" aria-label="关闭" onclick="dismissSubjectHint()" title="关闭">×</button>

@@ -1,0 +1,405 @@
+{% extends "main/app_shell.html" %}
+
+{% block title %}个人题库{% endblock %}
+{% block page_title %}个人题库{% endblock %}
+
+{% block head_extra %}
+<style>
+  .mb-hero {
+    padding: 18px 18px 16px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .mb-hero h1 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 980;
+    letter-spacing: -0.8px;
+    line-height: 1.12;
+  }
+
+  .mb-hero p {
+    margin: 8px 0 0;
+    color: var(--app-muted);
+    font-size: 13px;
+    line-height: 1.6;
+    max-width: 62ch;
+  }
+
+  .mb-toolbar {
+    margin-top: 12px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .mb-toolbar-left, .mb-toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+
+  .mb-search {
+    min-width: min(520px, 100%);
+    flex: 1 1 auto;
+  }
+
+  .mb-seg {
+    display: inline-flex;
+    border: 1px solid var(--app-border);
+    border-radius: 999px;
+    background: var(--app-surface);
+    box-shadow: var(--app-shadow-soft);
+    overflow: hidden;
+  }
+
+  .mb-seg button {
+    height: 36px;
+    padding: 0 12px;
+    border: 0;
+    background: transparent;
+    color: var(--app-muted);
+    font-weight: 900;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 160ms ease, color 160ms ease;
+  }
+
+  .mb-seg button:hover {
+    background: color-mix(in srgb, var(--app-text) 6%, transparent);
+    color: var(--app-text);
+  }
+
+  .mb-seg button.active {
+    background: color-mix(in srgb, var(--app-text) 10%, transparent);
+    color: var(--app-text);
+  }
+
+  .mb-seg button:focus { outline: none; box-shadow: 0 0 0 3px var(--app-primary-soft) inset; }
+
+  .mb-loading {
+    margin-top: 12px;
+    padding: 18px;
+    border-radius: var(--app-radius-xl);
+    border: 1px solid var(--app-border);
+    background: var(--app-surface-2);
+    color: var(--app-muted);
+  }
+
+  .mb-empty {
+    margin-top: 12px;
+    padding: 18px;
+    border-radius: var(--app-radius-xl);
+    border: 1px dashed color-mix(in srgb, var(--app-border) 70%, transparent);
+    color: var(--app-muted);
+    background: color-mix(in srgb, var(--app-surface) 70%, transparent);
+  }
+
+  .mb-empty a { text-decoration: underline; text-underline-offset: 3px; }
+
+  .mb-list {
+    margin-top: 12px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .mb-card {
+    border-radius: 16px;
+    border: 1px solid var(--app-border);
+    background: var(--app-surface-2);
+    box-shadow: var(--app-shadow-soft);
+    padding: 14px;
+    display: grid;
+    gap: 10px;
+    min-width: 0;
+    cursor: pointer;
+    transition: box-shadow 160ms ease, border-color 160ms ease, background 160ms ease;
+  }
+
+  .mb-card:hover {
+    box-shadow: var(--app-shadow);
+    border-color: color-mix(in srgb, var(--app-text) 14%, var(--app-border));
+  }
+
+  .mb-card:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--app-primary-soft), var(--app-shadow-soft);
+  }
+
+  .mb-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .mb-name {
+    font-size: 14px;
+    font-weight: 950;
+    letter-spacing: -0.2px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mb-manage {
+    height: 34px;
+    padding: 0 12px;
+    border-radius: 999px;
+    border: 1px solid var(--app-border);
+    background: var(--app-surface);
+    box-shadow: var(--app-shadow-soft);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 900;
+    color: var(--app-muted);
+    white-space: nowrap;
+    transition: box-shadow 160ms ease, color 160ms ease, background 160ms ease;
+    flex: 0 0 auto;
+  }
+
+  .mb-manage:hover { box-shadow: var(--app-shadow); color: var(--app-text); }
+  .mb-manage:focus { outline: none; box-shadow: 0 0 0 3px var(--app-primary-soft), var(--app-shadow-soft); }
+
+  .mb-tags {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .mb-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--app-border);
+    background: color-mix(in srgb, var(--app-surface) 70%, transparent);
+    font-size: 12px;
+    font-weight: 850;
+    color: var(--app-muted);
+    white-space: nowrap;
+  }
+
+  .mb-desc {
+    margin: 0;
+    color: var(--app-muted);
+    font-size: 13px;
+    line-height: 1.6;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .mb-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    color: var(--app-muted);
+    font-size: 12px;
+  }
+
+  .mb-dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--app-text) 35%, transparent);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="app-container">
+  <section class="app-card mb-hero">
+    <div>
+      <h1>个人题库</h1>
+      <p>用于自建与整理专项题目。点击题库卡片进入练习设置。</p>
+    </div>
+    <div>
+      <a class="app-btn app-btn-primary" href="/user/banks/add" aria-label="新建题库">新建题库</a>
+    </div>
+  </section>
+
+  <section class="app-card mb-toolbar" aria-label="题库筛选">
+    <div class="mb-toolbar-left">
+      <input class="app-input mb-search" id="kw" type="search" placeholder="搜索题库名称/描述" autocomplete="off" />
+      <div class="mb-seg" role="tablist" aria-label="公开状态筛选">
+        <button type="button" class="active" data-filter="all" role="tab" aria-selected="true">全部</button>
+        <button type="button" data-filter="public" role="tab" aria-selected="false">公开</button>
+        <button type="button" data-filter="private" role="tab" aria-selected="false">私密</button>
+      </div>
+    </div>
+    <div class="mb-toolbar-right">
+      <span class="app-pill" id="countPill">0 个题库</span>
+    </div>
+  </section>
+
+  <div id="list" class="mb-loading" aria-live="polite">正在加载...</div>
+</div>
+
+<script>
+  (function () {
+    var listEl = document.getElementById('list');
+    var kwEl = document.getElementById('kw');
+    var countPill = document.getElementById('countPill');
+    var seg = document.querySelector('.mb-seg');
+    var currentFilter = 'all';
+    var banks = [];
+
+    function escapeHtml(text) {
+      var div = document.createElement('div');
+      div.textContent = text || '';
+      return div.innerHTML;
+    }
+
+    function isTrue(v) {
+      return v === 1 || v === true || v === '1';
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr) return '-';
+      var d = new Date(dateStr);
+      if (isNaN(d.getTime())) return '-';
+      try { return d.toLocaleDateString('zh-CN'); } catch (e) { return '-'; }
+    }
+
+    function applyFilters(all) {
+      var kw = (kwEl && kwEl.value ? kwEl.value : '').trim().toLowerCase();
+      var out = Array.isArray(all) ? all.slice() : [];
+
+      if (kw) {
+        out = out.filter(function (b) {
+          var name = (b.name || '').toString().toLowerCase();
+          var desc = (b.description || '').toString().toLowerCase();
+          return name.indexOf(kw) !== -1 || desc.indexOf(kw) !== -1;
+        });
+      }
+
+      if (currentFilter === 'public') out = out.filter(function (b) { return isTrue(b.is_public); });
+      if (currentFilter === 'private') out = out.filter(function (b) { return !isTrue(b.is_public); });
+
+      out.sort(function (a, b) {
+        return String(b.updated_at || '').localeCompare(String(a.updated_at || '')) || (b.id || 0) - (a.id || 0);
+      });
+
+      return out;
+    }
+
+    function render() {
+      var items = applyFilters(banks);
+      if (countPill) countPill.textContent = (items.length || 0) + ' 个题库';
+
+      if (!items.length) {
+        listEl.className = 'mb-empty';
+        listEl.innerHTML = '还没有匹配的题库。你可以先 <a href=\"/user/banks/add\">新建题库</a>。';
+        return;
+      }
+
+      listEl.className = 'mb-list';
+      listEl.innerHTML = items.map(function (b) {
+        var name = escapeHtml(b.name || '未命名题库');
+        var desc = (b.description || '').toString().trim();
+        var descHtml = desc ? ('<p class=\"mb-desc\">' + escapeHtml(desc) + '</p>') : '';
+        var qcnt = Number(b.question_count || 0) || 0;
+        var isPublic = isTrue(b.is_public);
+        var updated = formatDate(b.updated_at);
+        var id = encodeURIComponent(b.id);
+
+        return (
+          '<div class=\"mb-card\" role=\"link\" tabindex=\"0\" data-href=\"/user/banks/' + id + '/practice\" aria-label=\"进入题库 ' + name + '\">' +
+            '<div class=\"mb-top\">' +
+              '<div class=\"mb-name\">' + name + '</div>' +
+              '<a class=\"mb-manage\" href=\"/user/banks/' + id + '\" aria-label=\"题目管理 ' + name + '\">题目管理</a>' +
+            '</div>' +
+            '<div class=\"mb-tags\">' +
+              '<span class=\"mb-tag\">' + (isPublic ? '公开' : '私密') + '</span>' +
+              '<span class=\"mb-tag\">' + qcnt + ' 题</span>' +
+            '</div>' +
+            descHtml +
+            '<div class=\"mb-meta\">' +
+              '<span>更新 ' + updated + '</span>' +
+              '<span class=\"mb-dot\" aria-hidden=\"true\"></span>' +
+              '<span>练习设置</span>' +
+            '</div>' +
+          '</div>'
+        );
+      }).join('');
+    }
+
+    function setFilter(next) {
+      currentFilter = next || 'all';
+      if (seg) {
+        Array.prototype.slice.call(seg.querySelectorAll('button')).forEach(function (btn) {
+          var active = (btn.getAttribute('data-filter') || '') === currentFilter;
+          btn.classList.toggle('active', active);
+          btn.setAttribute('aria-selected', active ? 'true' : 'false');
+        });
+      }
+      render();
+    }
+
+    async function load() {
+      listEl.className = 'mb-loading';
+      listEl.textContent = '正在加载...';
+
+      try {
+        var res = await fetch('/user/banks/api/list', { credentials: 'same-origin' });
+        var data = await res.json();
+        if (!res.ok) throw new Error((data && data.message) || '请求失败');
+        if (!data || data.code !== 0) throw new Error((data && data.message) || '请求失败');
+        banks = (data.data && data.data.banks) ? data.data.banks : [];
+        render();
+      } catch (e) {
+        listEl.className = 'mb-empty';
+        listEl.textContent = (e && e.message) ? e.message : '加载失败';
+      }
+    }
+
+    if (kwEl) kwEl.addEventListener('input', function () { render(); });
+    if (seg) seg.addEventListener('click', function (e) {
+      var btn = e.target && e.target.closest ? e.target.closest('button[data-filter]') : null;
+      if (!btn) return;
+      setFilter(btn.getAttribute('data-filter'));
+    });
+
+    if (listEl) listEl.addEventListener('click', function (e) {
+      var target = e.target;
+      if (!target || (target.closest && target.closest('a'))) return;
+      var card = target.closest ? target.closest('.mb-card') : null;
+      if (!card) return;
+      var href = card.getAttribute('data-href');
+      if (href) window.location.href = href;
+    });
+
+    if (listEl) listEl.addEventListener('keydown', function (e) {
+      if (!e || (e.key !== 'Enter' && e.key !== ' ')) return;
+      var target = e.target;
+      if (!target || !target.classList || !target.classList.contains('mb-card')) return;
+      var href = target.getAttribute('data-href');
+      if (!href) return;
+      e.preventDefault();
+      window.location.href = href;
+    });
+
+    load();
+  })();
+</script>
+{% endblock %}
+

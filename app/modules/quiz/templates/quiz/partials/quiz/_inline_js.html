@@ -3,12 +3,41 @@ const source = '{{ source or "" }}';
 const LOGGED_IN = {{ 'true' if logged_in else 'false' }};
 const USER_KEY = "{{ user_id if logged_in else 'guest' }}"; // 用 user_id 作为进度隔离键
 
+// 记录“上次练习入口”，用于侧边栏/移动端的“继续上次”
+(function rememberLastPracticeUrl(){
+    try {
+        const params = new URLSearchParams(window.location.search);
+        const currentMode = params.get('mode') || mode || 'quiz';
+        if (currentMode === 'exam') return;
+        const url = window.location.pathname + window.location.search;
+        localStorage.setItem('sak:lastPracticeUrl', url);
+        localStorage.setItem('sak:lastPracticeAt', String(Date.now()));
+    } catch (e) {}
+})();
+
 
 // 优化后的进度键生成函数 - 标准化参数顺序,避免重复进度
 // 重要：必须与后端 quiz.py 中的 key 生成逻辑保持一致！
+// 个人题库：/quiz?bank_id=<id>
+const BANK_ID = (() => {
+    try {
+        const params = new URLSearchParams(window.location.search);
+        const v = (params.get('bank_id') || '').trim();
+        const n = v ? parseInt(v, 10) : NaN;
+        return Number.isFinite(n) && n > 0 ? n : null;
+    } catch (e) {
+        return null;
+    }
+})();
+const IS_USER_BANK = !!BANK_ID;
+function getUserBankApiPrefix(){
+    return IS_USER_BANK ? `/user/banks/api/${BANK_ID}` : '';
+}
+
 function progressKey(){
     const params = new URLSearchParams(window.location.search);
-    const subject = params.get('subject') || 'all';
+    let subject = params.get('subject') || 'all';
+    if (IS_USER_BANK) subject = `bank_${BANK_ID}`;
     const type = params.get('type') || 'all';
     const currentMode = params.get('mode') || mode || 'quiz';
     const tag = (params.get('tag') || '').trim();
@@ -651,8 +680,8 @@ async function refreshTagModalData(){
 
     try {
         const [tRes, qRes] = await Promise.all([
-            fetch('/api/quiz/tags'),
-            fetch(`/api/quiz/questions/${encodeURIComponent(qid)}/tags`)
+            fetch(`${IS_USER_BANK ? getUserBankApiPrefix() : '/api/quiz'}/tags`),
+            fetch(`${IS_USER_BANK ? getUserBankApiPrefix() : '/api/quiz'}/questions/${encodeURIComponent(qid)}/tags`)
         ]);
         const tJs = await tRes.json();
         const qJs = await qRes.json();
@@ -713,7 +742,7 @@ async function saveQuestionTagsFromModal(){
 
     tagModalState.saving = true;
     try {
-        const res = await fetch(`/api/quiz/questions/${encodeURIComponent(qid)}/tags`, {
+        const res = await fetch(`${IS_USER_BANK ? getUserBankApiPrefix() : '/api/quiz'}/questions/${encodeURIComponent(qid)}/tags`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ tags: tagModalState.selected || [] })
@@ -747,7 +776,7 @@ async function createTagFromModal(){
     if (!name) { showToast('请输入标签名'); return; }
 
     try {
-        const res = await fetch('/api/quiz/tags', {
+        const res = await fetch(`${IS_USER_BANK ? getUserBankApiPrefix() : '/api/quiz'}/tags`, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ name })
@@ -1165,6 +1194,7 @@ async function requestAIExplain({ force = false } = {}){
 async function toggleAIExplain(){
     const host = getAIExplainHost();
     if (!host) return;
+    if (IS_USER_BANK) { showToast('个人题库暂不支持AI解析'); return; }
     const isOpen = host.style.display !== 'none';
     if (isOpen) {
         // 关闭但保留内容，避免再次点击触发重新生成
@@ -2156,28 +2186,37 @@ async function checkAnswer(isManualClick) {
     // 登录用户：在显示答案前先检查刷题限制
     if (LOGGED_IN && isJudgable) {
         try {
-            const res = await fetch('/api/record_result', {
+            const recordUrl = IS_USER_BANK
+                ? `${getUserBankApiPrefix()}/quiz/record`
+                : '/api/record_result';
+            const payload = IS_USER_BANK ? {
+                question_id: qId,
+                user_answer: getUserAnswerTextForDisplay(currentQ, type),
+                is_correct: isCorrect
+            } : {
+                question_id: qId,
+                is_correct: isCorrect,
+                clear_mistake_on_correct: getClearMistakeOnCorrectForRequest()
+            };
+
+            const res = await fetch(recordUrl, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    question_id: qId,
-                    is_correct: isCorrect,
-                    clear_mistake_on_correct: getClearMistakeOnCorrectForRequest()
-                })
+                body: JSON.stringify(payload)
             });
             const data = await res.json();
-            
-            if (data.status === 'error') {
-                // 处理刷题限制错误
-                if (data.code === 'QUIZ_LIMIT_REACHED') {
+            const ok = data && (data.status === 'success' || data.code === 0);
+
+            if (!ok) {
+                // 处理刷题限制错误（公共题库）
+                if (data && data.code === 'QUIZ_LIMIT_REACHED') {
                     showToast(data.message || '已达到刷题限制');
                     // 达到限制，不显示答案，直接返回
                     return;
-                } else {
-                    showToast(data.message || '保存失败');
-                    // 其他错误也阻止显示答案
-                    return;
                 }
+                showToast((data && data.message) || '保存失败');
+                // 其他错误也阻止显示答案
+                return;
             }
             // 成功：继续显示答案
         } catch (error) {
@@ -2976,17 +3015,24 @@ function clearCurrentQuestionProgress(){
 }
 
 function toggleStar(btn, id) {
-     fetch('/api/favorite', {
+     const url = IS_USER_BANK
+        ? `${getUserBankApiPrefix()}/questions/${encodeURIComponent(id)}/favorite`
+        : '/api/favorite';
+
+     const options = IS_USER_BANK ? { method: 'POST' } : {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ question_id: id })
-    }).then(res => res.json()).then(data => {
-        if(data.status === 'success') {
+     };
+
+     fetch(url, options).then(res => res.json()).then(data => {
+        const ok = data && (data.status === 'success' || data.code === 0);
+        if(ok) {
             const isActive = btn.classList.toggle('active');
             const icon = btn.querySelector ? btn.querySelector('.q-action-icon') : null;
             if (icon) icon.textContent = isActive ? '♥' : '♡';
         }
-    });
+     });
 }
 
 function applyReviewFromServer() {
@@ -3826,11 +3872,11 @@ function dismissShortcutHintPermanently() {
     closeCurrentHintAndShowNext();
 }
 
-// 跳转到题库设置页
+// 跳转到快捷键设置页
 function goToShortcutSettings() {
     // 用户主动去设置，说明已知悉快捷键功能，永久关闭提示
     dismissShortcutHintPermanently();
-    window.location.href = '/quiz_settings';
+    window.location.href = '/settings/hotkeys#hotkeys-config';
 }
 
 // 全局函数，供HTML onclick调用

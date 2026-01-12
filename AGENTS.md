@@ -1,41 +1,26 @@
-# Project Rules (Codex / GPT)
+# 项目规则 (Codex / GPT)
 
-This file defines hard constraints and working conventions for this repo. Prefer `.cursor/rules/*.mdc` for prompt/style guidance and keep this file focused on engineering constraints.
+本文件定义了此仓库的硬约束和操作规范。并保持此文件专注于工程约束。
 
-## Non-negotiable response format
-- Always respond in Simplified Chinese.
-- Every assistant message must start with:
-  1) `【<当前模型型号>】`（必须填写本次实际使用的模型名）
-  2) `亲爱的Wang`
+## 不可协商的响应格式
+- 始终使用简体中文进行响应。
+- 每条助手消息必须以以下内容开头：
+  1) `【（必须填写本次实际使用的模型名称）】`
+  2) `亲爱的 Wang`
 
-## Scope / Allowed changes
-- Allowed: modify backend (Flask) code, add new mini program pages, add new backend endpoints, refactor code for maintainability.
-- Default: do not change DB schema unless explicitly requested. If a feature requires schema change, propose an alternative first.
-- Keep compatibility: mini program and web must share the same data and semantics for favorites/mistakes/user_answers/user_progress/exams.
+## 范围 / 允许的修改
+- 允许：修改后端（Flask）代码，添加新的小程序页面，添加新的后端端点，重构代码以提高可维护性。
+- 保持兼容性：小程序和网页必须共享相同的数据和语义，包括收藏/错误/用户答案/用户进度/考试。
 
-## Coding style and structure
-- Keep changes minimal and targeted; avoid unrelated refactors.
-- Prefer modular design: avoid giant files; split by domain/service/util where appropriate.
-- Follow existing project patterns and naming; do not introduce new frameworks unless explicitly requested.
+## 编码风格和结构
+- 保持变更最小化和针对性；避免无关的重构。
+- 倾向于模块化设计：避免巨大的文件；在适当的情况下按领域/服务/工具进行拆分。
+- 遵循现有项目模式和命名规范；
+- 
+## 工具
+- UI/UX 设计优先使用技能 ui-ux-pro-max
+- 架构/依赖/框架用法或问题优先用 Context7（resolve-library-id → query-docs）
+- 调试前端页面行为优先用 mcp__chrome-devtools__*
 
-### Backend (Flask)
-- Use existing Blueprint/module layout under `app/modules/**`.
-- New endpoints must be backward compatible and return stable JSON contracts.
-- Authentication:
-  - Mini program uses JWT `Authorization: Bearer <token>`.
-  - Web may use session; endpoints used by both must support both (use existing `auth_required/current_user_id` helpers).
-- Security: validate inputs; never trust query/body blindly.
-
-### Mini program (WeChat)
-- Page structure: `pages/<name>/<name>.{ts,wxml,less,json}`.
-- Layout rule: fixed top nav + (if present) fixed bottom action area; content scroll only when overflow (no full-page scroll by default).
-- Cards must be responsive and fill available width; avoid overlapping; prefer flex/grid with `min-width:0` and `box-sizing:border-box`.
-- Avoid global CSS that breaks per-page layout; if adding global styles, keep them neutral.
-
-## UI rules (high priority)
-- iOS 18 minimal aesthetic: monochrome (white/light gray), no vivid colors or strong gradients.
-- Soft rounded corners, subtle shadows, glassmorphism where appropriate.
-- Use whitespace; keep typography clean.
-
-## When requirements are unclear
-- Ask a short clarification question before implementing.
+## 当需求不明确时
+- 在实施前先提出几个简短的相关澄清问题。

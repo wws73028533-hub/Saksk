@@ -5,9 +5,9 @@ import random
 import string
 import uuid
 from datetime import datetime, timedelta
-from flask import Blueprint, request, jsonify, current_app, g
+from flask import Blueprint, request, jsonify, current_app
 from app.core.utils.database import get_db
-from app.core.utils.decorators import auth_required, current_user_id, jwt_required
+from app.core.utils.decorators import auth_required, current_user_id
 
 user_bank_api_bp = Blueprint('user_bank_api', __name__)
 
@@ -1002,6 +1002,38 @@ def get_shares(bank_id):
         'code': 0,
         'data': {
             'shares': [dict(s) for s in shares]
+        }
+    })
+
+
+@user_bank_api_bp.route('/shares/all', methods=['GET'])
+@auth_required
+def get_all_shares():
+    """获取我创建的所有分享（跨题库汇总）"""
+    user_id = current_user_id()
+    conn = get_db()
+
+    rows = conn.execute('''
+        SELECT bs.*,
+               b.name as bank_name
+        FROM bank_shares bs
+        JOIN user_question_banks b ON bs.bank_id = b.id
+        WHERE bs.owner_id = ? AND b.status = 1
+        ORDER BY bs.created_at DESC
+    ''', (user_id,)).fetchall()
+
+    base_url = current_app.config.get('SHARE_BASE_URL', request.host_url.rstrip('/'))
+    shares = []
+    for r in rows:
+        d = dict(r)
+        if d.get('share_token'):
+            d['share_link'] = f'{base_url}/bank/join?token={d["share_token"]}'
+        shares.append(d)
+
+    return jsonify({
+        'code': 0,
+        'data': {
+            'shares': shares
         }
     })
 
@@ -2177,23 +2209,19 @@ def _save_bank_tag_store(conn, bank_id: int, user_id: int, store: dict):
 
 
 @user_bank_api_bp.route('/<int:bank_id>/tags', methods=['GET', 'POST'])
-@jwt_required
+@auth_required
 def bank_tags_api(bank_id: int):
     """
     获取/创建题库标签
     GET: 获取题库的所有标签
     POST: 创建新标签
     """
-    user_id = g.current_user_id
+    user_id = current_user_id()
     conn = get_db()
 
-    # 检查题库权限
-    bank = conn.execute(
-        '''SELECT id, user_id FROM user_question_banks WHERE id = ? AND (user_id = ? OR is_public = 1)''',
-        (bank_id, user_id)
-    ).fetchone()
-
-    if not bank:
+    # 检查题库访问权限（含公开/分享）
+    has_access, _permission, _access_type = check_bank_access(user_id, bank_id)
+    if not has_access:
         return jsonify({'status': 'error', 'message': '题库不存在或无权访问'}), 404
 
     store = _load_bank_tag_store(conn, bank_id, user_id)
@@ -2242,23 +2270,19 @@ def bank_tags_api(bank_id: int):
 
 
 @user_bank_api_bp.route('/<int:bank_id>/questions/<int:question_id>/tags', methods=['GET', 'POST'])
-@jwt_required
+@auth_required
 def bank_question_tags_api(bank_id: int, question_id: int):
     """
     获取/设置题目标签
     GET: 获取题目的标签
     POST: 设置题目的标签
     """
-    user_id = g.current_user_id
+    user_id = current_user_id()
     conn = get_db()
 
-    # 检查题库权限
-    bank = conn.execute(
-        '''SELECT id, user_id FROM user_question_banks WHERE id = ? AND (user_id = ? OR is_public = 1)''',
-        (bank_id, user_id)
-    ).fetchone()
-
-    if not bank:
+    # 检查题库访问权限（含公开/分享）
+    has_access, _permission, _access_type = check_bank_access(user_id, bank_id)
+    if not has_access:
         return jsonify({'status': 'error', 'message': '题库不存在或无权访问'}), 404
 
     # 检查题目是否存在

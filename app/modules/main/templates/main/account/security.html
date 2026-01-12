@@ -1,0 +1,242 @@
+{% extends "main/account/shell.html" %}
+{% block account_title %}账号安全{% endblock %}
+{% block account_page_title %}账号安全{% endblock %}
+{% block account_header_title %}账号安全{% endblock %}
+{% block account_header_sub %}用于修改或设置登录密码。{% endblock %}
+
+{% block account_head_extra %}
+  <style>
+    .sec-grid { display: grid; gap: 14px; }
+
+    .sec-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      min-width: 0;
+    }
+
+    .sec-chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--acc-border);
+      background: var(--acc-btn-secondary-bg);
+      box-shadow: var(--acc-shadow-soft);
+      font-size: 12px;
+      font-weight: 750;
+      letter-spacing: -0.1px;
+      color: var(--acc-text);
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .acc-input-row {
+      display: flex;
+      align-items: stretch;
+      gap: 10px;
+      min-width: 0;
+    }
+    .acc-input-row .acc-input { flex: 1 1 auto; }
+
+    .acc-toggle {
+      height: 42px;
+      padding: 10px 12px;
+      border-radius: var(--acc-radius-sm);
+      border: 1px solid var(--acc-btn-quiet-border);
+      background: var(--acc-btn-quiet-bg);
+      color: var(--acc-text);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: -0.1px;
+      cursor: pointer;
+      transition: transform 150ms ease, box-shadow 150ms ease, background 150ms ease, border-color 150ms ease;
+      white-space: nowrap;
+    }
+    .acc-toggle:hover { transform: translateY(-1px); box-shadow: var(--acc-shadow-soft); }
+    .acc-toggle:active { transform: translateY(0); }
+  </style>
+{% endblock %}
+
+{% block account_content %}
+  <div class="sec-grid">
+    <section class="acc-card" aria-labelledby="securityPwdTitle">
+      <div class="sec-row">
+        <div>
+          <h2 class="acc-card-title" id="securityPwdTitle">密码</h2>
+          <p class="acc-card-sub" id="pwdSub">加载中…</p>
+        </div>
+        <span class="sec-chip" id="pwdStatusChip">-</span>
+      </div>
+
+      <div class="acc-divider"></div>
+
+      <form id="passwordForm">
+        <div class="acc-field" id="currentPasswordField" style="display:none;">
+          <div class="acc-label">当前密码</div>
+          <div class="acc-input-row">
+            <input class="acc-input" id="current_password" type="password" autocomplete="current-password" />
+            <button class="acc-toggle" type="button" data-target="current_password">显示</button>
+          </div>
+        </div>
+
+        <div class="acc-field">
+          <div class="acc-label">新密码</div>
+          <div class="acc-input-row">
+            <input class="acc-input" id="new_password" type="password" autocomplete="new-password" required />
+            <button class="acc-toggle" type="button" data-target="new_password">显示</button>
+          </div>
+          <div class="acc-help">至少 8 位，且同时包含字母与数字。</div>
+        </div>
+
+        <div class="acc-field">
+          <div class="acc-label">确认新密码</div>
+          <div class="acc-input-row">
+            <input class="acc-input" id="confirm_password" type="password" autocomplete="new-password" required />
+            <button class="acc-toggle" type="button" data-target="confirm_password">显示</button>
+          </div>
+        </div>
+
+        <div class="acc-divider"></div>
+
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="acc-btn acc-btn-primary" id="passwordSubmitBtn" type="submit">提交</button>
+          <button class="acc-btn" id="passwordResetBtn" type="button">清空</button>
+        </div>
+
+        <div class="acc-msg" id="securityMsg" role="status" aria-live="polite"></div>
+      </form>
+    </section>
+  </div>
+{% endblock %}
+
+{% block account_body_end %}
+  <script>
+    (function(){
+      const msg = document.getElementById('securityMsg');
+      const pwdSub = document.getElementById('pwdSub');
+      const statusChip = document.getElementById('pwdStatusChip');
+      const currentField = document.getElementById('currentPasswordField');
+      const submitBtn = document.getElementById('passwordSubmitBtn');
+      const resetBtn = document.getElementById('passwordResetBtn');
+      const form = document.getElementById('passwordForm');
+
+      const curInput = document.getElementById('current_password');
+      const newInput = document.getElementById('new_password');
+      const confirmInput = document.getElementById('confirm_password');
+
+      let needsPasswordSet = false;
+
+      function showMessage(text){
+        if (!msg) return;
+        const t = (text || '').trim();
+        if (!t) { msg.style.display = 'none'; msg.textContent = ''; return; }
+        msg.textContent = t;
+        msg.style.display = 'block';
+      }
+
+      function setBusy(busy, label){
+        if (!submitBtn) return;
+        submitBtn.disabled = !!busy;
+        submitBtn.textContent = busy ? (label || '处理中…') : (needsPasswordSet ? '设置密码' : '修改密码');
+      }
+
+      function setMode(hasPassword){
+        needsPasswordSet = !hasPassword;
+        if (statusChip) statusChip.textContent = hasPassword ? '已设置密码' : '未设置密码';
+        if (pwdSub) pwdSub.textContent = hasPassword ? '修改登录密码。修改成功后需要重新登录。' : '为账号设置登录密码（首次设置无需填写当前密码）。';
+        if (currentField) currentField.style.display = hasPassword ? 'block' : 'none';
+        setBusy(false);
+      }
+
+      function setupToggles(){
+        document.querySelectorAll('.acc-toggle').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const targetId = btn.getAttribute('data-target');
+            const input = targetId ? document.getElementById(targetId) : null;
+            if (!input) return;
+            const willShow = input.type === 'password';
+            input.type = willShow ? 'text' : 'password';
+            btn.textContent = willShow ? '隐藏' : '显示';
+          });
+        });
+      }
+
+      async function loadProfile(){
+        showMessage('');
+        try {
+          const res = await fetch('/api/profile', { credentials: 'include' });
+          const js = await res.json().catch(()=> ({}));
+          if (!res.ok || !js || js.status !== 'success' || !js.data) throw new Error(js && js.message ? js.message : '加载失败');
+          setMode(!!js.data.has_password_set);
+        } catch (e) {
+          setMode(false);
+          showMessage((e && e.message) ? e.message : '加载失败，请稍后重试');
+        }
+      }
+
+      async function submitPassword(){
+        showMessage('');
+        const cur = (curInput && typeof curInput.value === 'string') ? curInput.value : '';
+        const nw = (newInput && typeof newInput.value === 'string') ? newInput.value : '';
+        const c_nw = (confirmInput && typeof confirmInput.value === 'string') ? confirmInput.value : '';
+
+        if (!nw || !c_nw) { showMessage('请填写新密码'); return; }
+        if (nw !== c_nw) { showMessage('两次输入的密码不一致'); return; }
+        if (nw.length < 8 || !(/[a-zA-Z]/.test(nw) && /\\d/.test(nw))) {
+          showMessage('密码至少 8 位且包含字母和数字');
+          return;
+        }
+        if (needsPasswordSet && cur) { showMessage('设置密码不需要输入当前密码'); return; }
+        if (!needsPasswordSet && !cur) { showMessage('修改密码需要输入当前密码'); return; }
+
+        setBusy(true, needsPasswordSet ? '设置中…' : '修改中…');
+        try {
+          const res = await fetch('/api/profile/password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              current_password: cur || '',
+              new_password: nw,
+              is_set_password: needsPasswordSet
+            })
+          });
+          const js = await res.json().catch(()=> ({}));
+          if (!res.ok || !js || js.status !== 'success') throw new Error(js && js.message ? js.message : '操作失败');
+
+          if (needsPasswordSet) {
+            showMessage('密码设置成功');
+            form && form.reset();
+            await loadProfile();
+          } else {
+            showMessage('修改成功，请重新登录');
+            setTimeout(() => { location.href = '/login'; }, 1500);
+          }
+        } catch (e) {
+          showMessage((e && e.message) ? e.message : '操作失败，请稍后重试');
+        } finally {
+          setBusy(false);
+        }
+      }
+
+      form && form.addEventListener('submit', function(e){
+        e.preventDefault();
+        submitPassword();
+      });
+
+      resetBtn && resetBtn.addEventListener('click', function(){
+        form && form.reset();
+        showMessage('');
+      });
+
+      setupToggles();
+      loadProfile();
+    })();
+  </script>
+{% endblock %}
+

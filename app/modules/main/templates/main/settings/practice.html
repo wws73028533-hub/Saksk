@@ -1,0 +1,468 @@
+{% extends "main/settings/shell.html" %}
+{% block settings_title %}设置 · 练习管理{% endblock %}
+{% block settings_header_title %}练习管理{% endblock %}
+{% block settings_header_sub %}题库、布局与练习体验相关选项。{% endblock %}
+
+{% block settings_head_extra %}
+  <style>
+    .set-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 14px;
+      align-items: center;
+      padding: 14px 0;
+      border-top: 1px solid var(--acc-border);
+      min-width: 0;
+    }
+    .set-row:first-of-type { border-top: none; }
+
+    .set-name { font-size: 14px; font-weight: 850; letter-spacing: -0.1px; color: var(--acc-text); }
+    .set-desc { margin-top: 6px; font-size: 13px; color: var(--acc-muted); line-height: 1.5; }
+
+    .set-switch {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 48px;
+      height: 28px;
+      border-radius: 999px;
+      background: rgba(0, 0, 0, 0.12);
+      position: relative;
+      outline: none;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+    .set-switch::after {
+      content: '';
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.95);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.18);
+      transition: transform 0.2s ease;
+    }
+    .set-switch:checked { background: rgba(17, 17, 19, 0.86); }
+    body.dark-mode .set-switch { background: rgba(255, 255, 255, 0.18); }
+    body.dark-mode .set-switch::after { background: rgba(0, 0, 0, 0.92); box-shadow: 0 2px 10px rgba(0,0,0,0.42); }
+    body.dark-mode .set-switch:checked { background: rgba(245, 245, 247, 0.86); }
+    .set-switch:checked::after { transform: translateX(20px); }
+
+    .set-select {
+      min-width: 160px;
+      height: 42px;
+      border-radius: var(--acc-radius-sm);
+      border: 1px solid var(--acc-border);
+      background: rgba(255, 255, 255, 0.80);
+      color: var(--acc-text);
+      padding: 0 12px;
+      font-size: 14px;
+      font-weight: 750;
+      outline: none;
+      cursor: pointer;
+      transition: box-shadow 150ms ease, border-color 150ms ease, background 150ms ease;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    body.dark-mode .set-select { background: rgba(0, 0, 0, 0.20); }
+    .set-select:focus { border-color: var(--acc-focus-border); box-shadow: 0 0 0 3px var(--acc-focus-ring); }
+
+    .set-section { scroll-margin-top: 80px; }
+
+    .sub-list { margin-top: 12px; }
+    .sub-item {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+      padding: 12px 0;
+      border-top: 1px solid var(--acc-border);
+      min-width: 0;
+    }
+    .sub-item:first-child { border-top: none; }
+    .sub-label {
+      font-size: 14px;
+      font-weight: 750;
+      letter-spacing: -0.1px;
+      color: var(--acc-text);
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .acc-modal.acc-modal-wide { max-width: 760px; }
+  </style>
+{% endblock %}
+
+{% block settings_subnav %}
+  <nav class="acc-tabs" aria-label="练习管理分区">
+    <a class="acc-tab active" href="#practice-subjects" data-subtab="subjects">题库与科目</a>
+    <a class="acc-tab" href="#practice-experience" data-subtab="experience">答题体验</a>
+    <a class="acc-tab" href="#practice-actions" data-subtab="actions">操作</a>
+  </nav>
+{% endblock %}
+
+{% block settings_content %}
+  <div class="acc-msg" id="practiceMsg" role="status" aria-live="polite"></div>
+
+  <section class="acc-card set-section" id="practice-subjects" aria-labelledby="practiceSubjectsTitle">
+    <h2 class="acc-card-title" id="practiceSubjectsTitle">题库与科目</h2>
+    <p class="acc-card-sub">决定首页“选择科目”区域显示哪些科目。</p>
+    <div class="acc-divider"></div>
+
+    <div class="set-row">
+      <div>
+        <div class="set-name">主页科目显示方式</div>
+        <div class="set-desc">自定义显示范围，减少无关科目干扰。</div>
+      </div>
+      <button class="acc-btn" type="button" id="openSubjectBtn">选择</button>
+    </div>
+
+    <div class="set-row">
+      <div>
+        <div class="set-name">当前显示</div>
+        <div class="set-desc" id="subjectSummary">全部科目</div>
+      </div>
+      <button class="acc-btn acc-btn-secondary" type="button" id="clearSubjectBtn">显示全部</button>
+    </div>
+  </section>
+
+  <section class="acc-card set-section" id="practice-experience" aria-labelledby="practiceExperienceTitle">
+    <h2 class="acc-card-title" id="practiceExperienceTitle">答题体验</h2>
+    <p class="acc-card-sub">这些选项会影响刷题与考试页面的交互与布局。</p>
+    <div class="acc-divider"></div>
+
+    <div class="set-row">
+      <div>
+        <div class="set-name">答题悬浮球</div>
+        <div class="set-desc">在刷题/背题页面显示快捷菜单（可拖动）。考试进行中会自动隐藏。</div>
+      </div>
+      <input type="checkbox" class="set-switch" id="toggleQuizFab" />
+    </div>
+
+    <div class="set-row">
+      <div>
+        <div class="set-name">答题布局主题</div>
+        <div class="set-desc">传统布局更紧凑；卡片布局更清晰。</div>
+      </div>
+      <select class="set-select" id="quizLayoutTheme">
+        <option value="traditional">传统布局</option>
+        <option value="card">卡片布局</option>
+      </select>
+    </div>
+  </section>
+
+  <section class="acc-card set-section" id="practice-actions" aria-labelledby="practiceActionsTitle">
+    <h2 class="acc-card-title" id="practiceActionsTitle">操作</h2>
+    <p class="acc-card-sub">设置会保存在本地，并尝试同步到云端（已登录）。</p>
+    <div class="acc-divider"></div>
+
+    <div style="display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;">
+      <button class="acc-btn acc-btn-secondary" type="button" id="resetPracticeBtn">恢复默认</button>
+    </div>
+  </section>
+
+  <div class="acc-modal-overlay" id="subjectModal" aria-hidden="true">
+    <div class="acc-modal acc-modal-wide" role="dialog" aria-modal="true" aria-labelledby="subjectModalTitle">
+      <h3 class="acc-modal-title" id="subjectModalTitle">选择首页显示科目</h3>
+      <p class="acc-modal-sub">不选任何项等同于“显示全部”。</p>
+
+      <div class="acc-modal-actions">
+        <button class="acc-btn" type="button" id="selectAllSubjectsBtn">全选</button>
+        <button class="acc-btn" type="button" id="clearAllSubjectsBtn">全不选</button>
+        <button class="acc-btn acc-btn-primary" type="button" id="applySubjectsBtn">应用</button>
+        <button class="acc-btn acc-btn-secondary" type="button" id="closeSubjectModalBtn">关闭</button>
+      </div>
+
+      <div class="sub-list" id="subjectList"></div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block settings_body_end %}
+  <script>
+    (function(){
+      const HOME_VISIBLE_SUBJECTS_KEY = 'home_visible_subjects';
+      const SETTINGS_SYNC_KEY = 'user_settings_v1';
+      const QUIZ_HOTKEYS_KEY = 'quiz_hotkeys_v1';
+      const QUIZ_FAB_ENABLED_KEY = 'quiz_fab_enabled_v1';
+      const QUIZ_LAYOUT_THEME_KEY = 'quiz_layout_theme_v1';
+
+      const DEFAULT_QUIZ_HOTKEYS = {
+        prev_question: 'ArrowLeft',
+        next_question: 'ArrowRight',
+        toggle_favorite: 'KeyF',
+        choose_option_1: 'Digit1',
+        choose_option_2: 'Digit2',
+        choose_option_3: 'Digit3',
+        choose_option_4: 'Digit4',
+        blank_prev: 'ArrowUp',
+        blank_next: 'ArrowDown',
+        submit_or_next: 'Enter'
+      };
+
+      const subjectSummary = document.getElementById('subjectSummary');
+      const msgEl = document.getElementById('practiceMsg');
+      const openSubjectBtn = document.getElementById('openSubjectBtn');
+      const clearSubjectBtn = document.getElementById('clearSubjectBtn');
+      const resetPracticeBtn = document.getElementById('resetPracticeBtn');
+
+      const modal = document.getElementById('subjectModal');
+      const subjectList = document.getElementById('subjectList');
+      const selectAllSubjectsBtn = document.getElementById('selectAllSubjectsBtn');
+      const clearAllSubjectsBtn = document.getElementById('clearAllSubjectsBtn');
+      const applySubjectsBtn = document.getElementById('applySubjectsBtn');
+      const closeSubjectModalBtn = document.getElementById('closeSubjectModalBtn');
+
+      const fabToggle = document.getElementById('toggleQuizFab');
+      const layoutThemeSelect = document.getElementById('quizLayoutTheme');
+
+      function showMsg(text){
+        if (!msgEl) return;
+        const t = (text || '').trim();
+        if (!t) { msgEl.style.display = 'none'; msgEl.textContent = ''; return; }
+        msgEl.textContent = t;
+        msgEl.style.display = 'block';
+      }
+
+      function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text || '';
+        return div.innerHTML;
+      }
+      function escapeAttr(text){
+        return String(text || '')
+          .replaceAll('&','&amp;')
+          .replaceAll('"','&quot;')
+          .replaceAll("'","&#39;")
+          .replaceAll('<','&lt;')
+          .replaceAll('>','&gt;');
+      }
+
+      function getVisibleSubjects(){
+        try {
+          const arr = JSON.parse(localStorage.getItem(HOME_VISIBLE_SUBJECTS_KEY) || '[]');
+          return Array.isArray(arr) ? arr : [];
+        } catch(e) { return []; }
+      }
+      function setVisibleSubjects(arr){
+        localStorage.setItem(HOME_VISIBLE_SUBJECTS_KEY, JSON.stringify(Array.isArray(arr) ? arr : []));
+      }
+
+      function updateSubjectSummary(){
+        if (!subjectSummary) return;
+        const arr = getVisibleSubjects();
+        if (!arr.length) { subjectSummary.textContent = '全部科目'; return; }
+        subjectSummary.textContent = arr.length <= 6 ? arr.join('、') : `${arr.slice(0, 6).join('、')} 等 ${arr.length} 个科目`;
+      }
+
+      function isQuizFabEnabled(){ return localStorage.getItem(QUIZ_FAB_ENABLED_KEY) !== '0'; }
+      function setQuizFabEnabled(on){ localStorage.setItem(QUIZ_FAB_ENABLED_KEY, on ? '1' : '0'); }
+      function getQuizLayoutTheme(){ return localStorage.getItem(QUIZ_LAYOUT_THEME_KEY) || 'traditional'; }
+      function setQuizLayoutTheme(theme){ localStorage.setItem(QUIZ_LAYOUT_THEME_KEY, theme); }
+
+      function getHotkeys(){
+        try {
+          const js = JSON.parse(localStorage.getItem(QUIZ_HOTKEYS_KEY) || 'null');
+          if (!js || typeof js !== 'object') return { ...DEFAULT_QUIZ_HOTKEYS };
+          const result = { ...DEFAULT_QUIZ_HOTKEYS };
+          for (const key in js) {
+            if (key in DEFAULT_QUIZ_HOTKEYS) {
+              if (js[key] !== undefined) result[key] = js[key];
+            }
+          }
+          return result;
+        } catch(e) { return { ...DEFAULT_QUIZ_HOTKEYS }; }
+      }
+
+      function setHotkeys(obj){
+        const merged = { ...DEFAULT_QUIZ_HOTKEYS };
+        if (obj && typeof obj === 'object') {
+          for (const key in obj) {
+            if (key in DEFAULT_QUIZ_HOTKEYS) merged[key] = obj[key];
+          }
+        }
+        localStorage.setItem(QUIZ_HOTKEYS_KEY, JSON.stringify(merged));
+      }
+
+      function collectSettings(){
+        return {
+          version: 1,
+          home_visible_subjects: getVisibleSubjects(),
+          quiz_hotkeys_v1: getHotkeys(),
+          quiz_fab_enabled_v1: isQuizFabEnabled(),
+          quiz_layout_theme_v1: getQuizLayoutTheme(),
+          updated_at: Date.now()
+        };
+      }
+
+      async function syncSettingsToServer(){
+        try {
+          const payload = collectSettings();
+          await fetch('/api/progress', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key: SETTINGS_SYNC_KEY, data: payload })
+          });
+        } catch(e) {}
+      }
+
+      async function loadSettingsFromServerAndMerge(){
+        try {
+          const res = await fetch(`/api/progress?key=${encodeURIComponent(SETTINGS_SYNC_KEY)}`);
+          if (!res.ok) return;
+          const js = await res.json().catch(()=> ({}));
+          if (!js || js.status !== 'success' || !js.data) return;
+
+          const remote = js.data || {};
+          const remoteTs = Number(remote.updated_at || 0);
+          const localTs = Number(localStorage.getItem('settings_updated_at') || '0');
+
+          if (remoteTs > localTs) {
+            setVisibleSubjects(Array.isArray(remote.home_visible_subjects) ? remote.home_visible_subjects : []);
+            if (typeof remote.quiz_fab_enabled_v1 !== 'undefined') setQuizFabEnabled(!!remote.quiz_fab_enabled_v1);
+            if (typeof remote.quiz_layout_theme_v1 === 'string') setQuizLayoutTheme(remote.quiz_layout_theme_v1 === 'card' ? 'card' : 'traditional');
+            if (remote.quiz_hotkeys_v1 && typeof remote.quiz_hotkeys_v1 === 'object') {
+              setHotkeys(remote.quiz_hotkeys_v1);
+            }
+            localStorage.setItem('settings_updated_at', String(remoteTs));
+          } else if (localTs > remoteTs) {
+            await syncSettingsToServer();
+          }
+        } catch(e) {}
+      }
+
+      async function fetchAllSubjects(){
+        try {
+          const res = await fetch('/api/subjects');
+          const js = await res.json().catch(()=> ({}));
+          if (res.ok && js && js.status === 'success') return js.subjects || [];
+        } catch(e) {}
+        return [];
+      }
+
+      function openSubjectModal(){
+        if (!modal || !subjectList) return;
+        showMsg('');
+        subjectList.innerHTML = '<div class="acc-help">加载中…</div>';
+        modal.style.display = 'flex';
+        modal.setAttribute('aria-hidden', 'false');
+
+        fetchAllSubjects().then((all) => {
+          const selected = new Set(getVisibleSubjects());
+          if (!Array.isArray(all) || !all.length) {
+            subjectList.innerHTML = '<div class="acc-help">未找到科目</div>';
+            return;
+          }
+          subjectList.innerHTML = all.map(name => {
+            const checked = selected.has(name) ? 'checked' : '';
+            return `
+              <div class="sub-item">
+                <div class="sub-label">${escapeHtml(name)}</div>
+                <input type="checkbox" class="set-switch" style="transform: scale(0.92);" data-subject="${escapeAttr(name)}" ${checked} />
+              </div>
+            `;
+          }).join('');
+        });
+      }
+
+      function closeSubjectModal(){
+        if (!modal) return;
+        modal.style.display = 'none';
+        modal.setAttribute('aria-hidden', 'true');
+      }
+
+      function selectAllSubjectsInModal(){
+        document.querySelectorAll('#subjectList input[type=\"checkbox\"]').forEach(cb => cb.checked = true);
+      }
+
+      function clearAllSubjectsInModal(){
+        document.querySelectorAll('#subjectList input[type=\"checkbox\"]').forEach(cb => cb.checked = false);
+      }
+
+      async function applySubjectSelection(){
+        const checked = Array.from(document.querySelectorAll('#subjectList input[type=\"checkbox\"]'))
+          .filter(cb => cb.checked)
+          .map(cb => cb.dataset.subject)
+          .filter(Boolean);
+        setVisibleSubjects(checked);
+        localStorage.setItem('settings_updated_at', String(Date.now()));
+        updateSubjectSummary();
+        closeSubjectModal();
+        await syncSettingsToServer();
+        showMsg('已应用');
+      }
+
+      async function clearSubjectFilter(){
+        if (!confirm('确定要显示全部科目吗？')) return;
+        setVisibleSubjects([]);
+        localStorage.setItem('settings_updated_at', String(Date.now()));
+        updateSubjectSummary();
+        await syncSettingsToServer();
+        showMsg('已设置为显示全部');
+      }
+
+      async function resetPractice(){
+        if (!confirm('确定要恢复练习相关设置的默认值吗？')) return;
+        setVisibleSubjects([]);
+        setQuizFabEnabled(true);
+        setQuizLayoutTheme('traditional');
+        localStorage.setItem('settings_updated_at', String(Date.now()));
+        applySettingsToUI();
+        await syncSettingsToServer();
+        showMsg('已恢复默认');
+      }
+
+      function applySettingsToUI(){
+        updateSubjectSummary();
+        if (fabToggle) fabToggle.checked = isQuizFabEnabled();
+        if (layoutThemeSelect) layoutThemeSelect.value = getQuizLayoutTheme();
+      }
+
+      function setupSubtabs(){
+        const tabs = document.querySelectorAll('.acc-tabs .acc-tab[data-subtab]');
+        function applyActive(){
+          const hash = (location.hash || '').toLowerCase();
+          tabs.forEach(t => t.classList.remove('active'));
+          const active = Array.from(tabs).find(t => (t.getAttribute('href') || '').toLowerCase() === hash) || tabs[0];
+          active && active.classList.add('active');
+        }
+        tabs.forEach(t => t.addEventListener('click', () => { setTimeout(applyActive, 0); }));
+        window.addEventListener('hashchange', applyActive);
+        applyActive();
+      }
+
+      openSubjectBtn && openSubjectBtn.addEventListener('click', openSubjectModal);
+      clearSubjectBtn && clearSubjectBtn.addEventListener('click', clearSubjectFilter);
+      resetPracticeBtn && resetPracticeBtn.addEventListener('click', resetPractice);
+
+      selectAllSubjectsBtn && selectAllSubjectsBtn.addEventListener('click', selectAllSubjectsInModal);
+      clearAllSubjectsBtn && clearAllSubjectsBtn.addEventListener('click', clearAllSubjectsInModal);
+      applySubjectsBtn && applySubjectsBtn.addEventListener('click', applySubjectSelection);
+      closeSubjectModalBtn && closeSubjectModalBtn.addEventListener('click', closeSubjectModal);
+      modal && modal.addEventListener('click', function(e){ if (e.target === modal) closeSubjectModal(); });
+      window.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeSubjectModal(); });
+
+      fabToggle && fabToggle.addEventListener('change', async function(){
+        setQuizFabEnabled(!!fabToggle.checked);
+        localStorage.setItem('settings_updated_at', String(Date.now()));
+        await syncSettingsToServer();
+        showMsg(fabToggle.checked ? '已开启悬浮球' : '已关闭悬浮球');
+      });
+
+      layoutThemeSelect && layoutThemeSelect.addEventListener('change', async function(){
+        setQuizLayoutTheme(layoutThemeSelect.value);
+        localStorage.setItem('settings_updated_at', String(Date.now()));
+        await syncSettingsToServer();
+        showMsg(layoutThemeSelect.value === 'card' ? '已切换到卡片布局' : '已切换到传统布局');
+      });
+
+      setupSubtabs();
+      loadSettingsFromServerAndMerge().finally(() => {
+        applySettingsToUI();
+      });
+    })();
+  </script>
+{% endblock %}

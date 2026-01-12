@@ -1,0 +1,595 @@
+{% extends "main/account/shell.html" %}
+{% block account_title %}个人资料{% endblock %}
+{% block account_page_title %}个人资料{% endblock %}
+{% block account_header_title %}个人资料{% endblock %}
+{% block settings_header_title %}个人资料{% endblock %}
+{% block account_header_sub %}头像、昵称、学院与个人签名等信息。{% endblock %}
+
+{% block account_head_extra %}
+  <style>
+    .profile-head {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .avatar-btn {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      border: 1px solid var(--acc-border);
+      background: var(--acc-btn-secondary-bg);
+      box-shadow: var(--acc-shadow-soft);
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 150ms ease, box-shadow 150ms ease;
+    }
+    .avatar-btn:hover { transform: translateY(-1px); box-shadow: var(--acc-shadow-hover); }
+    .avatar-btn:active { transform: translateY(0); }
+
+    .avatar-text {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      font-weight: 850;
+      color: var(--acc-text);
+      letter-spacing: -0.6px;
+    }
+
+    .avatar-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.40);
+      color: rgba(255, 255, 255, 0.94);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: -0.1px;
+      opacity: 0;
+      transition: opacity 150ms ease;
+    }
+    body.dark-mode .avatar-overlay { background: rgba(255, 255, 255, 0.12); color: rgba(255, 255, 255, 0.92); }
+    .avatar-btn:hover .avatar-overlay { opacity: 1; }
+
+    .profile-meta { min-width: 0; flex: 1 1 auto; }
+    .profile-name {
+      font-size: 16px;
+      font-weight: 850;
+      letter-spacing: -0.3px;
+      color: var(--acc-text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .profile-meta-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .profile-chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--acc-border);
+      background: var(--acc-btn-secondary-bg);
+      box-shadow: var(--acc-shadow-soft);
+      font-size: 12px;
+      font-weight: 750;
+      letter-spacing: -0.1px;
+      color: var(--acc-text);
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .profile-actions { flex: 0 0 auto; display: flex; gap: 10px; align-items: center; }
+
+    .profile-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 16px;
+      min-width: 0;
+    }
+    .profile-grid .span-2 { grid-column: 1 / -1; }
+
+    .sig-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .sig-count { font-size: 12px; color: var(--acc-muted); }
+
+    .profile-overview {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .profile-panel {
+      min-width: 0;
+      padding: 14px;
+      border-radius: var(--acc-radius-lg);
+      border: 1px solid var(--acc-border);
+      background: var(--acc-btn-secondary-bg);
+      box-shadow: var(--acc-shadow-soft);
+    }
+
+    .panel-title {
+      font-size: 13px;
+      font-weight: 850;
+      letter-spacing: -0.1px;
+      color: var(--acc-text);
+    }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+      min-width: 0;
+    }
+
+    .kpi-card {
+      min-width: 0;
+      padding: 12px;
+      border-radius: var(--acc-radius-md);
+      border: 1px solid var(--acc-border);
+      background: rgba(255, 255, 255, 0.72);
+      box-shadow: var(--acc-shadow-soft);
+    }
+    body.dark-mode .kpi-card { background: rgba(28, 28, 30, 0.72); }
+
+    .kpi-value {
+      font-size: 20px;
+      font-weight: 900;
+      letter-spacing: -0.3px;
+      color: var(--acc-text);
+      line-height: 1.1;
+    }
+
+    .kpi-label {
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--acc-muted);
+      line-height: 1.2;
+    }
+
+    .status-list {
+      margin-top: 10px;
+      border-radius: var(--acc-radius-md);
+      border: 1px solid var(--acc-border);
+      background: rgba(255, 255, 255, 0.64);
+      box-shadow: var(--acc-shadow-soft);
+      overflow: hidden;
+    }
+    body.dark-mode .status-list { background: rgba(28, 28, 30, 0.64); }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--acc-border);
+      min-width: 0;
+    }
+    .status-row:last-child { border-bottom: 0; }
+
+    .status-label {
+      font-size: 13px;
+      font-weight: 750;
+      letter-spacing: -0.1px;
+      color: var(--acc-text);
+      white-space: nowrap;
+    }
+
+    .status-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .status-value {
+      font-size: 13px;
+      color: var(--acc-muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 220px;
+    }
+
+    .panel-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+    .panel-actions .acc-btn { height: 38px; min-width: 0; padding: 8px 12px; }
+
+    @media (min-width: 980px) {
+      .kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 860px) {
+      .profile-actions { width: 100%; justify-content: flex-end; }
+      .profile-head { flex-wrap: wrap; }
+      .profile-overview { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 768px) {
+      .profile-grid { grid-template-columns: 1fr; }
+      .profile-grid .span-2 { grid-column: auto; }
+    }
+  </style>
+{% endblock %}
+
+{% block account_content %}
+  <section class="acc-card" aria-labelledby="profileCardTitle">
+    <h2 class="acc-card-title" id="profileCardTitle">资料</h2>
+    <p class="acc-card-sub">用于展示与账号识别。仅包含必要信息。</p>
+    <div class="acc-divider"></div>
+
+    <div class="profile-head">
+      <button type="button" class="avatar-btn" id="avatarBtn" aria-label="更换头像">
+        <span class="avatar-text" id="avatarText">U</span>
+        <span class="avatar-overlay">更换头像</span>
+      </button>
+      <input type="file" id="avatarInput" accept="image/*" style="display:none;" />
+
+      <div class="profile-meta">
+        <div class="profile-name" id="usernameDisplay">-</div>
+        <div class="profile-meta-row">
+          <span class="profile-chip" id="roleDisplay">-</span>
+          <span class="profile-chip" id="createdAtDisplay">-</span>
+        </div>
+      </div>
+
+      <div class="profile-actions">
+        <button type="button" class="acc-btn acc-btn-secondary" id="editBtn">编辑</button>
+        <button type="button" class="acc-btn acc-btn-primary" id="saveBtn" style="display:none;">保存</button>
+        <button type="button" class="acc-btn" id="cancelBtn" style="display:none;">取消</button>
+      </div>
+    </div>
+
+    <div class="profile-grid">
+      <div class="acc-field">
+        <div class="acc-label">昵称</div>
+        <input class="acc-input" id="nicknameInput" readonly />
+        <div class="acc-help">昵称由系统账号标识决定，当前不支持在此页面修改。</div>
+      </div>
+
+      <div class="acc-field">
+        <div class="acc-label">学院</div>
+        <input class="acc-input" id="collegeInput" readonly placeholder="未设置" maxlength="40" />
+      </div>
+
+      <div class="acc-field span-2">
+        <div class="sig-row">
+          <div class="acc-label">个人签名</div>
+          <div class="sig-count" id="signatureCount">0/80</div>
+        </div>
+        <textarea class="acc-textarea" id="signatureInput" readonly placeholder="未设置" maxlength="80"></textarea>
+      </div>
+
+      <div class="acc-field span-2">
+        <div class="acc-label">联系方式</div>
+        <input class="acc-input" id="contactInput" readonly placeholder="未设置" maxlength="60" />
+      </div>
+    </div>
+
+    <div class="acc-msg" id="profileMsg"></div>
+  </section>
+
+  <section class="acc-card" aria-labelledby="overviewCardTitle">
+    <h2 class="acc-card-title" id="overviewCardTitle">概览</h2>
+    <p class="acc-card-sub">学习数据与账号状态。</p>
+    <div class="acc-divider"></div>
+
+    <div class="profile-overview">
+      <div class="profile-panel" aria-label="学习概览">
+        <div class="panel-title">学习</div>
+        <div class="kpi-grid" role="list">
+          <div class="kpi-card" role="listitem">
+            <div class="kpi-value" id="streakDaysVal">-</div>
+            <div class="kpi-label">连续学习（天）</div>
+          </div>
+          <div class="kpi-card" role="listitem">
+            <div class="kpi-value" id="totalAnsweredVal">-</div>
+            <div class="kpi-label">累计答题</div>
+          </div>
+          <div class="kpi-card" role="listitem">
+            <div class="kpi-value" id="accuracyVal">-</div>
+            <div class="kpi-label">正确率</div>
+          </div>
+          <div class="kpi-card" role="listitem">
+            <div class="kpi-value" id="mistakesCountVal">-</div>
+            <div class="kpi-label">错题</div>
+          </div>
+          <div class="kpi-card" role="listitem">
+            <div class="kpi-value" id="favoritesCountVal">-</div>
+            <div class="kpi-label">收藏</div>
+          </div>
+        </div>
+
+        <div class="panel-actions">
+          <a class="acc-btn acc-btn-secondary" href="/history">进度</a>
+          <a class="acc-btn" href="/mistakes">错题</a>
+          <a class="acc-btn" href="/favorites">收藏</a>
+        </div>
+      </div>
+
+      <div class="profile-panel" aria-label="账号状态">
+        <div class="panel-title">账号</div>
+
+        <div class="status-list" role="list">
+          <div class="status-row" role="listitem">
+            <div class="status-label">邮箱</div>
+            <div class="status-right">
+              <div class="status-value" id="emailDisplay">-</div>
+              <span class="profile-chip" id="emailBadge">-</span>
+            </div>
+          </div>
+          <div class="status-row" role="listitem">
+            <div class="status-label">登录密码</div>
+            <div class="status-right">
+              <span class="profile-chip" id="passwordBadge">-</span>
+            </div>
+          </div>
+          <div class="status-row" role="listitem">
+            <div class="status-label">微信绑定</div>
+            <div class="status-right">
+              <span class="profile-chip" id="wechatBadge">-</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel-actions">
+          <a class="acc-btn acc-btn-secondary" href="/settings/account/security">账号安全</a>
+          <a class="acc-btn" href="/settings/account/bindings">账号绑定</a>
+        </div>
+      </div>
+    </div>
+  </section>
+{% endblock %}
+
+{% block account_body_end %}
+  <script>
+    (function(){
+      let editing = false;
+      let original = {};
+
+      const msgEl = document.getElementById('profileMsg');
+      const editBtn = document.getElementById('editBtn');
+      const saveBtn = document.getElementById('saveBtn');
+      const cancelBtn = document.getElementById('cancelBtn');
+      const avatarBtn = document.getElementById('avatarBtn');
+      const avatarInput = document.getElementById('avatarInput');
+      const avatarText = document.getElementById('avatarText');
+
+      const usernameDisplay = document.getElementById('usernameDisplay');
+      const roleDisplay = document.getElementById('roleDisplay');
+      const createdAtDisplay = document.getElementById('createdAtDisplay');
+
+      const nicknameInput = document.getElementById('nicknameInput');
+      const collegeInput = document.getElementById('collegeInput');
+      const contactInput = document.getElementById('contactInput');
+      const signatureInput = document.getElementById('signatureInput');
+      const signatureCount = document.getElementById('signatureCount');
+
+      const streakDaysVal = document.getElementById('streakDaysVal');
+      const totalAnsweredVal = document.getElementById('totalAnsweredVal');
+      const accuracyVal = document.getElementById('accuracyVal');
+      const mistakesCountVal = document.getElementById('mistakesCountVal');
+      const favoritesCountVal = document.getElementById('favoritesCountVal');
+
+      const emailDisplay = document.getElementById('emailDisplay');
+      const emailBadge = document.getElementById('emailBadge');
+      const passwordBadge = document.getElementById('passwordBadge');
+      const wechatBadge = document.getElementById('wechatBadge');
+
+      function showMsg(text){
+        if (!msgEl) return;
+        msgEl.textContent = text || '';
+        msgEl.style.display = text ? 'block' : 'none';
+      }
+
+      function setEditing(on){
+        editing = !!on;
+        if (editBtn) editBtn.style.display = editing ? 'none' : 'inline-flex';
+        if (saveBtn) saveBtn.style.display = editing ? 'inline-flex' : 'none';
+        if (cancelBtn) cancelBtn.style.display = editing ? 'inline-flex' : 'none';
+
+        if (collegeInput) collegeInput.readOnly = !editing;
+        if (contactInput) contactInput.readOnly = !editing;
+        if (signatureInput) signatureInput.readOnly = !editing;
+      }
+
+      function updateSignatureCount(){
+        if (!signatureCount || !signatureInput) return;
+        signatureCount.textContent = `${(signatureInput.value || '').length}/80`;
+      }
+
+      function applyAvatar(avatarUrl, username){
+        if (!avatarBtn) return;
+        if (avatarUrl) {
+          avatarBtn.style.backgroundImage = `url(${avatarUrl})`;
+          avatarBtn.style.backgroundSize = 'cover';
+          avatarBtn.style.backgroundPosition = 'center';
+          avatarText.style.display = 'none';
+        } else {
+          avatarBtn.style.backgroundImage = 'none';
+          avatarText.textContent = (username || 'U').charAt(0).toUpperCase();
+          avatarText.style.display = 'flex';
+        }
+      }
+
+      function maskEmail(email){
+        const s = (email == null) ? '' : String(email).trim();
+        if (!s || !s.includes('@')) return s;
+        const parts = s.split('@');
+        if (parts.length < 2) return s;
+        const name = parts[0] || '';
+        const domain = parts.slice(1).join('@') || '';
+        if (!name) return `***@${domain}`;
+        if (name.length === 1) return `${name}***@${domain}`;
+        return `${name.slice(0, 2)}***@${domain}`;
+      }
+
+      function applyProfile(d){
+        const username = (d && d.username) ? String(d.username) : '用户';
+        const isAdmin = !!(d && d.is_admin);
+        const createdAt = (d && d.created_at) ? String(d.created_at) : '-';
+        const contact = (d && typeof d.contact === 'string') ? d.contact : '';
+        const college = (d && typeof d.college === 'string') ? d.college : '';
+        const signature = (d && typeof d.signature === 'string') ? d.signature : '';
+        const avatar = (d && d.avatar) ? String(d.avatar) : '';
+
+        const streakDaysRaw = d && d.streak_days != null ? Number(d.streak_days) : 0;
+        const totalAnsweredRaw = d && d.total_answered != null ? Number(d.total_answered) : 0;
+        const accuracyRaw = d && d.accuracy != null ? Number(d.accuracy) : 0;
+        const favoritesCountRaw = d && d.favorites_count != null ? Number(d.favorites_count) : 0;
+        const mistakesCountRaw = d && d.mistakes_count != null ? Number(d.mistakes_count) : 0;
+
+        const streakDays = Number.isFinite(streakDaysRaw) ? streakDaysRaw : 0;
+        const totalAnswered = Number.isFinite(totalAnsweredRaw) ? totalAnsweredRaw : 0;
+        const accuracy = Number.isFinite(accuracyRaw) ? accuracyRaw : 0;
+        const favoritesCount = Number.isFinite(favoritesCountRaw) ? favoritesCountRaw : 0;
+        const mistakesCount = Number.isFinite(mistakesCountRaw) ? mistakesCountRaw : 0;
+
+        const email = (d && d.email) ? String(d.email) : '';
+        const emailVerified = !!(d && d.email_verified);
+        const hasPasswordSet = !!(d && d.has_password_set);
+        const wechatBound = !!(d && d.wechat_bound);
+
+        original = { contact, college, signature };
+
+        if (usernameDisplay) usernameDisplay.textContent = username;
+        if (roleDisplay) roleDisplay.textContent = isAdmin ? '管理员' : '普通用户';
+        if (createdAtDisplay) createdAtDisplay.textContent = `注册时间 ${createdAt}`;
+
+        if (nicknameInput) nicknameInput.value = username;
+        if (contactInput) contactInput.value = contact || '';
+        if (collegeInput) collegeInput.value = college || '';
+        if (signatureInput) signatureInput.value = signature || '';
+
+        if (streakDaysVal) streakDaysVal.textContent = String(streakDays);
+        if (totalAnsweredVal) totalAnsweredVal.textContent = String(totalAnswered);
+        if (accuracyVal) accuracyVal.textContent = `${accuracy}%`;
+        if (favoritesCountVal) favoritesCountVal.textContent = String(favoritesCount);
+        if (mistakesCountVal) mistakesCountVal.textContent = String(mistakesCount);
+
+        if (emailDisplay) emailDisplay.textContent = email ? maskEmail(email) : '未绑定';
+        if (emailBadge) emailBadge.textContent = email ? (emailVerified ? '已验证' : '未验证') : '未绑定';
+        if (passwordBadge) passwordBadge.textContent = hasPasswordSet ? '已设置' : '未设置';
+        if (wechatBadge) wechatBadge.textContent = wechatBound ? '已绑定' : '未绑定';
+
+        updateSignatureCount();
+        applyAvatar(avatar, username);
+      }
+
+      async function loadProfile(){
+        showMsg('');
+        try {
+          const res = await fetch('/api/profile', { credentials: 'include' });
+          const js = await res.json().catch(()=> ({}));
+          if (!res.ok || !js || js.status !== 'success' || !js.data) throw new Error(js && js.message ? js.message : '加载失败');
+          applyProfile(js.data);
+        } catch (e) {
+          showMsg((e && e.message) ? e.message : '加载失败，请稍后重试');
+        }
+      }
+
+      async function saveProfile(){
+        if (!saveBtn) return;
+        showMsg('');
+        saveBtn.disabled = true;
+        saveBtn.textContent = '保存中…';
+
+        const payload = {
+          contact: (contactInput && typeof contactInput.value === 'string') ? contactInput.value.trim() : '',
+          college: (collegeInput && typeof collegeInput.value === 'string') ? collegeInput.value.trim() : '',
+          signature: (signatureInput && typeof signatureInput.value === 'string') ? signatureInput.value.trim() : '',
+        };
+
+        try {
+          const res = await fetch('/api/profile/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(payload),
+          });
+          const js = await res.json().catch(()=> ({}));
+          if (!res.ok || !js || js.status !== 'success') throw new Error(js && js.message ? js.message : '保存失败');
+
+          setEditing(false);
+          await loadProfile();
+          showMsg('已保存');
+        } catch (e) {
+          showMsg((e && e.message) ? e.message : '保存失败，请稍后重试');
+        } finally {
+          saveBtn.disabled = false;
+          saveBtn.textContent = '保存';
+        }
+      }
+
+      async function uploadAvatar(file){
+        if (!file) return;
+        showMsg('');
+
+        const formData = new FormData();
+        formData.append('avatar', file);
+        try {
+          const res = await fetch('/api/profile/avatar', { method: 'POST', body: formData, credentials: 'include' });
+          const js = await res.json().catch(()=> ({}));
+          if (!res.ok || !js || js.status !== 'success') throw new Error(js && js.message ? js.message : '头像上传失败');
+          await loadProfile();
+          showMsg('头像已更新');
+        } catch (e) {
+          showMsg((e && e.message) ? e.message : '头像上传失败，请稍后重试');
+        }
+      }
+
+      editBtn && editBtn.addEventListener('click', function(){
+        setEditing(true);
+        showMsg('');
+      });
+
+      cancelBtn && cancelBtn.addEventListener('click', function(){
+        if (contactInput) contactInput.value = original.contact || '';
+        if (collegeInput) collegeInput.value = original.college || '';
+        if (signatureInput) signatureInput.value = original.signature || '';
+        updateSignatureCount();
+        setEditing(false);
+        showMsg('');
+      });
+
+      saveBtn && saveBtn.addEventListener('click', saveProfile);
+
+      signatureInput && signatureInput.addEventListener('input', updateSignatureCount);
+
+      avatarBtn && avatarBtn.addEventListener('click', function(){
+        if (!avatarInput) return;
+        avatarInput.click();
+      });
+
+      avatarInput && avatarInput.addEventListener('change', function(){
+        const f = avatarInput.files && avatarInput.files[0];
+        if (!f) return;
+        uploadAvatar(f);
+        avatarInput.value = '';
+      });
+
+      setEditing(false);
+      loadProfile();
+    })();
+  </script>
+{% endblock %}

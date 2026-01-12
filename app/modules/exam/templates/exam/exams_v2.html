@@ -1,0 +1,934 @@
+{% extends "main/app_shell.html" %}
+{% block title %}考试记录{% endblock %}
+{% block page_title %}考试{% endblock %}
+
+{% block topbar_actions %}
+  <a class="exam-top-link" href="#examRecords">考试记录</a>
+{% endblock %}
+
+{% block head_extra %}
+  <style>
+    .exam-top-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 34px;
+      padding: 0 10px;
+      border-radius: 999px;
+      border: 1px solid var(--app-border);
+      background: var(--app-surface);
+      box-shadow: var(--app-shadow-soft);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: -0.1px;
+      white-space: nowrap;
+      transition: background 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+    }
+    .exam-top-link:hover { box-shadow: var(--app-shadow); transform: translateY(-1px); }
+    .exam-top-link:active { transform: translateY(0); }
+    .exam-top-link:focus { outline: none; box-shadow: 0 0 0 3px var(--app-primary-soft), var(--app-shadow-soft); }
+
+    .exam-page { max-width: 1120px; margin: 0 auto; min-width: 0; }
+    .exam-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+
+    .exam-layout {
+      display: grid;
+      grid-template-columns: 1fr 360px;
+      gap: 16px;
+      align-items: start;
+    }
+    #examRecords { scroll-margin-top: calc(var(--app-topbar-h) + 14px); }
+
+    .exam-card { padding: 18px; }
+    .exam-card h2 { margin: 0; font-size: 18px; font-weight: 900; letter-spacing: -0.2px; }
+    .exam-card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; min-width: 0; }
+
+    .exam-count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 22px;
+      padding: 0 10px;
+      border-radius: 999px;
+      background: var(--app-primary-soft);
+      color: var(--app-primary);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: -0.1px;
+      flex: 0 0 auto;
+    }
+
+    .exam-filter { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .exam-filter label { color: var(--app-muted); font-size: 12px; font-weight: 800; letter-spacing: 0.2px; }
+    .exam-select { height: 36px; }
+
+    .exam-select-lg { height: 40px; }
+
+    .exam-builder-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+      min-width: 0;
+    }
+    .exam-builder-title { display: grid; gap: 6px; min-width: 0; }
+    .exam-builder-title h2 { margin: 0; }
+    .exam-builder-sub { color: var(--app-muted); font-size: 12px; line-height: 1.45; }
+
+    .exam-fields {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .exam-field { display: grid; gap: 6px; min-width: 0; }
+    .exam-label { color: var(--app-muted); font-size: 12px; font-weight: 900; letter-spacing: 0.2px; }
+
+    .exam-subhead {
+      margin-top: 14px;
+      margin-bottom: 8px;
+      font-size: 12px;
+      color: var(--app-muted);
+      font-weight: 900;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+    }
+
+    .exam-types-box {
+      border: 1px solid var(--app-border);
+      border-radius: 14px;
+      background: var(--app-surface);
+      overflow: hidden;
+    }
+    .exam-types-row {
+      display: grid;
+      grid-template-columns: 1.4fr 0.7fr 0.7fr 0.8fr;
+      gap: 10px;
+      align-items: center;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--app-border);
+    }
+    .exam-types-row:last-child { border-bottom: none; }
+    .exam-types-head {
+      background: color-mix(in srgb, var(--app-surface) 92%, var(--app-bg));
+      color: var(--app-muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      font-weight: 900;
+    }
+    .exam-type-name {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      font-weight: 900;
+    }
+    .exam-type-name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .exam-type-name input { width: 16px; height: 16px; flex: 0 0 auto; }
+    .exam-mini { height: 36px; }
+    .exam-subtotal { text-align: right; font-variant-numeric: tabular-nums; font-weight: 900; }
+
+    .exam-inline-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-top: 12px;
+    }
+
+    .exam-msg {
+      margin-top: 10px;
+      min-height: 18px;
+      color: var(--app-muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    .exam-msg.error { color: #b91c1c; }
+    html[data-theme="dark"] .exam-msg.error { color: #fecaca; }
+
+    .exam-summary-card { padding: 18px; position: sticky; top: calc(var(--app-topbar-h) + 14px); }
+    .exam-summary-title { margin: 0; font-size: 15px; font-weight: 950; letter-spacing: -0.2px; }
+    .exam-summary-kv { display: grid; gap: 10px; margin-top: 12px; }
+    .exam-kv {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+      padding: 10px 12px;
+      border: 1px solid var(--app-border);
+      border-radius: 14px;
+      background: var(--app-surface);
+    }
+    .exam-kv .k { color: var(--app-muted); font-size: 12px; font-weight: 900; letter-spacing: 0.2px; }
+    .exam-kv .v { font-variant-numeric: tabular-nums; font-weight: 950; }
+
+    .exam-summary-types { margin-top: 12px; display: grid; gap: 8px; }
+    .exam-type-pill {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid var(--app-border);
+      background: var(--app-surface);
+      font-size: 12px;
+      min-width: 0;
+    }
+    .exam-type-pill .l { font-weight: 900; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .exam-type-pill .r { font-variant-numeric: tabular-nums; color: var(--app-muted); white-space: nowrap; }
+
+    .exam-table { width: 100%; border-collapse: collapse; }
+    .exam-table th, .exam-table td {
+      text-align: left;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--app-border);
+      vertical-align: middle;
+    }
+    .exam-table thead th {
+      background: color-mix(in srgb, var(--app-surface) 92%, var(--app-bg));
+      color: var(--app-muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      font-weight: 900;
+    }
+    .exam-table tbody tr:hover { background: color-mix(in srgb, var(--app-primary) 5%, transparent); }
+    .exam-table tr:last-child td { border-bottom: none; }
+
+    .exam-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .exam-btn {
+      height: 34px;
+      padding: 0 12px;
+      border-radius: 999px;
+      border: 1px solid var(--app-border);
+      background: var(--app-surface);
+      box-shadow: var(--app-shadow-soft);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-weight: 900;
+      font-size: 13px;
+      transition: background 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+      white-space: nowrap;
+    }
+    .exam-btn:hover { box-shadow: var(--app-shadow); transform: translateY(-1px); }
+    .exam-btn:active { transform: translateY(0); }
+    .exam-btn:focus { outline: none; box-shadow: 0 0 0 3px var(--app-primary-soft), var(--app-shadow-soft); }
+    .exam-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+    .exam-btn-primary {
+      border-color: color-mix(in srgb, var(--app-primary) 50%, var(--app-border));
+      background: color-mix(in srgb, var(--app-primary) 12%, var(--app-surface));
+      color: var(--app-text);
+    }
+    .exam-btn-danger {
+      border-color: color-mix(in srgb, #ef4444 55%, var(--app-border));
+      background: color-mix(in srgb, #ef4444 10%, var(--app-surface));
+      color: #b91c1c;
+    }
+    html[data-theme="dark"] .exam-btn-danger { color: #fecaca; }
+
+    .dropdown { position: relative; display: inline-block; }
+    .dropdown-toggle::after {
+      content: '';
+      width: 0;
+      height: 0;
+      border-left: 4px solid transparent;
+      border-right: 4px solid transparent;
+      border-top: 5px solid currentColor;
+      margin-left: 6px;
+      transition: transform 0.2s;
+    }
+    .dropdown-toggle.active::after { transform: rotate(180deg); }
+    .dropdown-menu {
+      position: absolute;
+      top: 100%;
+      right: 0;
+      margin-top: 6px;
+      background: var(--app-surface);
+      border: 1px solid var(--app-border);
+      border-radius: 14px;
+      box-shadow: var(--app-shadow);
+      min-width: 140px;
+      z-index: 60;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-6px);
+      transition: opacity 140ms ease, transform 140ms ease, visibility 140ms ease;
+      overflow: hidden;
+    }
+    .dropdown-menu.show { opacity: 1; visibility: visible; transform: translateY(0); }
+    .dropdown-item {
+      display: block;
+      padding: 10px 12px;
+      color: var(--app-text);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 800;
+      transition: background 140ms ease;
+      cursor: pointer;
+      border: none;
+      width: 100%;
+      text-align: left;
+      background: transparent;
+    }
+    .dropdown-item:hover { background: color-mix(in srgb, var(--app-primary) 6%, transparent); }
+    .dropdown-item.danger { color: #b91c1c; }
+    html[data-theme="dark"] .dropdown-item.danger { color: #fecaca; }
+    .dropdown-item.danger:hover { background: color-mix(in srgb, #ef4444 10%, transparent); }
+
+    .exam-pagination {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-top: 14px;
+      padding: 0 2px;
+    }
+    .exam-pagination .meta { color: var(--app-muted); font-size: 12px; font-weight: 700; }
+    .exam-pagination .controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    @media (max-width: 980px) {
+      .exam-layout { grid-template-columns: 1fr; }
+      .exam-summary-card { position: static; top: auto; }
+      .exam-fields { grid-template-columns: 1fr; }
+      .exam-types-row { grid-template-columns: 1.4fr 0.8fr 0.8fr 0.8fr; }
+    }
+
+    @media (max-width: 720px) {
+      .exam-card { padding: 14px; }
+      .exam-table th, .exam-table td { padding: 10px 12px; }
+      .hide-sm { display: none; }
+      .exam-btn { height: 32px; padding: 0 10px; font-size: 12px; }
+      .exam-types-row { grid-template-columns: 1.4fr 0.75fr 0.75fr 0.8fr; }
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+  <div class="app-container exam-page">
+    <div class="exam-grid">
+      <div class="exam-layout">
+        <div class="app-card app-card-solid exam-card">
+          <div class="exam-builder-head">
+            <div class="exam-builder-title">
+              <h2>新建考试</h2>
+              <div class="exam-builder-sub">选择题库范围、题型、分值与时长，点击开始即可进入考试。</div>
+            </div>
+            <a class="exam-btn" href="#examRecords">查看记录</a>
+          </div>
+
+          <div class="exam-fields">
+            <div class="exam-field">
+              <label class="exam-label" for="exam_subject">题库范围</label>
+              <select id="exam_subject" class="app-input exam-select-lg" onchange="renderExamTypes()">
+                <option value="all">全部题库（跨科目）</option>
+                {% for s in subjects_meta %}
+                  <option value="{{ s.name }}">{{ s.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="exam-field">
+              <label class="exam-label" for="exam_total">总题数</label>
+              <input id="exam_total" class="app-input" type="number" min="1" max="300" value="30" />
+            </div>
+
+            <div class="exam-field">
+              <label class="exam-label" for="exam_duration">时长（分钟）</label>
+              <input id="exam_duration" class="app-input" type="number" min="1" max="1440" value="60" />
+            </div>
+          </div>
+
+          <div class="exam-subhead">题型与分值</div>
+          <div class="exam-types-box" id="exam_types" aria-label="题型设置"></div>
+
+          <div class="exam-inline-actions">
+            <button class="exam-btn" type="button" onclick="autoDistributeExam()">均分题数</button>
+            <button class="exam-btn" type="button" onclick="resetExamScores()">分值重置</button>
+            <button class="exam-btn exam-btn-danger" type="button" onclick="clearExamTypes()">清空</button>
+            <div style="flex:1 1 auto;"></div>
+            <button class="exam-btn exam-btn-primary" id="examStartBtn" type="button" onclick="startExam()">开始考试</button>
+          </div>
+
+          <div class="exam-msg" id="examMsg" role="status" aria-live="polite"></div>
+        </div>
+
+        <div class="app-card exam-summary-card">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+            <div class="exam-summary-title">本次考试概览</div>
+            <a class="exam-btn" href="#examRecords">考试记录</a>
+          </div>
+
+          <div class="exam-summary-kv">
+            <div class="exam-kv"><div class="k">题库</div><div class="v" id="examSumSubject">-</div></div>
+            <div class="exam-kv"><div class="k">时长</div><div class="v" id="examSumDuration">-</div></div>
+            <div class="exam-kv"><div class="k">目标题数</div><div class="v" id="examSumTarget">-</div></div>
+            <div class="exam-kv"><div class="k">已分配</div><div class="v" id="examSumAssigned">-</div></div>
+            <div class="exam-kv"><div class="k">总分</div><div class="v" id="examSumScore">-</div></div>
+          </div>
+
+          <div class="exam-subhead" style="margin-top:14px;">试卷结构</div>
+          <div class="exam-summary-types" id="examSummaryTypes">
+            <div style="color:var(--app-muted); font-size:12px;">请选择题型并设置题数</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="examRecords"></div>
+
+      <div class="app-card exam-card">
+        <div class="exam-card-head">
+          <h2>进行中的考试</h2>
+          <span class="exam-count">{{ ongoing|length }}</span>
+        </div>
+
+        <table class="exam-table" aria-label="进行中的考试">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>科目</th>
+              <th>时长</th>
+              <th class="hide-sm">开始时间</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for e in ongoing %}
+            <tr>
+              <td>{{ e.id }}</td>
+              <td>{{ e.subject or '全部' }}</td>
+              <td>{{ e.duration_minutes }} 分钟</td>
+              <td class="hide-sm">{{ e.started_at }}</td>
+              <td>
+                <div class="exam-actions">
+                  <a class="exam-btn exam-btn-primary" href="/quiz?mode=exam&exam_id={{ e.id }}">继续</a>
+                  <button class="exam-btn exam-btn-danger" type="button" onclick="delExam({{ e.id }})">删除</button>
+                </div>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" style="color:var(--app-muted);">暂无进行中的考试</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="app-card exam-card">
+        <div class="exam-card-head">
+          <h2>已提交的考试</h2>
+          <div class="exam-filter">
+            <label for="selSub">科目</label>
+            <select id="selSub" class="app-input exam-select" onchange="applyFilter()">
+              <option value="all" {% if filter_subject=='all' %}selected{% endif %}>全部</option>
+              {% for s in subjects %}
+              <option value="{{ s }}" {% if filter_subject==s %}selected{% endif %}>{{ s }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <table class="exam-table" aria-label="已提交的考试">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>科目</th>
+              <th>总分</th>
+              <th class="hide-sm">开始时间</th>
+              <th class="hide-sm">提交时间</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for e in submitted %}
+            <tr>
+              <td>{{ e.id }}</td>
+              <td>{{ e.subject or '全部' }}</td>
+              <td>{{ e.total_score }}</td>
+              <td class="hide-sm">{{ e.started_at }}</td>
+              <td class="hide-sm">{{ e.submitted_at }}</td>
+              <td>
+                <div class="dropdown">
+                  <button class="exam-btn dropdown-toggle" onclick="toggleDropdown(this)" type="button" aria-haspopup="true" aria-expanded="false">操作</button>
+                  <div class="dropdown-menu" role="menu">
+                    <a class="dropdown-item" href="/exams/{{ e.id }}" role="menuitem">成绩</a>
+                    <a class="dropdown-item" href="/quiz?mode=exam&exam_id={{ e.id }}" role="menuitem">回顾</a>
+                    <button class="dropdown-item" type="button" onclick="toMistakes({{ e.id }})" role="menuitem">错题</button>
+                    <button class="dropdown-item danger" type="button" onclick="delExam({{ e.id }})" role="menuitem">删除</button>
+                  </div>
+                </div>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" style="color:var(--app-muted);">暂无已提交的考试</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        <div class="exam-pagination">
+          <div class="meta">共 {{ total }} 条</div>
+          <div class="controls">
+            <button class="exam-btn" type="button" onclick="gotoPage({{ page-1 }})" {% if page<=1 %}disabled{% endif %}>上一页</button>
+            <span class="meta">第 {{ page }} 页</span>
+            {% set total_pages = (total + size - 1) // size %}
+            <button class="exam-btn" type="button" onclick="gotoPage({{ page+1 }})" {% if page>=total_pages %}disabled{% endif %}>下一页</button>
+            <select id="selSize" class="app-input exam-select" onchange="changeSize(this.value)">
+              <option value="10" {% if size==10 %}selected{% endif %}>10/页</option>
+              <option value="20" {% if size==20 %}selected{% endif %}>20/页</option>
+              <option value="50" {% if size==50 %}selected{% endif %}>50/页</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block body_end %}
+  <script>
+    const LOGGED_IN = {{ 'true' if logged_in else 'false' }};
+    const SUBJECT_Q_TYPES = {{ subject_q_types_json|safe }};
+    const ALL_Q_TYPES = {{ q_types|tojson }};
+    let examPresetApplied = false;
+
+    function setExamMsg(text, kind) {
+      const el = document.getElementById('examMsg');
+      if (!el) return;
+      el.classList.toggle('error', kind === 'error');
+      el.textContent = String(text || '');
+    }
+
+    function parseIntSafe(v, fallback, minV, maxV) {
+      let n = parseInt(String(v ?? ''), 10);
+      if (!Number.isFinite(n)) n = fallback;
+      if (minV !== undefined && minV !== null) n = Math.max(minV, n);
+      if (maxV !== undefined && maxV !== null) n = Math.min(maxV, n);
+      return n;
+    }
+
+    function parseFloatSafe(v, fallback, minV, maxV) {
+      let n = parseFloat(String(v ?? ''));
+      if (!Number.isFinite(n)) n = fallback;
+      if (minV !== undefined && minV !== null) n = Math.max(minV, n);
+      if (maxV !== undefined && maxV !== null) n = Math.min(maxV, n);
+      return n;
+    }
+
+    function formatNum(n) {
+      if (!Number.isFinite(n)) return '0';
+      if (Number.isInteger(n)) return String(n);
+      return String(n.toFixed(2)).replace(/\.?0+$/, '');
+    }
+
+    function snapshotExamTypeState() {
+      const prev = {};
+      document.querySelectorAll('#exam_types .exam-types-row[data-qtype]').forEach(function (row) {
+        const qtype = row.dataset.qtype || '';
+        const enabled = !!row.querySelector('.exam-type-enable')?.checked;
+        const count = row.querySelector('.exam-type-count')?.value ?? '0';
+        const score = row.querySelector('.exam-type-score')?.value ?? '1';
+        if (qtype) prev[qtype] = { enabled, count, score };
+      });
+      return prev;
+    }
+
+    function syncExamTypeRowEnabled(row) {
+      const enabled = !!row.querySelector('.exam-type-enable')?.checked;
+      const countInput = row.querySelector('.exam-type-count');
+      const scoreInput = row.querySelector('.exam-type-score');
+      if (countInput) countInput.disabled = !enabled;
+      if (scoreInput) scoreInput.disabled = !enabled;
+      row.style.opacity = enabled ? '1' : '0.6';
+    }
+
+    function collectExamConfig() {
+      const subject = document.getElementById('exam_subject')?.value || 'all';
+      const targetTotal = parseIntSafe(document.getElementById('exam_total')?.value, 30, 1, 300);
+      const duration = parseIntSafe(document.getElementById('exam_duration')?.value, 60, 1, 1440);
+
+      const types = {};
+      const scores = {};
+      let assigned = 0;
+      let totalScore = 0;
+
+      document.querySelectorAll('#exam_types .exam-types-row[data-qtype]').forEach(function (row) {
+        const qtype = row.dataset.qtype || '';
+        const enabled = !!row.querySelector('.exam-type-enable')?.checked;
+        if (!enabled || !qtype) return;
+        const count = parseIntSafe(row.querySelector('.exam-type-count')?.value, 0, 0, 500);
+        const score = parseFloatSafe(row.querySelector('.exam-type-score')?.value, 1, 0, 1000);
+        if (count <= 0) return;
+        types[qtype] = count;
+        scores[qtype] = score;
+        assigned += count;
+        totalScore += count * score;
+      });
+
+      return { subject, targetTotal, duration, types, scores, assigned, totalScore };
+    }
+
+    function updateExamSummary() {
+      const cfg = collectExamConfig();
+      const subjectText = cfg.subject === 'all' ? '全部题库' : cfg.subject;
+
+      const elSubject = document.getElementById('examSumSubject');
+      const elDuration = document.getElementById('examSumDuration');
+      const elTarget = document.getElementById('examSumTarget');
+      const elAssigned = document.getElementById('examSumAssigned');
+      const elScore = document.getElementById('examSumScore');
+      if (elSubject) elSubject.textContent = subjectText;
+      if (elDuration) elDuration.textContent = `${cfg.duration} 分钟`;
+      if (elTarget) elTarget.textContent = `${cfg.targetTotal} 题`;
+      if (elAssigned) elAssigned.textContent = `${cfg.assigned} 题`;
+      if (elScore) elScore.textContent = `${formatNum(cfg.totalScore)} 分`;
+
+      document.querySelectorAll('#exam_types .exam-types-row[data-qtype]').forEach(function (row) {
+        const qtype = row.dataset.qtype || '';
+        const enabled = !!row.querySelector('.exam-type-enable')?.checked;
+        const count = parseIntSafe(row.querySelector('.exam-type-count')?.value, 0, 0, 500);
+        const score = parseFloatSafe(row.querySelector('.exam-type-score')?.value, 1, 0, 1000);
+        const subtotal = enabled ? (count * score) : 0;
+        const cell = row.querySelector('.exam-subtotal');
+        if (cell) cell.textContent = formatNum(subtotal);
+      });
+
+      const typesBox = document.getElementById('examSummaryTypes');
+      if (typesBox) {
+        const items = Object.entries(cfg.types);
+        if (!items.length) {
+          typesBox.innerHTML = '';
+          const hint = document.createElement('div');
+          hint.style.color = 'var(--app-muted)';
+          hint.style.fontSize = '12px';
+          hint.textContent = '请选择题型并设置题数';
+          typesBox.appendChild(hint);
+        } else {
+          typesBox.innerHTML = '';
+          items.forEach(function (kv) {
+            const qtype = kv[0];
+            const count = kv[1];
+            const score = cfg.scores[qtype] ?? 1;
+            const pill = document.createElement('div');
+            pill.className = 'exam-type-pill';
+
+            const l = document.createElement('div');
+            l.className = 'l';
+            l.textContent = qtype;
+
+            const r = document.createElement('div');
+            r.className = 'r';
+            r.textContent = `${count} × ${formatNum(score)} = ${formatNum(count * score)}`;
+
+            pill.appendChild(l);
+            pill.appendChild(r);
+            typesBox.appendChild(pill);
+          });
+        }
+      }
+
+      const startBtn = document.getElementById('examStartBtn');
+      if (startBtn) startBtn.disabled = cfg.assigned <= 0;
+    }
+
+    function getQTypesForSubject(subject) {
+      if (subject === 'all') return Array.isArray(ALL_Q_TYPES) ? ALL_Q_TYPES.slice() : [];
+      const arr = SUBJECT_Q_TYPES ? SUBJECT_Q_TYPES[subject] : null;
+      return Array.isArray(arr) ? arr.slice() : [];
+    }
+
+    function applyDefaultPresetIfEmpty(qTypes) {
+      const cfg = collectExamConfig();
+      if (cfg.assigned > 0) return;
+      if (examPresetApplied) return;
+      examPresetApplied = true;
+
+      const preferred = ['单选题', '多选题', '判断题'];
+      const picked = preferred.filter(t => qTypes.includes(t));
+      const fallbackPicked = picked.length ? picked : qTypes.slice(0, Math.min(3, qTypes.length));
+
+      document.querySelectorAll('#exam_types .exam-types-row[data-qtype]').forEach(function (row) {
+        const qtype = row.dataset.qtype || '';
+        const cb = row.querySelector('.exam-type-enable');
+        const countInput = row.querySelector('.exam-type-count');
+        const scoreInput = row.querySelector('.exam-type-score');
+        if (cb) cb.checked = fallbackPicked.includes(qtype);
+        if (countInput) countInput.value = '0';
+        if (scoreInput) scoreInput.value = '1';
+        syncExamTypeRowEnabled(row);
+      });
+
+      autoDistributeExam();
+      updateExamSummary();
+    }
+
+    function renderExamTypes() {
+      const container = document.getElementById('exam_types');
+      if (!container) return;
+
+      setExamMsg('', '');
+
+      const subject = document.getElementById('exam_subject')?.value || 'all';
+      const qTypes = getQTypesForSubject(subject).filter(Boolean);
+      const prev = snapshotExamTypeState();
+
+      container.innerHTML = '';
+
+      if (!qTypes.length) {
+        const empty = document.createElement('div');
+        empty.style.padding = '12px';
+        empty.style.color = 'var(--app-muted)';
+        empty.style.fontSize = '12px';
+        empty.textContent = '当前范围暂无题型（可能是题库为空或无权限）。';
+        container.appendChild(empty);
+        updateExamSummary();
+        return;
+      }
+
+      const head = document.createElement('div');
+      head.className = 'exam-types-row exam-types-head';
+      head.innerHTML = '<div>题型</div><div>题数</div><div>每题分值</div><div style="text-align:right;">小计</div>';
+      container.appendChild(head);
+
+      qTypes.forEach(function (t) {
+        const row = document.createElement('div');
+        row.className = 'exam-types-row';
+        row.dataset.qtype = t;
+
+        const name = document.createElement('label');
+        name.className = 'exam-type-name';
+
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.className = 'exam-type-enable';
+        cb.checked = false;
+
+        const span = document.createElement('span');
+        span.textContent = t;
+
+        name.appendChild(cb);
+        name.appendChild(span);
+
+        const count = document.createElement('input');
+        count.type = 'number';
+        count.min = '0';
+        count.max = '500';
+        count.className = 'app-input exam-mini exam-type-count';
+        count.value = '0';
+
+        const score = document.createElement('input');
+        score.type = 'number';
+        score.min = '0';
+        score.max = '1000';
+        score.step = '0.5';
+        score.className = 'app-input exam-mini exam-type-score';
+        score.value = '1';
+
+        const subtotal = document.createElement('div');
+        subtotal.className = 'exam-subtotal';
+        subtotal.textContent = '0';
+
+        row.appendChild(name);
+        row.appendChild(count);
+        row.appendChild(score);
+        row.appendChild(subtotal);
+        container.appendChild(row);
+
+        if (prev[t]) {
+          cb.checked = !!prev[t].enabled;
+          count.value = String(prev[t].count ?? '0');
+          score.value = String(prev[t].score ?? '1');
+        }
+
+        cb.addEventListener('change', function () {
+          syncExamTypeRowEnabled(row);
+          updateExamSummary();
+        });
+        count.addEventListener('input', updateExamSummary);
+        score.addEventListener('input', updateExamSummary);
+
+        syncExamTypeRowEnabled(row);
+      });
+
+      applyDefaultPresetIfEmpty(qTypes);
+      updateExamSummary();
+    }
+
+    function autoDistributeExam() {
+      const total = parseIntSafe(document.getElementById('exam_total')?.value, 30, 1, 300);
+      const rows = Array.from(document.querySelectorAll('#exam_types .exam-types-row[data-qtype]'));
+      const enabledRows = rows.filter(r => !!r.querySelector('.exam-type-enable')?.checked);
+
+      if (!enabledRows.length) {
+        setExamMsg('请先勾选至少一种题型，再进行均分。', 'error');
+        updateExamSummary();
+        return;
+      }
+
+      const n = enabledRows.length;
+      const base = Math.floor(total / n);
+      let rem = total % n;
+
+      enabledRows.forEach(function (row) {
+        const count = row.querySelector('.exam-type-count');
+        if (!count) return;
+        let v = base + (rem > 0 ? 1 : 0);
+        if (rem > 0) rem -= 1;
+        count.value = String(v);
+      });
+
+      setExamMsg('', '');
+      updateExamSummary();
+    }
+
+    function resetExamScores() {
+      document.querySelectorAll('#exam_types .exam-types-row[data-qtype]').forEach(function (row) {
+        const score = row.querySelector('.exam-type-score');
+        if (score) score.value = '1';
+      });
+      setExamMsg('', '');
+      updateExamSummary();
+    }
+
+    function clearExamTypes() {
+      document.querySelectorAll('#exam_types .exam-types-row[data-qtype]').forEach(function (row) {
+        const cb = row.querySelector('.exam-type-enable');
+        const count = row.querySelector('.exam-type-count');
+        if (cb) cb.checked = false;
+        if (count) count.value = '0';
+        syncExamTypeRowEnabled(row);
+      });
+      setExamMsg('', '');
+      updateExamSummary();
+    }
+
+    async function startExam() {
+      if (!LOGGED_IN) { window.location.href = '/login'; return; }
+
+      const btn = document.getElementById('examStartBtn');
+      if (btn) { btn.disabled = true; btn.textContent = '创建中…'; }
+
+      setExamMsg('正在创建考试…', '');
+
+      try {
+        const cfg = collectExamConfig();
+        if (cfg.assigned <= 0) {
+          setExamMsg('请至少设置一种题型的题数（大于 0）。', 'error');
+          return;
+        }
+
+        const resp = await fetch('/api/exams/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ subject: cfg.subject, duration: cfg.duration, types: cfg.types, scores: cfg.scores }),
+        });
+        const js = await resp.json().catch(() => ({}));
+
+        if (!resp.ok || !js || js.status !== 'success' || !js.exam_id) {
+          setExamMsg((js && js.message) ? js.message : '创建考试失败，请稍后再试。', 'error');
+          return;
+        }
+
+        window.location.href = `/quiz?mode=exam&exam_id=${js.exam_id}`;
+      } catch (e) {
+        setExamMsg('创建考试失败，请检查网络或稍后重试。', 'error');
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '开始考试'; }
+        updateExamSummary();
+      }
+    }
+
+    document.getElementById('exam_total')?.addEventListener('input', updateExamSummary);
+    document.getElementById('exam_duration')?.addEventListener('input', updateExamSummary);
+    renderExamTypes();
+
+    function closeAllDropdowns() {
+      document.querySelectorAll('.dropdown-menu.show').forEach(function (menu) {
+        menu.classList.remove('show');
+        var btn = menu.previousElementSibling;
+        if (btn) {
+          btn.classList.remove('active');
+          btn.setAttribute('aria-expanded', 'false');
+        }
+      });
+    }
+
+    function toggleDropdown(button) {
+      var dropdown = button && button.closest ? button.closest('.dropdown') : null;
+      var menu = dropdown ? dropdown.querySelector('.dropdown-menu') : null;
+      if (!menu) return;
+
+      var isOpen = menu.classList.contains('show');
+      closeAllDropdowns();
+
+      if (!isOpen) {
+        menu.classList.add('show');
+        button.classList.add('active');
+        button.setAttribute('aria-expanded', 'true');
+      }
+    }
+
+    document.addEventListener('click', function (e) {
+      if (!e.target.closest('.dropdown')) closeAllDropdowns();
+    });
+
+    function buildUrl(params) {
+      var url = new URL(window.location.href);
+      Object.entries(params).forEach(function (kv) {
+        var k = kv[0];
+        var v = kv[1];
+        if (v === undefined || v === null || v === '') url.searchParams.delete(k);
+        else url.searchParams.set(k, v);
+      });
+      return url.toString();
+    }
+
+    function applyFilter() {
+      var sub = document.getElementById('selSub').value;
+      window.location.href = buildUrl({ subject: sub, page: 1 });
+    }
+
+    function gotoPage(p) {
+      if (p < 1) return;
+      var sub = document.getElementById('selSub').value;
+      window.location.href = buildUrl({ subject: sub, page: p });
+    }
+
+    function changeSize(sz) {
+      var sub = document.getElementById('selSub').value;
+      window.location.href = buildUrl({ subject: sub, page: 1, size: sz });
+    }
+
+    async function delExam(id) {
+      if (!confirm('确定要删除该考试吗？此操作不可恢复。')) return;
+      try {
+        var res = await fetch(`/api/exams/${id}`, { method: 'DELETE' });
+        var js = await res.json();
+        if (res.ok && js.status === 'success') location.reload();
+        else alert(js.message || '删除失败');
+      } catch (e) {
+        alert('删除失败');
+      }
+    }
+
+    async function toMistakes(id) {
+      if (!confirm('将本次考试的错题加入错题本？')) return;
+      try {
+        var res = await fetch(`/api/exams/${id}/mistakes`, { method: 'POST' });
+        var js = await res.json();
+        if (res.ok && js.status === 'success') alert(`已加入错题本：${js.count} 题`);
+        else alert(js.message || '操作失败');
+      } catch (e) {
+        alert('操作失败');
+      }
+    }
+  </script>
+{% endblock %}

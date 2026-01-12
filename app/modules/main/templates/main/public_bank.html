@@ -1,0 +1,246 @@
+{% extends "main/app_shell.html" %}
+
+{% block title %}公共题库{% endblock %}
+{% block page_title %}公共题库{% endblock %}
+
+{% block head_extra %}
+<style>
+  .pb-hero {
+    padding: 18px 18px 16px;
+    display: grid;
+    gap: 10px;
+  }
+
+  .pb-hero-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .pb-title {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 980;
+    letter-spacing: -0.8px;
+    line-height: 1.12;
+  }
+
+  .pb-sub {
+    margin: 8px 0 0;
+    color: var(--app-muted);
+    font-size: 13px;
+    line-height: 1.6;
+    max-width: 62ch;
+  }
+
+  .pb-kpis { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+
+  .pb-toolbar {
+    margin-top: 12px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .pb-toolbar-left, .pb-toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+
+  .pb-search {
+    min-width: min(520px, 100%);
+    flex: 1 1 auto;
+  }
+
+  .pb-grid {
+    margin-top: 12px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .pb-card {
+    border-radius: 16px;
+    border: 1px solid var(--app-border);
+    background: var(--app-surface-2);
+    box-shadow: var(--app-shadow-soft);
+    padding: 14px;
+    display: grid;
+    gap: 10px;
+    min-width: 0;
+    transition: box-shadow 160ms ease, border-color 160ms ease, background 160ms ease;
+  }
+  .pb-card:hover {
+    box-shadow: var(--app-shadow);
+    border-color: color-mix(in srgb, var(--app-text) 14%, var(--app-border));
+  }
+  .pb-card:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--app-primary-soft), var(--app-shadow-soft);
+  }
+
+  .pb-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .pb-card-title {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 950;
+    letter-spacing: -0.2px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .pb-card-arrow {
+    width: 34px;
+    height: 34px;
+    border-radius: 14px;
+    border: 1px solid var(--app-border);
+    background: color-mix(in srgb, var(--app-surface) 72%, transparent);
+    box-shadow: var(--app-shadow-soft);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+  }
+
+  .pb-card-arrow svg {
+    width: 16px;
+    height: 16px;
+    display: block;
+    color: var(--app-text);
+    opacity: 0.9;
+  }
+
+  .pb-card-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    color: var(--app-muted);
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  .pb-dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--app-text) 35%, transparent);
+  }
+
+  .pb-empty {
+    margin-top: 12px;
+    padding: 18px;
+    border-radius: var(--app-radius-xl);
+    border: 1px dashed color-mix(in srgb, var(--app-border) 70%, transparent);
+    color: var(--app-muted);
+    background: color-mix(in srgb, var(--app-surface) 70%, transparent);
+  }
+
+  @media (max-width: 560px) {
+    .pb-grid { grid-template-columns: 1fr; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="app-container">
+  <section class="app-card pb-hero">
+    <div class="pb-hero-top">
+      <div>
+        <h1 class="pb-title">公共题库</h1>
+        <p class="pb-sub">选择科目进入练习设置，按你的节奏完成刷题与复盘。</p>
+      </div>
+      <div class="pb-kpis" aria-label="题库概览">
+        <span class="app-pill" title="科目数">{{ subjects_meta|length }} 科目</span>
+        <span class="app-pill" title="题量">{{ quiz_count or 0 }} 题</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="app-card pb-toolbar" aria-label="科目筛选">
+    <div class="pb-toolbar-left">
+      <input class="app-input pb-search" id="subjectFilter" type="search" placeholder="搜索科目" autocomplete="off" />
+    </div>
+    <div class="pb-toolbar-right">
+      <span class="app-pill" id="subjectShownPill">显示 {{ subjects_meta|length }} / {{ subjects_meta|length }}</span>
+    </div>
+  </section>
+
+  {% if subjects_meta and subjects_meta|length %}
+    <div class="pb-grid" id="subjectGrid" aria-label="科目列表">
+      {% for s in subjects_meta %}
+        <a
+          class="pb-card"
+          href="/subjects/{{ s.id }}"
+          data-subject-card="1"
+          data-subject-name="{{ (s.name or '')|e }}"
+          aria-label="进入 {{ s.name }} 科目"
+        >
+          <div class="pb-card-top">
+            <h2 class="pb-card-title">{{ s.name }}</h2>
+            <span class="pb-card-arrow" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </span>
+          </div>
+          <div class="pb-card-meta">
+            <span>{{ subject_counts.get(s.id, 0) }} 题</span>
+            <span class="pb-dot" aria-hidden="true"></span>
+            <span>练习设置</span>
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+
+    <div class="pb-empty" id="subjectsEmpty" hidden>没有匹配的科目。</div>
+  {% else %}
+    <div class="pb-empty">暂无可用科目。</div>
+  {% endif %}
+</div>
+
+<script>
+  (function () {
+    var input = document.getElementById('subjectFilter');
+    var empty = document.getElementById('subjectsEmpty');
+    var shownPill = document.getElementById('subjectShownPill');
+    var cards = Array.prototype.slice.call(document.querySelectorAll('[data-subject-card="1"]'));
+    var total = cards.length;
+
+    function apply() {
+      if (!cards.length) return;
+      var q = (input && input.value ? input.value : '').trim().toLowerCase();
+      var shown = 0;
+      cards.forEach(function (el) {
+        var name = (el.getAttribute('data-subject-name') || '').toLowerCase();
+        var match = !q || name.indexOf(q) !== -1;
+        el.hidden = !match;
+        if (match) shown += 1;
+      });
+      if (empty) empty.hidden = shown !== 0;
+      if (shownPill) shownPill.textContent = '显示 ' + shown + ' / ' + total;
+    }
+
+    if (input) input.addEventListener('input', apply);
+    apply();
+  })();
+</script>
+{% endblock %}
+

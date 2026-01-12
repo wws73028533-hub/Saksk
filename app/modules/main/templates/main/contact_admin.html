@@ -1,9 +1,7 @@
-<!DOCTYPE html>
-<html lang="zh">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>联系管理员 - 全能刷题库</title>
+{% extends "main/app_shell.html" %}
+{% block title %}联系管理员{% endblock %}
+{% block page_title %}联系管理员{% endblock %}
+{% block head_extra %}
   <style>
     body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',Arial,sans-serif;background:#f5f5f7;margin:0;color:#1d1d1f;transition:background .25s ease,color .25s ease}
     .wrap{max-width:860px;margin:0 auto;padding:28px 16px}
@@ -34,8 +32,9 @@
     body.dark-mode ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15)}
     body.dark-mode *:hover::-webkit-scrollbar-thumb{background:rgba(255,255,255,.25)}
   </style>
-</head>
-<body>
+{% endblock %}
+
+{% block content %}
   <div class="wrap">
     <div class="top"><a href="/user_hub">← 返回功能中心</a></div>
 
@@ -55,6 +54,9 @@
     </div>
   </div>
 
+{% endblock %}
+
+{% block body_end %}
   <script>
     // 监听系统主题变化（仅在未手动设置主题时）
     (function initThemeListener() {
@@ -114,7 +116,5 @@
       localStorage.setItem('theme', 'dark');
     }
   </script>
-</body>
-</html>
-
+{% endblock %}
 

@@ -1,0 +1,107 @@
+{% extends "main/settings/shell.html" %}
+{% block settings_title %}设置 · 关于{% endblock %}
+{% block settings_header_title %}关于{% endblock %}
+{% block settings_header_sub %}应用信息与相关协议。{% endblock %}
+
+{% block settings_head_extra %}
+  <style>
+    .about-grid { display: grid; gap: 14px; }
+    .about-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 0;
+      border-top: 1px solid var(--acc-border);
+      min-width: 0;
+    }
+    .about-row:first-child { border-top: none; }
+    .about-left { min-width: 0; }
+    .about-name { font-size: 14px; font-weight: 850; letter-spacing: -0.1px; color: var(--acc-text); }
+    .about-desc { margin-top: 6px; font-size: 13px; color: var(--acc-muted); line-height: 1.5; }
+    .about-link { font-size: 13px; font-weight: 850; letter-spacing: -0.1px; color: var(--acc-text); }
+    .about-link:hover { text-decoration: underline; }
+    .about-section { scroll-margin-top: 80px; }
+  </style>
+{% endblock %}
+
+{% block settings_subnav %}
+  <nav class="acc-tabs" aria-label="关于分区">
+    <a class="acc-tab active" href="#about-app" data-subtab="app">应用信息</a>
+    <a class="acc-tab" href="#about-legal" data-subtab="legal">协议</a>
+  </nav>
+{% endblock %}
+
+{% block settings_content %}
+  <div class="about-grid">
+    <section class="acc-card about-section" id="about-app" aria-labelledby="aboutAppTitle">
+      <h2 class="acc-card-title" id="aboutAppTitle">应用信息</h2>
+      <p class="acc-card-sub">保持专注的练习体验与一致的数据语义。</p>
+      <div class="acc-divider"></div>
+
+      <div class="about-row">
+        <div class="about-left">
+          <div class="about-name">产品</div>
+          <div class="about-desc">SAK 题库与练习系统</div>
+        </div>
+        <span class="about-link">-</span>
+      </div>
+
+      <div class="about-row">
+        <div class="about-left">
+          <div class="about-name">当前账号</div>
+          <div class="about-desc">{{ username if logged_in else '未登录' }}</div>
+        </div>
+        <a class="about-link" href="/settings/account/profile">查看</a>
+      </div>
+
+      <div class="about-row">
+        <div class="about-left">
+          <div class="about-name">问题反馈</div>
+          <div class="about-desc">通过站内入口联系管理员。</div>
+        </div>
+        <a class="about-link" href="/contact_admin">联系</a>
+      </div>
+    </section>
+
+    <section class="acc-card about-section" id="about-legal" aria-labelledby="aboutLegalTitle">
+      <h2 class="acc-card-title" id="aboutLegalTitle">协议</h2>
+      <p class="acc-card-sub">使用前请阅读并理解相关条款。</p>
+      <div class="acc-divider"></div>
+
+      <div class="about-row">
+        <div class="about-left">
+          <div class="about-name">服务协议</div>
+          <div class="about-desc">产品服务条款与用户责任。</div>
+        </div>
+        <a class="about-link" href="/terms">查看</a>
+      </div>
+
+      <div class="about-row">
+        <div class="about-left">
+          <div class="about-name">隐私保护协议</div>
+          <div class="about-desc">数据处理与隐私说明。</div>
+        </div>
+        <a class="about-link" href="/privacy">查看</a>
+      </div>
+    </section>
+  </div>
+{% endblock %}
+
+{% block settings_body_end %}
+  <script>
+    (function(){
+      const tabs = document.querySelectorAll('.acc-tabs .acc-tab[data-subtab]');
+      function applyActive(){
+        const hash = (location.hash || '').toLowerCase();
+        tabs.forEach(t => t.classList.remove('active'));
+        const active = Array.from(tabs).find(t => (t.getAttribute('href') || '').toLowerCase() === hash) || tabs[0];
+        active && active.classList.add('active');
+      }
+      tabs.forEach(t => t.addEventListener('click', () => { setTimeout(applyActive, 0); }));
+      window.addEventListener('hashchange', applyActive);
+      applyActive();
+    })();
+  </script>
+{% endblock %}
+

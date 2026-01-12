@@ -1,0 +1,1264 @@
+{% extends "main/app_shell.html" %}
+{% block title %}考试{% endblock %}
+{% block page_title %}考试{% endblock %}
+
+{% block head_extra %}
+  <style>
+    .mono { font-variant-numeric: tabular-nums; }
+    .muted { color: var(--app-muted); }
+    .exam-hub { min-width: 0; }
+
+    .exam-head {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+      min-width: 0;
+    }
+    .exam-head-title { display: grid; gap: 4px; min-width: 0; }
+    .exam-head-title h1 { margin: 0; font-size: 18px; font-weight: 950; letter-spacing: -0.3px; }
+    .exam-head-title p { margin: 0; font-size: 12px; line-height: 1.45; color: var(--app-muted); }
+    .exam-head-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+    .exam-subnav {
+      position: sticky;
+      top: calc(env(safe-area-inset-top) + var(--app-topbar-h) + 14px);
+      z-index: 35;
+      display: flex;
+      gap: 6px;
+      padding: 6px;
+      border-radius: 999px;
+      border: 1px solid var(--app-border);
+      background: color-mix(in srgb, var(--app-surface) 70%, transparent);
+      backdrop-filter: blur(18px) saturate(180%);
+      -webkit-backdrop-filter: blur(18px) saturate(180%);
+      box-shadow: var(--app-shadow-soft);
+      overflow-x: auto;
+      scrollbar-width: none;
+      margin-bottom: 14px;
+    }
+    .exam-subnav::-webkit-scrollbar { display: none; }
+    .exam-tab {
+      flex: 0 0 auto;
+      height: 34px;
+      padding: 0 12px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: -0.1px;
+      color: var(--app-muted);
+      white-space: nowrap;
+      transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+    }
+    .exam-tab:hover { background: rgba(148, 163, 184, 0.10); color: var(--app-text); }
+    .exam-tab.active {
+      background: var(--app-primary-soft);
+      border-color: color-mix(in srgb, var(--app-primary) 35%, var(--app-border));
+      color: var(--app-text);
+    }
+
+    .exam-card { padding: 18px; min-width: 0; }
+    .exam-card h2 { margin: 0; font-size: 16px; font-weight: 950; letter-spacing: -0.2px; }
+
+    .exam-card-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+      min-width: 0;
+    }
+    .exam-card-sub { margin-top: 6px; font-size: 12px; line-height: 1.45; color: var(--app-muted); }
+
+    .exam-count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 22px;
+      padding: 0 10px;
+      border-radius: 999px;
+      background: var(--app-primary-soft);
+      color: var(--app-primary);
+      font-size: 12px;
+      font-weight: 950;
+      letter-spacing: -0.1px;
+      flex: 0 0 auto;
+    }
+
+    .exam-layout {
+      display: grid;
+      grid-template-columns: 1fr 360px;
+      gap: 16px;
+      align-items: start;
+      min-width: 0;
+    }
+
+    .exam-fields {
+      display: grid;
+      grid-template-columns: 1.2fr 1.2fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .exam-field { display: grid; gap: 6px; min-width: 0; }
+    .exam-label { color: var(--app-muted); font-size: 12px; font-weight: 900; letter-spacing: 0.2px; }
+
+    .exam-subhead {
+      margin-top: 14px;
+      margin-bottom: 8px;
+      font-size: 12px;
+      color: var(--app-muted);
+      font-weight: 900;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+    }
+
+    .exam-types-box {
+      border: 1px solid var(--app-border);
+      border-radius: 14px;
+      background: var(--app-surface);
+      overflow: hidden;
+    }
+    .exam-types-row {
+      display: grid;
+      grid-template-columns: 1.4fr 0.7fr 0.7fr 0.8fr;
+      gap: 10px;
+      align-items: center;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--app-border);
+    }
+    .exam-types-row:last-child { border-bottom: none; }
+    .exam-types-head {
+      background: color-mix(in srgb, var(--app-surface) 92%, var(--app-bg));
+      color: var(--app-muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      font-weight: 900;
+    }
+    .exam-type-name {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      font-weight: 900;
+    }
+    .exam-type-name span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .exam-type-name input { width: 16px; height: 16px; flex: 0 0 auto; }
+    .exam-mini { height: 36px; }
+    .exam-subtotal { text-align: right; font-variant-numeric: tabular-nums; font-weight: 900; }
+
+    .exam-inline-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
+
+    .exam-msg {
+      margin-top: 10px;
+      min-height: 18px;
+      color: var(--app-muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    .exam-msg.error { color: #b91c1c; }
+    html[data-theme="dark"] .exam-msg.error { color: #fecaca; }
+
+    .exam-summary-card { padding: 18px; position: sticky; top: calc(env(safe-area-inset-top) + var(--app-topbar-h) + 14px); }
+    .exam-summary-title { margin: 0; font-size: 14px; font-weight: 950; letter-spacing: -0.2px; }
+    .exam-summary-kv { display: grid; gap: 10px; margin-top: 12px; }
+    .exam-kv {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+      padding: 10px 12px;
+      border: 1px solid var(--app-border);
+      border-radius: 14px;
+      background: var(--app-surface);
+    }
+    .exam-kv .k { color: var(--app-muted); font-size: 12px; font-weight: 900; letter-spacing: 0.2px; }
+    .exam-kv .v { font-variant-numeric: tabular-nums; font-weight: 950; }
+
+    .exam-summary-types { margin-top: 12px; display: grid; gap: 8px; }
+    .exam-type-pill {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid var(--app-border);
+      background: var(--app-surface);
+      font-size: 12px;
+      min-width: 0;
+    }
+    .exam-type-pill .l { font-weight: 900; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .exam-type-pill .r { font-variant-numeric: tabular-nums; color: var(--app-muted); white-space: nowrap; }
+
+    .exam-btn {
+      height: 36px;
+      padding: 0 12px;
+      border-radius: 999px;
+      border: 1px solid var(--app-border);
+      background: var(--app-surface);
+      box-shadow: var(--app-shadow-soft);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-weight: 900;
+      font-size: 13px;
+      transition: background 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+      white-space: nowrap;
+      color: var(--app-text);
+      text-decoration: none;
+    }
+    .exam-btn:hover { box-shadow: var(--app-shadow); transform: translateY(-1px); }
+    .exam-btn:active { transform: translateY(0); }
+    .exam-btn:focus { outline: none; box-shadow: 0 0 0 3px var(--app-primary-soft), var(--app-shadow-soft); }
+    .exam-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+    .exam-btn-primary {
+      border-color: color-mix(in srgb, var(--app-primary) 50%, var(--app-border));
+      background: color-mix(in srgb, var(--app-primary) 12%, var(--app-surface));
+    }
+    .exam-btn-danger {
+      border-color: color-mix(in srgb, #ef4444 55%, var(--app-border));
+      background: color-mix(in srgb, #ef4444 10%, var(--app-surface));
+      color: #b91c1c;
+    }
+    html[data-theme="dark"] .exam-btn-danger { color: #fecaca; }
+
+    .exam-table { width: 100%; border-collapse: collapse; }
+    .exam-table th, .exam-table td {
+      text-align: left;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--app-border);
+      vertical-align: middle;
+    }
+    .exam-table thead th {
+      background: color-mix(in srgb, var(--app-surface) 92%, var(--app-bg));
+      color: var(--app-muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      font-weight: 900;
+    }
+    .exam-table tbody tr:hover { background: color-mix(in srgb, var(--app-primary) 5%, transparent); }
+    .exam-table tr:last-child td { border-bottom: none; }
+    .exam-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+    .exam-pill {
+      display: inline-flex;
+      align-items: center;
+      height: 22px;
+      padding: 0 10px;
+      border-radius: 999px;
+      border: 1px solid var(--app-border);
+      background: var(--app-surface);
+      font-size: 12px;
+      font-weight: 900;
+      color: var(--app-text);
+      white-space: nowrap;
+    }
+
+    .exam-empty { padding: 14px 12px; color: var(--app-muted); font-size: 12px; }
+
+    .bento {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+    .metric { display: grid; gap: 6px; min-height: 72px; justify-content: center; }
+    .metric .label { color: var(--app-muted); font-size: 12px; letter-spacing: 0.2px; font-weight: 900; }
+    .metric .value { font-size: 22px; font-weight: 950; letter-spacing: -0.3px; }
+    .barlist { display: grid; gap: 10px; margin-top: 10px; }
+    .bar { height: 10px; border-radius: 999px; background: color-mix(in srgb, var(--app-border) 65%, transparent); overflow: hidden; }
+    .bar > i { display: block; height: 100%; border-radius: 999px; background: color-mix(in srgb, var(--app-primary) 65%, transparent); width: var(--w); }
+
+    @media (max-width: 980px) {
+      .exam-layout { grid-template-columns: 1fr; }
+      .exam-summary-card { position: static; }
+    }
+
+    @media (max-width: 760px) {
+      .exam-fields { grid-template-columns: 1fr; }
+      .bento { grid-template-columns: repeat(6, 1fr); }
+      .hide-sm { display: none; }
+      .exam-table th, .exam-table td { padding: 12px 12px; }
+    }
+  </style>
+{% endblock %}
+
+{% block body_end %}
+  <script>
+    const TAB = {{ tab|tojson }};
+    const LOGGED_IN = {{ 'true' if logged_in else 'false' }};
+    const SUBJECT_Q_TYPES = {{ subject_q_types_json|safe }};
+    const BANK_Q_TYPES = {{ bank_q_types_json|safe }};
+    const ALL_Q_TYPES = {{ q_types|tojson }};
+    const PREF_KEY = 'sak:examPrefs:v1';
+    let examPresetApplied = false;
+
+    function setExamMsg(text, kind) {
+      const el = document.getElementById('examMsg');
+      if (!el) return;
+      el.classList.toggle('error', kind === 'error');
+      el.textContent = String(text || '');
+    }
+
+    function parseIntSafe(v, fallback, minV, maxV) {
+      let n = parseInt(String(v ?? ''), 10);
+      if (!Number.isFinite(n)) n = fallback;
+      if (minV !== undefined && minV !== null) n = Math.max(minV, n);
+      if (maxV !== undefined && maxV !== null) n = Math.min(maxV, n);
+      return n;
+    }
+
+    function parseFloatSafe(v, fallback, minV, maxV) {
+      let n = parseFloat(String(v ?? ''));
+      if (!Number.isFinite(n)) n = fallback;
+      if (minV !== undefined && minV !== null) n = Math.max(minV, n);
+      if (maxV !== undefined && maxV !== null) n = Math.min(maxV, n);
+      return n;
+    }
+
+    function formatNum(n) {
+      if (!Number.isFinite(n)) return '0';
+      if (Number.isInteger(n)) return String(n);
+      return String(n.toFixed(2)).replace(/\\.?0+$/, '');
+    }
+
+    function loadExamPrefs() {
+      try {
+        const raw = (localStorage.getItem(PREF_KEY) || '').trim();
+        if (!raw) return null;
+        const obj = JSON.parse(raw);
+        return (obj && typeof obj === 'object') ? obj : null;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function snapshotExamTypeState() {
+      const prev = {};
+      document.querySelectorAll('#exam_types .exam-types-row[data-qtype]').forEach(function (row) {
+        const qtype = row.dataset.qtype || '';
+        const enabled = !!row.querySelector('.exam-type-enable')?.checked;
+        const count = row.querySelector('.exam-type-count')?.value ?? '0';
+        const score = row.querySelector('.exam-type-score')?.value ?? '1';
+        if (qtype) prev[qtype] = { enabled, count, score };
+      });
+      return prev;
+    }
+
+    function syncExamTypeRowEnabled(row) {
+      const enabled = !!row.querySelector('.exam-type-enable')?.checked;
+      const countInput = row.querySelector('.exam-type-count');
+      const scoreInput = row.querySelector('.exam-type-score');
+      if (countInput) countInput.disabled = !enabled;
+      if (scoreInput) scoreInput.disabled = !enabled;
+      row.style.opacity = enabled ? '1' : '0.6';
+    }
+
+    function getCurrentScope() {
+      const source = (document.getElementById('exam_source')?.value || 'public').toLowerCase();
+      const subject = document.getElementById('exam_subject')?.value || 'all';
+      const bankIdRaw = document.getElementById('exam_bank')?.value || '';
+      const bank_id = bankIdRaw ? parseIntSafe(bankIdRaw, 0, 0, 1e9) : null;
+      return { source, subject, bank_id };
+    }
+
+    function getQTypesForScope(scope) {
+      if (!scope || !scope.source) return [];
+
+      if (scope.source === 'user_bank') {
+        if (!scope.bank_id) return [];
+        const arr = BANK_Q_TYPES ? BANK_Q_TYPES[String(scope.bank_id)] : null;
+        return Array.isArray(arr) ? arr.slice() : [];
+      }
+
+      if (scope.subject === 'all') return Array.isArray(ALL_Q_TYPES) ? ALL_Q_TYPES.slice() : [];
+      const arr = SUBJECT_Q_TYPES ? SUBJECT_Q_TYPES[scope.subject] : null;
+      return Array.isArray(arr) ? arr.slice() : [];
+    }
+
+    function collectExamConfig() {
+      const scope = getCurrentScope();
+      const targetTotal = parseIntSafe(document.getElementById('exam_total')?.value, 30, 1, 300);
+      const duration = parseIntSafe(document.getElementById('exam_duration')?.value, 60, 1, 1440);
+
+      const types = {};
+      const scores = {};
+      let assigned = 0;
+      let totalScore = 0;
+
+      document.querySelectorAll('#exam_types .exam-types-row[data-qtype]').forEach(function (row) {
+        const qtype = row.dataset.qtype || '';
+        const enabled = !!row.querySelector('.exam-type-enable')?.checked;
+        if (!enabled || !qtype) return;
+        const count = parseIntSafe(row.querySelector('.exam-type-count')?.value, 0, 0, 500);
+        const score = parseFloatSafe(row.querySelector('.exam-type-score')?.value, 1, 0, 1000);
+        if (count <= 0) return;
+        types[qtype] = count;
+        scores[qtype] = score;
+        assigned += count;
+        totalScore += count * score;
+      });
+
+      return { ...scope, targetTotal, duration, types, scores, assigned, totalScore };
+    }
+
+    function updateExamSummary() {
+      const cfg = collectExamConfig();
+      let scopeText = '公共题库 · ' + (cfg.subject === 'all' ? '全部科目' : cfg.subject);
+      if (cfg.source === 'user_bank') {
+        const bankSel = document.getElementById('exam_bank');
+        const bankName = bankSel && bankSel.selectedOptions && bankSel.selectedOptions[0] ? bankSel.selectedOptions[0].textContent : '';
+        scopeText = '个人题库 · ' + (bankName || '未选择');
+      }
+
+      const elScope = document.getElementById('examSumScope');
+      const elDuration = document.getElementById('examSumDuration');
+      const elAssigned = document.getElementById('examSumAssigned');
+      const elScore = document.getElementById('examSumScore');
+      if (elScope) elScope.textContent = scopeText;
+      if (elDuration) elDuration.textContent = `${cfg.duration} 分钟`;
+      if (elAssigned) elAssigned.textContent = `${cfg.assigned} 题`;
+      if (elScore) elScore.textContent = `${formatNum(cfg.totalScore)} 分`;
+
+      document.querySelectorAll('#exam_types .exam-types-row[data-qtype]').forEach(function (row) {
+        const enabled = !!row.querySelector('.exam-type-enable')?.checked;
+        const count = parseIntSafe(row.querySelector('.exam-type-count')?.value, 0, 0, 500);
+        const score = parseFloatSafe(row.querySelector('.exam-type-score')?.value, 1, 0, 1000);
+        const subtotal = enabled ? (count * score) : 0;
+        const cell = row.querySelector('.exam-subtotal');
+        if (cell) cell.textContent = formatNum(subtotal);
+      });
+
+      const typesBox = document.getElementById('examSummaryTypes');
+      if (typesBox) {
+        const items = Object.entries(cfg.types);
+        if (!items.length) {
+          typesBox.innerHTML = '<div class=\"muted\" style=\"font-size:12px;\">请选择题型并设置题数</div>';
+        } else {
+          typesBox.innerHTML = '';
+          items.forEach(function (kv) {
+            const qtype = kv[0];
+            const count = kv[1];
+            const score = cfg.scores[qtype] ?? 1;
+            const pill = document.createElement('div');
+            pill.className = 'exam-type-pill';
+
+            const l = document.createElement('div');
+            l.className = 'l';
+            l.textContent = qtype;
+
+            const r = document.createElement('div');
+            r.className = 'r';
+            r.textContent = `${count} × ${formatNum(score)} = ${formatNum(count * score)}`;
+
+            pill.appendChild(l);
+            pill.appendChild(r);
+            typesBox.appendChild(pill);
+          });
+        }
+      }
+
+      const startBtn = document.getElementById('examStartBtn');
+      if (startBtn) startBtn.disabled = cfg.assigned <= 0 || (cfg.source === 'user_bank' && !cfg.bank_id);
+    }
+
+    function applyDefaultPresetIfEmpty(qTypes) {
+      const cfg = collectExamConfig();
+      if (cfg.assigned > 0) return;
+      if (examPresetApplied) return;
+
+      const prefs = loadExamPrefs();
+      if (prefs && prefs.types_state && Object.keys(prefs.types_state).length) return;
+
+      examPresetApplied = true;
+      const preferred = ['单选题', '多选题', '判断题'];
+      const picked = preferred.filter(t => qTypes.includes(t));
+      const fallbackPicked = picked.length ? picked : qTypes.slice(0, Math.min(3, qTypes.length));
+
+      document.querySelectorAll('#exam_types .exam-types-row[data-qtype]').forEach(function (row) {
+        const qtype = row.dataset.qtype || '';
+        const cb = row.querySelector('.exam-type-enable');
+        const countInput = row.querySelector('.exam-type-count');
+        const scoreInput = row.querySelector('.exam-type-score');
+        if (cb) cb.checked = fallbackPicked.includes(qtype);
+        if (countInput) countInput.value = '0';
+        if (scoreInput) scoreInput.value = '1';
+        syncExamTypeRowEnabled(row);
+      });
+
+      autoDistributeExam();
+      updateExamSummary();
+    }
+
+    function renderExamTypes() {
+      const container = document.getElementById('exam_types');
+      if (!container) return;
+      setExamMsg('', '');
+
+      const scope = getCurrentScope();
+      const qTypes = getQTypesForScope(scope).filter(Boolean);
+      const prev = snapshotExamTypeState();
+      const prefs = loadExamPrefs();
+      const prefState = (prefs && prefs.types_state && typeof prefs.types_state === 'object') ? prefs.types_state : null;
+
+      container.innerHTML = '';
+
+      if (!qTypes.length) {
+        container.innerHTML = `<div class=\"exam-empty\">${scope.source === 'user_bank' ? '请选择一个个人题库，或该题库暂无题型。' : '当前范围暂无题型（可能是题库为空或无权限）。'}</div>`;
+        updateExamSummary();
+        return;
+      }
+
+      const head = document.createElement('div');
+      head.className = 'exam-types-row exam-types-head';
+      head.innerHTML = '<div>题型</div><div>题数</div><div>每题分值</div><div style=\"text-align:right;\">小计</div>';
+      container.appendChild(head);
+
+      qTypes.forEach(function (t) {
+        const row = document.createElement('div');
+        row.className = 'exam-types-row';
+        row.dataset.qtype = t;
+
+        const name = document.createElement('label');
+        name.className = 'exam-type-name';
+
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.className = 'exam-type-enable';
+        cb.checked = false;
+
+        const span = document.createElement('span');
+        span.textContent = t;
+
+        name.appendChild(cb);
+        name.appendChild(span);
+
+        const count = document.createElement('input');
+        count.className = 'app-input exam-mini exam-type-count';
+        count.type = 'number';
+        count.inputMode = 'numeric';
+        count.min = '0';
+        count.max = '500';
+        count.value = '0';
+
+        const score = document.createElement('input');
+        score.className = 'app-input exam-mini exam-type-score';
+        score.type = 'number';
+        score.inputMode = 'decimal';
+        score.min = '0';
+        score.max = '1000';
+        score.step = '0.5';
+        score.value = '1';
+
+        const subtotal = document.createElement('div');
+        subtotal.className = 'exam-subtotal';
+        subtotal.textContent = '0';
+
+        row.appendChild(name);
+        row.appendChild(count);
+        row.appendChild(score);
+        row.appendChild(subtotal);
+        container.appendChild(row);
+
+        const useState = (prev && prev[t]) ? prev[t] : (prefState && prefState[t]) ? prefState[t] : null;
+        if (useState) {
+          cb.checked = !!useState.enabled;
+          count.value = String(useState.count ?? '0');
+          score.value = String(useState.score ?? '1');
+        }
+
+        cb.addEventListener('change', function () {
+          syncExamTypeRowEnabled(row);
+          updateExamSummary();
+        });
+        count.addEventListener('input', updateExamSummary);
+        score.addEventListener('input', updateExamSummary);
+
+        syncExamTypeRowEnabled(row);
+      });
+
+      applyDefaultPresetIfEmpty(qTypes);
+      updateExamSummary();
+    }
+
+    function autoDistributeExam() {
+      const cfg = collectExamConfig();
+      const total = parseIntSafe(cfg.targetTotal, 30, 1, 300);
+      const rows = Array.from(document.querySelectorAll('#exam_types .exam-types-row[data-qtype]'));
+      const enabledRows = rows.filter(r => !!r.querySelector('.exam-type-enable')?.checked);
+
+      if (!enabledRows.length) {
+        setExamMsg('请先勾选至少一种题型，再进行均分。', 'error');
+        updateExamSummary();
+        return;
+      }
+
+      const n = enabledRows.length;
+      const base = Math.floor(total / n);
+      let rem = total % n;
+
+      enabledRows.forEach(function (row) {
+        const count = row.querySelector('.exam-type-count');
+        if (!count) return;
+        let v = base + (rem > 0 ? 1 : 0);
+        if (rem > 0) rem -= 1;
+        count.value = String(v);
+      });
+
+      setExamMsg('', '');
+      updateExamSummary();
+    }
+
+    function resetExamScores() {
+      document.querySelectorAll('#exam_types .exam-types-row[data-qtype]').forEach(function (row) {
+        const score = row.querySelector('.exam-type-score');
+        if (score) score.value = '1';
+      });
+      setExamMsg('', '');
+      updateExamSummary();
+    }
+
+    function onExamScopeChange() {
+      const source = (document.getElementById('exam_source')?.value || 'public').toLowerCase();
+      const fieldSubject = document.getElementById('examFieldSubject');
+      const fieldBank = document.getElementById('examFieldBank');
+
+      if (fieldSubject) fieldSubject.style.display = (source === 'user_bank') ? 'none' : '';
+      if (fieldBank) fieldBank.style.display = (source === 'user_bank') ? '' : 'none';
+
+      renderExamTypes();
+    }
+
+    function saveExamPrefs() {
+      const cfg = collectExamConfig();
+      const payload = {
+        source: cfg.source,
+        subject: cfg.subject,
+        bank_id: cfg.bank_id,
+        duration: cfg.duration,
+        targetTotal: cfg.targetTotal,
+        types_state: snapshotExamTypeState(),
+        updated_at: new Date().toISOString(),
+      };
+      try {
+        localStorage.setItem(PREF_KEY, JSON.stringify(payload));
+        setExamMsg('已保存偏好（本地浏览器）。', '');
+      } catch (e) {
+        setExamMsg('保存失败：浏览器存储不可用。', 'error');
+      }
+    }
+
+    function clearExamPrefs() {
+      if (!confirm('确定要清除考试偏好吗？')) return;
+      try {
+        localStorage.removeItem(PREF_KEY);
+        setExamMsg('已清除偏好。', '');
+        examPresetApplied = false;
+        renderExamTypes();
+      } catch (e) {
+        setExamMsg('清除失败：浏览器存储不可用。', 'error');
+      }
+    }
+
+    async function startExam() {
+      if (!LOGGED_IN) { window.location.href = '/login'; return; }
+
+      const btn = document.getElementById('examStartBtn');
+      if (btn) { btn.disabled = true; btn.textContent = '创建中…'; }
+      setExamMsg('正在创建考试…', '');
+
+      try {
+        const cfg = collectExamConfig();
+        if (cfg.source === 'user_bank' && !cfg.bank_id) {
+          setExamMsg('请选择一个个人题库。', 'error');
+          return;
+        }
+        if (cfg.assigned <= 0) {
+          setExamMsg('请至少设置一种题型的题数（大于 0）。', 'error');
+          return;
+        }
+
+        const resp = await fetch('/api/exams/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            source: cfg.source,
+            subject: cfg.subject,
+            bank_id: cfg.bank_id,
+            duration: cfg.duration,
+            types: cfg.types,
+            scores: cfg.scores,
+          }),
+        });
+        const js = await resp.json().catch(() => ({}));
+
+        if (!resp.ok || !js || js.status !== 'success' || !js.exam_id) {
+          setExamMsg((js && js.message) ? js.message : '创建考试失败，请稍后再试。', 'error');
+          return;
+        }
+
+        const nextUrl = (cfg.source === 'user_bank' && cfg.bank_id)
+          ? `/quiz?mode=exam&exam_id=${js.exam_id}&bank_id=${cfg.bank_id}`
+          : `/quiz?mode=exam&exam_id=${js.exam_id}`;
+        window.location.href = nextUrl;
+      } catch (e) {
+        setExamMsg('创建考试失败，请检查网络或稍后重试。', 'error');
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '开始考试'; }
+        updateExamSummary();
+      }
+    }
+
+    function buildUrl(params) {
+      var url = new URL(window.location.href);
+      Object.entries(params).forEach(function (kv) {
+        var k = kv[0];
+        var v = kv[1];
+        if (v === undefined || v === null || v === '') url.searchParams.delete(k);
+        else url.searchParams.set(k, v);
+      });
+      return url.toString();
+    }
+
+    function applyFilter() {
+      var source = document.getElementById('selSource')?.value || 'all';
+      var sub = document.getElementById('selSub')?.value || 'all';
+      var bank = document.getElementById('selBank')?.value || '';
+      if (source === 'user_bank') sub = 'all';
+      if (source === 'public') bank = '';
+      window.location.href = buildUrl({ tab: 'records', source: source, subject: sub, bank_id: bank, page: 1 });
+    }
+
+    function gotoPage(p) {
+      if (p < 1) return;
+      var source = document.getElementById('selSource')?.value || 'all';
+      var sub = document.getElementById('selSub')?.value || 'all';
+      var bank = document.getElementById('selBank')?.value || '';
+      if (source === 'user_bank') sub = 'all';
+      if (source === 'public') bank = '';
+      window.location.href = buildUrl({ tab: 'records', source: source, subject: sub, bank_id: bank, page: p });
+    }
+
+    function changeSize(sz) {
+      var source = document.getElementById('selSource')?.value || 'all';
+      var sub = document.getElementById('selSub')?.value || 'all';
+      var bank = document.getElementById('selBank')?.value || '';
+      if (source === 'user_bank') sub = 'all';
+      if (source === 'public') bank = '';
+      window.location.href = buildUrl({ tab: 'records', source: source, subject: sub, bank_id: bank, page: 1, size: sz });
+    }
+
+    async function delExam(id) {
+      if (!confirm('确定要删除该考试吗？此操作不可恢复。')) return;
+      try {
+        var res = await fetch(`/api/exams/${id}`, { method: 'DELETE' });
+        var js = await res.json();
+        if (res.ok && js.status === 'success') location.reload();
+        else alert(js.message || '删除失败');
+      } catch (e) {
+        alert('删除失败');
+      }
+    }
+
+    async function toMistakes(id) {
+      if (!confirm('将本次考试的错题加入错题本？')) return;
+      try {
+        var res = await fetch(`/api/exams/${id}/mistakes`, { method: 'POST' });
+        var js = await res.json();
+        if (res.ok && js.status === 'success') alert(`已加入错题本：${js.count} 题`);
+        else alert(js.message || '操作失败');
+      } catch (e) {
+        alert('操作失败');
+      }
+    }
+
+    function applyPrefsToForm(prefs) {
+      if (!prefs) return;
+      if (prefs.source && document.getElementById('exam_source')) document.getElementById('exam_source').value = prefs.source;
+      if (prefs.subject && document.getElementById('exam_subject')) document.getElementById('exam_subject').value = prefs.subject;
+      if (prefs.bank_id && document.getElementById('exam_bank')) document.getElementById('exam_bank').value = String(prefs.bank_id);
+      if (prefs.duration && document.getElementById('exam_duration')) document.getElementById('exam_duration').value = String(prefs.duration);
+      if (prefs.targetTotal && document.getElementById('exam_total')) document.getElementById('exam_total').value = String(prefs.targetTotal);
+    }
+
+    function initExamBuilder() {
+      const sourceEl = document.getElementById('exam_source');
+      if (!sourceEl) return;
+
+      const prefs = loadExamPrefs();
+      applyPrefsToForm(prefs);
+      onExamScopeChange();
+
+      document.getElementById('exam_total')?.addEventListener('input', updateExamSummary);
+      document.getElementById('exam_duration')?.addEventListener('input', updateExamSummary);
+      document.getElementById('exam_bank')?.addEventListener('change', updateExamSummary);
+      document.getElementById('exam_subject')?.addEventListener('change', updateExamSummary);
+    }
+
+    if (TAB === 'new' || TAB === 'settings') {
+      document.addEventListener('DOMContentLoaded', initExamBuilder);
+    }
+  </script>
+{% endblock %}
+
+{% block content %}
+  <div class="app-container exam-hub">
+    <div class="exam-head">
+      <div class="exam-head-title">
+        <h1>考试工作台</h1>
+        <p>清晰配置 → 开始考试 → 复盘回顾。公共题库与个人题库统一入口。</p>
+      </div>
+      <div class="exam-head-actions">
+        {% if tab != 'new' %}
+          <a class="exam-btn exam-btn-primary" href="{{ url_for('exam.exam_pages.page_exams', tab='new') }}">新建考试</a>
+        {% endif %}
+        {% if tab != 'records' %}
+          <a class="exam-btn" href="{{ url_for('exam.exam_pages.page_exams', tab='records') }}">考试记录</a>
+        {% endif %}
+      </div>
+    </div>
+
+    <nav class="exam-subnav" role="tablist" aria-label="考试子页面">
+      <a class="exam-tab {{ 'active' if tab=='new' else '' }}" href="{{ url_for('exam.exam_pages.page_exams', tab='new') }}" role="tab" aria-selected="{{ 'true' if tab=='new' else 'false' }}">新建考试</a>
+      <a class="exam-tab {{ 'active' if tab=='records' else '' }}" href="{{ url_for('exam.exam_pages.page_exams', tab='records') }}" role="tab" aria-selected="{{ 'true' if tab=='records' else 'false' }}">考试记录</a>
+      <a class="exam-tab {{ 'active' if tab=='data' else '' }}" href="{{ url_for('exam.exam_pages.page_exams', tab='data') }}" role="tab" aria-selected="{{ 'true' if tab=='data' else 'false' }}">考试数据</a>
+      <a class="exam-tab {{ 'active' if tab=='settings' else '' }}" href="{{ url_for('exam.exam_pages.page_exams', tab='settings') }}" role="tab" aria-selected="{{ 'true' if tab=='settings' else 'false' }}">偏好设置</a>
+    </nav>
+
+    {% if tab == 'new' %}
+      {% if ongoing and ongoing|length %}
+        <div class="app-card exam-card" style="margin-bottom: 14px;">
+          <div class="exam-card-head">
+            <div style="min-width:0;">
+              <h2>进行中</h2>
+              <div class="exam-card-sub">你有未提交的考试，可以直接继续。</div>
+            </div>
+            <span class="exam-count">{{ ongoing|length }}</span>
+          </div>
+          <div style="display:grid; gap:10px;">
+            {% for e in ongoing[:3] %}
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; min-width:0;">
+                <div style="min-width:0;">
+                  <div style="font-weight:950; letter-spacing:-0.2px;">考试 #{{ e.id }}</div>
+                  <div class="muted" style="font-size:12px; line-height:1.4;">
+                    {% if e.source == 'user_bank' %}个人题库{% else %}公共题库{% endif %}
+                    · {{ e.subject or '全部' }}
+                    · <span class="mono">{{ e.duration_minutes }}</span> 分钟
+                  </div>
+                </div>
+                <a class="exam-btn exam-btn-primary" href="/quiz?mode=exam&exam_id={{ e.id }}{% if e.source == 'user_bank' and e.bank_id %}&bank_id={{ e.bank_id }}{% endif %}">继续</a>
+              </div>
+            {% endfor %}
+            <div>
+              <a class="exam-btn" href="{{ url_for('exam.exam_pages.page_exams', tab='records') }}">查看全部记录</a>
+            </div>
+          </div>
+        </div>
+      {% endif %}
+
+      <div class="exam-layout">
+        <div class="app-card exam-card">
+          <div class="exam-card-head">
+            <div style="min-width:0;">
+              <h2>新建考试</h2>
+              <div class="exam-card-sub">选择科目/题库、题型、分值与时长，点击开始进入考试。</div>
+            </div>
+          </div>
+
+          <div class="exam-fields">
+            <div class="exam-field">
+              <div class="exam-label">题库来源</div>
+              <select id="exam_source" class="app-input" onchange="onExamScopeChange()">
+                <option value="public">公共题库</option>
+                <option value="user_bank">个人题库</option>
+              </select>
+            </div>
+
+            <div class="exam-field" id="examFieldSubject">
+              <div class="exam-label">科目</div>
+              <select id="exam_subject" class="app-input" onchange="onExamScopeChange()">
+                <option value="all">全部科目</option>
+                {% for s in subjects %}
+                  <option value="{{ s }}">{{ s }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="exam-field" id="examFieldBank" style="display:none;">
+              <div class="exam-label">个人题库</div>
+              <select id="exam_bank" class="app-input" onchange="onExamScopeChange()">
+                <option value="">请选择题库</option>
+                {% for b in banks_meta %}
+                  <option value="{{ b.id }}">{{ b.name }}{% if b.question_count %}（{{ b.question_count }}题）{% endif %}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="exam-field">
+              <div class="exam-label">时长（分钟）</div>
+              <input id="exam_duration" class="app-input" type="number" inputmode="numeric" min="1" max="1440" value="60" />
+            </div>
+
+            <div class="exam-field">
+              <div class="exam-label">目标题量（用于均分）</div>
+              <input id="exam_total" class="app-input" type="number" inputmode="numeric" min="1" max="300" value="30" />
+            </div>
+          </div>
+
+          <div class="exam-subhead">题型与分值</div>
+          <div class="exam-types-box" id="exam_types"></div>
+
+          <div class="exam-inline-actions">
+            <button class="exam-btn" type="button" onclick="autoDistributeExam()">按目标题量均分</button>
+            <button class="exam-btn" type="button" onclick="resetExamScores()">分值重置为 1</button>
+            <button class="exam-btn" type="button" onclick="saveExamPrefs()">保存为偏好</button>
+            <button class="exam-btn exam-btn-primary" id="examStartBtn" type="button" onclick="startExam()">开始考试</button>
+          </div>
+          <div class="exam-msg" id="examMsg"></div>
+        </div>
+
+        <div class="app-card exam-summary-card">
+          <div class="exam-summary-title">本次考试预览</div>
+          <div class="exam-summary-kv">
+            <div class="exam-kv"><div class="k">范围</div><div class="v" id="examSumScope">-</div></div>
+            <div class="exam-kv"><div class="k">时长</div><div class="v" id="examSumDuration">-</div></div>
+            <div class="exam-kv"><div class="k">已分配题量</div><div class="v" id="examSumAssigned">-</div></div>
+            <div class="exam-kv"><div class="k">总分</div><div class="v" id="examSumScore">-</div></div>
+          </div>
+          <div class="exam-summary-types" id="examSummaryTypes"></div>
+        </div>
+      </div>
+
+    {% elif tab == 'records' %}
+      <div class="app-card exam-card" style="margin-bottom: 14px;">
+        <div class="exam-card-head">
+          <div style="min-width:0;">
+            <h2>筛选</h2>
+            <div class="exam-card-sub">按来源/科目/个人题库筛选，并支持分页。</div>
+          </div>
+        </div>
+        <div class="exam-fields" style="grid-template-columns: 1fr 1fr 1fr;">
+          <div class="exam-field">
+            <div class="exam-label">来源</div>
+            <select id="selSource" class="app-input" onchange="applyFilter()">
+              <option value="all" {% if filter_source=='all' %}selected{% endif %}>全部</option>
+              <option value="public" {% if filter_source=='public' %}selected{% endif %}>公共题库</option>
+              <option value="user_bank" {% if filter_source=='user_bank' %}selected{% endif %}>个人题库</option>
+            </select>
+          </div>
+          <div class="exam-field">
+            <div class="exam-label">科目（公共题库）</div>
+            <select id="selSub" class="app-input" onchange="applyFilter()" {% if filter_source=='user_bank' %}disabled{% endif %}>
+              <option value="all">全部科目</option>
+              {% for s in subjects %}
+                <option value="{{ s }}" {% if filter_subject==s %}selected{% endif %}>{{ s }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="exam-field">
+            <div class="exam-label">个人题库</div>
+            <select id="selBank" class="app-input" onchange="applyFilter()" {% if filter_source=='public' %}disabled{% endif %}>
+              <option value="">全部题库</option>
+              {% for b in banks_meta %}
+                <option value="{{ b.id }}" {% if filter_bank_id==b.id %}selected{% endif %}>{{ b.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="app-card exam-card" style="padding:0; overflow:hidden; margin-bottom:14px;">
+        <div style="padding: 18px 18px 10px;">
+          <div class="exam-card-head" style="margin:0;">
+            <div style="display:flex; align-items:center; gap:10px; min-width:0;">
+              <h2>进行中</h2>
+              <span class="exam-count">{{ ongoing|length }}</span>
+            </div>
+          </div>
+        </div>
+        <table class="exam-table">
+          <thead>
+            <tr>
+              <th style="width:72px;">ID</th>
+              <th style="width:96px;">来源</th>
+              <th>范围</th>
+              <th style="width:92px;">时长</th>
+              <th class="hide-sm" style="width:170px;">开始时间</th>
+              <th style="width:220px;">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for e in ongoing %}
+            <tr>
+              <td class="mono">#{{ e.id }}</td>
+              <td>{% if e.source == 'user_bank' %}<span class="exam-pill">个人</span>{% else %}<span class="exam-pill">公共</span>{% endif %}</td>
+              <td style="min-width:0;">
+                <div style="font-weight:900; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ e.subject or '全部' }}</div>
+                <div class="muted" style="font-size:12px;">{{ e.q_total or 0 }} 题</div>
+              </td>
+              <td class="mono">{{ e.duration_minutes }} 分钟</td>
+              <td class="hide-sm mono">{{ e.started_at }}</td>
+              <td>
+                <div class="exam-actions">
+                  <a class="exam-btn exam-btn-primary" href="/quiz?mode=exam&exam_id={{ e.id }}{% if e.source == 'user_bank' and e.bank_id %}&bank_id={{ e.bank_id }}{% endif %}">继续</a>
+                  <button class="exam-btn exam-btn-danger" type="button" onclick="delExam({{ e.id }})">删除</button>
+                </div>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="exam-empty">暂无进行中的考试</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="app-card exam-card" style="padding:0; overflow:hidden;">
+        <div style="padding: 18px 18px 10px;">
+          <div class="exam-card-head" style="margin:0;">
+            <div style="display:flex; align-items:center; gap:10px; min-width:0;">
+              <h2>已提交</h2>
+              <span class="exam-count">{{ total }}</span>
+            </div>
+            <div class="exam-actions">
+              <select id="selSize" class="app-input" onchange="changeSize(this.value)">
+                <option value="10" {% if size==10 %}selected{% endif %}>10/页</option>
+                <option value="20" {% if size==20 %}selected{% endif %}>20/页</option>
+                <option value="50" {% if size==50 %}selected{% endif %}>50/页</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <table class="exam-table">
+          <thead>
+            <tr>
+              <th style="width:72px;">ID</th>
+              <th style="width:96px;">来源</th>
+              <th>范围</th>
+              <th style="width:88px;">总分</th>
+              <th style="width:86px;">正确率</th>
+              <th class="hide-sm" style="width:170px;">提交时间</th>
+              <th style="width:260px;">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for e in submitted %}
+            <tr>
+              <td class="mono">#{{ e.id }}</td>
+              <td>{% if e.source == 'user_bank' %}<span class="exam-pill">个人</span>{% else %}<span class="exam-pill">公共</span>{% endif %}</td>
+              <td style="min-width:0;">
+                <div style="font-weight:900; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ e.subject or '全部' }}</div>
+                <div class="muted" style="font-size:12px;">{{ e.q_correct or 0 }}/{{ e.q_total or 0 }} 题</div>
+              </td>
+              <td class="mono">{{ e.total_score or 0 }}</td>
+              <td class="mono">{{ e.accuracy or 0 }}%</td>
+              <td class="hide-sm mono">{{ e.submitted_at }}</td>
+              <td>
+                <div class="exam-actions">
+                  <a class="exam-btn" href="/exams/{{ e.id }}">详情</a>
+                  <a class="exam-btn" href="/quiz?mode=exam&exam_id={{ e.id }}{% if e.source == 'user_bank' and e.bank_id %}&bank_id={{ e.bank_id }}{% endif %}">回顾</a>
+                  <button class="exam-btn" type="button" onclick="toMistakes({{ e.id }})">加入错题本</button>
+                  <button class="exam-btn exam-btn-danger" type="button" onclick="delExam({{ e.id }})">删除</button>
+                </div>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="7" class="exam-empty">暂无已提交的考试</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding: 14px 18px;">
+          <div class="muted" style="font-size:12px;">
+            {% set total_pages = (total + size - 1) // size %}
+            第 <span class="mono">{{ page }}</span> / <span class="mono">{{ total_pages }}</span> 页
+          </div>
+          <div class="exam-actions">
+            <button class="exam-btn" type="button" onclick="gotoPage({{ page-1 }})" {% if page<=1 %}disabled{% endif %}>上一页</button>
+            <button class="exam-btn" type="button" onclick="gotoPage({{ page+1 }})" {% if page>=total_pages %}disabled{% endif %}>下一页</button>
+          </div>
+        </div>
+      </div>
+
+    {% elif tab == 'data' %}
+      <div class="bento">
+        <div class="app-card exam-card" style="grid-column: span 4;">
+          <div class="metric">
+            <div class="label">已提交考试</div>
+            <div class="value mono">{{ stats_overview.submitted_count }}</div>
+          </div>
+        </div>
+        <div class="app-card exam-card" style="grid-column: span 4;">
+          <div class="metric">
+            <div class="label">平均分</div>
+            <div class="value mono">{{ stats_overview.avg_score }}</div>
+          </div>
+        </div>
+        <div class="app-card exam-card" style="grid-column: span 4;">
+          <div class="metric">
+            <div class="label">平均正确率</div>
+            <div class="value mono">{{ stats_overview.avg_accuracy }}%</div>
+          </div>
+        </div>
+        <div class="app-card exam-card" style="grid-column: span 6;">
+          <div class="metric">
+            <div class="label">近 7 天提交次数</div>
+            <div class="value mono">{{ stats_overview.last7_count }}</div>
+          </div>
+        </div>
+        <div class="app-card exam-card" style="grid-column: span 6;">
+          <div class="metric">
+            <div class="label">近 7 次考试（正确率）</div>
+            <div class="value mono">{{ stats_overview.last7_avg_accuracy }}%</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="exam-layout">
+        <div class="app-card exam-card">
+          <div class="exam-card-head">
+            <div style="min-width:0;">
+              <h2>最近 7 次</h2>
+              <div class="exam-card-sub">用于快速复盘与回顾入口。</div>
+            </div>
+          </div>
+          <table class="exam-table">
+            <thead>
+              <tr>
+                <th style="width:72px;">ID</th>
+                <th style="width:96px;">来源</th>
+                <th>范围</th>
+                <th style="width:88px;">总分</th>
+                <th style="width:86px;">正确率</th>
+                <th style="width:220px;">入口</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for e in recent_exams %}
+              <tr>
+                <td class="mono">#{{ e.id }}</td>
+                <td>{% if e.source == 'user_bank' %}<span class="exam-pill">个人</span>{% else %}<span class="exam-pill">公共</span>{% endif %}</td>
+                <td style="min-width:0;">
+                  <div style="font-weight:900; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ e.subject or '全部' }}</div>
+                  <div class="muted" style="font-size:12px;">{{ e.submitted_at }}</div>
+                </td>
+                <td class="mono">{{ e.total_score or 0 }}</td>
+                <td class="mono">{{ e.accuracy or 0 }}%</td>
+                <td>
+                  <div class="exam-actions">
+                    <a class="exam-btn" href="/exams/{{ e.id }}">详情</a>
+                    <a class="exam-btn" href="/quiz?mode=exam&exam_id={{ e.id }}{% if e.source == 'user_bank' and e.bank_id %}&bank_id={{ e.bank_id }}{% endif %}">回顾</a>
+                  </div>
+                </td>
+              </tr>
+              {% else %}
+              <tr><td colspan="6" class="exam-empty">暂无数据</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="app-card exam-summary-card">
+          <div class="exam-summary-title">题型分布（最近 30 天）</div>
+          <div class="barlist">
+            {% for it in type_dist %}
+              <div>
+                <div style="display:flex; justify-content:space-between; gap:10px; font-size:12px;">
+                  <span style="font-weight:900; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ it.q_type }}</span>
+                  <span class="muted mono">{{ it.count }}</span>
+                </div>
+                <div class="bar" style="margin-top:6px;"><i style="--w: {{ it.pct }}%;"></i></div>
+              </div>
+            {% else %}
+              <div class="exam-empty">暂无题型数据</div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+    {% elif tab == 'settings' %}
+      <div class="exam-layout">
+        <div class="app-card exam-card">
+          <div class="exam-card-head">
+            <div style="min-width:0;">
+              <h2>考试偏好</h2>
+              <div class="exam-card-sub">保存后会自动应用到“新建考试”。（当前仅存储在本地浏览器）</div>
+            </div>
+            <div class="exam-actions">
+              <a class="exam-btn" href="{{ url_for('exam.exam_pages.page_exams', tab='new') }}">前往新建</a>
+            </div>
+          </div>
+
+          <div class="exam-fields">
+            <div class="exam-field">
+              <div class="exam-label">默认来源</div>
+              <select id="exam_source" class="app-input" onchange="onExamScopeChange()">
+                <option value="public">公共题库</option>
+                <option value="user_bank">个人题库</option>
+              </select>
+            </div>
+
+            <div class="exam-field" id="examFieldSubject">
+              <div class="exam-label">默认科目</div>
+              <select id="exam_subject" class="app-input" onchange="onExamScopeChange()">
+                <option value="all">全部科目</option>
+                {% for s in subjects %}
+                  <option value="{{ s }}">{{ s }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="exam-field" id="examFieldBank" style="display:none;">
+              <div class="exam-label">默认个人题库</div>
+              <select id="exam_bank" class="app-input" onchange="onExamScopeChange()">
+                <option value="">请选择题库</option>
+                {% for b in banks_meta %}
+                  <option value="{{ b.id }}">{{ b.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="exam-field">
+              <div class="exam-label">默认时长（分钟）</div>
+              <input id="exam_duration" class="app-input" type="number" inputmode="numeric" min="1" max="1440" value="60" />
+            </div>
+
+            <div class="exam-field">
+              <div class="exam-label">默认目标题量</div>
+              <input id="exam_total" class="app-input" type="number" inputmode="numeric" min="1" max="300" value="30" />
+            </div>
+          </div>
+
+          <div class="exam-subhead">默认题型与分值</div>
+          <div class="exam-types-box" id="exam_types"></div>
+
+          <div class="exam-inline-actions">
+            <button class="exam-btn" type="button" onclick="autoDistributeExam()">按目标题量均分</button>
+            <button class="exam-btn" type="button" onclick="resetExamScores()">分值重置为 1</button>
+            <button class="exam-btn exam-btn-primary" type="button" onclick="saveExamPrefs()">保存偏好</button>
+            <button class="exam-btn exam-btn-danger" type="button" onclick="clearExamPrefs()">清除偏好</button>
+          </div>
+          <div class="exam-msg" id="examMsg"></div>
+        </div>
+
+        <div class="app-card exam-summary-card">
+          <div class="exam-summary-title">偏好预览</div>
+          <div class="exam-summary-kv">
+            <div class="exam-kv"><div class="k">范围</div><div class="v" id="examSumScope">-</div></div>
+            <div class="exam-kv"><div class="k">时长</div><div class="v" id="examSumDuration">-</div></div>
+            <div class="exam-kv"><div class="k">已分配题量</div><div class="v" id="examSumAssigned">-</div></div>
+            <div class="exam-kv"><div class="k">总分</div><div class="v" id="examSumScore">-</div></div>
+          </div>
+          <div class="exam-summary-types" id="examSummaryTypes"></div>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}

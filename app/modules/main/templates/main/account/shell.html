@@ -1,0 +1,26 @@
+{% extends "main/settings/shell.html" %}
+{% block title %}设置 · {% block account_title %}账号管理{% endblock %}{% endblock %}
+{% block page_title %}设置{% endblock %}
+
+{% block settings_header_title %}账号管理{% endblock %}
+{% block settings_header_sub %}{% block account_header_sub %}{% endblock %}{% endblock %}
+
+{% block settings_subnav %}
+  <nav class="acc-tabs" aria-label="账号管理">
+    <a class="acc-tab {{ 'active' if request.path.startswith('/settings/account/profile') else '' }}" href="/settings/account/profile">个人资料</a>
+    <a class="acc-tab {{ 'active' if request.path.startswith('/settings/account/security') else '' }}" href="/settings/account/security">账号安全</a>
+    <a class="acc-tab {{ 'active' if request.path.startswith('/settings/account/bindings') else '' }}" href="/settings/account/bindings">账号绑定</a>
+  </nav>
+{% endblock %}
+
+{% block settings_content %}
+  {% block account_content %}{% endblock %}
+{% endblock %}
+
+{% block settings_head_extra %}
+  {% block account_head_extra %}{% endblock %}
+{% endblock %}
+
+{% block settings_body_end %}
+  {% block account_body_end %}{% endblock %}
+{% endblock %}

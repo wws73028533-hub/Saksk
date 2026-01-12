@@ -1,40 +1,55 @@
-<!DOCTYPE html>
-<html lang="zh">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <title>题库设置 - 全能刷题库</title>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Crect width='128' height='128' rx='24' fill='%23007bff'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='central' text-anchor='middle' font-size='88' fill='white'%3EQ%3C/text%3E%3C/svg%3E">
+{% extends "main/app_shell.html" %}
+{% block title %}题库设置{% endblock %}
+{% block page_title %}设置{% endblock %}
+{% block head_extra %}
     <style>
         :root {
             --bg-color: #f5f5f7;
-            --card-bg: rgba(255, 255, 255, 0.7);
-            --text-color: #1d1d1f;
-            --text-sub: #86868b;
-            --border-color: rgba(0, 0, 0, 0.06);
-            --primary: #007aff;
-            --primary-light: rgba(0, 122, 255, 0.15);
-            --shadow: 0 8px 32px rgba(0, 0, 0, 0.10);
-            --shadow-hover: 0 12px 48px rgba(0, 0, 0, 0.14);
-            --radius-xl: 24px;
-            --radius-lg: 18px;
+            --card-bg: rgba(255, 255, 255, 0.78);
+            --text-color: #111113;
+            --text-sub: rgba(17, 17, 19, 0.62);
+            --border-color: rgba(0, 0, 0, 0.08);
+            --shadow: 0 10px 34px rgba(0, 0, 0, 0.08);
+            --shadow-hover: 0 16px 46px rgba(0, 0, 0, 0.10);
+            --radius-xl: 22px;
+            --radius-lg: 16px;
             --radius-md: 14px;
             --radius-sm: 12px;
-            --blur: blur(40px) saturate(180%);
-            --danger: #ff3b30;
-            --success: #34c759;
+            --blur: blur(26px) saturate(180%);
+
+            --btn-primary-bg: #111113;
+            --btn-primary-fg: #ffffff;
+            --btn-primary-border: rgba(17, 17, 19, 0.22);
+            --btn-secondary-bg: rgba(255, 255, 255, 0.62);
+            --btn-secondary-fg: var(--text-color);
+            --btn-secondary-border: var(--border-color);
+            --btn-quiet-bg: rgba(0, 0, 0, 0.04);
+            --btn-quiet-border: rgba(0, 0, 0, 0.08);
+
+            --switch-off: rgba(0, 0, 0, 0.12);
+            --switch-on: rgba(17, 17, 19, 0.86);
+            --switch-thumb: rgba(255, 255, 255, 0.95);
         }
 
         body.dark-mode {
             --bg-color: #000000;
             --card-bg: rgba(28, 28, 30, 0.6);
             --text-color: #f5f5f7;
-            --text-sub: #98989d;
-            --border-color: rgba(255, 255, 255, 0.12);
-            --primary: #0a84ff;
-            --primary-light: rgba(10, 132, 255, 0.2);
-            --shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
-            --shadow-hover: 0 12px 48px rgba(0, 0, 0, 0.55);
+            --text-sub: rgba(245, 245, 247, 0.64);
+            --border-color: rgba(255, 255, 255, 0.14);
+            --shadow: 0 18px 52px rgba(0, 0, 0, 0.55);
+            --shadow-hover: 0 22px 68px rgba(0, 0, 0, 0.60);
+
+            --btn-primary-bg: rgba(245, 245, 247, 0.92);
+            --btn-primary-fg: rgba(0, 0, 0, 0.92);
+            --btn-primary-border: rgba(255, 255, 255, 0.24);
+            --btn-secondary-bg: rgba(28, 28, 30, 0.72);
+            --btn-quiet-bg: rgba(255, 255, 255, 0.06);
+            --btn-quiet-border: rgba(255, 255, 255, 0.12);
+
+            --switch-off: rgba(255, 255, 255, 0.18);
+            --switch-on: rgba(245, 245, 247, 0.86);
+            --switch-thumb: rgba(0, 0, 0, 0.92);
         }
 
         /* 全局滚动条样式 - 极简风格 */
@@ -61,41 +76,48 @@
         }
 
         .main-container {
-            max-width: 980px;
+            max-width: 920px;
             margin: 0 auto;
-            padding: 40px 20px;
+            padding: 10px 6px 24px;
         }
 
         .page-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 24px;
-            padding: 0 4px;
+            gap: 12px;
+            margin-bottom: 16px;
+            padding: 0 6px;
         }
 
         .header-title {
-            font-size: 28px;
-            font-weight: 650;
-            letter-spacing: -0.6px;
+            font-size: 20px;
+            font-weight: 750;
+            letter-spacing: -0.2px;
         }
 
-        .header-title a {
-            color: var(--text-color);
-            text-decoration: none;
-            transition: opacity 0.2s;
+        .header-sub {
+            margin-top: 4px;
+            font-size: 13px;
+            color: var(--text-sub);
+            line-height: 1.5;
         }
-
-        .header-title a:hover { opacity: 0.7; }
 
         .card {
             background: var(--card-bg);
             backdrop-filter: var(--blur);
             -webkit-backdrop-filter: var(--blur);
-            border: 0.5px solid var(--border-color);
+            border: 1px solid var(--border-color);
             border-radius: var(--radius-xl);
             box-shadow: var(--shadow);
             padding: 24px;
+            min-width: 0;
+        }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
         }
 
         .section-title {
@@ -118,7 +140,7 @@
             gap: 16px;
             align-items: center;
             padding: 14px 0;
-            border-top: 0.5px solid var(--border-color);
+            border-top: 1px solid var(--border-color);
         }
 
         .setting-row:first-of-type { border-top: none; }
@@ -141,7 +163,7 @@
             width: 48px;
             height: 28px;
             border-radius: 999px;
-            background: rgba(142, 142, 147, 0.28);
+            background: var(--switch-off);
             position: relative;
             outline: none;
             cursor: pointer;
@@ -156,13 +178,13 @@
             width: 22px;
             height: 22px;
             border-radius: 50%;
-            background: rgba(255, 255, 255, 0.95);
+            background: var(--switch-thumb);
             box-shadow: 0 2px 8px rgba(0,0,0,0.18);
             transition: transform 0.2s ease;
         }
 
         .switch:checked {
-            background: rgba(0, 122, 255, 0.65);
+            background: var(--switch-on);
         }
 
         .switch:checked::after {
@@ -185,33 +207,80 @@
             align-items: center;
             justify-content: center;
             border-radius: var(--radius-sm);
-            border: 0.5px solid var(--border-color);
-            background: rgba(255,255,255,0.6);
-            color: var(--text-color);
+            border: 1px solid var(--btn-secondary-border);
+            background: var(--btn-secondary-bg);
+            color: var(--btn-secondary-fg);
             cursor: pointer;
             font-size: 14px;
             font-weight: 600;
             line-height: 1;
             box-sizing: border-box;
-            transition: transform 0.15s ease, background 0.15s ease;
+            transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
         }
 
-        body.dark-mode .btn {
-            background: rgba(28,28,30,0.6);
-        }
-
-        .btn:hover { transform: translateY(-1px); }
+        .btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-hover); }
+        .btn:active { transform: translateY(0); }
 
         .btn-primary {
-            background: rgba(0, 122, 255, 0.12);
-            border-color: rgba(0, 122, 255, 0.25);
-            color: var(--primary);
+            background: var(--btn-primary-bg);
+            border-color: var(--btn-primary-border);
+            color: var(--btn-primary-fg);
         }
 
         .btn-danger {
-            background: rgba(255, 59, 48, 0.10);
-            border-color: rgba(255, 59, 48, 0.25);
-            color: var(--danger);
+            background: var(--btn-quiet-bg);
+            border-color: var(--btn-quiet-border);
+            color: var(--text-color);
+        }
+
+        select.btn {
+            -webkit-appearance: none;
+            appearance: none;
+            padding-right: 36px;
+            background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
+            background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%;
+            background-size: 6px 6px, 6px 6px;
+            background-repeat: no-repeat;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.52);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+            padding: 16px;
+        }
+
+        .modal-card {
+            width: 100%;
+            max-height: 80vh;
+            overflow: auto;
+        }
+
+        .modal-card.modal-card--wide { max-width: 760px; overflow-x: hidden; }
+        .modal-card.modal-card--mid { max-width: 720px; }
+
+        .modal-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .modal-actions {
+            margin-top: 16px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .setting-row.setting-row--wide {
+            grid-template-columns: 1fr minmax(200px, 320px);
+            gap: 10px;
         }
 
         .toast {
@@ -219,7 +288,7 @@
             left: 50%;
             bottom: 18px;
             transform: translateX(-50%);
-            background: rgba(28,28,30,0.85);
+            background: rgba(17, 17, 19, 0.88);
             color: #fff;
             padding: 10px 14px;
             border-radius: 999px;
@@ -237,91 +306,106 @@
 
         @media (max-width: 768px) {
             .main-container { padding: 24px 16px; }
-            .header-title { font-size: 22px; }
+            .header-title { font-size: 18px; }
             .card { padding: 18px; }
+            .cards-grid { grid-template-columns: 1fr; }
         }
     </style>
-</head>
-<body>
+{% endblock %}
+
+{% block content %}
     <div class="main-container">
         <header class="page-header">
-            <div class="header-title"><a href="/user_hub"> < 返回</a> / 题库设置</div>
+            <div>
+                <div class="header-title">题库设置</div>
+                <div class="header-sub">这些设置会作为默认值应用到首页“开始练习”的选项中。</div>
+            </div>
+            <a class="btn" href="/user_hub">返回</a>
         </header>
 
-        <div class="card">
-            <div class="section-title">刷题偏好</div>
-            <div class="section-sub">这些设置会作为默认值应用到首页“开始练习”的选项中。</div>
+        <div class="cards-grid">
+            <section class="card" aria-labelledby="qsSubjectTitle">
+                <div class="section-title" id="qsSubjectTitle">题库与科目</div>
+                <div class="section-sub">决定首页“选择科目”区域显示哪些科目。</div>
 
-            <div class="setting-row">
-                <div>
-                    <div class="setting-name">主页科目显示方式</div>
-                    <div class="setting-desc">选择您希望在首页“选择科目”中显示哪些科目。</div>
+                <div class="setting-row">
+                    <div>
+                        <div class="setting-name">主页科目显示方式</div>
+                        <div class="setting-desc">自定义显示范围，减少无关科目干扰。</div>
+                    </div>
+                    <button class="btn" onclick="openSubjectModal()">选择</button>
                 </div>
-                <button class="btn" onclick="openSubjectModal()">选择</button>
-            </div>
 
-            <div class="setting-row">
-                <div>
-                    <div class="setting-name">当前显示</div>
-                    <div class="setting-desc" id="subjectSummary">全部科目</div>
+                <div class="setting-row">
+                    <div>
+                        <div class="setting-name">当前显示</div>
+                        <div class="setting-desc" id="subjectSummary">全部科目</div>
+                    </div>
+                    <button class="btn" onclick="clearSubjectFilter()">显示全部</button>
                 </div>
-                <button class="btn" onclick="clearSubjectFilter()">显示全部</button>
-            </div>
+            </section>
 
-            <div class="setting-row">
-                <div>
-                    <div class="setting-name">答题界面键盘快捷键</div>
-                    <div class="setting-desc">自定义刷题/考试页面快捷键（支持组合键）：上一题/下一题、收藏、选项选择、填空挖空切换、提交。</div>
+            <section class="card" aria-labelledby="qsExperienceTitle">
+                <div class="section-title" id="qsExperienceTitle">答题体验</div>
+                <div class="section-sub">这些选项会影响刷题与考试页面的交互与布局。</div>
+
+                <div class="setting-row">
+                    <div>
+                        <div class="setting-name">答题悬浮球</div>
+                        <div class="setting-desc">在刷题/背题页面显示快捷菜单（可拖动）。考试进行中会自动隐藏。</div>
+                    </div>
+                    <input type="checkbox" class="switch" id="toggleQuizFab" />
                 </div>
-                <button class="btn btn-primary" onclick="openHotkeyModal()">设置</button>
-            </div>
 
-            <div class="setting-row">
-                <div>
-                    <div class="setting-name">答题悬浮球</div>
-                    <div class="setting-desc">在刷题/背题页面显示悬浮球快捷菜单（可拖动）。考试进行中会自动隐藏。</div>
+                <div class="setting-row">
+                    <div>
+                        <div class="setting-name">答题布局主题</div>
+                        <div class="setting-desc">传统布局更紧凑；卡片布局更清晰。</div>
+                    </div>
+                    <select class="btn" id="quizLayoutTheme" style="min-width: 140px;">
+                        <option value="traditional">传统布局</option>
+                        <option value="card">卡片布局</option>
+                    </select>
                 </div>
-                <input type="checkbox" class="switch" id="toggleQuizFab" />
-            </div>
+            </section>
 
-            <div class="setting-row">
-                <div>
-                    <div class="setting-name">深色模式</div>
-                    <div class="setting-desc">切换页面主题（浅色/深色）。</div>
+            <section class="card" aria-labelledby="qsHotkeyTitle">
+                <div class="section-title" id="qsHotkeyTitle">快捷键</div>
+                <div class="section-sub">为键盘刷题/考试配置常用操作，提高效率。</div>
+
+                <div class="setting-row">
+                    <div>
+                        <div class="setting-name">答题界面键盘快捷键</div>
+                        <div class="setting-desc">支持组合键：上一题/下一题、收藏、选项选择、填空挖空切换、提交。</div>
+                    </div>
+                    <button class="btn btn-primary" onclick="openHotkeyModal()">配置</button>
                 </div>
-                <input type="checkbox" class="switch" id="toggleThemeSwitch" aria-label="切换深色模式" />
-            </div>
+            </section>
 
-            <div class="setting-row">
-                <div>
-                    <div class="setting-name">答题布局主题</div>
-                    <div class="setting-desc">选择答题页面的布局样式：传统布局（紧凑列表）或卡片布局（分离式卡片）。</div>
+            <section class="card" aria-labelledby="qsActionsTitle">
+                <div class="section-title" id="qsActionsTitle">同步与操作</div>
+                <div class="section-sub">切换会立即生效；保存可触发云端同步（已登录）。</div>
+
+                <div class="btn-row" style="margin-top: 4px;">
+                    <button class="btn btn-danger" onclick="resetDefaults()">恢复默认</button>
+                    <button class="btn btn-primary" onclick="saveSettings()">保存设置</button>
                 </div>
-                <select class="btn" id="quizLayoutTheme" style="min-width: 120px;">
-                    <option value="traditional">传统布局</option>
-                    <option value="card">卡片布局</option>
-                </select>
-            </div>
-
-            <div class="btn-row">
-                <button class="btn btn-danger" onclick="resetDefaults()">恢复默认</button>
-                <button class="btn btn-primary" onclick="saveSettings()">保存设置</button>
-            </div>
+            </section>
         </div>
     </div>
 
     <!-- 快捷键设置弹层 -->
-    <div class="modal-overlay" id="hotkeyModal" style="position:fixed; inset:0; background:rgba(0,0,0,0.55); display:none; align-items:center; justify-content:center; z-index:999; padding:16px;">
-        <div class="card" style="max-width:760px; width:100%; max-height:80vh; overflow-y:auto; overflow-x:hidden;">
-            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+    <div class="modal-overlay" id="hotkeyModal" role="dialog" aria-modal="true" aria-labelledby="hotkeyModalTitle">
+        <div class="card modal-card modal-card--wide" role="document">
+            <div class="modal-header">
                 <div>
-                    <div class="section-title" style="margin:0;">答题界面键盘快捷键</div>
+                    <div class="section-title" id="hotkeyModalTitle" style="margin:0;">答题界面键盘快捷键</div>
                     <div class="section-sub" style="margin:8px 0 0 0;">点击输入框后按下组合键（如 Ctrl+Shift+N）。按 Backspace/Delete 清空。与浏览器/系统冲突的组合键可能无法生效。</div>
                 </div>
                 <button class="btn" onclick="closeHotkeyModal()">关闭</button>
             </div>
 
-            <div style="margin-top:16px; display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end;">
+            <div class="modal-actions">
                 <button class="btn" onclick="resetHotkeysToDefault()">恢复默认</button>
                 <button class="btn btn-primary" onclick="applyHotkeys()">应用</button>
             </div>
@@ -331,17 +415,17 @@
     </div>
 
     <!-- 科目选择弹层 -->
-    <div class="modal-overlay" id="subjectModal" style="position:fixed; inset:0; background:rgba(0,0,0,0.55); display:none; align-items:center; justify-content:center; z-index:999; padding:16px;">
-        <div class="card" style="max-width:720px; width:100%; max-height:80vh; overflow:auto;">
-            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+    <div class="modal-overlay" id="subjectModal" role="dialog" aria-modal="true" aria-labelledby="subjectModalTitle">
+        <div class="card modal-card modal-card--mid" role="document">
+            <div class="modal-header">
                 <div>
-                    <div class="section-title" style="margin:0;">选择首页显示科目</div>
+                    <div class="section-title" id="subjectModalTitle" style="margin:0;">选择首页显示科目</div>
                     <div class="section-sub" style="margin:8px 0 0 0;">不选任何项等同于“显示全部”。</div>
                 </div>
                 <button class="btn" onclick="closeSubjectModal()">关闭</button>
             </div>
 
-            <div style="margin-top:16px; display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end;">
+            <div class="modal-actions">
                 <button class="btn" onclick="selectAllSubjectsInModal()">全选</button>
                 <button class="btn" onclick="clearAllSubjectsInModal()">全不选</button>
                 <button class="btn btn-primary" onclick="applySubjectSelection()">应用</button>
@@ -353,31 +437,12 @@
 
     <div class="toast" id="toast"></div>
 
+{% endblock %}
+
+{% block body_end %}
     <script>
         const HOME_VISIBLE_SUBJECTS_KEY = 'home_visible_subjects';
         const SETTINGS_SYNC_KEY = 'user_settings_v1';
-
-        function toggleTheme(){
-            document.body.classList.toggle('dark-mode');
-            localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
-        }
-
-        function loadTheme(){
-            // 默认为浅色：仅当明确保存为 dark 时才启用深色
-            const savedTheme = localStorage.getItem('theme');
-            if (savedTheme === 'dark') document.body.classList.add('dark-mode');
-
-            // 同步 UI 开关状态（默认 false=浅色）
-            const sw = document.getElementById('toggleThemeSwitch');
-            if (sw) {
-                sw.checked = (savedTheme === 'dark');
-                sw.onchange = function(){
-                    toggleTheme();
-                    // toggleTheme 已写入 localStorage，这里只负责保持开关与 body 状态一致
-                    sw.checked = document.body.classList.contains('dark-mode');
-                };
-            }
-        }
 
         function showToast(text){
             const t = document.getElementById('toast');
@@ -626,7 +691,7 @@
             list.innerHTML = HOTKEY_DEFS.map(def => {
                 const value = hk[def.key] || '';
                 return `
-                    <div class="setting-row" style="grid-template-columns: 1fr 280px; gap: 10px;">
+                    <div class="setting-row setting-row--wide">
                         <div>
                             <div class="setting-name">${escapeHtml(def.label)}</div>
                             <div class="setting-desc">${escapeHtml(def.desc)}</div>
@@ -808,6 +873,9 @@
                     if (typeof remote.quiz_fab_enabled_v1 !== 'undefined') {
                         setQuizFabEnabled(!!remote.quiz_fab_enabled_v1);
                     }
+                    if (typeof remote.quiz_layout_theme_v1 === 'string') {
+                        setQuizLayoutTheme(remote.quiz_layout_theme_v1 === 'card' ? 'card' : 'traditional');
+                    }
                     localStorage.setItem('settings_updated_at', String(remoteTs));
                 } else if (localTs > remoteTs) {
                     // 本地较新，推送到云端
@@ -832,6 +900,7 @@
             setVisibleSubjects([]);
             setHotkeys({ ...DEFAULT_QUIZ_HOTKEYS });
             setQuizFabEnabled(true);
+            setQuizLayoutTheme('traditional');
 
             const ts = Date.now();
             localStorage.setItem('settings_updated_at', String(ts));
@@ -851,12 +920,9 @@
             }
         })();
 
-        loadTheme();
         // 登录用户：尝试从云端拉取并与本地合并（跨设备）
         loadSettingsFromServerAndMerge().finally(()=>{
             loadSettings();
         });
     </script>
-</body>
-</html>
-
+{% endblock %}

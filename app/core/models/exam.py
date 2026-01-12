@@ -40,7 +40,20 @@ class Exam:
         return fv
 
     @staticmethod
-    def create(user_id, subject, duration, types_config, scores_config):
+    def _parse_config_json(config_json: str) -> dict:
+        try:
+            cfg = json.loads(config_json or '{}')
+            return cfg if isinstance(cfg, dict) else {}
+        except Exception:
+            return {}
+
+    @staticmethod
+    def _normalize_source(source: str) -> str:
+        s = (source or 'public').strip().lower()
+        return s if s in ('public', 'user_bank') else 'public'
+
+    @staticmethod
+    def create(user_id, subject, duration, types_config, scores_config, source: str = 'public', bank_id=None):
         """创建考试：写入 exams + exam_questions，并返回 exam_id
 
         规则：
@@ -51,16 +64,28 @@ class Exam:
         conn = get_db()
 
         subject = Exam._normalize_subject(subject)
+        source = Exam._normalize_source(source)
         duration = Exam._safe_int(duration, default=60, min_v=1, max_v=24 * 60)
         types_config = types_config or {}
         scores_config = scores_config or {}
 
-        config_json = json.dumps({
+        config_payload = {
             'subject': subject,
             'duration': duration,
             'types': types_config,
-            'scores': scores_config
-        }, ensure_ascii=False)
+            'scores': scores_config,
+            'source': source,
+        }
+        if source == 'user_bank':
+            try:
+                bank_id_int = int(bank_id)
+            except Exception:
+                bank_id_int = 0
+            if bank_id_int <= 0:
+                raise ValueError('invalid bank_id')
+            config_payload['bank_id'] = bank_id_int
+
+        config_json = json.dumps(config_payload, ensure_ascii=False)
 
         cur = conn.execute(
             'INSERT INTO exams (user_id, subject, duration_minutes, config_json, status) VALUES (?, ?, ?, ?, ?)',
@@ -77,14 +102,23 @@ class Exam:
             if cnt <= 0:
                 continue
 
-            sql = (
-                "SELECT q.* FROM questions q "
-                "LEFT JOIN subjects s ON q.subject_id = s.id "
-                f"WHERE q.q_type = ?{sub_sql} "
-                "ORDER BY RANDOM() LIMIT ?"
-            )
-            params = [q_type] + sub_param + [cnt]
-            rows = conn.execute(sql, params).fetchall()
+            if source == 'user_bank':
+                sql = (
+                    "SELECT q.* FROM user_bank_questions q "
+                    "WHERE q.bank_id = ? AND q.q_type = ? "
+                    "ORDER BY RANDOM() LIMIT ?"
+                )
+                params = [config_payload.get('bank_id'), q_type, cnt]
+                rows = conn.execute(sql, params).fetchall()
+            else:
+                sql = (
+                    "SELECT q.* FROM questions q "
+                    "LEFT JOIN subjects s ON q.subject_id = s.id "
+                    f"WHERE q.q_type = ?{sub_sql} "
+                    "ORDER BY RANDOM() LIMIT ?"
+                )
+                params = [q_type] + sub_param + [cnt]
+                rows = conn.execute(sql, params).fetchall()
 
             for row in rows:
                 score_val = Exam._safe_float(scores_config.get(q_type, 1), default=1.0, min_v=0.0, max_v=1000.0)
@@ -109,23 +143,33 @@ class Exam:
         if user_id and exam['user_id'] != user_id:
             return None
 
-        rows = conn.execute('''
-            SELECT q.*, eq.score_val, eq.order_index, eq.user_answer, eq.is_correct
-            FROM exam_questions eq
-            JOIN questions q ON q.id = eq.question_id
-            WHERE eq.exam_id=?
-            ORDER BY eq.order_index
-        ''', (exam_id,)).fetchall()
+        cfg = Exam._parse_config_json(exam['config_json'] if exam else None)
+        source = Exam._normalize_source(cfg.get('source'))
 
-        questions = []
-        for r in rows:
-            q = dict(r)
-            if q.get('options'):
-                try:
-                    q['options'] = json.loads(q['options'])
-                except Exception:
-                    q['options'] = []
-            questions.append(q)
+        if source == 'user_bank':
+            rows = conn.execute(
+                """
+                SELECT q.*, eq.score_val, eq.order_index, eq.user_answer, eq.is_correct
+                FROM exam_questions eq
+                JOIN user_bank_questions q ON q.id = eq.question_id
+                WHERE eq.exam_id=?
+                ORDER BY eq.order_index
+                """,
+                (exam_id,),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                """
+                SELECT q.*, eq.score_val, eq.order_index, eq.user_answer, eq.is_correct
+                FROM exam_questions eq
+                JOIN questions q ON q.id = eq.question_id
+                WHERE eq.exam_id=?
+                ORDER BY eq.order_index
+                """,
+                (exam_id,),
+            ).fetchall()
+
+        questions = [dict(r) for r in rows]
 
         return {'exam': dict(exam), 'questions': questions}
 
@@ -206,6 +250,9 @@ class Exam:
         if not exam or exam['user_id'] != user_id or exam['status'] == 'submitted':
             return None
 
+        cfg = Exam._parse_config_json(exam['config_json'] if exam else None)
+        source = Exam._normalize_source(cfg.get('source'))
+
         ans_map = {}
         for a in (answers or []):
             try:
@@ -214,12 +261,26 @@ class Exam:
                 continue
             ans_map[qid] = (a.get('user_answer') or '').strip()
 
-        rows = conn.execute('''
-            SELECT eq.id as eq_id, eq.question_id, eq.score_val, q.answer, q.q_type
-            FROM exam_questions eq
-            JOIN questions q ON q.id = eq.question_id
-            WHERE eq.exam_id=?
-        ''', (exam_id,)).fetchall()
+        if source == 'user_bank':
+            rows = conn.execute(
+                """
+                SELECT eq.id as eq_id, eq.question_id, eq.score_val, q.answer, q.q_type
+                FROM exam_questions eq
+                JOIN user_bank_questions q ON q.id = eq.question_id
+                WHERE eq.exam_id=?
+                """,
+                (exam_id,),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                """
+                SELECT eq.id as eq_id, eq.question_id, eq.score_val, q.answer, q.q_type
+                FROM exam_questions eq
+                JOIN questions q ON q.id = eq.question_id
+                WHERE eq.exam_id=?
+                """,
+                (exam_id,),
+            ).fetchall()
 
         total = len(rows)
         correct = 0

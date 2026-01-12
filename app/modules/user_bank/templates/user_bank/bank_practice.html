@@ -1,0 +1,587 @@
+{% extends "main/app_shell.html" %}
+{% block title %}{{ bank_name }} · 题库练习设置{% endblock %}
+{% block page_title %}{{ bank_name }}{% endblock %}
+{% block head_extra %}
+  <style>
+    :root {
+      --bg: #f5f5f7;
+      --card: rgba(255, 255, 255, 0.78);
+      --card-solid: rgba(255, 255, 255, 0.96);
+      --text: #1d1d1f;
+      --muted: #6e6e73;
+      --border: rgba(0, 0, 0, 0.08);
+      --shadow: 0 12px 40px rgba(0, 0, 0, 0.06);
+      --shadow2: 0 6px 18px rgba(0, 0, 0, 0.05);
+      --blur: blur(24px) saturate(180%);
+      --radius-xl: 22px;
+      --radius-lg: 18px;
+      --radius-md: 14px;
+      --radius-sm: 12px;
+      --focus: 0 0 0 3px rgba(0, 0, 0, 0.12);
+    }
+    body.dark-mode {
+      --bg: #000000;
+      --card: rgba(28, 28, 30, 0.72);
+      --card-solid: rgba(28, 28, 30, 0.96);
+      --text: #f5f5f7;
+      --muted: #a1a1a6;
+      --border: rgba(255, 255, 255, 0.14);
+      --shadow: 0 18px 60px rgba(0, 0, 0, 0.6);
+      --shadow2: 0 10px 30px rgba(0, 0, 0, 0.45);
+      --focus: 0 0 0 3px rgba(255, 255, 255, 0.16);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    button, input { font-family: inherit; }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      padding: calc(env(safe-area-inset-top) + 10px) 12px 10px;
+      background: color-mix(in srgb, var(--bg) 70%, transparent);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      border-bottom: 0.5px solid var(--border);
+    }
+    .topbar-inner {
+      max-width: 980px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      min-width: 0;
+    }
+    .left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+    .back {
+      height: 36px;
+      padding: 0 12px;
+      border-radius: 999px;
+      border: 0.5px solid var(--border);
+      background: var(--card);
+      box-shadow: var(--shadow2);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 900;
+      cursor: pointer;
+    }
+    .title {
+      font-size: 16px;
+      font-weight: 900;
+      letter-spacing: -0.3px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      min-width: 0;
+    }
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow: auto hidden;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .nav::-webkit-scrollbar { height: 0; }
+    .pill, .icon-btn {
+      height: 36px;
+      padding: 0 12px;
+      border-radius: 999px;
+      border: 0.5px solid var(--border);
+      background: var(--card);
+      box-shadow: var(--shadow2);
+      font-size: 14px;
+      font-weight: 900;
+      white-space: nowrap;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+      flex: 0 0 auto;
+    }
+    .pill:hover, .icon-btn:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
+    .pill:active, .icon-btn:active { transform: translateY(0); }
+    .icon-btn { width: 36px; padding: 0; }
+    .icon-btn img { width: 18px; height: 18px; opacity: 0.9; }
+    body.dark-mode .icon-btn img { filter: invert(1); opacity: 0.85; }
+
+    .container { max-width: 980px; margin: 0 auto; padding: 14px 12px 34px; }
+
+    .card {
+      border-radius: var(--radius-xl);
+      background: var(--card);
+      border: 0.5px solid var(--border);
+      box-shadow: var(--shadow2);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      padding: 16px;
+      margin-top: 12px;
+      min-width: 0;
+    }
+    .card h2 {
+      margin: 0 0 10px;
+      font-size: 16px;
+      font-weight: 900;
+      letter-spacing: -0.2px;
+    }
+    .sub { color: var(--muted); font-size: 12px; }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .stat {
+      border-radius: var(--radius-lg);
+      border: 0.5px solid var(--border);
+      background: rgba(142, 142, 147, 0.10);
+      padding: 12px;
+      min-width: 0;
+    }
+    .stat .k { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    .stat .v { font-size: 18px; font-weight: 900; letter-spacing: -0.3px; }
+
+    .search {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+      margin-top: 10px;
+    }
+    .search input {
+      height: 42px;
+      padding: 0 14px;
+      border-radius: var(--radius-md);
+      border: 0.5px solid var(--border);
+      background: var(--card-solid);
+      color: var(--text);
+      font-size: 14px;
+      outline: none;
+      min-width: 0;
+    }
+    .search input:focus { box-shadow: var(--focus); }
+    .btn {
+      height: 42px;
+      padding: 0 16px;
+      border-radius: var(--radius-md);
+      border: 0.5px solid var(--border);
+      background: rgba(142, 142, 147, 0.12);
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 900;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+      white-space: nowrap;
+    }
+    .btn:hover { transform: translateY(-1px); box-shadow: var(--shadow2); background: rgba(142, 142, 147, 0.18); }
+    .btn:active { transform: translateY(0); }
+    .btn.primary { background: var(--text); color: var(--bg); border-color: color-mix(in srgb, var(--text) 80%, transparent); }
+    body.dark-mode .btn.primary { background: rgba(245, 245, 247, 0.92); color: #000; border-color: rgba(255,255,255,0.18); }
+
+    .seg {
+      display: flex;
+      gap: 6px;
+      padding: 6px;
+      border-radius: 999px;
+      border: 0.5px solid var(--border);
+      background: rgba(142, 142, 147, 0.10);
+      overflow: auto hidden;
+      scrollbar-width: none;
+    }
+    .seg::-webkit-scrollbar { height: 0; }
+    .seg button {
+      height: 34px;
+      padding: 0 14px;
+      border-radius: 999px;
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      font-weight: 900;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease;
+      white-space: nowrap;
+      flex: 0 0 auto;
+    }
+    .seg button.active { background: var(--card-solid); color: var(--text); border: 0.5px solid var(--border); }
+
+    .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+    .chip {
+      height: 34px;
+      padding: 0 12px;
+      border-radius: 999px;
+      border: 0.5px solid var(--border);
+      background: rgba(142, 142, 147, 0.10);
+      color: var(--text);
+      font-weight: 900;
+      font-size: 13px;
+      cursor: pointer;
+      transition: transform 0.15s ease, background 0.15s ease;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .chip:hover { transform: translateY(-1px); background: rgba(142, 142, 147, 0.14); }
+    .chip:active { transform: translateY(0); }
+    .chip.active { background: var(--text); color: var(--bg); border-color: color-mix(in srgb, var(--text) 80%, transparent); }
+    body.dark-mode .chip.active { background: rgba(245, 245, 247, 0.92); color: #000; border-color: rgba(255,255,255,0.18); }
+    .mini-badge {
+      height: 18px;
+      min-width: 18px;
+      padding: 0 6px;
+      border-radius: 999px;
+      background: rgba(142, 142, 147, 0.22);
+      color: var(--text);
+      font-size: 11px;
+      font-weight: 900;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 auto;
+    }
+    body.dark-mode .mini-badge { background: rgba(255, 255, 255, 0.14); }
+
+    .toggles { display: grid; gap: 10px; margin-top: 10px; }
+    .toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px;
+      border-radius: var(--radius-lg);
+      border: 0.5px solid var(--border);
+      background: rgba(142, 142, 147, 0.10);
+    }
+    .toggle .label { font-weight: 900; font-size: 14px; }
+    .toggle .desc { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .switch {
+      position: relative;
+      width: 46px;
+      height: 28px;
+      border-radius: 999px;
+      background: rgba(142, 142, 147, 0.28);
+      border: 0.5px solid var(--border);
+      cursor: pointer;
+      flex: 0 0 auto;
+      transition: background 0.15s ease;
+    }
+    .switch::after {
+      content: '';
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      background: var(--card-solid);
+      box-shadow: var(--shadow2);
+      transition: transform 0.15s ease;
+    }
+    .switch.on { background: rgba(29, 29, 31, 0.65); }
+    body.dark-mode .switch.on { background: rgba(245, 245, 247, 0.55); }
+    .switch.on::after { transform: translateX(18px); }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .action-btn {
+      height: 46px;
+      border-radius: var(--radius-lg);
+      border: 0.5px solid var(--border);
+      background: rgba(142, 142, 147, 0.12);
+      color: var(--text);
+      font-size: 15px;
+      font-weight: 900;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+      min-width: 0;
+    }
+    .action-btn:hover { transform: translateY(-1px); box-shadow: var(--shadow2); background: rgba(142, 142, 147, 0.18); }
+    .action-btn:active { transform: translateY(0); }
+    .action-btn.primary { background: var(--text); color: var(--bg); border-color: color-mix(in srgb, var(--text) 80%, transparent); }
+    body.dark-mode .action-btn.primary { background: rgba(245, 245, 247, 0.92); color: #000; border-color: rgba(255,255,255,0.18); }
+
+    .links { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+    .link {
+      height: 34px;
+      padding: 0 12px;
+      border-radius: 999px;
+      border: 0.5px solid var(--border);
+      background: rgba(142, 142, 147, 0.10);
+      font-size: 13px;
+      font-weight: 900;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.15s ease, background 0.15s ease;
+      color: var(--text);
+    }
+    .link:hover { transform: translateY(-1px); background: rgba(142, 142, 147, 0.14); }
+    .link:active { transform: translateY(0); }
+
+    .footer {
+      margin-top: 20px;
+      padding-bottom: env(safe-area-inset-bottom);
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+  <div class="container">
+    <section class="card" aria-label="概览">
+      <h2>概览</h2>
+      <div class="sub">{{ bank_description or '在本题库中选择范围/题型/标签并开始练习。' }}</div>
+      <div class="stats">
+        <div class="stat">
+          <div class="k">题目</div>
+          <div class="v">{{ total_count }}</div>
+        </div>
+        <div class="stat">
+          <div class="k">收藏</div>
+          <div class="v">{{ fav_count }}</div>
+        </div>
+        <div class="stat">
+          <div class="k">错题</div>
+          <div class="v">{{ mistake_count }}</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" aria-label="题库内搜索">
+      <h2>搜索</h2>
+      <div class="sub">范围限定在当前题库。</div>
+      <div class="search">
+        <input id="kw" type="text" placeholder="搜索题干/答案/解析/关键词…" autocomplete="off" onkeydown="if(event.key==='Enter'){doBankSearch();}" />
+        <button class="btn primary" type="button" onclick="doBankSearch()">搜索</button>
+      </div>
+    </section>
+
+    <section class="card" aria-label="范围选择">
+      <h2>范围</h2>
+      <div class="sub">本题库 / 收藏 / 错题</div>
+      <div class="seg" role="tablist" aria-label="范围切换">
+        <button type="button" class="active" data-scope="all" onclick="selectScope(this)">本题库</button>
+        <button type="button" data-scope="favorites" onclick="selectScope(this)">收藏</button>
+        <button type="button" data-scope="mistakes" onclick="selectScope(this)">错题</button>
+      </div>
+    </section>
+
+    <section class="card" aria-label="题型选择">
+      <h2>题型</h2>
+      <div class="sub">选择“全部题型”表示混合题型。</div>
+      <div class="chips" id="chipsType">
+        <button type="button" class="chip active" data-val="all" onclick="selectChip('type', this)">全部题型</button>
+        {% for t in types %}
+          <button type="button" class="chip" data-val="{{ t }}" onclick="selectChip('type', this)">{{ t }}</button>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="card" aria-label="标签选择">
+      <h2>标签</h2>
+      <div class="sub">仅对当前用户生效（题库标签）。</div>
+      <div class="chips" id="chipsTag">
+        <button type="button" class="chip active" data-val="all" onclick="selectChip('tag', this)">全部标签</button>
+        {% for tg in user_tags %}
+          <button type="button" class="chip" data-val="{{ tg.name|e }}" onclick="selectChip('tag', this)" title="{{ tg.count }}题">
+            <span>{{ tg.name }}</span>
+            <span class="mini-badge">{{ tg.count }}</span>
+          </button>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="card" aria-label="练习选项">
+      <h2>练习选项</h2>
+      <div class="toggles">
+        <div class="toggle">
+          <div>
+            <div class="label">打乱题目</div>
+            <div class="desc">顺序随机，更接近实战</div>
+          </div>
+          <div class="switch" id="swShuffleQ" role="switch" aria-checked="false" tabindex="0" onclick="toggleSwitch('shuffleQ')"></div>
+        </div>
+        <div class="toggle">
+          <div>
+            <div class="label">打乱选项</div>
+            <div class="desc">选择题更抗“背选项”</div>
+          </div>
+          <div class="switch" id="swShuffleO" role="switch" aria-checked="false" tabindex="0" onclick="toggleSwitch('shuffleO')"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" aria-label="开始">
+      <h2>开始</h2>
+      <div class="actions">
+        <button class="action-btn primary" type="button" onclick="start('quiz')">开始刷题</button>
+        <button class="action-btn" type="button" onclick="start('memo')">开始背题</button>
+      </div>
+      <div class="links">
+        <a class="link" href="/user/banks/{{ bank_id }}/search">去题库内搜索</a>
+      </div>
+    </section>
+
+    <footer class="footer">By: Saksk</footer>
+  </div>
+{% endblock %}
+
+{% block body_end %}
+  <script>
+    const BANK_ID = {{ bank_id }};
+    const KEY_SCOPE = `bank_${BANK_ID}_scope`;
+    const KEY_TYPE = `bank_${BANK_ID}_type`;
+    const KEY_TAG = `bank_${BANK_ID}_tag`;
+    const KEY_SHUFFLE_Q = 'shuffle_questions';
+    const KEY_SHUFFLE_O = 'shuffle_options';
+
+    const state = {
+      scope: 'all',
+      type: 'all',
+      tag: 'all',
+      shuffleQ: false,
+      shuffleO: false
+    };
+
+    function applyThemeFromStorage(){
+      const saved = localStorage.getItem('theme') || '';
+      const preferDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const dark = saved === 'dark' || (!saved && preferDark);
+      document.body.classList.toggle('dark-mode', !!dark);
+      document.querySelector('meta[name=\"theme-color\"]')?.setAttribute('content', dark ? '#000000' : '#f5f5f7');
+    }
+    function toggleTheme(){
+      const isDark = document.body.classList.toggle('dark-mode');
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+      document.querySelector('meta[name=\"theme-color\"]')?.setAttribute('content', isDark ? '#000000' : '#f5f5f7');
+    }
+    applyThemeFromStorage();
+
+    function restore(){
+      const savedScope = localStorage.getItem(KEY_SCOPE);
+      if (savedScope && ['all','favorites','mistakes'].includes(savedScope)) state.scope = savedScope;
+      state.type = localStorage.getItem(KEY_TYPE) || 'all';
+      state.tag = localStorage.getItem(KEY_TAG) || 'all';
+      state.shuffleQ = (localStorage.getItem(KEY_SHUFFLE_Q) === '1');
+      state.shuffleO = (localStorage.getItem(KEY_SHUFFLE_O) === '1');
+    }
+    function persist(){
+      localStorage.setItem(KEY_SCOPE, state.scope);
+      localStorage.setItem(KEY_TYPE, state.type);
+      localStorage.setItem(KEY_TAG, state.tag);
+      localStorage.setItem(KEY_SHUFFLE_Q, state.shuffleQ ? '1' : '0');
+      localStorage.setItem(KEY_SHUFFLE_O, state.shuffleO ? '1' : '0');
+    }
+
+    function selectScope(btn){
+      const scope = btn?.dataset?.scope || 'all';
+      state.scope = scope;
+      document.querySelectorAll('.seg button').forEach(b => b.classList.toggle('active', b === btn));
+      persist();
+    }
+
+    function selectChip(kind, btn){
+      if (!btn) return;
+      const v = btn.dataset.val || 'all';
+      if (kind === 'type') {
+        state.type = v;
+        document.querySelectorAll('#chipsType .chip').forEach(b => b.classList.toggle('active', b === btn));
+      } else if (kind === 'tag') {
+        state.tag = v;
+        document.querySelectorAll('#chipsTag .chip').forEach(b => b.classList.toggle('active', b === btn));
+      }
+      persist();
+    }
+
+    function setSwitch(id, on){
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.classList.toggle('on', !!on);
+      el.setAttribute('aria-checked', on ? 'true' : 'false');
+    }
+    function toggleSwitch(which){
+      if (which === 'shuffleQ') state.shuffleQ = !state.shuffleQ;
+      if (which === 'shuffleO') state.shuffleO = !state.shuffleO;
+      persist();
+      setSwitch('swShuffleQ', state.shuffleQ);
+      setSwitch('swShuffleO', state.shuffleO);
+    }
+    document.getElementById('swShuffleQ')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSwitch('shuffleQ'); }
+    });
+    document.getElementById('swShuffleO')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSwitch('shuffleO'); }
+    });
+
+    function doBankSearch(){
+      const kw = (document.getElementById('kw')?.value || '').trim();
+      if (!kw) return;
+      const params = new URLSearchParams({ keyword: kw });
+      if (state.type && state.type !== 'all') params.set('type', state.type);
+      window.location.href = `/user/banks/${BANK_ID}/search?` + params.toString();
+    }
+
+    function start(mode){
+      const params = new URLSearchParams({
+        bank_id: String(BANK_ID),
+        type: state.type || 'all',
+        mode: mode || 'quiz',
+        shuffle_questions: state.shuffleQ ? '1' : '0',
+        shuffle_options: state.shuffleO ? '1' : '0'
+      });
+      if (state.scope === 'favorites' || state.scope === 'mistakes') params.set('source', state.scope);
+      if (state.tag && state.tag !== 'all') params.set('tag', state.tag);
+      window.location.href = '/quiz?' + params.toString();
+    }
+
+    restore();
+    // 初始化范围按钮
+    const scopeBtn = document.querySelector(`.seg button[data-scope="${state.scope}"]`) || document.querySelector('.seg button[data-scope="all"]');
+    if (scopeBtn) selectScope(scopeBtn);
+    // 初始化题型/标签按钮
+    const typeBtn = document.querySelector(`#chipsType .chip[data-val="${cssEscape(state.type)}"]`) || document.querySelector('#chipsType .chip[data-val="all"]');
+    if (typeBtn) selectChip('type', typeBtn);
+    const tagBtn = document.querySelector(`#chipsTag .chip[data-val="${cssEscape(state.tag)}"]`) || document.querySelector('#chipsTag .chip[data-val="all"]');
+    if (tagBtn) selectChip('tag', tagBtn);
+    setSwitch('swShuffleQ', state.shuffleQ);
+    setSwitch('swShuffleO', state.shuffleO);
+
+    function cssEscape(s){
+      if (window.CSS && typeof window.CSS.escape === 'function') return window.CSS.escape(String(s || ''));
+      return String(s || '').replace(/[^a-zA-Z0-9_\\-]/g, '\\\\$&');
+    }
+  </script>
+{% endblock %}

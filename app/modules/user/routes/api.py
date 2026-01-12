@@ -149,10 +149,20 @@ def update_profile():
     avatar = data.get('avatar')
     contact = data.get('contact')
     college = data.get('college')
+    signature = data.get('signature')
     
     conn = get_db()
     
     try:
+        # 签名（不改DB结构，存到 user_progress）
+        signature_clean = None
+        if signature is not None:
+            if not isinstance(signature, str):
+                return jsonify({'status': 'error', 'message': '签名格式不正确'}), 400
+            signature_clean = signature.strip()
+            if len(signature_clean) > 80:
+                return jsonify({'status': 'error', 'message': '签名最多80个字符'}), 400
+
         # 构建更新SQL
         updates = []
         params = []
@@ -167,16 +177,58 @@ def update_profile():
             updates.append('college = ?')
             params.append(college)
         
-        if not updates:
+        if not updates and signature_clean is None:
             return jsonify({'status': 'error', 'message': '没有需要更新的内容'}), 400
         
-        params.append(uid)
-        sql = f"UPDATE users SET {', '.join(updates)} WHERE id = ?"
-        conn.execute(sql, params)
+        if updates:
+            params.append(uid)
+            sql = f"UPDATE users SET {', '.join(updates)} WHERE id = ?"
+            conn.execute(sql, params)
+
+        if signature_clean is not None:
+            import json
+            key = 'user_profile_extra_v1'
+            existing = conn.execute(
+                'SELECT id, data FROM user_progress WHERE user_id = ? AND p_key = ?',
+                (uid, key),
+            ).fetchone()
+
+            if existing:
+                try:
+                    extra = json.loads(existing['data'] or '{}')
+                except Exception:
+                    extra = {}
+                if not isinstance(extra, dict):
+                    extra = {}
+                extra['signature'] = signature_clean
+                data_json = json.dumps(extra, ensure_ascii=False)
+                conn.execute(
+                    'UPDATE user_progress SET data = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+                    (data_json, existing['id']),
+                )
+            else:
+                data_json = json.dumps({'signature': signature_clean}, ensure_ascii=False)
+                try:
+                    conn.execute(
+                        """INSERT INTO user_progress (user_id, p_key, data, updated_at, created_at)
+                           VALUES (?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)""",
+                        (uid, key, data_json),
+                    )
+                except Exception:
+                    conn.execute(
+                        """INSERT INTO user_progress (user_id, p_key, data, updated_at)
+                           VALUES (?, ?, ?, CURRENT_TIMESTAMP)""",
+                        (uid, key, data_json),
+                    )
+
         conn.commit()
         
         return jsonify({'status': 'success', 'message': '更新成功'})
     except Exception as e:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
         return jsonify({'status': 'error', 'message': f'更新失败: {str(e)}'}), 500
 
 
@@ -240,6 +292,21 @@ def api_profile():
         
         # 计算连续学习天数
         streak_days = calculate_streak_days(conn, uid)
+
+        # 用户扩展资料（不改DB结构：存储在 user_progress）
+        signature = ''
+        try:
+            import json
+            extra_row = conn.execute(
+                'SELECT data FROM user_progress WHERE user_id = ? AND p_key = ?',
+                (uid, 'user_profile_extra_v1'),
+            ).fetchone()
+            if extra_row and extra_row['data']:
+                extra = json.loads(extra_row['data'])
+                if isinstance(extra, dict) and isinstance(extra.get('signature'), str):
+                    signature = extra.get('signature', '').strip()
+        except Exception:
+            signature = ''
         
         return jsonify({
             'status': 'success',
@@ -248,6 +315,7 @@ def api_profile():
                 'avatar': user['avatar'],
                 'contact': user['contact'],
                 'college': user['college'],
+                'signature': signature,
                 'email': user.get('email'),
                 'email_verified': bool(user.get('email_verified', 0)),
                 'wechat_bound': bool(user.get('openid')) if has_openid else False,
@@ -486,4 +554,3 @@ def uploaded_file(filename):
     """访问上传的文件"""
     upload_folder = current_app.config['UPLOAD_FOLDER']
     return send_from_directory(upload_folder, filename)
-

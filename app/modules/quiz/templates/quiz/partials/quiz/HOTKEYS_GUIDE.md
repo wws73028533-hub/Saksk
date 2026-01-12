@@ -1,6 +1,6 @@
 # 答题页键盘快捷键（可自定义）
 
-本项目的答题页（`/quiz`）支持键盘快捷键，并在「题库设置 → 答题界面键盘快捷键」中支持自定义，且支持组合键（如 `Ctrl+Shift+KeyN`）。
+本项目的答题页（`/quiz`）支持键盘快捷键，并在「设置 → 快捷键」中支持自定义，且支持组合键（如 `Ctrl+Shift+KeyN`）。
 
 ## 1. 默认快捷键
 
@@ -21,7 +21,7 @@
 
 ## 2. 自定义录入规则
 
-- 在设置页弹窗中点击某一项的输入框，然后直接按下想要的组合键。
+- 在设置页中点击某一项的输入框，然后直接按下想要的组合键。
 - 支持组合键：`Ctrl` / `Alt` / `Shift` / `Meta(Win/⌘)` + 任意键。
 - 按 `Backspace` 或 `Delete` 可清空该项。
 - 注意：
@@ -35,6 +35,6 @@
 
 ## 4. 相关代码位置
 
-- 设置页：`app/templates/quiz_settings.html`
-- 快捷键逻辑：`app/templates/partials/quiz/_inline_js.html`
+- 设置页：`app/modules/main/templates/main/settings/hotkeys.html`
+- 快捷键逻辑：`app/modules/quiz/templates/quiz/partials/quiz/_inline_js.html`
 
